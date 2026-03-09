@@ -225,12 +225,9 @@ export default function MusicBar() {
     const currentMusic = useCurrentMusic();
     const artwork = currentMusic?.coverImg ?? currentMusic?.artwork;
     const [musicBarStyle, setMusicBarStyle] = useState<MusicBarPaletteStyle>(DEFAULT_MUSIC_BAR_STYLE);
-    const [artworkDisplaySrc, setArtworkDisplaySrc] = useState<string | undefined>(artwork);
 
     useEffect(() => {
         let aborted = false;
-
-        setArtworkDisplaySrc(artwork);
 
         const syncMusicBarArtwork = async () => {
             const nextArtwork = await normalizeArtworkDisplaySrc(artwork);
@@ -239,8 +236,6 @@ export default function MusicBar() {
             }
 
             const resolvedArtwork = nextArtwork ?? artwork;
-            setArtworkDisplaySrc(resolvedArtwork);
-
             const nextStyle = await extractMusicBarStyle(resolvedArtwork);
             if (!aborted) {
                 setMusicBarStyle(nextStyle);
@@ -256,14 +251,6 @@ export default function MusicBar() {
 
     return (
         <div className="music-bar-container" style={musicBarStyle}>
-            <div
-                className="music-bar-backdrop"
-                style={{
-                    backgroundImage: artworkDisplaySrc
-                        ? `url(${artworkDisplaySrc})`
-                        : undefined,
-                }}
-            ></div>
             <div className="music-bar-overlay"></div>
             <div className="music-bar-shell">
                 <Slider></Slider>

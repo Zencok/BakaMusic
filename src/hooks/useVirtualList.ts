@@ -37,7 +37,7 @@ export default function useVirtualList<T>(props: IVirtualListProps<T>) {
     const {
         estimateItemHeight,
         data,
-        renderCount = 40,
+        renderCount,
         fallbackRenderCount = -1,
         getScrollElement,
         scrollElementQuery,
@@ -72,7 +72,16 @@ export default function useVirtualList<T>(props: IVirtualListProps<T>) {
                             startIndex,
                             startIndex +
                 (scrollElementRef.current
-                    ? renderCount
+                    ? (
+                        renderCount ??
+                        Math.max(
+                            12,
+                            Math.ceil(
+                                (scrollElementRef.current.clientHeight || 0) /
+                                estimateItemHeight,
+                            ) + 8,
+                        )
+                    )
                     : fallbackRenderCount < 0
                         ? realData.length
                         : fallbackRenderCount),

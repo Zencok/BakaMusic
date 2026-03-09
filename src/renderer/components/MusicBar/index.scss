@@ -16,7 +16,6 @@
   --musicBarBackdropOpacity: 0.38;
 }
 
-.music-bar-backdrop,
 .music-bar-overlay,
 .music-bar-shell {
   position: absolute;
@@ -24,17 +23,8 @@
   border-radius: 24px;
 }
 
-.music-bar-backdrop,
 .music-bar-overlay {
   pointer-events: none;
-}
-
-.music-bar-backdrop {
-  background-size: cover;
-  background-position: center;
-  transform: scale(1.08);
-  filter: blur(48px) saturate(145%);
-  opacity: var(--musicBarBackdropOpacity);
 }
 
 .music-bar-overlay {
@@ -56,7 +46,7 @@
     );
   border: 1px solid color-mix(in srgb, var(--musicBarText) 10%, transparent);
   box-shadow: inset 0 1px 0 color-mix(in srgb, white 12%, transparent);
-  backdrop-filter: blur(22px) saturate(135%);
+  contain: paint;
 }
 
 .music-bar-shell {
@@ -74,6 +64,7 @@
       color-mix(in srgb, var(--musicBarSurfaceAlt) 92%, transparent),
       color-mix(in srgb, var(--musicBarSurface) 96%, transparent)
     );
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
   --textColor: var(--musicBarText);
+  contain: layout paint style;
 }

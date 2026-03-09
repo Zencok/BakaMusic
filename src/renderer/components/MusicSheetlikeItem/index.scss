@@ -24,6 +24,7 @@
     border-radius: 18px;
     overflow: hidden;
     position: relative;
+    isolation: isolate;
     background: var(--appImageFallback);
     box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
 
@@ -44,6 +45,7 @@
       bottom: 10px;
       z-index: 1;
       backdrop-filter: blur(18px) saturate(150%);
+      overflow: hidden;
       width: auto;
       min-height: 32px;
       font-size: 0.78rem;
@@ -54,6 +56,7 @@
       color: rgba(255, 255, 255, 0.92);
       padding: 0 10px;
       border-radius: 12px;
+      clip-path: inset(0 round 12px);
       background: rgba(7, 10, 18, 0.34);
       border: 1px solid rgba(255, 255, 255, 0.12);
       white-space: nowrap;

@@ -38,6 +38,7 @@ import { useCurrentMusic } from "@renderer/core/track-player/hooks";
 import isLocalMusic from "@/renderer/utils/is-local-music";
 import normalizeArtworkDisplaySrc from "@/renderer/utils/normalize-artwork-display-src";
 import { promptDownloadWithQuality } from "@/renderer/utils/download-quality";
+import LazyImage from "../LazyImage";
 interface IMusicListProps {
     /** 鐏炴洜銇氶惃鍕尡閺€鎯у灙鐞?*/
     musicList: IMusic.IMusicItem[];
@@ -96,40 +97,13 @@ function ArtworkContent(props: {
     }, [props.src]);
 
     return (
-        <>
-            <span
-                className="music-list-cover-backdrop"
-                aria-hidden="true"
-                style={{
-                    all: "unset",
-                    position: "absolute",
-                    inset: 0,
-                    display: "block",
-                    backgroundRepeat: "no-repeat",
-                    backgroundPosition: "center center",
-                    backgroundSize: "cover",
-                    backgroundImage: `url("${displaySrc}")`,
-                    transform: "scale(1.08)",
-                    filter: "blur(12px) saturate(118%)",
-                    opacity: 0.72,
-                }}
-            ></span>
-            <span
-                className="music-list-cover-image"
-                aria-hidden="true"
-                title={props.alt}
-                style={{
-                    all: "unset",
-                    position: "absolute",
-                    inset: 0,
-                    display: "block",
-                    backgroundRepeat: "no-repeat",
-                    backgroundPosition: "center center",
-                    backgroundSize: "cover",
-                    backgroundImage: `url("${displaySrc}")`,
-                }}
-            ></span>
-        </>
+        <LazyImage
+            className="music-list-cover-image"
+            src={displaySrc}
+            fallbackSrc={albumImg}
+            alt={props.alt}
+            draggable={false}
+        ></LazyImage>
     );
 }
 

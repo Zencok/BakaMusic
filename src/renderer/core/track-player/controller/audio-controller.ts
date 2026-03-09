@@ -5,7 +5,6 @@ import { encodeUrlHeaders } from "@/common/normalize-util";
 import albumImg from "@/assets/imgs/album-cover.jpg";
 import getUrlExt from "@/renderer/utils/get-url-ext";
 import Hls, { Events as HlsEvents, HlsConfig } from "hls.js";
-import { isSameMedia } from "@/common/media-util";
 import { PlayerState } from "@/common/constant";
 import ServiceManager from "@shared/service-manager/renderer";
 import ControllerBase from "@renderer/core/track-player/controller/controller-base";
@@ -19,9 +18,6 @@ import Promise = Dexie.Promise;
 class AudioController extends ControllerBase implements IAudioController {
     private audio: HTMLAudioElement;
     private hls: Hls;
-    private currentObjectUrl: string | null = null;
-    private sourceAbortController: AbortController | null = null;
-
     private _playerState: PlayerState = PlayerState.None;
     get playerState() {
         return this._playerState;
@@ -115,27 +111,7 @@ class AudioController extends ControllerBase implements IAudioController {
         }
     }
 
-    private revokeCurrentObjectUrl() {
-        if (!this.currentObjectUrl) {
-            return;
-        }
-
-        URL.revokeObjectURL(this.currentObjectUrl);
-        this.currentObjectUrl = null;
-    }
-
-    private abortPendingSourceRequest() {
-        if (!this.sourceAbortController) {
-            return;
-        }
-
-        this.sourceAbortController.abort();
-        this.sourceAbortController = null;
-    }
-
     private clearTrackSource() {
-        this.abortPendingSourceRequest();
-        this.revokeCurrentObjectUrl();
         this.destroyHls();
         this.audio.pause();
         this.audio.src = "";
@@ -210,10 +186,33 @@ class AudioController extends ControllerBase implements IAudioController {
         navigator.mediaSession.playbackState = "none";
     }
 
+    private resolvePlayableUrl(
+        url: string,
+        headers?: Record<string, string> | null,
+    ) {
+        if (!headers || Object.keys(headers).length === 0) {
+            return url;
+        }
+
+        const forwardedUrl = ServiceManager.RequestForwarderService.forwardRequest(
+            url,
+            "GET",
+            headers,
+        );
+
+        if (forwardedUrl) {
+            return forwardedUrl;
+        }
+
+        if (!headers["Authorization"]) {
+            return encodeUrlHeaders(url, headers);
+        }
+
+        throw new Error("request forwarder service unavailable");
+    }
+
     setTrackSource(trackSource: IMusic.IMusicSource, musicItem: IMusic.IMusicItem): void {
         this.musicItem = { ...musicItem };
-        this.abortPendingSourceRequest();
-        this.revokeCurrentObjectUrl();
 
         // 1. update metadata
         navigator.mediaSession.metadata = new MediaMetadata({
@@ -258,61 +257,26 @@ class AudioController extends ControllerBase implements IAudioController {
         }
 
         // 2.3 hack url with headers
-        if (headers) {
-            const forwardedUrl = ServiceManager.RequestForwarderService.forwardRequest(url, "GET", headers);
-            if (forwardedUrl) {
-                url = forwardedUrl;
-                headers = null;
-            } else if (!headers["Authorization"]) {
-                url = encodeUrlHeaders(url, headers);
-                headers = null;
-            }
-        }
-
-        if (!url) {
-            this.onError(ErrorReason.EmptyResource, new Error("url is empty"));
-            return;
-        }
-
         // 3. set real source
         if (getUrlExt(trackSource.url) === ".m3u8") {
             if (Hls.isSupported()) {
                 this.initHls();
-                this.hls.loadSource(url);
+                try {
+                    this.hls.loadSource(this.resolvePlayableUrl(url, headers));
+                } catch (error) {
+                    this.onError?.(ErrorReason.EmptyResource, error);
+                }
             } else {
                 this.onError(ErrorReason.UnsupportedResource);
                 return;
             }
-        } else if (headers) {
-            this.destroyHls();
-            this.sourceAbortController = new AbortController();
-            fetch(url, {
-                method: "GET",
-                headers: {
-                    ...trackSource.headers,
-                },
-                signal: this.sourceAbortController.signal,
-            })
-                .then(async (res) => {
-                    const blob = await res.blob();
-                    if (isSameMedia(this.musicItem, musicItem)) {
-                        this.revokeCurrentObjectUrl();
-                        this.currentObjectUrl = URL.createObjectURL(blob);
-                        this.audio.src = this.currentObjectUrl;
-                    }
-                    this.sourceAbortController = null;
-                })
-                .catch((error) => {
-                    if (error?.name === "AbortError") {
-                        return;
-                    }
-
-                    this.onError?.(ErrorReason.EmptyResource, error);
-                    this.sourceAbortController = null;
-                });
         } else {
             this.destroyHls();
-            this.audio.src = url;
+            try {
+                this.audio.src = this.resolvePlayableUrl(url, headers);
+            } catch (error) {
+                this.onError?.(ErrorReason.EmptyResource, error);
+            }
         }
     }
 

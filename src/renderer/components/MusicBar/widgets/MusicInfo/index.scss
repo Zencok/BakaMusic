@@ -26,6 +26,7 @@
 
   & .music-cover-wrap {
     cursor: pointer;
+    isolation: isolate;
 
     &[data-open="true"] .open-detail,
     &:hover .open-detail {
@@ -65,6 +66,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    border-radius: inherit;
+    clip-path: inset(0 round 18px);
     color: var(--musicBarText);
     background:
       linear-gradient(
