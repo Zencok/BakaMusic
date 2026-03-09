@@ -152,6 +152,13 @@ native/qmc2/             # QMC2 解密 native 模块 (C++ / node-gyp)
 | sharp | 图像处理 |
 | hls.js | HLS 流媒体播放 |
 
+## 第三方项目说明
+
+- 本项目内置并使用了 [applemusic-like-lyrics](https://github.com/Steve-xmh/applemusic-like-lyrics) 的核心歌词渲染实现，当前源码收录于 `vendor/applemusic-like-lyrics/packages/core/`。
+- 该项目主要用于逐字歌词、翻译歌词、罗马音歌词及相关动画效果的渲染。
+- BakaMusic 在其基础上完成了适配、集成与界面层改造，以满足本项目的歌词显示需求。
+- 上述第三方项目原始协议为 `GPL-3.0`，相关版权与协议归原作者及原项目所有。
+
 ## 协议
 
 本项目基于 [GPL](LICENSE) 协议开源。

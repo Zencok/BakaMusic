@@ -104,7 +104,7 @@ export const rendererConfig: Configuration = {
             "@renderer": path.join(__dirname, "../src/renderer"),
             "@renderer-lrc": path.join(__dirname, "../src/renderer-lrc"),
             "@shared": path.join(__dirname, "../src/shared"),
-            "@amll-core": path.resolve(__dirname, "../../applemusic-like-lyrics/packages/core/src"),
+            "@amll-core": path.resolve(__dirname, "../vendor/applemusic-like-lyrics/packages/core/src"),
         },
     },
     externals: process.platform !== "darwin" ? ["fsevents"] : undefined,
