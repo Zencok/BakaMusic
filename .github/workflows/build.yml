@@ -14,7 +14,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - run: echo (node -p -e '`VERSION=${require("./package.json").version}`') >> $Env:GITHUB_ENV
+      - name: Set build version
+        run: node -e "const fs=require('fs'); const pkg=require('./package.json'); const ref=process.env.GITHUB_REF||''; const refName=process.env.GITHUB_REF_NAME||''; const version=ref.startsWith('refs/tags/v') ? refName.slice(1) : pkg.version; fs.appendFileSync(process.env.GITHUB_ENV, 'VERSION='+version+'\\nSYNC_PACKAGE_VERSION=' + String(pkg.version !== version) + '\\n'); console.log('VERSION=' + version);"
+      - name: Sync package version
+        if: env.SYNC_PACKAGE_VERSION == 'true'
+        run: node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\\n'); }"
       - run: npm install
       - run: npm run package
       - name: Install Inno Setup
@@ -45,7 +49,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - run: echo (node -p -e '`VERSION=${require("./package.json").version}`') >> $Env:GITHUB_ENV
+      - name: Set build version
+        run: node -e "const fs=require('fs'); const pkg=require('./package.json'); const ref=process.env.GITHUB_REF||''; const refName=process.env.GITHUB_REF_NAME||''; const version=ref.startsWith('refs/tags/v') ? refName.slice(1) : pkg.version; fs.appendFileSync(process.env.GITHUB_ENV, 'VERSION='+version+'\\nSYNC_PACKAGE_VERSION=' + String(pkg.version !== version) + '\\n'); console.log('VERSION=' + version);"
+      - name: Sync package version
+        if: env.SYNC_PACKAGE_VERSION == 'true'
+        run: node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\\n'); }"
       - run: npm install
       - run: npm install electron@22
       - run: npm run package
@@ -71,7 +79,7 @@ jobs:
           path: BakaMusic-${{ env.VERSION }}-win32-x64-legacy-portable.zip
 
   build-macos-x64:
-    runs-on: macos-14
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
@@ -80,9 +88,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - run: node -p -e '`VERSION=${require("./package.json").version}`' >> $GITHUB_ENV
+      - name: Set build version
+        run: node -e "const fs=require('fs'); const pkg=require('./package.json'); const ref=process.env.GITHUB_REF||''; const refName=process.env.GITHUB_REF_NAME||''; const version=ref.startsWith('refs/tags/v') ? refName.slice(1) : pkg.version; fs.appendFileSync(process.env.GITHUB_ENV, 'VERSION='+version+'\\nSYNC_PACKAGE_VERSION=' + String(pkg.version !== version) + '\\n'); console.log('VERSION=' + version);"
+      - name: Sync package version
+        if: env.SYNC_PACKAGE_VERSION == 'true'
+        run: node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\\n'); }"
       - run: npm install
-      - run: npm run make
+      - run: npm run make -- --arch="x64"
       - name: Rename DMG
         run: mv "./out/make/BakaMusic-${{ env.VERSION }}-x64.dmg" "./out/make/BakaMusic-${{ env.VERSION }}-darwin-x64.dmg"
       - uses: actions/upload-artifact@v4
@@ -100,7 +112,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - run: node -p -e '`VERSION=${require("./package.json").version}`' >> $GITHUB_ENV
+      - name: Set build version
+        run: node -e "const fs=require('fs'); const pkg=require('./package.json'); const ref=process.env.GITHUB_REF||''; const refName=process.env.GITHUB_REF_NAME||''; const version=ref.startsWith('refs/tags/v') ? refName.slice(1) : pkg.version; fs.appendFileSync(process.env.GITHUB_ENV, 'VERSION='+version+'\\nSYNC_PACKAGE_VERSION=' + String(pkg.version !== version) + '\\n'); console.log('VERSION=' + version);"
+      - name: Sync package version
+        if: env.SYNC_PACKAGE_VERSION == 'true'
+        run: node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\\n'); }"
       - run: npm install
       - run: npm run make -- --arch="arm64"
       - name: Rename DMG
@@ -117,7 +133,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - run: node -p -e '`VERSION=${require("./package.json").version}`' >> $GITHUB_ENV
+      - name: Set build version
+        run: node -e "const fs=require('fs'); const pkg=require('./package.json'); const ref=process.env.GITHUB_REF||''; const refName=process.env.GITHUB_REF_NAME||''; const version=ref.startsWith('refs/tags/v') ? refName.slice(1) : pkg.version; fs.appendFileSync(process.env.GITHUB_ENV, 'VERSION='+version+'\\nSYNC_PACKAGE_VERSION=' + String(pkg.version !== version) + '\\n'); console.log('VERSION=' + version);"
+      - name: Sync package version
+        if: env.SYNC_PACKAGE_VERSION == 'true'
+        run: node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\\n'); }"
       - run: npm install
       - run: npm run make
       - name: Rename DEB
