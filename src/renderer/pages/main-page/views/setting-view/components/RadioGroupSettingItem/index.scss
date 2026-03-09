@@ -1,0 +1,35 @@
+.setting-view--radio-group-setting-item-container {
+  & .options-container {
+    margin-top: 0.2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  & .option-item-container {
+    white-space: nowrap;
+    padding: 0.62rem 0.9rem;
+    border-radius: 14px;
+    color: var(--settingTextPrimary);
+    background: var(--settingControlSurface);
+    border: 1px solid var(--settingControlBorder);
+    box-shadow: var(--settingControlInset);
+
+    &.highlight {
+      color: color-mix(in srgb, var(--primaryColor) 72%, var(--settingTextPrimary));
+      background: var(--settingControlSurfaceHover);
+      border-color: var(--settingControlBorderActive);
+      box-shadow:
+        0 10px 20px rgba(15, 23, 42, 0.06),
+        var(--settingControlInset);
+    }
+
+    & .checkbox {
+      width: 1rem;
+      height: 1rem;
+      min-width: 1rem;
+      min-height: 1rem;
+      flex-shrink: 0;
+    }
+  }
+}

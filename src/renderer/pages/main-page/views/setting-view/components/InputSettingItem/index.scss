@@ -1,0 +1,48 @@
+.setting-view--input-setting-item-container {
+  display: flex;
+  align-items: center;
+  width: 200px;
+  min-height: 56px;
+  column-gap: 12px;
+  padding: 0.72rem 0.9rem;
+  border-radius: 18px;
+  border: 1px solid var(--settingControlBorder);
+  background: var(--settingRowSurface);
+  box-shadow: var(--settingControlInset);
+  box-sizing: border-box;
+
+  &:focus-within {
+    border-color: var(--settingControlBorderActive);
+  }
+
+  & .input-label {
+    min-width: 58px;
+    color: var(--settingTextSecondary);
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  & input {
+    flex: 1;
+    min-width: 0;
+    min-height: 2.5rem;
+    padding: 0 0.9rem;
+    border-radius: 14px;
+    border: 1px solid var(--settingControlBorder);
+    background: var(--settingControlSurface);
+    color: var(--settingTextPrimary);
+    box-shadow: var(--settingControlInset);
+
+    &:focus {
+      border-color: var(--settingControlBorderActive);
+      background: color-mix(in srgb, var(--backgroundColor) 96%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primaryColor) 10%, transparent);
+    }
+  }
+
+  & input:disabled {
+    opacity: 0.48;
+    cursor: not-allowed;
+  }
+}

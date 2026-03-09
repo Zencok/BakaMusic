@@ -1,0 +1,202 @@
+﻿.minimode-page-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 6px;
+  box-sizing: border-box;
+  overflow: hidden;
+  user-select: none;
+  color: #fff;
+
+  & .minimode-page-backdrop,
+  & .minimode-page-overlay,
+  & .minimode-page-shell {
+    position: absolute;
+    inset: 6px;
+    border-radius: 24px;
+  }
+
+  & .minimode-page-backdrop {
+    background-size: cover;
+    background-position: center;
+    filter: blur(44px) saturate(150%);
+    transform: scale(1.12);
+    opacity: 0.58;
+  }
+
+  & .minimode-page-overlay {
+    background:
+      radial-gradient(circle at top left, rgba(255, 255, 255, 0.16), transparent 34%),
+      linear-gradient(135deg, rgba(14, 14, 18, 0.28), rgba(7, 7, 10, 0.58));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(22px) saturate(140%);
+  }
+
+  & .minimode-page-shell {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    -webkit-app-region: drag;
+  }
+
+  & .minimode-cover-wrap,
+  & .minimode-meta,
+  & .minimode-lyric-block,
+  & .minimode-actions {
+    -webkit-app-region: no-drag;
+  }
+
+  & .minimode-cover-wrap {
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
+  }
+
+  & .minimode-cover {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  & .minimode-content {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: transform 180ms ease, opacity 180ms ease;
+  }
+
+  & .minimode-meta,
+  & .minimode-lyric-block {
+    min-width: 0;
+    cursor: pointer;
+  }
+
+  & .minimode-lyric-block {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  & .minimode-title,
+  & .minimode-artist,
+  & .minimode-romanization,
+  & .minimode-lyric,
+  & .minimode-translation {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  & .minimode-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+
+  & .minimode-artist {
+    margin-top: 3px;
+    font-size: 0.75rem;
+    line-height: 1.1;
+    opacity: 0.62;
+  }
+
+  & .minimode-romanization {
+    font-size: 0.68rem;
+    line-height: 1.05;
+    opacity: 0.74;
+  }
+
+  & .minimode-lyric {
+    font-size: 0.82rem;
+    line-height: 1.1;
+    font-weight: 600;
+    opacity: 0.96;
+  }
+
+  & .minimode-translation {
+    font-size: 0.72rem;
+    line-height: 1.1;
+    opacity: 0.56;
+  }
+
+  & .minimode-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    transform: translateX(8px);
+    pointer-events: none;
+    transition: opacity 180ms ease, transform 180ms ease;
+  }
+
+  & .minimode-action {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 50%;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    transition: transform 160ms ease, background-color 160ms ease, color 160ms ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    & svg {
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  & .minimode-action-primary {
+    width: 38px;
+    height: 38px;
+    color: #0b0b0f;
+    background: rgba(255, 255, 255, 0.96);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.36);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    & svg {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  & .minimode-action-close {
+    margin-right: 4px;
+    color: rgba(255, 255, 255, 0.74);
+  }
+
+  &[data-hover="true"] {
+    & .minimode-content {
+      transform: translateX(-2px);
+    }
+
+    & .minimode-actions {
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+  }
+}

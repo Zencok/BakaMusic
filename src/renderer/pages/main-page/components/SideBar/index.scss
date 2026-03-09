@@ -1,0 +1,27 @@
+.side-bar-container {
+  width: 248px;
+  height: 100%;
+  flex-shrink: 0;
+  flex-grow: 0;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 14px 10px 18px;
+  position: relative;
+  background: var(--appSurface);
+  border-right: 1px solid var(--appSurfaceBorder);
+  box-shadow:
+    inset -1px 0 0 color-mix(in srgb, white 18%, transparent),
+    14px 0 36px rgba(15, 23, 42, 0.05);
+  backdrop-filter: var(--appGlassFilter);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto auto;
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(180deg, transparent, var(--appSurfaceBorderStrong), transparent);
+    opacity: 0.75;
+    pointer-events: none;
+  }
+}

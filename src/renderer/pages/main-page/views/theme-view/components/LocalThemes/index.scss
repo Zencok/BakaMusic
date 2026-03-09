@@ -1,0 +1,37 @@
+.local-themes-container {
+  width: 100%;
+  margin-top: 2px;
+  padding-bottom: 20px;
+
+  & .local-themes-inner-container {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(208px, 1fr));
+    align-items: start;
+  }
+}
+
+.theme-install-local {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--appSurfaceBorderStrong);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--backgroundColor) 94%, var(--primaryColor) 3%),
+      color-mix(in srgb, var(--backgroundColor) 88%, var(--textColor) 12%)
+    );
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--appSurfaceBorderStrong);
+  }
+
+  & svg {
+    width: 30px;
+    height: 30px;
+    color: var(--appTextSecondary);
+    opacity: 0.82;
+  }
+}

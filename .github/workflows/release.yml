@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.0.0)"
+        required: true
+        type: string
+      run_id:
+        description: "Build workflow run ID to download artifacts from"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark as pre-release"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.inputs.run_id }}
+        run: |
+          mkdir -p ./release-assets
+          artifacts=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID/artifacts")
+
+          echo "$artifacts" | jq -r '.artifacts[] | "\(.id) \(.name)"' | while read id name; do
+            echo "Downloading: $name"
+            curl -L -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$id/zip" \
+              -o "./release-assets/${name}.zip"
+            cd ./release-assets
+            unzip -o "${name}.zip"
+            rm "${name}.zip"
+            cd ..
+          done
+
+          echo "Release assets:"
+          ls -lh ./release-assets/
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FLAGS="--title ${{ github.event.inputs.tag }}"
+          if [ "${{ github.event.inputs.prerelease }}" = "true" ]; then
+            FLAGS="$FLAGS --prerelease"
+          fi
+          gh release create ${{ github.event.inputs.tag }} \
+            ./release-assets/* \
+            $FLAGS \
+            --generate-notes

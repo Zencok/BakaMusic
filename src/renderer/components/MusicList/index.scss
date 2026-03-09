@@ -1,0 +1,468 @@
+﻿.music-list-container {
+  --musicListSurface: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 82%, transparent));
+  --musicListRowBg: color-mix(in srgb, var(--backgroundColor) 68%, transparent);
+  --musicListRowBorder: color-mix(in srgb, var(--textColor) 8%, transparent);
+  --musicListRowHoverBg: color-mix(in srgb, var(--primaryColor) 9%, var(--backgroundColor));
+  --musicListRowActiveBg: color-mix(in srgb, var(--primaryColor) 13%, var(--backgroundColor));
+  --musicListTextStrong: color-mix(in srgb, var(--textColor) 94%, black);
+  --musicListText: color-mix(in srgb, var(--textColor) 76%, transparent);
+  --musicListTextSoft: color-mix(in srgb, var(--textColor) 56%, transparent);
+  width: 100%;
+  min-height: 300px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 28px;
+  background: var(--musicListSurface);
+  border: 1px solid var(--appSurfaceBorder);
+  box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
+  backdrop-filter: var(--appGlassFilter);
+  box-sizing: border-box;
+
+  &[data-surface-mode="header-only"] {
+    min-height: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+
+    & .music-list-toolbar {
+      padding: 0.9rem 1rem;
+      border-radius: 22px;
+      background: var(--musicListSurface);
+      border: 1px solid var(--appSurfaceBorder);
+      box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
+      backdrop-filter: var(--appGlassFilter);
+    }
+
+    & .music-list-virtual-spacer,
+    & .bottom-loading-state,
+    & .components--empty-container {
+      margin-top: 12px;
+    }
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
+
+  & .music-list-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 2px 4px 12px;
+  }
+
+  & .music-list-toolbar-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 2.2rem;
+  }
+
+  & .music-list-toolbar-title {
+    font-size: 0.94rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--musicListTextStrong);
+  }
+
+  & .music-list-toolbar-count {
+    min-width: 1.9rem;
+    height: 1.9rem;
+    padding: 0 0.6rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--primaryColor) 14%, var(--backgroundColor));
+    color: color-mix(in srgb, var(--primaryColor) 78%, var(--appTextPrimary));
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  & .music-list-sorters {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  & .music-list-sorter {
+    height: 2rem;
+    padding: 0 0.78rem;
+    border: 1px solid var(--appInteractiveBorder);
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: color-mix(in srgb, var(--backgroundColor) 78%, transparent);
+    box-shadow: var(--appSurfaceInset);
+    color: var(--musicListText);
+    cursor: pointer;
+    transition: transform 160ms ease, background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+
+    &:hover {
+      transform: none;
+      color: var(--musicListTextStrong);
+      background: var(--appInteractiveSurface);
+    }
+
+    &[data-active="true"] {
+      color: color-mix(in srgb, var(--primaryColor) 82%, var(--appTextPrimary));
+      background: color-mix(in srgb, var(--primaryColor) 14%, var(--backgroundColor));
+      border-color: color-mix(in srgb, var(--primaryColor) 24%, transparent);
+    }
+
+    & svg {
+      flex-shrink: 0;
+    }
+  }
+
+  & .music-list-virtual-spacer {
+    position: relative;
+    min-height: 1px;
+  }
+
+  & .music-list-virtual-content {
+    will-change: transform;
+  }
+
+  & .music-list-row-wrapper {
+    position: relative;
+    height: 88px;
+    padding: 4px 0;
+    box-sizing: border-box;
+
+    z-index: 0;
+
+    &:hover,
+    &:focus-within {
+      z-index: 4;
+    }
+
+    & .components--drag-receiver-content {
+      box-shadow: 0 0 14px color-mix(in srgb, var(--primaryColor) 32%, transparent);
+    }
+  }
+
+  & .music-list-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    height: 100%;
+    padding: 10px 12px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+    background: var(--musicListRowBg);
+    transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    overflow: hidden;
+    cursor: default;
+
+    &::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 14px;
+      bottom: 14px;
+      width: 3px;
+      border-radius: 999px;
+      background: transparent;
+      transition: background-color 180ms ease;
+    }
+
+    &:hover {
+      background: var(--musicListRowHoverBg);
+      border-color: color-mix(in srgb, var(--primaryColor) 14%, transparent);
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+      z-index: 3;
+      transform: none;
+    }
+
+    &[data-active="true"] {
+      background: var(--musicListRowActiveBg);
+      border-color: color-mix(in srgb, var(--primaryColor) 24%, transparent);
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.07);
+      z-index: 2;
+
+      &::before {
+        background: var(--primaryColor);
+      }
+    }
+
+    &[data-playing="true"] {
+      border-color: color-mix(in srgb, var(--primaryColor) 28%, transparent);
+      box-shadow: none;
+      z-index: 2;
+    }
+  }
+
+  & .music-list-leading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex-shrink: 0;
+  }
+
+  & .music-list-index {
+    width: 2rem;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--musicListTextSoft);
+    flex-shrink: 0;
+  }
+
+  & .music-list-cover {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    display: block;
+    padding: 0;
+    border: none;
+    border-radius: 14px;
+    overflow: hidden;
+    flex-shrink: 0;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    box-sizing: border-box;
+    line-height: 0;
+    font-size: 0;
+    text-indent: 0;
+    text-align: initial;
+    background: var(--appImageFallback);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--primaryColor) 18%, transparent),
+        transparent 58%
+      );
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    & .music-list-cover-backdrop,
+    & .music-list-cover-image {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: cover;
+    }
+
+    & .music-list-cover-backdrop {
+      z-index: 0;
+      transform: scale(1.08);
+      filter: blur(12px) saturate(118%);
+      opacity: 0.72;
+    }
+
+    & .music-list-cover-image {
+      z-index: 1;
+    }
+
+    & .music-list-cover-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.58));
+      color: #fff;
+      opacity: 0;
+      transition: opacity 160ms ease;
+      backdrop-filter: blur(4px);
+
+      & .music-list-cover-overlay-icon {
+        width: 28px;
+        height: 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 0;
+
+        & svg {
+          display: block;
+          flex-shrink: 0;
+        }
+      }
+    }
+
+    &:hover .music-list-cover-overlay,
+    .music-list-card[data-playing="true"] & .music-list-cover-overlay,
+    .music-list-card:hover & .music-list-cover-overlay {
+      opacity: 1;
+    }
+  }
+
+  & .music-list-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  & .music-list-title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  & .music-list-title {
+    min-width: 0;
+    font-size: 0.96rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--musicListTextStrong);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  & .music-list-playing-indicator {
+    width: 1.55rem;
+    height: 1.55rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: color-mix(in srgb, var(--primaryColor) 78%, transparent);
+    color: #fff;
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--primaryColor) 24%, transparent);
+  }
+
+  & .music-list-subtitle {
+    font-size: 0.86rem;
+    line-height: 1.2;
+    color: var(--musicListText);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  & .music-list-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+
+    & .components--tag-container {
+      flex-shrink: 0;
+    }
+  }
+
+  & .music-list-side {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 144px;
+    flex-shrink: 0;
+  }
+  & .music-list-duration {
+    min-width: 3.4rem;
+    text-align: right;
+    font-size: 0.84rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--musicListTextSoft);
+  }
+
+  & .music-list-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  & .music-list-action-button {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--backgroundColor) 76%, transparent);
+    color: var(--musicListText);
+    box-shadow: var(--appSurfaceInset);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 160ms ease, background-color 160ms ease, color 160ms ease;
+
+    &:hover {
+      transform: none;
+      background: var(--appInteractiveSurface);
+      color: var(--musicListTextStrong);
+    }
+
+    & > div,
+    & .music-download-base {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+}
+
+@media (max-width: 860px) {
+  .music-list-container {
+    & .music-list-toolbar {
+      align-items: flex-start;
+    }
+
+    & .music-list-sorters {
+      justify-content: flex-start;
+    }
+
+    & .music-list-row-wrapper {
+      height: 88px;
+    }
+
+    & .music-list-card {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 10px;
+      padding: 9px 10px;
+    }
+
+    & .music-list-cover {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+    }
+
+    & .music-list-side {
+      min-width: 132px;
+      gap: 0;
+    }
+
+    & .music-list-action-button {
+      width: 36px;
+      height: 36px;
+    }
+}
+
+
+
+
+}
+

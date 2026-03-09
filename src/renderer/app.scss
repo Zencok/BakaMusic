@@ -1,0 +1,173 @@
+.app-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+
+  & .body-container {
+    width: 100%;
+    height: 0;
+    flex: 1;
+    display: flex;
+    position: relative;
+    isolation: isolate;
+    background:
+      radial-gradient(
+        circle at top left,
+        color-mix(in srgb, var(--primaryColor) 12%, transparent) 0%,
+        transparent 34%
+      ),
+      radial-gradient(
+        circle at top right,
+        color-mix(in srgb, var(--textColor) 5%, transparent) 0%,
+        transparent 28%
+      ),
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--backgroundColor) 24%, transparent),
+        color-mix(in srgb, var(--backgroundColor) 10%, transparent)
+      );
+  }
+}
+
+.tab-list-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 1.05rem;
+  flex-shrink: 0;
+  overflow-x: auto;
+  padding: 0.45rem;
+  border-radius: 18px;
+  border: 1px solid var(--appSurfaceBorder);
+  background: var(--appSurface);
+  box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
+  backdrop-filter: var(--appGlassFilter);
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  & .tab-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-height: 2.5rem;
+    font-size: 0.98rem;
+    font-weight: 600;
+    line-height: 1;
+    padding: 0 1rem;
+    outline: none;
+    cursor: pointer;
+    opacity: 0.78;
+    white-space: nowrap;
+    user-select: none;
+    border-radius: 14px;
+    color: var(--appTextPrimary);
+    transition:
+      opacity 180ms ease,
+      transform 180ms ease,
+      background-color 180ms ease,
+      box-shadow 180ms ease,
+      color 180ms ease;
+
+    &:hover {
+      opacity: 1;
+      transform: translateY(-1px);
+      background: var(--appInteractiveSurface);
+    }
+
+    &[data-headlessui-state="selected"] {
+      opacity: 1;
+      color: color-mix(in srgb, var(--primaryColor) 78%, var(--appTextPrimary));
+      background:
+        linear-gradient(
+          180deg,
+          color-mix(in srgb, var(--primaryColor) 18%, var(--backgroundColor)),
+          color-mix(in srgb, var(--primaryColor) 10%, var(--backgroundColor))
+        );
+      box-shadow:
+        0 10px 22px rgba(15, 23, 42, 0.08),
+        var(--appSurfaceInset);
+
+      &::after {
+        display: none;
+      }
+    }
+  }
+}
+
+.tab-panels-container {
+  flex: 1;
+
+  & .tab-panel-container {
+    height: 100%;
+    outline: none;
+  }
+}
+
+:root {
+  --primaryColor: #f17d34;
+  --backgroundColor: #fdfdfd;
+  --dividerColor: rgba(0, 0, 0, 0.1);
+  --listEvenColor: rgba(0, 0, 0, 0.05);
+  --listHoverColor: rgba(0, 0, 0, 0.05);
+  --listActiveColor: rgba(0, 0, 0, 0.1);
+  --textColor: #333333;
+  --maskColor: rgba(51, 51, 51, 0.5);
+  --shadowColor: rgba(0, 0, 0, 0.2);
+  --placeholderColor: #f4f4f4;
+
+  --successColor: #08a34c;
+  --dangerColor: #fc5f5f;
+  --infoColor: #0a95c8;
+  --linkColor: #0c66fc;
+  --headerTextColor: white;
+  --animate-duration: 300ms !important;
+  --scrollbarWidth: 12px;
+
+  --appHeaderHeight: 54px;
+  --appMusicBarHeight: 92px;
+
+  --appSurface: color-mix(in srgb, var(--backgroundColor) 74%, transparent);
+  --appSurfaceStrong: color-mix(in srgb, var(--backgroundColor) 88%, transparent);
+  --appSurfaceMuted: color-mix(in srgb, var(--backgroundColor) 60%, transparent);
+  --appSurfaceBorder: color-mix(in srgb, var(--textColor) 14%, transparent);
+  --appSurfaceBorderStrong: color-mix(in srgb, var(--textColor) 22%, transparent);
+  --appSurfaceInset: inset 0 1px 0 color-mix(in srgb, white 16%, transparent);
+  --appSurfaceShadow: 0 22px 48px rgba(15, 23, 42, 0.12);
+  --appSurfaceShadowSoft: 0 12px 28px rgba(15, 23, 42, 0.08);
+  --appGlassFilter: blur(22px) saturate(145%);
+  --appRadiusMd: 16px;
+  --appRadiusLg: 22px;
+  --appRadiusXl: 28px;
+  --appTextPrimary: var(--textColor);
+  --appTextSecondary: color-mix(in srgb, var(--textColor) 72%, transparent);
+  --appTextTertiary: color-mix(in srgb, var(--textColor) 56%, transparent);
+  --appInteractiveSurface: color-mix(in srgb, var(--textColor) 8%, transparent);
+  --appInteractiveSurfaceHover: color-mix(in srgb, var(--textColor) 12%, transparent);
+  --appInteractiveSurfaceStrong: color-mix(in srgb, var(--primaryColor) 16%, var(--backgroundColor));
+  --appInteractiveBorder: color-mix(in srgb, var(--textColor) 16%, transparent);
+  --appImageFallback: color-mix(in srgb, var(--backgroundColor) 84%, var(--textColor) 16%);
+  --appOverlayMask:
+    linear-gradient(180deg, rgba(7, 9, 14, 0.16), rgba(7, 9, 14, 0.3)),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.05), transparent 52%);
+  --appPanelMask:
+    linear-gradient(180deg, rgba(7, 9, 14, 0.14), rgba(7, 9, 14, 0.24)),
+    linear-gradient(90deg, rgba(7, 9, 14, 0.04), rgba(7, 9, 14, 0.28));
+  --appPanelSurface:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.16), transparent 30%),
+    linear-gradient(180deg, rgba(18, 18, 24, 0.86), rgba(10, 10, 16, 0.76));
+
+  font-size: 13px;
+  color: var(--textColor);
+}
+
+a {
+  color: var(--linkColor);
+}

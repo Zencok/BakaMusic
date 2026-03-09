@@ -1,0 +1,35 @@
+.apple-music-lyric-player {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+
+  & .apple-music-lyric-player--stage {
+    width: 100%;
+    height: 100%;
+  }
+
+  & .amll-lyric-player {
+    mix-blend-mode: normal;
+    contain: layout paint style;
+  }
+
+  & .amll-lyric-player.dom {
+    --amll-lp-line-width-aspect: 1;
+    --amll-lp-line-padding-x: 0.24em;
+    --amll-lp-bg-line-scale: 0.82;
+  }
+
+  & .apple-music-lyric-player--placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+    pointer-events: none;
+  }
+}

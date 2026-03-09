@@ -1,0 +1,45 @@
+.modal--simple-input-with-state {
+  width: 460px;
+  display: flex;
+  flex-direction: column;
+  min-height: 188px;
+  max-height: 420px;
+
+  & .input-area {
+    margin: 18px 18px 12px;
+    box-sizing: border-box;
+
+    & input {
+      width: 100%;
+      min-height: 46px;
+      border-radius: 16px;
+    }
+  }
+
+  & .opeartion-area {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 0 18px 18px;
+    font-size: 1rem;
+  }
+
+  & .hint-area {
+    margin: 0 18px 18px;
+    padding: 12px 14px;
+    border-radius: 18px;
+    flex: 1;
+    overflow-y: auto;
+    color: rgba(255, 255, 255, 0.72);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    & li {
+      line-height: 1.8;
+      white-space: normal;
+      word-wrap: break-word;
+      word-break: break-all;
+    }
+  }
+}

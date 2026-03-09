@@ -1,0 +1,62 @@
+﻿.music-bar--slider-container {
+  position: absolute;
+  top: -3px;
+  left: 18px;
+  right: 18px;
+  height: 16px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  --slider-height: 3px;
+
+  &:hover,
+  &[data-seeking="true"] {
+    --slider-height: 5px;
+  }
+
+  & .bar,
+  & .active-bar {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: var(--slider-height);
+    border-radius: 999px;
+    transform: translateY(-50%);
+    transition: height 120ms ease, width 80ms linear;
+  }
+
+  & .bar {
+    width: 100%;
+    background: color-mix(in srgb, var(--musicBarText) 16%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
+  }
+
+  & .active-bar {
+    width: 0;
+    background:
+      linear-gradient(
+        90deg,
+        var(--musicBarAccent),
+        color-mix(in srgb, var(--musicBarAccent) 74%, var(--musicBarText))
+      );
+    box-shadow: 0 0 18px color-mix(in srgb, var(--musicBarAccent) 32%, transparent);
+  }
+
+  & .thumb {
+    position: absolute;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--musicBarAccent);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.24);
+    transform: translate(-50%, -50%) scale(0.78);
+    opacity: 0;
+    transition: opacity 120ms ease, transform 120ms ease;
+  }
+
+  &:hover .thumb,
+  &[data-seeking="true"] .thumb {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}

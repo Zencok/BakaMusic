@@ -1,0 +1,62 @@
+﻿.local-music--album-view-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 0 0;
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+
+  & .left-part {
+    width: 196px;
+    padding: 10px;
+    border-radius: 22px;
+    background: var(--appSurfaceMuted);
+    border: 1px solid var(--appSurfaceBorder);
+    box-shadow: var(--appSurfaceInset);
+    overflow-y: auto;
+    flex-shrink: 0;
+
+    & .album-item {
+      min-height: 4.2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.24rem;
+      padding: 0.7rem 0.9rem;
+      border-radius: 16px;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+
+      &[data-selected="true"] {
+        background: color-mix(in srgb, var(--primaryColor) 12%, var(--backgroundColor));
+        color: var(--appTextPrimary);
+      }
+
+      &:hover {
+        transform: translateY(-1px);
+      }
+
+      & span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      & span:first-child {
+        font-weight: 600;
+      }
+
+      & span:nth-child(2) {
+        font-size: 0.8rem;
+        color: var(--appTextTertiary);
+      }
+    }
+  }
+
+  & .right-part {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+  }
+}

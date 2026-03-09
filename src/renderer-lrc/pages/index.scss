@@ -1,0 +1,296 @@
+.desktop-lyric-page {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    user-select: none;
+    color: var(--desktop-lyric-color, #fff);
+    border-radius: 24px;
+    background: transparent;
+
+    &.dragging .desktop-lyric-page--card,
+    &.resizing .desktop-lyric-page--card {
+        background: rgba(14, 14, 18, 0.92);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        backdrop-filter: none;
+    }
+
+    &.dragging .desktop-lyric-page--card::before,
+    &.resizing .desktop-lyric-page--card::before {
+        opacity: 0.16;
+        filter: blur(18px) saturate(112%);
+        transform: scale(1.04);
+    }
+
+    &.dragging .desktop-lyric-page--card::after,
+    &.resizing .desktop-lyric-page--card::after {
+        background: rgba(10, 10, 14, 0.34);
+    }
+
+    &.dragging .desktop-lyric-page--content,
+    &.resizing .desktop-lyric-page--content {
+        -webkit-mask-image: none;
+        mask-image: none;
+    }
+
+    &.dragging .desktop-lyric-page--content .apple-music-lyric-player .amll-lyric-player,
+    &.resizing .desktop-lyric-page--content .apple-music-lyric-player .amll-lyric-player {
+        text-shadow: none;
+    }
+
+    & .desktop-lyric-page--card {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 10px 14px 7px;
+        box-sizing: border-box;
+        border-radius: 24px;
+        overflow: hidden;
+        isolation: isolate;
+        background: linear-gradient(180deg, rgba(12, 12, 16, 0.72), rgba(12, 12, 16, 0.56));
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(8px) saturate(118%);
+        will-change: opacity;
+        -webkit-app-region: drag;
+
+        &::before {
+            content: "";
+            position: absolute;
+            inset: -14%;
+            z-index: 0;
+            background-image: var(--desktop-lyric-artwork, none);
+            background-size: cover;
+            background-position: center;
+            filter: blur(36px) saturate(148%);
+            transform: scale(1.12);
+            opacity: 0.42;
+            pointer-events: none;
+        }
+
+        &::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            background: linear-gradient(180deg, rgba(10, 10, 14, 0.28), rgba(10, 10, 14, 0.42));
+            pointer-events: none;
+        }
+
+        & > * {
+            position: relative;
+            z-index: 1;
+        }
+    }
+
+    & .desktop-lyric-page--header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 36px;
+        -webkit-app-region: drag;
+    }
+
+    & .desktop-lyric-page--track {
+        min-width: 0;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        -webkit-app-region: no-drag;
+    }
+
+    & .desktop-lyric-page--cover-wrap {
+        flex-shrink: 0;
+    }
+
+    & .desktop-lyric-page--cover {
+        width: 34px;
+        height: 34px;
+        display: block;
+        border-radius: 11px;
+        object-fit: cover;
+        background: rgba(255, 255, 255, 0.12);
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+
+        & svg {
+            width: 16px;
+            height: 16px;
+        }
+    }
+
+    & .desktop-lyric-page--cover-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: rgba(255, 255, 255, 0.82);
+    }
+
+    & .desktop-lyric-page--copy {
+        min-width: 0;
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    & .desktop-lyric-page--title,
+    & .desktop-lyric-page--subtitle {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        text-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    & .desktop-lyric-page--title {
+        font-size: 0.88rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+    }
+
+    & .desktop-lyric-page--meta-row {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    & .desktop-lyric-page--subtitle {
+        min-width: 0;
+        font-size: 0.7rem;
+        opacity: 0.74;
+    }
+
+    & .desktop-lyric-page--badge {
+        flex-shrink: 0;
+        height: 20px;
+        padding: 0 7px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        font-size: 0.66rem;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.86);
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    & .desktop-lyric-page--content {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        margin-top: 4px;
+        margin-bottom: 2px;
+        padding: 0 8px;
+        display: flex;
+        justify-content: center;
+        -webkit-app-region: no-drag;
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 94%, transparent 100%);
+        mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 94%, transparent 100%);
+
+        & .apple-music-lyric-player {
+            width: min(100%, 92%);
+            height: 100%;
+
+            & .amll-lyric-player {
+                text-shadow: 0 4px 14px rgba(0, 0, 0, 0.24), 0 0 14px var(--desktop-lyric-shadow, rgba(0, 0, 0, 0.16));
+            }
+
+            & .amll-lyric-player.dom {
+                --amll-lp-line-padding-x: 0.08em;
+                --amll-lp-bg-line-scale: 0.9;
+            }
+        }
+    }
+
+    & .desktop-lyric-page--operations {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        opacity: 0;
+        transform: translateY(-4px);
+        pointer-events: none;
+        transition: opacity 160ms ease, transform 160ms ease;
+        -webkit-app-region: no-drag;
+    }
+
+    &.show-operations .desktop-lyric-page--operations {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+    }
+
+    & .desktop-lyric-page--action {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        border-radius: 50%;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: transform 160ms ease, background-color 160ms ease;
+
+        &:hover {
+            transform: translateY(-1px);
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        &[data-emphasis="true"] {
+            width: 32px;
+            height: 32px;
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        & svg {
+            width: 16px;
+            height: 16px;
+        }
+    }
+
+    & .desktop-lyric-page--footer {
+        position: relative;
+        display: flex;
+        justify-content: flex-end;
+        align-items: flex-end;
+        min-height: 12px;
+        -webkit-app-region: no-drag;
+    }
+
+    & .desktop-lyric-page--resize-handle {
+        position: absolute;
+        opacity: 0;
+    }
+
+    & .desktop-lyric-page--resize-handle-x {
+        top: 10px;
+        right: 0;
+        bottom: 16px;
+        width: 12px;
+        cursor: ew-resize;
+    }
+
+    & .desktop-lyric-page--resize-handle-y {
+        left: 18px;
+        right: 18px;
+        bottom: 0;
+        height: 12px;
+        cursor: ns-resize;
+    }
+
+    & .desktop-lyric-page--grabber {
+        width: 13px;
+        height: 13px;
+        border-right: 2px solid rgba(255, 255, 255, 0.22);
+        border-bottom: 2px solid rgba(255, 255, 255, 0.22);
+        border-radius: 0 0 8px 0;
+        opacity: 0.84;
+        cursor: nwse-resize;
+    }
+}

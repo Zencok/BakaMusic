@@ -1,0 +1,96 @@
+.components--panel-base {
+  position: fixed;
+  z-index: 10000;
+  top: var(--appHeaderHeight);
+  right: 0;
+  bottom: var(--appMusicBarHeight);
+  left: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  padding: 14px;
+  box-sizing: border-box;
+  background: var(--appPanelMask);
+  cursor: default !important;
+
+  &[data-cover-header=true] {
+    top: 0;
+    padding-top: 14px;
+  }
+
+  & .components--panel-base-content {
+    width: 44vw;
+    max-width: calc(100vw - 28px);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    color: #fff;
+    border-radius: 34px;
+    background: var(--appPanelSurface);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 28px 72px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(28px) saturate(148%);
+    --textColor: rgba(255, 255, 255, 0.9);
+    --dividerColor: rgba(255, 255, 255, 0.08);
+    --listActiveColor: rgba(255, 255, 255, 0.16);
+    --listHoverColor: rgba(255, 255, 255, 0.1);
+
+    & .components--panel-base-header {
+      width: 100%;
+      min-height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 24px;
+      box-sizing: border-box;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      flex-shrink: 0;
+    }
+
+    & .components--panel-base-header-main,
+    & .components--panel-base-header-right {
+      display: flex;
+      align-items: center;
+      min-height: 68px;
+    }
+
+    & .components--panel-base-header-main {
+      min-width: 0;
+      flex: 1;
+      font-size: 1.08rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    & .components--panel-base-header-right {
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    & .components--panel-base-header-close {
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      color: rgba(255, 255, 255, 0.88);
+      background: rgba(255, 255, 255, 0.09);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      transition: transform 160ms ease, background-color 160ms ease;
+
+      &:hover {
+        transform: translateY(-1px);
+        background: rgba(255, 255, 255, 0.16);
+      }
+
+      & svg {
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+}

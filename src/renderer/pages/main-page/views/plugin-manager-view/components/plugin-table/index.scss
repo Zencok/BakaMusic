@@ -1,0 +1,242 @@
+.plugin-table--container {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+
+  & .plugin-table--toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  & .plugin-table--toolbar-summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  & .plugin-table--toolbar-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--appTextPrimary);
+  }
+
+  & .plugin-table--toolbar-count {
+    min-width: 26px;
+    height: 26px;
+    padding: 0 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primaryColor) 12%, var(--backgroundColor));
+    border: 1px solid color-mix(in srgb, var(--primaryColor) 18%, transparent);
+    color: var(--appTextPrimary);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  & .plugin-table--toolbar-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    color: var(--appTextSecondary);
+    background: var(--appSurfaceMuted);
+    border: 1px solid var(--appSurfaceBorder);
+    box-shadow: var(--appSurfaceInset);
+    font-size: 0.76rem;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  & .plugin-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-bottom: 2px;
+  }
+
+  & .plugin-card-row {
+    position: relative;
+    padding: 1px 0;
+  }
+
+  & .plugin-card {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--appSurfaceBorder);
+    border-radius: 18px;
+    background: var(--appSurfaceMuted);
+    box-shadow: var(--appSurfaceInset);
+    cursor: grab;
+    transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
+    box-sizing: border-box;
+
+    &:hover {
+      border-color: color-mix(in srgb, var(--primaryColor) 16%, var(--appSurfaceBorder));
+      background: color-mix(in srgb, var(--appSurfaceMuted) 86%, var(--appInteractiveSurface));
+    }
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  & .plugin-card-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  & .plugin-card-order {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--backgroundColor) 86%, transparent);
+    border: 1px solid var(--appInteractiveBorder);
+    color: var(--appTextSecondary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+    user-select: none;
+  }
+
+  & .plugin-card-main {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  & .plugin-card-title {
+    min-width: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    color: var(--appTextPrimary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  & .plugin-card-author {
+    min-width: 0;
+    color: var(--appTextTertiary);
+    font-size: 0.8rem;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  & .plugin-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: flex-end;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  & .plugin-card-action-button {
+    min-height: 30px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border: 1px solid var(--appInteractiveBorder);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--backgroundColor) 84%, transparent);
+    box-shadow: var(--appSurfaceInset);
+    color: var(--appTextPrimary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      background: var(--appInteractiveSurface);
+    }
+
+    &[data-variant="success"] {
+      color: color-mix(in srgb, var(--successColor) 90%, var(--appTextPrimary));
+      border-color: color-mix(in srgb, var(--successColor) 24%, transparent);
+      background: color-mix(in srgb, var(--successColor) 10%, var(--backgroundColor));
+    }
+
+    &[data-variant="info"] {
+      color: color-mix(in srgb, var(--infoColor) 92%, var(--appTextPrimary));
+      border-color: color-mix(in srgb, var(--infoColor) 24%, transparent);
+      background: color-mix(in srgb, var(--infoColor) 10%, var(--backgroundColor));
+    }
+
+    &[data-variant="danger"] {
+      color: color-mix(in srgb, var(--dangerColor) 90%, var(--appTextPrimary));
+      border-color: color-mix(in srgb, var(--dangerColor) 24%, transparent);
+      background: color-mix(in srgb, var(--dangerColor) 10%, var(--backgroundColor));
+    }
+  }
+}
+
+@media (max-width: 860px) {
+  .plugin-table--container {
+    & .plugin-table--toolbar {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    & .plugin-table--toolbar-hint {
+      width: 100%;
+      justify-content: center;
+    }
+
+    & .plugin-card {
+      padding: 10px 12px;
+    }
+
+    & .plugin-card-head {
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    & .plugin-card-order {
+      width: 34px;
+      height: 34px;
+    }
+
+    & .plugin-card-actions {
+      width: 100%;
+      margin-left: 0;
+      padding-left: 46px;
+      justify-content: flex-start;
+    }
+  }
+}
+
+@media (max-width: 560px) {
+  .plugin-table--container {
+    & .plugin-card-action-button {
+      flex: 1 1 calc(50% - 3px);
+      min-width: 110px;
+    }
+  }
+}

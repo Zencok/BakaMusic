@@ -1,0 +1,75 @@
+.side-bar-container--my-sheets {
+  margin-top: 0.7rem;
+
+  & .divider {
+    margin: 0.8rem 0 0.7rem;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.08), transparent);
+  }
+
+  & .title {
+    height: 2.6rem;
+    display: flex;
+    align-items: center;
+    padding: 0 0.85rem;
+    border-radius: 12px;
+    color: color-mix(in srgb, var(--textColor) 60%, white);
+    user-select: none;
+    transition: background-color 160ms ease, color 160ms ease;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.38);
+      color: color-mix(in srgb, var(--textColor) 78%, white);
+    }
+
+    $tag-size: 4px;
+
+    & .my-sheets {
+      display: flex;
+      align-items: center;
+      flex: 1;
+      font-size: 0.84rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+
+      &::after {
+        content: "";
+        width: 0;
+        height: 0;
+        margin-left: 0.55rem;
+        border: $tag-size solid transparent;
+        border-left-color: currentColor;
+        transform-origin: left center;
+        transition: transform linear 120ms;
+      }
+    }
+
+    &[data-headlessui-state="open"] {
+      & .my-sheets::after {
+        transform: rotate(90deg);
+      }
+    }
+
+    & .option-btn {
+      $size: 26px;
+      width: $size;
+      height: $size;
+      margin-left: 6px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.5);
+      }
+
+      & svg {
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+}

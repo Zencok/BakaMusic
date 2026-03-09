@@ -1,0 +1,132 @@
+name: Build
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: echo (node -p -e '`VERSION=${require("./package.json").version}`') >> $Env:GITHUB_ENV
+      - run: npm install
+      - run: npm run package
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+      - name: Build Installer
+        run: iscc /DMyAppVersion=${{ env.VERSION }} /DMyAppId=${{ secrets.MYAPPID }} "./release/build-windows.iss"
+      - name: Rename Setup
+        run: Rename-Item -Path "./out/BakaMusicSetup.exe" -NewName "BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe"
+      - name: Generate Portable
+        run: mkdir ./out/BakaMusic-win32-x64/portable
+      - uses: vimtor/action-zip@v1.1
+        with:
+          files: ./out/BakaMusic-win32-x64
+          dest: BakaMusic-${{ env.VERSION }}-win32-x64-portable.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BakaMusic-${{ env.VERSION }}-win32-x64-setup
+          path: ./out/BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BakaMusic-${{ env.VERSION }}-win32-x64-portable
+          path: BakaMusic-${{ env.VERSION }}-win32-x64-portable.zip
+
+  build-windows-legacy:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: echo (node -p -e '`VERSION=${require("./package.json").version}`') >> $Env:GITHUB_ENV
+      - run: npm install
+      - run: npm install electron@22
+      - run: npm run package
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+      - name: Build Installer
+        run: iscc /DMyAppVersion=${{ env.VERSION }} /DMyAppId=${{ secrets.MYAPPID }} "./release/build-windows.iss"
+      - name: Rename Setup
+        run: Rename-Item -Path "./out/BakaMusicSetup.exe" -NewName "BakaMusic-${{ env.VERSION }}-win32-x64-legacy-setup.exe"
+      - name: Generate Portable
+        run: mkdir ./out/BakaMusic-win32-x64/portable
+      - uses: vimtor/action-zip@v1.1
+        with:
+          files: ./out/BakaMusic-win32-x64
+          dest: BakaMusic-${{ env.VERSION }}-win32-x64-legacy-portable.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BakaMusic-${{ env.VERSION }}-win32-x64-legacy-setup
+          path: ./out/BakaMusic-${{ env.VERSION }}-win32-x64-legacy-setup.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BakaMusic-${{ env.VERSION }}-win32-x64-legacy-portable
+          path: BakaMusic-${{ env.VERSION }}-win32-x64-legacy-portable.zip
+
+  build-macos-x64:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: node -p -e '`VERSION=${require("./package.json").version}`' >> $GITHUB_ENV
+      - run: npm install
+      - run: npm run make
+      - name: Rename DMG
+        run: mv "./out/make/BakaMusic-${{ env.VERSION }}-x64.dmg" "./out/make/BakaMusic-${{ env.VERSION }}-darwin-x64.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BakaMusic-${{ env.VERSION }}-darwin-x64
+          path: ./out/make/BakaMusic-${{ env.VERSION }}-darwin-x64.dmg
+
+  build-macos-arm64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: node -p -e '`VERSION=${require("./package.json").version}`' >> $GITHUB_ENV
+      - run: npm install
+      - run: npm run make -- --arch="arm64"
+      - name: Rename DMG
+        run: mv "./out/make/BakaMusic-${{ env.VERSION }}-arm64.dmg" "./out/make/BakaMusic-${{ env.VERSION }}-darwin-arm64.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BakaMusic-${{ env.VERSION }}-darwin-arm64
+          path: ./out/make/BakaMusic-${{ env.VERSION }}-darwin-arm64.dmg
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: node -p -e '`VERSION=${require("./package.json").version}`' >> $GITHUB_ENV
+      - run: npm install
+      - run: npm run make
+      - name: Rename DEB
+        run: |
+          DEB_FILE=$(find ./out/make/deb/x64/ -name "*.deb" | head -1)
+          if [ -n "$DEB_FILE" ]; then
+            mv "$DEB_FILE" "./out/make/deb/x64/BakaMusic-${{ env.VERSION }}-linux-amd64.deb"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BakaMusic-${{ env.VERSION }}-linux-amd64
+          path: ./out/make/deb/x64/BakaMusic-${{ env.VERSION }}-linux-amd64.deb

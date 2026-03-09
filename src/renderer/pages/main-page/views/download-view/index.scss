@@ -1,0 +1,48 @@
+﻿.download-view--container {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  & .download-view-hero {
+    margin-top: 0.45rem;
+    margin-bottom: 1rem;
+    padding: 1.15rem 1.3rem;
+    border-radius: 24px;
+    background: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 78%, transparent));
+    border: 1px solid var(--appSurfaceBorder);
+    box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
+    backdrop-filter: var(--appGlassFilter);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  & .download-view-hero-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--appTextPrimary);
+  }
+
+  & .download-view-hero-subtitle {
+    color: var(--appTextSecondary);
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+
+  & .tab-list-container {
+    margin-top: 0.5rem;
+    margin-bottom: 0.9rem;
+  }
+
+  & .tab-panels-container {
+    flex: 1;
+    min-height: 0;
+  }
+
+  & .tab-panel-container {
+    min-height: 100%;
+  }
+}

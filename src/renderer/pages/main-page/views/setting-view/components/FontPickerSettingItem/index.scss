@@ -1,0 +1,74 @@
+.setting-view--list-box-setting-item-container {
+  & .options-container {
+    margin-top: 0.1rem;
+    display: flex;
+    gap: 0.5rem 3rem;
+    position: relative;
+    user-select: none;
+
+    & .listbox-button {
+      height: 2.8rem;
+      width: 212px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      padding: 0 2.5rem 0 14px;
+      border-radius: 16px;
+      color: var(--settingTextPrimary);
+      background: var(--settingControlSurface);
+      border: 1px solid var(--settingControlBorder);
+      box-shadow:
+        0 10px 20px rgba(15, 23, 42, 0.05),
+        var(--settingControlInset);
+
+      &::after {
+        position: absolute;
+        right: 13px;
+        content: "";
+        width: 0;
+        height: 0;
+        border: 5px solid transparent;
+        border-left-color: var(--settingTextSecondary);
+        transform-origin: left center;
+        transform: rotate(90deg);
+      }
+    }
+
+    & .listbox-options {
+      position: absolute;
+      padding: 0.45rem;
+      margin-block-start: 0;
+      border-radius: 18px;
+      left: 0;
+      top: calc(100% + 10px);
+      z-index: 10;
+      width: 212px;
+      height: 280px;
+      overflow-y: auto;
+      list-style: none;
+      color: var(--settingTextPrimary);
+      border: 1px solid var(--settingControlBorder);
+      background: var(--settingCardSurface);
+      box-shadow: 0 22px 40px rgba(15, 23, 42, 0.14);
+      backdrop-filter: var(--appGlassFilter);
+
+      & .listbox-option {
+        list-style: none;
+        height: 2.5rem;
+        line-height: 2.5rem;
+        padding: 0 12px;
+        vertical-align: middle;
+        border-radius: 12px;
+
+        &[data-headlessui-state*="active"] {
+          color: color-mix(in srgb, var(--primaryColor) 72%, var(--settingTextPrimary));
+          background: var(--settingControlSurfaceHover);
+        }
+      }
+
+      &:focus {
+        outline: none;
+      }
+    }
+  }
+}

@@ -1,0 +1,36 @@
+﻿.search-view--plugins {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 0.8rem;
+  margin-bottom: 1rem;
+  gap: 10px;
+
+  & .plugin-item {
+    min-height: 2.2rem;
+    padding: 0 0.95rem;
+    border-radius: 999px;
+    border: 1px solid var(--appInteractiveBorder);
+    background: var(--appSurfaceMuted);
+    box-shadow: var(--appSurfaceInset);
+    color: var(--appTextSecondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: transform 160ms ease, background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      color: var(--appTextPrimary);
+      background: var(--appInteractiveSurface);
+    }
+
+    &[data-selected="true"] {
+      color: color-mix(in srgb, var(--primaryColor) 82%, var(--appTextPrimary));
+      background: color-mix(in srgb, var(--primaryColor) 14%, var(--backgroundColor));
+      border-color: color-mix(in srgb, var(--primaryColor) 22%, transparent);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08), var(--appSurfaceInset);
+    }
+  }
+}

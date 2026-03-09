@@ -1,0 +1,16 @@
+.theme-view--container {
+  padding-top: 1rem;
+
+  & .tab-list-container {
+    margin-bottom: 1rem;
+  }
+
+  & .tab-panels-container {
+    width: 100%;
+
+    & > div {
+      width: 100%;
+      outline: none;
+    }
+  }
+}

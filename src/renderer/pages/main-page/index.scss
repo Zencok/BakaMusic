@@ -1,0 +1,24 @@
+.page-container {
+  flex: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: auto;
+  width: 100%;
+  padding: 1.15rem 1.5rem 1.5rem;
+  position: relative;
+  scroll-padding-top: 1.5rem;
+  box-sizing: border-box;
+}
+
+.page-container-full-width {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.page-container-fw {
+  @extend .page-container;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 0;
+  padding-right: 0;
+}

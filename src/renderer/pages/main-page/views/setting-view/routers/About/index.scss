@@ -1,0 +1,8 @@
+.setting-view--about-container{
+    & .about-version {
+        display: flex;
+        align-items: center;
+        column-gap: 16px;
+
+    }
+}

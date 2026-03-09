@@ -1,0 +1,29 @@
+.modal--reconfirm {
+  width: 440px;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+  max-height: 360px;
+
+  & .content-container {
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    padding: 22px 22px 12px;
+    text-align: center;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.84);
+  }
+
+  & .opeartion-area {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    font-size: 1rem;
+    padding: 0 18px 18px;
+  }
+}

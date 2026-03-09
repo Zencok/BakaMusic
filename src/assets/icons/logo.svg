@@ -1,0 +1,75 @@
+<svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="176"
+    height="24"
+    viewBox="0 0 176 24"
+    fill="none"
+>
+    <defs>
+        <linearGradient id="baka-fill" x1="10" y1="4" x2="150" y2="20" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#FF93C9" />
+            <stop offset="0.52" stop-color="#FFB86B" />
+            <stop offset="1" stop-color="#7EDBFF" />
+        </linearGradient>
+        <linearGradient id="baka-accent" x1="138" y1="6" x2="162" y2="18" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#FFF27A" />
+            <stop offset="1" stop-color="#FF9AD5" />
+        </linearGradient>
+        <filter id="baka-shadow" x="0" y="0" width="176" height="24" filterUnits="userSpaceOnUse">
+            <feDropShadow dx="0" dy="1.4" stdDeviation="1.2" flood-color="#6F4AA7" flood-opacity="0.35" />
+        </filter>
+    </defs>
+
+    <g filter="url(#baka-shadow)">
+        <text
+            x="8"
+            y="17"
+            fill="#6F4AA7"
+            font-size="16"
+            font-style="italic"
+            font-weight="900"
+            letter-spacing="0.7"
+            stroke="#6F4AA7"
+            stroke-linejoin="round"
+            stroke-width="3.2"
+            style="font-family: 'Hiragino Sans GB', 'Yu Gothic', 'Meiryo', 'Trebuchet MS', 'Segoe UI', sans-serif"
+        >
+            BakaMusic
+        </text>
+        <text
+            x="8"
+            y="17"
+            fill="url(#baka-fill)"
+            font-size="16"
+            font-style="italic"
+            font-weight="900"
+            letter-spacing="0.7"
+            style="font-family: 'Hiragino Sans GB', 'Yu Gothic', 'Meiryo', 'Trebuchet MS', 'Segoe UI', sans-serif"
+        >
+            BakaMusic
+        </text>
+        <text
+            x="8"
+            y="15.8"
+            fill="rgba(255,255,255,0.85)"
+            font-size="16"
+            font-style="italic"
+            font-weight="900"
+            letter-spacing="0.7"
+            opacity="0.6"
+            style="font-family: 'Hiragino Sans GB', 'Yu Gothic', 'Meiryo', 'Trebuchet MS', 'Segoe UI', sans-serif"
+        >
+            BakaMusic
+        </text>
+
+        <path
+            d="M140.2 6.5L141.8 10.2L145.8 10.7L142.8 13.3L143.7 17.1L140.2 15.1L136.7 17.1L137.6 13.3L134.6 10.7L138.6 10.2L140.2 6.5Z"
+            fill="url(#baka-accent)"
+            stroke="#6F4AA7"
+            stroke-width="0.8"
+            stroke-linejoin="round"
+        />
+        <circle cx="153.5" cy="8" r="1.7" fill="#7EDBFF" />
+        <circle cx="158.8" cy="13.5" r="1.2" fill="#FF9AD5" />
+    </g>
+</svg>

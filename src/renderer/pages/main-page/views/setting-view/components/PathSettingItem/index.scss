@@ -1,0 +1,23 @@
+.setting-view--path-setting-item-container {
+  & .options-container {
+    margin-top: 0.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem 1rem;
+    position: relative;
+    flex-wrap: wrap;
+
+    & .path-container {
+      max-width: min(100%, 560px);
+      color: var(--settingTextPrimary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 0.72rem 0.9rem;
+      border-radius: 14px;
+      background: var(--settingControlSurface);
+      border: 1px solid var(--settingControlBorder);
+      box-shadow: var(--settingControlInset);
+    }
+  }
+}

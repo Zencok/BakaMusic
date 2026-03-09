@@ -1,0 +1,173 @@
+﻿.downloading-container {
+  width: 100%;
+  min-height: 300px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 28px;
+  background: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 82%, transparent));
+  border: 1px solid var(--appSurfaceBorder);
+  box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
+  backdrop-filter: var(--appGlassFilter);
+  box-sizing: border-box;
+
+  & .downloading-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 2px 4px 12px;
+  }
+
+  & .downloading-toolbar-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 2.2rem;
+  }
+
+  & .downloading-toolbar-title {
+    font-size: 0.94rem;
+    font-weight: 700;
+    color: var(--appTextPrimary);
+  }
+
+  & .downloading-toolbar-count {
+    min-width: 1.9rem;
+    height: 1.9rem;
+    padding: 0 0.6rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--primaryColor) 14%, var(--backgroundColor));
+    color: color-mix(in srgb, var(--primaryColor) 78%, var(--appTextPrimary));
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  & .downloading-virtual-spacer {
+    position: relative;
+    min-height: 1px;
+  }
+
+  & .downloading-virtual-content {
+    will-change: transform;
+  }
+
+  & .downloading-item-wrapper {
+    height: 106px;
+    padding: 8px 0;
+    box-sizing: border-box;
+  }
+
+  & .downloading-item-card {
+    height: 100%;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border-radius: 22px;
+    background: color-mix(in srgb, var(--backgroundColor) 68%, transparent);
+    border: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
+    transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      background: color-mix(in srgb, var(--primaryColor) 9%, var(--backgroundColor));
+      border-color: color-mix(in srgb, var(--primaryColor) 14%, transparent);
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+      z-index: 3;
+    }
+  }
+
+  & .downloading-item-leading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  & .downloading-item-index {
+    width: 2rem;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--appTextTertiary);
+  }
+
+  & .downloading-item-cover {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+
+    & img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+  }
+
+  & .downloading-item-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  & .downloading-item-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--appTextPrimary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  & .downloading-item-subtitle {
+    font-size: 0.86rem;
+    color: var(--appTextSecondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  & .downloading-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  & .downloading-item-status {
+    max-width: min(280px, 30vw);
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--appTextSecondary);
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 980px) {
+  .downloading-container {
+    & .downloading-item-card {
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    & .downloading-item-status {
+      grid-column: 2;
+      max-width: none;
+      text-align: left;
+    }
+  }
+}
+
+

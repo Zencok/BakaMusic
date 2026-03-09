@@ -1,0 +1,99 @@
+.local-music-view--container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+
+  &[data-full-page="true"] {
+    max-height: 100%;
+    height: 100%;
+  }
+
+  & .header {
+    margin-top: 0.45rem;
+    margin-bottom: 1rem;
+    padding: 1.15rem 1.3rem;
+    border-radius: 24px;
+    background: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 78%, transparent));
+    border: 1px solid var(--appSurfaceBorder);
+    box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
+    backdrop-filter: var(--appGlassFilter);
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--appTextPrimary);
+    user-select: none;
+  }
+
+  & .operations {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 0.9rem 1rem;
+    border-radius: 22px;
+    background: var(--appSurfaceMuted);
+    border: 1px solid var(--appSurfaceBorder);
+    box-shadow: var(--appSurfaceInset);
+
+    & [data-type="normalButton"] {
+      min-height: 2.4rem;
+      padding-left: 1rem;
+      padding-right: 1rem;
+      border-radius: 999px;
+      border-color: var(--appInteractiveBorder);
+      background: color-mix(in srgb, var(--backgroundColor) 78%, transparent);
+      color: var(--appTextPrimary);
+      font-weight: 600;
+    }
+
+    & .operations-layout {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      & .search-local-music {
+        width: 260px;
+        height: 2.5rem;
+        margin-right: 0;
+        padding: 0 1rem;
+        border-radius: 999px;
+        border: 1px solid var(--appInteractiveBorder);
+        background: color-mix(in srgb, var(--backgroundColor) 84%, transparent);
+        box-shadow: var(--appSurfaceInset);
+        color: var(--appTextPrimary);
+      }
+
+      & .list-view-action {
+        width: 2.55rem;
+        height: 2.55rem;
+        border-radius: 999px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--appTextSecondary);
+        background: color-mix(in srgb, var(--backgroundColor) 68%, transparent);
+        border: 1px solid color-mix(in srgb, var(--textColor) 10%, transparent);
+        box-shadow: var(--appSurfaceInset);
+        transition: transform 160ms ease, background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+
+        & svg {
+          width: 1.2rem;
+          height: 1.2rem;
+        }
+
+        &:hover {
+          transform: translateY(-1px);
+          background: var(--appInteractiveSurface);
+          color: var(--appTextPrimary);
+        }
+
+        &[data-selected="true"] {
+          color: color-mix(in srgb, var(--primaryColor) 82%, var(--appTextPrimary));
+          background: color-mix(in srgb, var(--primaryColor) 14%, var(--backgroundColor));
+          border-color: color-mix(in srgb, var(--primaryColor) 22%, transparent);
+        }
+      }
+    }
+  }
+}

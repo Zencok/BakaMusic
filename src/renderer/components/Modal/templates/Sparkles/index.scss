@@ -1,0 +1,46 @@
+.modal--sparkles-container {
+  width: 680px;
+  max-width: calc(100vw - 40px);
+  max-height: min(640px, calc(100vh - 40px));
+  display: flex;
+  flex-direction: column;
+
+  & .modal--body-container {
+    padding: 16px 20px 20px;
+    flex: 1;
+    overflow-y: auto;
+    color: rgba(255, 255, 255, 0.84);
+
+    & p {
+      margin: 0 0 0.9rem;
+    }
+
+    & .footer {
+      width: 100%;
+      text-align: end;
+      margin-top: 1rem;
+    }
+
+    & .secret {
+      font-size: 10px;
+      color: transparent;
+      user-select: none;
+    }
+  }
+
+  & .img-container {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 1rem 0 1.2rem;
+
+    & .wechat-channel {
+      display: block;
+      width: 132px;
+      height: 132px;
+      border-radius: 20px;
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.18);
+    }
+  }
+}

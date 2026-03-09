@@ -1,0 +1,168 @@
+.setting-view--container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  --settingTextPrimary: var(--appTextPrimary);
+  --settingTextSecondary: color-mix(in srgb, var(--textColor) 68%, transparent);
+  --settingCardSurface:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--backgroundColor) 96%, var(--primaryColor) 2%),
+      color-mix(in srgb, var(--backgroundColor) 90%, var(--textColor) 10%)
+    );
+  --settingRowSurface:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--backgroundColor) 97%, var(--textColor) 3%),
+      color-mix(in srgb, var(--backgroundColor) 92%, var(--textColor) 8%)
+    );
+  --settingControlSurface:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--backgroundColor) 98%, var(--textColor) 2%),
+      color-mix(in srgb, var(--backgroundColor) 93%, var(--textColor) 7%)
+    );
+  --settingControlSurfaceHover:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--backgroundColor) 96%, var(--primaryColor) 4%),
+      color-mix(in srgb, var(--backgroundColor) 90%, var(--primaryColor) 10%)
+    );
+  --settingControlBorder: color-mix(in srgb, var(--textColor) 12%, transparent);
+  --settingControlBorderActive: color-mix(in srgb, var(--primaryColor) 22%, var(--textColor));
+  --settingControlInset: inset 0 1px 0 color-mix(in srgb, white 14%, transparent);
+
+  & .setting-view--header {
+    width: 100%;
+    flex-shrink: 0;
+    padding: 0.8rem 1.5rem 0;
+    box-sizing: border-box;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--backgroundColor) 72%, transparent),
+        color-mix(in srgb, var(--backgroundColor) 40%, transparent),
+        transparent
+      );
+    backdrop-filter: blur(18px);
+
+    & .tab-list-container {
+      overflow-x: auto;
+    }
+  }
+
+  & .setting-view--body {
+    flex: 1;
+    overflow-y: auto;
+    margin-top: 0.45rem;
+    padding: 0 1.5rem 1.5rem;
+    height: max-content;
+
+    & .setting-view--body-item-container {
+      width: 100%;
+      margin-bottom: 1.25rem;
+      padding: 1.2rem 1.25rem 1.05rem;
+      border-radius: 24px;
+      border: 1px solid var(--appSurfaceBorder);
+      background: var(--settingCardSurface);
+      box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
+      backdrop-filter: var(--appGlassFilter);
+      box-sizing: border-box;
+
+      & .setting-view--body-title {
+        font-size: 1.18rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin: 0 0 1rem;
+        color: var(--settingTextPrimary);
+      }
+
+      & > .divider {
+        display: none;
+      }
+    }
+  }
+
+  & .setting-row {
+    width: 100%;
+    position: relative;
+    margin: 0 0 0.85rem;
+    padding: 0.95rem 1rem;
+    border-radius: 18px;
+    color: var(--settingTextPrimary);
+    background: var(--settingRowSurface);
+    border: 1px solid var(--settingControlBorder);
+    box-shadow: var(--settingControlInset);
+    box-sizing: border-box;
+
+    &:last-child {
+      margin-bottom: 0.2rem;
+    }
+
+    & .option-item-container {
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1.35;
+      width: fit-content;
+      max-width: 100%;
+      min-height: 2.35rem;
+      padding: 0.38rem 0.78rem;
+      border-radius: 14px;
+      color: var(--settingTextPrimary);
+      background: color-mix(in srgb, var(--textColor) 4%, transparent);
+      box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
+      transition: color 160ms ease, transform 160ms ease, background-color 160ms ease;
+
+      &:hover {
+        transform: translateY(-1px);
+        background: color-mix(in srgb, var(--textColor) 7%, transparent);
+      }
+
+      &.highlight {
+        color: color-mix(in srgb, var(--primaryColor) 72%, var(--settingTextPrimary));
+        background: color-mix(in srgb, var(--primaryColor) 10%, transparent);
+      }
+
+      & .checkbox {
+        width: 1.05rem;
+        height: 1.05rem;
+        border-radius: 5px;
+        border: 1px solid currentColor;
+        margin-right: 0.55rem;
+        position: relative;
+        background: var(--settingControlSurface);
+        box-shadow: var(--settingControlInset);
+
+        & svg {
+          position: absolute;
+          width: 1rem;
+          height: 1rem;
+          left: 0;
+          top: 0;
+        }
+      }
+    }
+
+    & > div[role="button"][data-type="normalButton"] {
+      min-height: 2.5rem;
+      padding: 0.6rem 1.05rem;
+      border-radius: 14px;
+      font-weight: 600;
+    }
+  }
+
+  & .label-container {
+    color: var(--settingTextSecondary);
+    opacity: 1;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    margin-bottom: 0.7rem;
+  }
+}

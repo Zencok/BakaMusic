@@ -1,0 +1,42 @@
+﻿.search-view-container {
+  width: 100%;
+  min-height: 100%;
+  padding-top: 0.4rem;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+
+  & .search-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 1.15rem 1.3rem;
+    border-radius: 24px;
+    background: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 78%, transparent));
+    border: 1px solid var(--appSurfaceBorder);
+    box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
+    backdrop-filter: var(--appGlassFilter);
+    font-size: 1.18rem;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--appTextPrimary);
+
+    & .highlight {
+      padding: 0.24rem 0.72rem;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--primaryColor) 14%, var(--backgroundColor));
+      color: color-mix(in srgb, var(--primaryColor) 82%, var(--appTextPrimary));
+    }
+  }
+
+  & .tab-list-container {
+    margin-top: 1rem;
+  }
+
+  & .tab-panels-container {
+    min-height: 0;
+    padding-top: 0.75rem;
+  }
+}

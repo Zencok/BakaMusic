@@ -1,0 +1,29 @@
+.modal--update-container {
+  width: 680px;
+  max-width: calc(100vw - 40px);
+  max-height: min(620px, calc(100vh - 40px));
+  display: flex;
+  flex-direction: column;
+
+  & .modal--body-container {
+    flex: 1;
+    padding: 16px 20px 14px;
+    overflow: auto;
+    color: rgba(255, 255, 255, 0.84);
+
+    & .version {
+      margin-top: 0.9rem;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.96);
+    }
+
+    & p {
+      line-height: 1.8;
+    }
+  }
+
+  & .footer-options {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 14px;
+  }
+}

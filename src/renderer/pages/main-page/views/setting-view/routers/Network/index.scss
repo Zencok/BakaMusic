@@ -1,0 +1,24 @@
+.setting-view--network-container {
+  width: 100%;
+
+  & .proxy-container {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 0.85rem;
+
+    & .proxy-item {
+      display: flex;
+
+      & input {
+        flex: 1;
+      }
+    }
+  }
+
+  & .network-cache-container {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+}

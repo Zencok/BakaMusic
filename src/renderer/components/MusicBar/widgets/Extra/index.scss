@@ -1,0 +1,119 @@
+.music-extra {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: max-content;
+  height: 100%;
+  z-index: 300;
+  -webkit-app-region: no-drag;
+
+  & .extra-btn {
+    cursor: pointer;
+    position: relative;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 50%;
+    color: color-mix(in srgb, var(--musicBarText) 88%, transparent);
+    background: color-mix(in srgb, var(--musicBarText) 9%, var(--musicBarSurface));
+    border: 1px solid color-mix(in srgb, var(--musicBarText) 10%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
+    transition: transform 160ms ease, background-color 160ms ease, color 160ms ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      background: color-mix(in srgb, var(--musicBarText) 16%, var(--musicBarSurface));
+      color: var(--musicBarText);
+    }
+
+    & svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    &.quality-btn {
+      width: auto;
+      min-width: 38px;
+      padding: 0 12px;
+      border-radius: 22px;
+
+      & .quality-abbr-text {
+        font-size: 0.74rem;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: 0.08em;
+        user-select: none;
+        white-space: nowrap;
+      }
+    }
+
+    &.highlight {
+      color: var(--musicBarText);
+      background: color-mix(in srgb, var(--musicBarAccent) 22%, var(--musicBarSurface));
+      border-color: color-mix(in srgb, var(--musicBarAccent) 34%, transparent);
+    }
+
+  }
+}
+
+.volume-bubble-container {
+  position: fixed;
+  z-index: 5000;
+  left: 0;
+  top: 0;
+  width: 58px;
+  min-height: 164px;
+  padding: 14px 0 12px;
+  box-sizing: border-box;
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 22px;
+  overflow: hidden;
+  isolation: isolate;
+  clip-path: inset(0 round 22px);
+  color: var(--musicBarText);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--musicBarSurfaceAlt) 92%, transparent),
+      color-mix(in srgb, var(--musicBarSurface) 96%, transparent)
+    );
+  border: none;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(24px) saturate(140%);
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -8px;
+    height: 12px;
+    background: transparent;
+  }
+}
+
+.volume-slider-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 96px;
+  width: 100%;
+}
+
+.volume-slider-tag {
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--musicBarTextSecondary);
+  opacity: 1;
+}

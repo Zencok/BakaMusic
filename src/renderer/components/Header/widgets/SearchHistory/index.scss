@@ -1,0 +1,90 @@
+.search-history--container {
+  position: absolute;
+  box-sizing: border-box;
+  width: 100%;
+  height: 220px;
+  overflow-y: auto;
+  top: calc(100% + 8px);
+  left: 0;
+  border-radius: 18px;
+  padding: 14px;
+  color: var(--appTextPrimary);
+  border: 1px solid var(--appSurfaceBorderStrong);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--backgroundColor) 94%, var(--textColor) 6%),
+      color-mix(in srgb, var(--backgroundColor) 88%, var(--textColor) 12%)
+    );
+  box-shadow: var(--appSurfaceShadow), var(--appSurfaceInset);
+  backdrop-filter: var(--appGlassFilter);
+
+  & .search-history--header {
+    height: 1.6rem;
+    user-select: none;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    color: var(--appTextPrimary);
+
+    & .search-history--header-clear {
+      $size: 1.15rem;
+      width: $size;
+      height: $size;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      color: var(--appTextSecondary);
+
+      &:hover {
+        background: var(--appInteractiveSurface);
+        color: var(--appTextPrimary);
+      }
+
+      & svg {
+        width: $size;
+        height: $size;
+      }
+    }
+  }
+
+  & .search-history--body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  & .search-history--item[data-type="normalButton"] {
+    font-size: 0.9rem;
+    padding-right: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--appInteractiveBorder);
+    color: var(--appTextPrimary);
+    background: color-mix(in srgb, var(--backgroundColor) 82%, var(--textColor) 18%);
+
+    &:hover {
+      background: var(--appInteractiveSurfaceStrong);
+    }
+
+    & .search-history--item-remove {
+      width: 1rem;
+      height: 1rem;
+      margin-left: 6px;
+      color: var(--appTextSecondary);
+
+      &:hover {
+        color: var(--appTextPrimary);
+      }
+
+      & svg {
+        width: 1rem;
+        height: 1rem;
+      }
+    }
+  }
+}

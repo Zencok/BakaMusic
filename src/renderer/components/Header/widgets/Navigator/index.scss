@@ -1,0 +1,41 @@
+.header-navigator {
+  height: 40px;
+  -webkit-app-region: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  & .navigator-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    color: var(--headerTextColor);
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    transition:
+      transform 160ms ease,
+      background-color 160ms ease,
+      opacity 160ms ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    &[data-disabled="true"] {
+      opacity: 0.42;
+      cursor: default;
+      transform: none;
+    }
+
+    & svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
+}
