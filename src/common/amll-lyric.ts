@@ -54,10 +54,13 @@ function getSafeLineEndTimeMs(
         : undefined;
     const nextStartTime = nextLine?.time !== undefined ? toMs(nextLine.time) : undefined;
 
+    const fallbackEndTime = nextStartTime !== undefined
+        ? Math.min(startTime + fallbackDurationMs, nextStartTime)
+        : startTime + fallbackDurationMs;
+
     const candidate = declaredEndTime
         ?? (declaredDuration !== undefined ? startTime + declaredDuration : undefined)
-        ?? nextStartTime
-        ?? startTime + fallbackDurationMs;
+        ?? fallbackEndTime;
 
     return Math.max(startTime + 320, candidate);
 }

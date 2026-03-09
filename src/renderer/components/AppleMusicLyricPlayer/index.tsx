@@ -50,6 +50,7 @@ export default function AppleMusicLyricPlayer({
     const anchorTimeRef = useRef(currentTimeMs);
     const anchorFrameTimeRef = useRef(0);
     const lastSyncedTimeRef = useRef(currentTimeMs);
+    const lastPropTimeRef = useRef(currentTimeMs);
     const playingRef = useRef(playing);
     const speedRef = useRef(speed);
 
@@ -118,6 +119,7 @@ export default function AppleMusicLyricPlayer({
         player.setLyricLines(lyricLines, currentTimeMs);
         player.setCurrentTime(currentTimeMs, true);
         lastSyncedTimeRef.current = currentTimeMs;
+        lastPropTimeRef.current = currentTimeMs;
         anchorTimeRef.current = currentTimeMs;
         anchorFrameTimeRef.current = performance.now();
     }, [lyricLines]);
@@ -146,9 +148,11 @@ export default function AppleMusicLyricPlayer({
             return;
         }
 
-        const isSeek = Math.abs(currentTimeMs - lastSyncedTimeRef.current) > 240;
+        const prevPropTime = lastPropTimeRef.current;
+        const isSeek = Math.abs(currentTimeMs - prevPropTime) > 1200;
         player.setCurrentTime(currentTimeMs, isSeek);
         lastSyncedTimeRef.current = currentTimeMs;
+        lastPropTimeRef.current = currentTimeMs;
     }, [currentTimeMs]);
 
     useEffect(() => {
