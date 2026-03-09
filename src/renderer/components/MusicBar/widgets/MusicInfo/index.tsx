@@ -106,7 +106,7 @@ export default function MusicInfo() {
                 }}
             >
                 <StableArtwork
-                    src={musicItem.artwork ?? musicItem.coverImg ?? albumImg}
+                    src={musicItem.coverImg ?? musicItem.artwork ?? albumImg}
                     title={musicItem.title}
                 ></StableArtwork>
                 <div

@@ -1,7 +1,6 @@
 import { localPluginHash, PlayerState, RepeatMode, supportLocalMediaType } from "@/common/constant";
 import MusicSheet from "../core/music-sheet";
 import trackPlayer from "../core/track-player";
-import localMusic from "../core/local-music";
 import { setAutoFreeze } from "immer";
 import Downloader from "../core/downloader";
 import AppConfig from "@shared/app-config/renderer";
@@ -13,6 +12,7 @@ import { CurrentTime, PlayerEvents } from "@renderer/core/track-player/enum";
 import { appWindowUtil, fsUtil } from "@shared/utils/renderer";
 import PluginManager from "@shared/plugin-manager/renderer";
 import messageBus from "@shared/message-bus/renderer/main";
+import logger from "@shared/logger/renderer";
 import throttle from "lodash.throttle";
 import { IAppState } from "@shared/message-bus/type";
 import MusicDetail from "@renderer/components/MusicDetail";
@@ -21,6 +21,80 @@ import * as Electron from "electron";
 
 
 setAutoFreeze(false);
+
+const RENDERER_MEMORY_LOG_INTERVAL = 15000;
+
+function formatBytes(bytes?: number | null) {
+    if (!Number.isFinite(bytes)) {
+        return null;
+    }
+
+    const megaBytes = (bytes || 0) / 1024 / 1024;
+    return `${megaBytes >= 100 ? megaBytes.toFixed(0) : megaBytes.toFixed(1)}MB`;
+}
+
+function getRendererHeapMemory() {
+    return (performance as Performance & {
+        memory?: {
+            usedJSHeapSize?: number;
+            totalJSHeapSize?: number;
+            jsHeapSizeLimit?: number;
+        };
+    }).memory;
+}
+
+function getProcessMemory() {
+    if (typeof process === "undefined" || typeof process.memoryUsage !== "function") {
+        return null;
+    }
+
+    return process.memoryUsage();
+}
+
+function buildRendererMemorySnapshot(reason: string) {
+    const heapMemory = getRendererHeapMemory();
+    const processMemory = getProcessMemory();
+
+    return {
+        reason,
+        route: window.location.hash || "#/",
+        visibility: document.visibilityState,
+        playerState: trackPlayer.playerState,
+        jsHeapUsed: formatBytes(heapMemory?.usedJSHeapSize),
+        jsHeapTotal: formatBytes(heapMemory?.totalJSHeapSize),
+        jsHeapLimit: formatBytes(heapMemory?.jsHeapSizeLimit),
+        rss: formatBytes(processMemory?.rss),
+        heapUsed: formatBytes(processMemory?.heapUsed),
+        heapTotal: formatBytes(processMemory?.heapTotal),
+        external: formatBytes(processMemory?.external),
+        arrayBuffers: formatBytes(processMemory?.arrayBuffers),
+    };
+}
+
+function startRendererMemoryTelemetry() {
+    const logSnapshot = (reason: string) => {
+        logger.logInfo("[memory][renderer]", buildRendererMemorySnapshot(reason));
+    };
+
+    const musicChangedHandler = (musicItem: IMusic.IMusicItem | null) => {
+        logSnapshot(musicItem ? "music-changed" : "music-cleared");
+    };
+
+    logSnapshot("bootstrap");
+
+    const intervalId = window.setInterval(() => {
+        logSnapshot("interval");
+    }, RENDERER_MEMORY_LOG_INTERVAL);
+
+    trackPlayer.on(PlayerEvents.MusicChanged, musicChangedHandler);
+
+    window.addEventListener("beforeunload", () => {
+        window.clearInterval(intervalId);
+        trackPlayer.off(PlayerEvents.MusicChanged, musicChangedHandler);
+    }, {
+        once: true,
+    });
+}
 
 export default async function () {
     await Promise.all([
@@ -37,11 +111,11 @@ export default async function () {
     clearDefaultBehavior();
     setupCommandAndEvents();
     setupDeviceChange();
-    localMusic.setupLocalMusic();
     await Downloader.setupDownloader();
     setupRecentlyPlaylist();
     // 本地服务
-    ServiceManager.setup();
+    await ServiceManager.setup();
+    startRendererMemoryTelemetry();
 
     // 自动更新插件
     if (AppConfig.getConfig("plugin.autoUpdatePlugin")) {

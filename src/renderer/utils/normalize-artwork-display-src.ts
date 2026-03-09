@@ -1,4 +1,46 @@
+const MAX_ARTWORK_NORMALIZE_CACHE_SIZE = 80;
+const MAX_ARTWORK_ANALYSIS_SIZE = 256;
+const MAX_ARTWORK_OUTPUT_SIZE = 256;
 const artworkNormalizeCache = new Map<string, Promise<string> | string>();
+
+export function getArtworkCacheKey(src?: string | null) {
+    if (!src) {
+        return "";
+    }
+
+    if (!src.startsWith("data:image/")) {
+        return src;
+    }
+
+    return `${src.slice(0, 48)}:${src.length}:${src.slice(-48)}`;
+}
+
+function getCachedArtwork(cacheKey: string) {
+    const cached = artworkNormalizeCache.get(cacheKey);
+    if (!cached) {
+        return null;
+    }
+
+    artworkNormalizeCache.delete(cacheKey);
+    artworkNormalizeCache.set(cacheKey, cached);
+    return cached;
+}
+
+function setCachedArtwork(cacheKey: string, value: Promise<string> | string) {
+    if (artworkNormalizeCache.has(cacheKey)) {
+        artworkNormalizeCache.delete(cacheKey);
+    }
+    artworkNormalizeCache.set(cacheKey, value);
+
+    if (artworkNormalizeCache.size <= MAX_ARTWORK_NORMALIZE_CACHE_SIZE) {
+        return;
+    }
+
+    const oldestKey = artworkNormalizeCache.keys().next().value;
+    if (oldestKey) {
+        artworkNormalizeCache.delete(oldestKey);
+    }
+}
 
 function loadImage(src: string) {
     return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -19,7 +61,8 @@ export default async function normalizeArtworkDisplaySrc(src?: string) {
         return src;
     }
 
-    const cached = artworkNormalizeCache.get(src);
+    const cacheKey = getArtworkCacheKey(src);
+    const cached = getCachedArtwork(cacheKey);
     if (typeof cached === "string") {
         return cached;
     }
@@ -37,28 +80,40 @@ export default async function normalizeArtworkDisplaySrc(src?: string) {
                 return src;
             }
 
-            const sourceCanvas = document.createElement("canvas");
-            sourceCanvas.width = width;
-            sourceCanvas.height = height;
-            const sourceContext = sourceCanvas.getContext("2d", {
+            const analysisScale = Math.min(
+                1,
+                MAX_ARTWORK_ANALYSIS_SIZE / Math.max(width, height),
+            );
+            const analysisWidth = Math.max(1, Math.round(width * analysisScale));
+            const analysisHeight = Math.max(1, Math.round(height * analysisScale));
+
+            const analysisCanvas = document.createElement("canvas");
+            analysisCanvas.width = analysisWidth;
+            analysisCanvas.height = analysisHeight;
+            const analysisContext = analysisCanvas.getContext("2d", {
                 willReadFrequently: true,
             });
 
-            if (!sourceContext) {
+            if (!analysisContext) {
                 return src;
             }
 
-            sourceContext.drawImage(image, 0, 0, width, height);
-            const imageData = sourceContext.getImageData(0, 0, width, height);
+            analysisContext.drawImage(image, 0, 0, analysisWidth, analysisHeight);
+            const imageData = analysisContext.getImageData(
+                0,
+                0,
+                analysisWidth,
+                analysisHeight,
+            );
 
-            let minX = width;
-            let minY = height;
+            let minX = analysisWidth;
+            let minY = analysisHeight;
             let maxX = -1;
             let maxY = -1;
 
-            for (let y = 0; y < height; y += 1) {
-                for (let x = 0; x < width; x += 1) {
-                    const alpha = imageData.data[(y * width + x) * 4 + 3];
+            for (let y = 0; y < analysisHeight; y += 1) {
+                for (let x = 0; x < analysisWidth; x += 1) {
+                    const alpha = imageData.data[(y * analysisWidth + x) * 4 + 3];
                     if (alpha <= 12) {
                         continue;
                     }
@@ -85,22 +140,48 @@ export default async function normalizeArtworkDisplaySrc(src?: string) {
             if (
                 minX === 0 &&
                 minY === 0 &&
-                maxX === width - 1 &&
-                maxY === height - 1
+                maxX === analysisWidth - 1 &&
+                maxY === analysisHeight - 1
             ) {
                 return src;
             }
 
-            const trimmedWidth = maxX - minX + 1;
-            const trimmedHeight = maxY - minY + 1;
+            const sourceMinX = Math.max(
+                0,
+                Math.floor(minX / analysisScale),
+            );
+            const sourceMinY = Math.max(
+                0,
+                Math.floor(minY / analysisScale),
+            );
+            const sourceMaxX = Math.min(
+                width - 1,
+                Math.ceil((maxX + 1) / analysisScale) - 1,
+            );
+            const sourceMaxY = Math.min(
+                height - 1,
+                Math.ceil((maxY + 1) / analysisScale) - 1,
+            );
+
+            const trimmedWidth = sourceMaxX - sourceMinX + 1;
+            const trimmedHeight = sourceMaxY - sourceMinY + 1;
 
             if (!trimmedWidth || !trimmedHeight) {
                 return src;
             }
 
+            const outputScale = Math.min(
+                1,
+                MAX_ARTWORK_OUTPUT_SIZE / Math.max(trimmedWidth, trimmedHeight),
+            );
+            const outputWidth = Math.max(1, Math.round(trimmedWidth * outputScale));
+            const outputHeight = Math.max(
+                1,
+                Math.round(trimmedHeight * outputScale),
+            );
             const outputCanvas = document.createElement("canvas");
-            outputCanvas.width = trimmedWidth;
-            outputCanvas.height = trimmedHeight;
+            outputCanvas.width = outputWidth;
+            outputCanvas.height = outputHeight;
             const outputContext = outputCanvas.getContext("2d");
 
             if (!outputContext) {
@@ -108,15 +189,15 @@ export default async function normalizeArtworkDisplaySrc(src?: string) {
             }
 
             outputContext.drawImage(
-                sourceCanvas,
-                minX,
-                minY,
+                image,
+                sourceMinX,
+                sourceMinY,
                 trimmedWidth,
                 trimmedHeight,
                 0,
                 0,
-                trimmedWidth,
-                trimmedHeight,
+                outputWidth,
+                outputHeight,
             );
 
             return outputCanvas.toDataURL("image/png");
@@ -125,8 +206,8 @@ export default async function normalizeArtworkDisplaySrc(src?: string) {
         }
     })();
 
-    artworkNormalizeCache.set(src, task);
+    setCachedArtwork(cacheKey, task);
     const result = await task;
-    artworkNormalizeCache.set(src, result);
+    setCachedArtwork(cacheKey, result);
     return result;
 }

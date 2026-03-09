@@ -1,6 +1,6 @@
 import { ipcRenderer } from "electron";
 import EventEmitter from "eventemitter3";
-import { IAppState, ICommand, IPortMessage } from "@shared/message-bus/type";
+import { IAppState, ICommand, IPortMessage, IPortMessagePayload } from "@shared/message-bus/type";
 import { getGlobalContext } from "@shared/global-context/preload";
 import exposeInMainWorld from "@/preload/expose-in-main-world";
 
@@ -80,11 +80,20 @@ function onCommand<K extends keyof ICommand>(
     command: K,
     cb: (data: ICommand[K], from: "main" | number) => void,
 ) {
-    ee.on("command", (payload, from) => {
+    const handler = (
+        payload: IPortMessagePayload<K>["command"],
+        from: "main" | number,
+    ) => {
         if (payload.command === command) {
             cb?.(payload.data, from);
         }
-    });
+    };
+
+    ee.on("command", handler);
+
+    return () => {
+        ee.off("command", handler);
+    };
 }
 
 function sendCommand<K extends keyof ICommand>(command: K, data: ICommand[K]) {

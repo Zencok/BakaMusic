@@ -22,7 +22,10 @@ function MusicResult(props: IMediaResultProps) {
                 search(undefined, undefined, "music", pluginHash);
             }}
             virtualProps={{
-                fallbackRenderCount: -1,
+                getScrollElement() {
+                    return document.querySelector("#page-container");
+                },
+                fallbackRenderCount: 40,
             }}
         ></MusicList>
     );

@@ -2,6 +2,7 @@ import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
 import "./index.scss";
 import albumImg from "@/assets/imgs/album-cover.jpg";
 import { memo } from "react";
+import LazyImage from "../LazyImage";
 
 interface IArtistItemProps {
     artistItem: IArtist.IArtistItem;
@@ -20,10 +21,12 @@ function ArtistItem(props: IArtistItemProps) {
             }}
         >
             <div className="artist-img-wrapper">
-                <img
+                <LazyImage
                     src={artistItem?.avatar || albumImg}
+                    fallbackSrc={albumImg}
                     onError={setFallbackAlbum}
-                ></img>
+                    alt={artistItem?.name}
+                ></LazyImage>
                 {/* <Condition
           condition={
             mediaItem?.playCount || mediaItem?.worksNum || mediaItem?.createAt

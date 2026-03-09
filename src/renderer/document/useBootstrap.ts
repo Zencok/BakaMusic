@@ -14,7 +14,7 @@ export default function useBootstrap() {
     }, []);
 
     useEffect(() => {
-        messageBus.onCommand("Navigate", (route) => {
+        const disposeNavigate = messageBus.onCommand("Navigate", (route) => {
             navigate(route);
         });
 
@@ -22,5 +22,9 @@ export default function useBootstrap() {
             checkUpdate();
         }
         logger.logPerf("Bundle First Screen");
+
+        return () => {
+            disposeNavigate?.();
+        };
     }, []);
 }

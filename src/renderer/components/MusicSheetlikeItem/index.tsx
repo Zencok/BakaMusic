@@ -7,6 +7,7 @@ import SvgAsset from "../SvgAsset";
 import { normalizeNumber } from "@/common/normalize-util";
 import { memo } from "react";
 import { isCN } from "@/shared/i18n/renderer";
+import LazyImage from "../LazyImage";
 
 interface IMusicSheetlikeItemProps {
     mediaItem: IMusic.IMusicSheetItem;
@@ -25,11 +26,12 @@ function MusicSheetlikeItem(props: IMusicSheetlikeItemProps) {
             }}
         >
             <div className="album-img-wrapper">
-                <img
+                <LazyImage
                     src={mediaItem?.artwork || mediaItem?.coverImg || albumImg}
+                    fallbackSrc={albumImg}
                     onError={setFallbackAlbum}
-                    loading='lazy'
-                ></img>
+                    alt={mediaItem?.title}
+                ></LazyImage>
                 <Condition
                     condition={
                         mediaItem?.playCount || mediaItem?.worksNum || mediaItem?.createAt

@@ -4,7 +4,9 @@ import MusicInfo from "./widgets/MusicInfo";
 import Controller from "./widgets/Controller";
 import Extra from "./widgets/Extra";
 import { useCurrentMusic } from "@renderer/core/track-player/hooks";
-import normalizeArtworkDisplaySrc from "@/renderer/utils/normalize-artwork-display-src";
+import normalizeArtworkDisplaySrc, {
+    getArtworkCacheKey,
+} from "@/renderer/utils/normalize-artwork-display-src";
 
 import "./index.scss";
 
@@ -25,6 +27,37 @@ const DEFAULT_MUSIC_BAR_STYLE: MusicBarPaletteStyle = {
     "--musicBarPrimaryText": "#0b0b0f",
     "--musicBarBackdropOpacity": "0.38",
 };
+const MAX_MUSIC_BAR_PALETTE_CACHE_SIZE = 40;
+const musicBarPaletteCache = new Map<string, MusicBarPaletteStyle>();
+
+function getCachedMusicBarPalette(artwork: string) {
+    const cacheKey = getArtworkCacheKey(artwork);
+    const cached = musicBarPaletteCache.get(cacheKey);
+    if (!cached) {
+        return null;
+    }
+
+    musicBarPaletteCache.delete(cacheKey);
+    musicBarPaletteCache.set(cacheKey, cached);
+    return cached;
+}
+
+function setCachedMusicBarPalette(artwork: string, style: MusicBarPaletteStyle) {
+    const cacheKey = getArtworkCacheKey(artwork);
+    if (musicBarPaletteCache.has(cacheKey)) {
+        musicBarPaletteCache.delete(cacheKey);
+    }
+    musicBarPaletteCache.set(cacheKey, style);
+
+    if (musicBarPaletteCache.size <= MAX_MUSIC_BAR_PALETTE_CACHE_SIZE) {
+        return;
+    }
+
+    const oldestKey = musicBarPaletteCache.keys().next().value;
+    if (oldestKey) {
+        musicBarPaletteCache.delete(oldestKey);
+    }
+}
 
 function clamp(value: number, min: number, max: number) {
     return Math.max(min, Math.min(max, value));
@@ -150,8 +183,14 @@ async function extractMusicBarStyle(artwork?: string | null) {
         return DEFAULT_MUSIC_BAR_STYLE;
     }
 
+    const cachedStyle = getCachedMusicBarPalette(artwork);
+    if (cachedStyle) {
+        return cachedStyle;
+    }
+
     try {
         const image = new Image();
+        image.decoding = "async";
         image.crossOrigin = "anonymous";
         image.referrerPolicy = "no-referrer";
 
@@ -174,7 +213,9 @@ async function extractMusicBarStyle(artwork?: string | null) {
 
         context.drawImage(image, 0, 0, width, height);
         const { data } = context.getImageData(0, 0, width, height);
-        return buildMusicBarPalette(data);
+        const nextStyle = buildMusicBarPalette(data);
+        setCachedMusicBarPalette(artwork, nextStyle);
+        return nextStyle;
     } catch {
         return DEFAULT_MUSIC_BAR_STYLE;
     }
@@ -182,7 +223,7 @@ async function extractMusicBarStyle(artwork?: string | null) {
 
 export default function MusicBar() {
     const currentMusic = useCurrentMusic();
-    const artwork = currentMusic?.artwork ?? currentMusic?.coverImg;
+    const artwork = currentMusic?.coverImg ?? currentMusic?.artwork;
     const [musicBarStyle, setMusicBarStyle] = useState<MusicBarPaletteStyle>(DEFAULT_MUSIC_BAR_STYLE);
     const [artworkDisplaySrc, setArtworkDisplaySrc] = useState<string | undefined>(artwork);
 

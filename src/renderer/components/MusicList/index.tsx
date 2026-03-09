@@ -68,31 +68,22 @@ interface IMusicListProps {
     contextMenu?: IContextMenuItem[];
 }
 
-const artworkDisplayCache = new Map<string, string>();
-
 function ArtworkContent(props: {
     src?: string;
     alt: string;
 }) {
     const rawSrc = props.src ?? albumImg;
     const [displaySrc, setDisplaySrc] = useState(
-        () => artworkDisplayCache.get(rawSrc) ?? rawSrc,
+        rawSrc,
     );
 
     useEffect(() => {
         let canceled = false;
         const nextSrc = props.src ?? albumImg;
-        const cachedSrc = artworkDisplayCache.get(nextSrc);
-
-        if (cachedSrc) {
-            setDisplaySrc(cachedSrc);
-            return;
-        }
 
         setDisplaySrc(nextSrc);
         void normalizeArtworkDisplaySrc(nextSrc).then((normalizedSrc) => {
             const resolvedSrc = normalizedSrc ?? nextSrc;
-            artworkDisplayCache.set(nextSrc, resolvedSrc);
 
             if (!canceled) {
                 setDisplaySrc(resolvedSrc);

@@ -35,7 +35,7 @@ function MusicDetail() {
         };
     }, []);
 
-    const artwork = musicItem?.artwork ?? albumImg;
+    const artwork = musicItem?.coverImg ?? musicItem?.artwork ?? albumImg;
     const qualityLabel = quality ? (qualityText[quality] || quality).replace(/^.*?\s/, "") : null;
     const title = musicItem?.title || t("media.unknown_title");
     const subtitle = [musicItem?.artist || t("media.unknown_artist"), musicItem?.album]

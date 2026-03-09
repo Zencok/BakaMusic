@@ -19,6 +19,8 @@ import Promise = Dexie.Promise;
 class AudioController extends ControllerBase implements IAudioController {
     private audio: HTMLAudioElement;
     private hls: Hls;
+    private currentObjectUrl: string | null = null;
+    private sourceAbortController: AbortController | null = null;
 
     private _playerState: PlayerState = PlayerState.None;
     get playerState() {
@@ -41,7 +43,7 @@ class AudioController extends ControllerBase implements IAudioController {
     constructor() {
         super();
         this.audio = new Audio();
-        this.audio.preload = "auto";
+        this.audio.preload = "metadata";
         this.audio.controls = false;
 
         ////// events
@@ -113,8 +115,35 @@ class AudioController extends ControllerBase implements IAudioController {
         }
     }
 
-    destroy(): void {
+    private revokeCurrentObjectUrl() {
+        if (!this.currentObjectUrl) {
+            return;
+        }
+
+        URL.revokeObjectURL(this.currentObjectUrl);
+        this.currentObjectUrl = null;
+    }
+
+    private abortPendingSourceRequest() {
+        if (!this.sourceAbortController) {
+            return;
+        }
+
+        this.sourceAbortController.abort();
+        this.sourceAbortController = null;
+    }
+
+    private clearTrackSource() {
+        this.abortPendingSourceRequest();
+        this.revokeCurrentObjectUrl();
         this.destroyHls();
+        this.audio.pause();
+        this.audio.src = "";
+        this.audio.removeAttribute("src");
+        this.audio.load();
+    }
+
+    destroy(): void {
         this.reset();
     }
 
@@ -132,8 +161,7 @@ class AudioController extends ControllerBase implements IAudioController {
 
     reset(): void {
         this.playerState = PlayerState.None;
-        this.audio.src = "";
-        this.audio.removeAttribute("src");
+        this.clearTrackSource();
         navigator.mediaSession.metadata = null;
         navigator.mediaSession.playbackState = "none";
     }
@@ -171,20 +199,21 @@ class AudioController extends ControllerBase implements IAudioController {
             album: musicItem.album,
             artwork: [
                 {
-                    src: musicItem.artwork ?? albumImg,
+                    src: musicItem.coverImg ?? musicItem.artwork ?? albumImg,
                 },
             ],
         });
 
         // 2. reset track
         this.playerState = PlayerState.None;
-        this.audio.src = "";
-        this.audio.removeAttribute("src");
+        this.clearTrackSource();
         navigator.mediaSession.playbackState = "none";
     }
 
     setTrackSource(trackSource: IMusic.IMusicSource, musicItem: IMusic.IMusicItem): void {
         this.musicItem = { ...musicItem };
+        this.abortPendingSourceRequest();
+        this.revokeCurrentObjectUrl();
 
         // 1. update metadata
         navigator.mediaSession.metadata = new MediaMetadata({
@@ -193,7 +222,7 @@ class AudioController extends ControllerBase implements IAudioController {
             album: musicItem.album,
             artwork: [
                 {
-                    src: musicItem.artwork ?? albumImg,
+                    src: musicItem.coverImg ?? musicItem.artwork ?? albumImg,
                 },
             ],
         });
@@ -255,19 +284,34 @@ class AudioController extends ControllerBase implements IAudioController {
                 return;
             }
         } else if (headers) {
+            this.destroyHls();
+            this.sourceAbortController = new AbortController();
             fetch(url, {
                 method: "GET",
                 headers: {
                     ...trackSource.headers,
                 },
+                signal: this.sourceAbortController.signal,
             })
                 .then(async (res) => {
                     const blob = await res.blob();
                     if (isSameMedia(this.musicItem, musicItem)) {
-                        this.audio.src = URL.createObjectURL(blob);
+                        this.revokeCurrentObjectUrl();
+                        this.currentObjectUrl = URL.createObjectURL(blob);
+                        this.audio.src = this.currentObjectUrl;
                     }
+                    this.sourceAbortController = null;
+                })
+                .catch((error) => {
+                    if (error?.name === "AbortError") {
+                        return;
+                    }
+
+                    this.onError?.(ErrorReason.EmptyResource, error);
+                    this.sourceAbortController = null;
                 });
         } else {
+            this.destroyHls();
             this.audio.src = url;
         }
     }

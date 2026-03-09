@@ -11,6 +11,9 @@ import { produce } from "immer";
 import defaultSheet from "../common/default-sheet";
 import { getMediaPrimaryKey, isSameMedia } from "@/common/media-util";
 import { getUserPreferenceIDB, setUserPreferenceIDB } from "@/renderer/utils/user-perference";
+import optimizeArtworkDataUrl, {
+    shouldOptimizeArtworkDataUrl,
+} from "@/renderer/utils/optimize-artwork-data-url";
 
 /******************** 内存缓存 ***********************/
 // 默认歌单，快速判定是否在列表中
@@ -19,6 +22,38 @@ const favoriteMusicListIds = new Set<string>();
 let musicSheets: IMusic.IDBMusicSheetItem[] = [];
 // 星标的歌单信息
 let starredMusicSheets: IMedia.IMediaBase[] = [];
+
+async function optimizeLocalArtworkItem<T extends { platform?: string; artwork?: string }>(
+    item: T | null | undefined,
+) {
+    if (
+        !item ||
+        item.platform !== localPluginName ||
+        !shouldOptimizeArtworkDataUrl(item.artwork)
+    ) {
+        return {
+            item,
+            changed: false,
+        };
+    }
+
+    const optimizedArtwork = await optimizeArtworkDataUrl(item.artwork);
+
+    if (!optimizedArtwork || optimizedArtwork === item.artwork) {
+        return {
+            item,
+            changed: false,
+        };
+    }
+
+    return {
+        item: {
+            ...item,
+            artwork: optimizedArtwork,
+        },
+        changed: true,
+    };
+}
 
 /******************** 方法 ***********************/
 
@@ -434,6 +469,9 @@ export async function getSheetItemDetail(
     }
     const tmpResult = [];
     const musicList = targetSheet.musicList ?? [];
+    const changedMusicItems: Array<IMusic.IMusicItem & {
+        [musicRefSymbol]: number;
+    }> = [];
     // 一组800个
     const groupSize = 800;
     const groupNum = Math.ceil(musicList.length / groupSize);
@@ -451,11 +489,37 @@ export async function getSheetItemDetail(
             },
         );
 
-        tmpResult.push(...(sliceResult ?? []));
+        const optimizedSliceResult = await Promise.all(
+            (sliceResult ?? []).map(async (musicItem) => {
+                const optimizedMusicItem = await optimizeLocalArtworkItem(musicItem);
+                if (optimizedMusicItem.changed) {
+                    changedMusicItems.push(
+                        optimizedMusicItem.item as IMusic.IMusicItem & {
+                            [musicRefSymbol]: number;
+                        },
+                    );
+                }
+                return optimizedMusicItem.item;
+            }),
+        );
+
+        tmpResult.push(...optimizedSliceResult);
+    }
+
+    if (changedMusicItems.length) {
+        await musicSheetDB.musicStore.bulkPut(changedMusicItems);
+    }
+
+    const optimizedTargetSheet = await optimizeLocalArtworkItem(targetSheet);
+    if (optimizedTargetSheet.changed) {
+        await musicSheetDB.sheets.update(sheetId, {
+            artwork: optimizedTargetSheet.item.artwork,
+        });
+        targetSheet.artwork = optimizedTargetSheet.item.artwork;
     }
 
     return {
-        ...targetSheet,
+        ...optimizedTargetSheet.item,
         musicList: tmpResult,
     } as IMusic.IMusicSheetItem;
 }

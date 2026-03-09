@@ -110,6 +110,7 @@ export default function useVirtualList<T>(props: IVirtualListProps<T>) {
 
         return () => {
             scrollElementRef.current?.removeEventListener?.("scroll", scrollHandler);
+            scrollHandler.cancel();
             scrollElementRef.current = null;
         };
     }, []);

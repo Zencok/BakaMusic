@@ -154,7 +154,7 @@ export default function WatchLocalDir() {
                         onClick={async () => {
                             setUserPreferenceIDB("localWatchDir", localDirs);
                             setUserPreferenceIDB("localWatchDirChecked", [...checkedDirs]);
-                            localMusic.changeWatchPath(changeLogRef.current);
+                            await localMusic.changeWatchPath(changeLogRef.current);
                             hideModal();
                         }}
                     >

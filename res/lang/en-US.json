@@ -136,7 +136,7 @@
   },
   "local_music_page": {
     "local_music": "Local Music",
-    "auto_scan": "Auto Scan",
+    "auto_scan": "Manual Scan",
     "search_local_music": "Search Local Music",
     "list_view": "List View",
     "artist_view": "Artist View",
@@ -240,7 +240,7 @@
     "current_version": "Current Version: ",
     "skip_this_version": "Skip This Version",
     "scan_local_music": "Scan Local Music",
-    "scan_local_music_hint": "Automatically scan selected folders (real-time sync with file changes)",
+    "scan_local_music_hint": "Manually scan selected folders",
     "add_folder": "Add Folder"
   },
   "panel": {

@@ -33,6 +33,12 @@ export default function MusicResult(props: IBodyProps) {
                 onPageChange={() => {
                     queryArtist(artistItem, undefined, "music");
                 }}
+                virtualProps={{
+                    getScrollElement() {
+                        return document.querySelector("#page-container");
+                    },
+                    fallbackRenderCount: 40,
+                }}
             ></MusicList>
         </Condition>
     );

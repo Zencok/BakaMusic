@@ -37,6 +37,21 @@ function getCurrentWatchedLocalMusicFiles() {
     return watchedFiles;
 }
 
+function createParsedLocalMusicItem(filePath: string) {
+    return parseLocalMusicItem(filePath).then((musicItem) => {
+        musicItem.$$localPath = filePath;
+        setInternalData<IMusic.IMusicItemInternalData>(
+            musicItem,
+            "downloadData",
+            {
+                path: filePath,
+                quality: "320k",
+            },
+        );
+        return musicItem;
+    });
+}
+
 async function setupWatcher(initPaths?: string[], knownPaths: string[] = []) {
     initialScanCompleted = false;
     knownLocalFilePaths.clear();
@@ -60,16 +75,7 @@ async function setupWatcher(initPaths?: string[], knownPaths: string[] = []) {
             return;
         }
 
-        const musicItem = await parseLocalMusicItem(fp);
-        musicItem.$$localPath = fp;
-        setInternalData<IMusic.IMusicItemInternalData>(
-            musicItem,
-            "downloadData",
-            {
-                path: fp,
-                quality: "320k",
-            },
-        );
+        const musicItem = await createParsedLocalMusicItem(fp);
         addedMusicItems.push(musicItem);
         syncAddedMusic();
     });
@@ -163,9 +169,65 @@ async function onRemove(fn: (filePaths: string[]) => void) {
     _onRemove = fn;
 }
 
+async function scanDirectories(initPaths: string[] = [], knownPaths: string[] = []) {
+    const scannedKnownPaths = new Set(knownPaths);
+    const watchedFiles = new Set<string>();
+    const nextMusicItems: IMusic.IMusicItem[] = [];
+    const pendingTasks = new Set<Promise<void>>();
+
+    const scanWatcher = chokidar.watch(initPaths, {
+        depth: 10,
+        persistent: true,
+        ignorePermissionErrors: true,
+    });
+
+    return await new Promise<{
+        musicItems: IMusic.IMusicItem[];
+        removedFilePaths: string[];
+    }>((resolve) => {
+        const finalize = async () => {
+            await Promise.all([...pendingTasks]);
+            const removedFilePaths = [...scannedKnownPaths].filter(
+                (filePath) => !watchedFiles.has(filePath),
+            );
+            await scanWatcher.close();
+            resolve({
+                musicItems: nextMusicItems,
+                removedFilePaths,
+            });
+        };
+
+        scanWatcher.on("add", (fp, stats) => {
+            if (!(stats?.isFile?.() ?? true) || !isSupportedLocalMusicFile(fp)) {
+                return;
+            }
+
+            watchedFiles.add(fp);
+            if (scannedKnownPaths.delete(fp)) {
+                return;
+            }
+
+            const task = createParsedLocalMusicItem(fp)
+                .then((musicItem) => {
+                    nextMusicItems.push(musicItem);
+                })
+                .finally(() => {
+                    pendingTasks.delete(task);
+                });
+
+            pendingTasks.add(task);
+        });
+
+        scanWatcher.on("ready", () => {
+            void finalize();
+        });
+    });
+}
+
 Comlink.expose({
     setupWatcher,
     changeWatchPath,
     onAdd,
     onRemove,
+    scanDirectories,
 });

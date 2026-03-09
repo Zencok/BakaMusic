@@ -152,18 +152,31 @@ export function useUserPreferenceIDBValue<
     const [state, setState] = useState<IUserPreference.IDBType[K] | null>(null);
 
     useEffect(() => {
+        let disposed = false;
+        let currentSet: Set<(...args: any) => void> | null = null;
+
         (async () => {
             try {
                 const result = await getUserPreferenceIDB(key);
-                setState(result);
+                if (!disposed) {
+                    setState(result);
+                }
             } finally {
-                if (dbKeyUpdateCbs.has(key)) {
-                    dbKeyUpdateCbs.get(key).add(setState);
-                } else {
-                    dbKeyUpdateCbs.set(key, new Set([setState]));
+                if (!disposed) {
+                    currentSet = dbKeyUpdateCbs.get(key) ?? new Set();
+                    currentSet.add(setState);
+                    dbKeyUpdateCbs.set(key, currentSet);
                 }
             }
         })();
+
+        return () => {
+            disposed = true;
+            currentSet?.delete(setState);
+            if (currentSet && currentSet.size === 0) {
+                dbKeyUpdateCbs.delete(key);
+            }
+        };
     }, []);
 
     return state;

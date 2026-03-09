@@ -11,6 +11,7 @@ import ArtistView from "./views/artist";
 import AlbumView from "./views/album";
 import FolderView from "./views/folder";
 import AppConfig from "@shared/app-config/renderer";
+import localMusic from "@renderer/core/local-music";
 
 enum DisplayView {
     LIST,
@@ -30,6 +31,14 @@ export default function LocalMusicView() {
     >(null);
 
     const [, startTransition] = useTransition();
+
+    useEffect(() => {
+        void localMusic.setupLocalMusic();
+
+        return () => {
+            localMusic.releaseLocalMusic();
+        };
+    }, []);
 
     useEffect(() => {
         if (inputSearch.trim() === "") {
