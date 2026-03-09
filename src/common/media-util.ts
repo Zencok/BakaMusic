@@ -6,7 +6,57 @@ import {
     sortIndexSymbol,
     timeStampSymbol,
 } from "./constant";
+import { parseDurationSeconds } from "./time-util";
 setAutoFreeze(false);
+
+type IDurationCarrier = IMedia.IMediaBase & {
+    duration?: number;
+};
+
+function setNormalizedDuration<T extends IMedia.IMediaBase>(
+    mediaItem: T,
+    duration?: number,
+) {
+    if (duration !== undefined) {
+        (mediaItem as IDurationCarrier).duration = duration;
+    }
+    return mediaItem;
+}
+
+function getNormalizedDuration(mediaItem?: IMedia.IMediaBase | null) {
+    if (!mediaItem) {
+        return undefined;
+    }
+
+    const secondCandidates = [
+        mediaItem.duration,
+        mediaItem.interval,
+        mediaItem.DURATION,
+        mediaItem?._gitcodeData?.duration,
+    ];
+
+    for (const candidate of secondCandidates) {
+        const normalizedDuration = parseDurationSeconds(candidate);
+        if (normalizedDuration !== undefined) {
+            return normalizedDuration;
+        }
+    }
+
+    const millisecondCandidates = [
+        mediaItem.dt,
+        mediaItem.durationMs,
+        mediaItem.duration_ms,
+    ];
+
+    for (const candidate of millisecondCandidates) {
+        const normalizedDuration = parseDurationSeconds(candidate);
+        if (normalizedDuration !== undefined) {
+            return Math.floor(normalizedDuration / 1000);
+        }
+    }
+
+    return undefined;
+}
 
 export function isSameMedia(
     a?: IMedia.IMediaBase | null,
@@ -23,18 +73,29 @@ export function resetMediaItem<T extends IMedia.IMediaBase>(
     platform?: string,
     newObj?: boolean,
 ): T {
+    const normalizedDuration = getNormalizedDuration(mediaItem);
+
     // 本地音乐不做处理
     if (mediaItem.platform === localPluginName || platform === localPluginName) {
-        return newObj ? { ...mediaItem } : mediaItem;
+        if (!newObj) {
+            return setNormalizedDuration(mediaItem, normalizedDuration);
+        }
+        return {
+            ...mediaItem,
+            ...(normalizedDuration !== undefined
+                ? { duration: normalizedDuration }
+                : {}),
+        };
     }
     if (!newObj) {
         mediaItem.platform = platform ?? mediaItem.platform;
         mediaItem[internalDataKey] = undefined;
-        return mediaItem;
+        return setNormalizedDuration(mediaItem, normalizedDuration);
     } else {
         return produce(mediaItem, (_) => {
             _.platform = platform ?? mediaItem.platform;
             _[internalDataKey] = undefined;
+            setNormalizedDuration(_, normalizedDuration);
         });
     }
 }
