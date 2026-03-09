@@ -3,6 +3,7 @@ import "./index.scss";
 import albumImg from "@/assets/imgs/album-cover.jpg";
 import { memo } from "react";
 import LazyImage from "../LazyImage";
+import getCompactArtworkSrc from "@/renderer/utils/get-compact-artwork-src";
 
 interface IArtistItemProps {
     artistItem: IArtist.IArtistItem;
@@ -22,8 +23,9 @@ function ArtistItem(props: IArtistItemProps) {
         >
             <div className="artist-img-wrapper">
                 <LazyImage
-                    src={artistItem?.avatar || albumImg}
+                    src={getCompactArtworkSrc(artistItem?.avatar, 240) ?? albumImg}
                     fallbackSrc={albumImg}
+                    releaseWhenHidden={false}
                     onError={setFallbackAlbum}
                     alt={artistItem?.name}
                 ></LazyImage>

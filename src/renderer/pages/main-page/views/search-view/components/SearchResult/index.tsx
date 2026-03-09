@@ -86,7 +86,7 @@ function _SearchResultBody(props: ISearchResultBodyProps) {
         if (pluginHash && type && query) {
             search(query, 1, type, pluginHash);
         }
-    }, [pluginHash, type, query]);
+    }, [pluginHash, query, search, type]);
 
     return (
         <>
@@ -134,5 +134,8 @@ function _SearchResultBody(props: ISearchResultBodyProps) {
 
 const SearchResultBody = memo(
     _SearchResultBody,
-    (prev, curr) => prev.pluginHash === curr.pluginHash && prev.type === curr.type,
+    (prev, curr) =>
+        prev.pluginHash === curr.pluginHash &&
+        prev.type === curr.type &&
+        prev.query === curr.query,
 );

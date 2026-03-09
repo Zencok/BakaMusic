@@ -8,6 +8,7 @@ import { normalizeNumber } from "@/common/normalize-util";
 import { memo } from "react";
 import { isCN } from "@/shared/i18n/renderer";
 import LazyImage from "../LazyImage";
+import getCompactArtworkSrc from "@/renderer/utils/get-compact-artwork-src";
 
 interface IMusicSheetlikeItemProps {
     mediaItem: IMusic.IMusicSheetItem;
@@ -27,8 +28,9 @@ function MusicSheetlikeItem(props: IMusicSheetlikeItemProps) {
         >
             <div className="album-img-wrapper">
                 <LazyImage
-                    src={mediaItem?.artwork || mediaItem?.coverImg || albumImg}
+                    src={getCompactArtworkSrc(mediaItem, 320) ?? albumImg}
                     fallbackSrc={albumImg}
+                    releaseWhenHidden={false}
                     onError={setFallbackAlbum}
                     alt={mediaItem?.title}
                 ></LazyImage>

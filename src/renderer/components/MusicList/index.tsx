@@ -39,6 +39,7 @@ import isLocalMusic from "@/renderer/utils/is-local-music";
 import normalizeArtworkDisplaySrc from "@/renderer/utils/normalize-artwork-display-src";
 import { promptDownloadWithQuality } from "@/renderer/utils/download-quality";
 import LazyImage from "../LazyImage";
+import getCompactArtworkSrc from "@/renderer/utils/get-compact-artwork-src";
 interface IMusicListProps {
     /** 鐏炴洜銇氶惃鍕尡閺€鎯у灙鐞?*/
     musicList: IMusic.IMusicItem[];
@@ -83,13 +84,15 @@ function ArtworkContent(props: {
         const nextSrc = props.src ?? albumImg;
 
         setDisplaySrc(nextSrc);
-        void normalizeArtworkDisplaySrc(nextSrc).then((normalizedSrc) => {
-            const resolvedSrc = normalizedSrc ?? nextSrc;
+        if (nextSrc.startsWith("data:image/") && !nextSrc.startsWith("data:image/svg+xml")) {
+            void normalizeArtworkDisplaySrc(nextSrc).then((normalizedSrc) => {
+                const resolvedSrc = normalizedSrc ?? nextSrc;
 
-            if (!canceled) {
-                setDisplaySrc(resolvedSrc);
-            }
-        });
+                if (!canceled) {
+                    setDisplaySrc(resolvedSrc);
+                }
+            });
+        }
 
         return () => {
             canceled = true;
@@ -101,6 +104,7 @@ function ArtworkContent(props: {
             className="music-list-cover-image"
             src={displaySrc}
             fallbackSrc={albumImg}
+            releaseWhenHidden={false}
             alt={props.alt}
             draggable={false}
         ></LazyImage>
@@ -671,10 +675,7 @@ function _MusicList(props: IMusicListProps) {
                             const qualityInfo = getBestQualityInfo(musicItem);
                             const isActive = activeItems.has(virtualItem.rowIndex);
                             const isPlaying = !!currentMusic && isSameMedia(currentMusic, musicItem);
-                            const artworkSrc =
-                                musicItem.artwork ??
-                                musicItem.coverImg ??
-                                albumImg;
+                            const artworkSrc = getCompactArtworkSrc(musicItem, 160) ?? albumImg;
                             const selectedItems =
                                 activeItems.size > 1 && isActive
                                     ? getSelectedItems(activeItems)
