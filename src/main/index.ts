@@ -7,6 +7,9 @@ import { setAutoFreeze } from "immer";
 // Suppress Chromium GPU "Check failed: false" errors (non-fatal, Electron 25 known issue)
 app.commandLine.appendSwitch("log-level", "3");
 
+// Merge VideoCaptureService into browser process to eliminate its ~100MB utility process
+app.commandLine.appendSwitch("enable-features", "RunVideoCaptureServiceInBrowserProcess");
+
 if (!app.isPackaged) {
     process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
 }
@@ -90,6 +93,22 @@ function getProcessLabels() {
     }
     if (miniPid) {
         labels.set(miniPid, "mini-window");
+    }
+
+    // Label webview/webContents child processes for memory diagnostics
+    try {
+        const { webContents } = require("electron");
+        for (const wc of webContents.getAllWebContents()) {
+            const pid = wc.getOSProcessId();
+            if (pid && !labels.has(pid)) {
+                const wcType = wc.getType(); // "window" | "webview" | "backgroundPage" | etc.
+                const wcUrl = wc.getURL();
+                const shortUrl = wcUrl ? wcUrl.slice(0, 80) : "unknown";
+                labels.set(pid, `${wcType}:${shortUrl}`);
+            }
+        }
+    } catch {
+        // ignore
     }
 
     return labels;

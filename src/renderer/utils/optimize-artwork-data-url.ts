@@ -4,23 +4,30 @@ const MAX_OPTIMIZED_ARTWORK_CACHE_SIZE = 120;
 
 const optimizedArtworkCache = new Map<string, Promise<string> | string>();
 
-function getCachedArtwork(src: string) {
-    const cached = optimizedArtworkCache.get(src);
+function getArtworkCacheKey(src: string) {
+    if (!src.startsWith("data:image/")) {
+        return src;
+    }
+    return `${src.slice(0, 48)}:${src.length}:${src.slice(-48)}`;
+}
+
+function getCachedArtwork(cacheKey: string) {
+    const cached = optimizedArtworkCache.get(cacheKey);
     if (!cached) {
         return null;
     }
 
-    optimizedArtworkCache.delete(src);
-    optimizedArtworkCache.set(src, cached);
+    optimizedArtworkCache.delete(cacheKey);
+    optimizedArtworkCache.set(cacheKey, cached);
     return cached;
 }
 
-function setCachedArtwork(src: string, value: Promise<string> | string) {
-    if (optimizedArtworkCache.has(src)) {
-        optimizedArtworkCache.delete(src);
+function setCachedArtwork(cacheKey: string, value: Promise<string> | string) {
+    if (optimizedArtworkCache.has(cacheKey)) {
+        optimizedArtworkCache.delete(cacheKey);
     }
 
-    optimizedArtworkCache.set(src, value);
+    optimizedArtworkCache.set(cacheKey, value);
 
     if (optimizedArtworkCache.size <= MAX_OPTIMIZED_ARTWORK_CACHE_SIZE) {
         return;
@@ -54,7 +61,8 @@ export default async function optimizeArtworkDataUrl(src?: string | null) {
         return src;
     }
 
-    const cached = getCachedArtwork(src);
+    const cacheKey = getArtworkCacheKey(src);
+    const cached = getCachedArtwork(cacheKey);
     if (typeof cached === "string") {
         return cached;
     }
@@ -63,12 +71,14 @@ export default async function optimizeArtworkDataUrl(src?: string | null) {
     }
 
     const task = (async () => {
+        let canvas: HTMLCanvasElement | null = null;
         try {
             const image = await loadImage(src);
             const width = image.naturalWidth;
             const height = image.naturalHeight;
 
             if (!width || !height) {
+                image.src = "";
                 return src;
             }
 
@@ -79,7 +89,7 @@ export default async function optimizeArtworkDataUrl(src?: string | null) {
             const outputWidth = Math.max(1, Math.round(width * scale));
             const outputHeight = Math.max(1, Math.round(height * scale));
 
-            const canvas = document.createElement("canvas");
+            canvas = document.createElement("canvas");
             canvas.width = outputWidth;
             canvas.height = outputHeight;
 
@@ -88,6 +98,7 @@ export default async function optimizeArtworkDataUrl(src?: string | null) {
             });
 
             if (!context) {
+                image.src = "";
                 return src;
             }
 
@@ -96,7 +107,15 @@ export default async function optimizeArtworkDataUrl(src?: string | null) {
             context.clearRect(0, 0, outputWidth, outputHeight);
             context.drawImage(image, 0, 0, outputWidth, outputHeight);
 
+            // Release decoded image bitmap
+            image.src = "";
+
             const optimizedSrc = canvas.toDataURL("image/webp", 0.82);
+
+            // Release canvas native memory
+            canvas.width = 0;
+            canvas.height = 0;
+            canvas = null;
 
             if (!optimizedSrc || optimizedSrc.length >= src.length) {
                 return src;
@@ -105,11 +124,16 @@ export default async function optimizeArtworkDataUrl(src?: string | null) {
             return optimizedSrc;
         } catch {
             return src;
+        } finally {
+            if (canvas) {
+                canvas.width = 0;
+                canvas.height = 0;
+            }
         }
     })();
 
-    setCachedArtwork(src, task);
+    setCachedArtwork(cacheKey, task);
     const result = await task;
-    setCachedArtwork(src, result);
+    setCachedArtwork(cacheKey, result);
     return result;
 }

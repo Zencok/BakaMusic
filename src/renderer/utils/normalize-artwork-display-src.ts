@@ -71,8 +71,11 @@ export default async function normalizeArtworkDisplaySrc(src?: string) {
     }
 
     const task = (async () => {
+        let analysisCanvas: HTMLCanvasElement | null = null;
+        let outputCanvas: HTMLCanvasElement | null = null;
+        let image: HTMLImageElement | null = null;
         try {
-            const image = await loadImage(src);
+            image = await loadImage(src);
             const width = image.naturalWidth;
             const height = image.naturalHeight;
 
@@ -87,7 +90,7 @@ export default async function normalizeArtworkDisplaySrc(src?: string) {
             const analysisWidth = Math.max(1, Math.round(width * analysisScale));
             const analysisHeight = Math.max(1, Math.round(height * analysisScale));
 
-            const analysisCanvas = document.createElement("canvas");
+            analysisCanvas = document.createElement("canvas");
             analysisCanvas.width = analysisWidth;
             analysisCanvas.height = analysisHeight;
             const analysisContext = analysisCanvas.getContext("2d", {
@@ -105,6 +108,11 @@ export default async function normalizeArtworkDisplaySrc(src?: string) {
                 analysisWidth,
                 analysisHeight,
             );
+
+            // Release analysis canvas native memory immediately
+            analysisCanvas.width = 0;
+            analysisCanvas.height = 0;
+            analysisCanvas = null;
 
             let minX = analysisWidth;
             let minY = analysisHeight;
@@ -179,7 +187,7 @@ export default async function normalizeArtworkDisplaySrc(src?: string) {
                 1,
                 Math.round(trimmedHeight * outputScale),
             );
-            const outputCanvas = document.createElement("canvas");
+            outputCanvas = document.createElement("canvas");
             outputCanvas.width = outputWidth;
             outputCanvas.height = outputHeight;
             const outputContext = outputCanvas.getContext("2d");
@@ -200,9 +208,32 @@ export default async function normalizeArtworkDisplaySrc(src?: string) {
                 outputHeight,
             );
 
-            return outputCanvas.toDataURL("image/png");
+            const result = outputCanvas.toDataURL("image/png");
+
+            // Release output canvas native memory
+            outputCanvas.width = 0;
+            outputCanvas.height = 0;
+            outputCanvas = null;
+
+            return result;
         } catch {
             return src;
+        } finally {
+            // Ensure canvas buffers are released even on error paths
+            if (analysisCanvas) {
+                analysisCanvas.width = 0;
+                analysisCanvas.height = 0;
+            }
+            if (outputCanvas) {
+                outputCanvas.width = 0;
+                outputCanvas.height = 0;
+            }
+            // Release decoded image bitmap from native memory
+            if (image) {
+                image.src = "";
+                image.onload = null;
+                image.onerror = null;
+            }
         }
     })();
 
