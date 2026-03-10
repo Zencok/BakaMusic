@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut } from "electron";
+import { app, BrowserWindow, globalShortcut, webContents } from "electron";
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
@@ -7,8 +7,11 @@ import { setAutoFreeze } from "immer";
 // Suppress Chromium GPU "Check failed: false" errors (non-fatal, Electron 25 known issue)
 app.commandLine.appendSwitch("log-level", "3");
 
-// Merge VideoCaptureService into browser process to eliminate its ~100MB utility process
-app.commandLine.appendSwitch("enable-features", "RunVideoCaptureServiceInBrowserProcess");
+// Electron 40 on macOS 26.x can crash during startup when forcing this service
+// into the browser process. Keep the optimization on other platforms.
+if (process.platform !== "darwin") {
+    app.commandLine.appendSwitch("enable-features", "RunVideoCaptureServiceInBrowserProcess");
+}
 
 if (!app.isPackaged) {
     process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
@@ -97,7 +100,6 @@ function getProcessLabels() {
 
     // Label webview/webContents child processes for memory diagnostics
     try {
-        const { webContents } = require("electron");
         for (const wc of webContents.getAllWebContents()) {
             const pid = wc.getOSProcessId();
             if (pid && !labels.has(pid)) {
