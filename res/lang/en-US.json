@@ -298,6 +298,12 @@
       "double_click_music_list": "When double-clicking the music list",
       "add_music_to_playlist": "Add the selected song to the playback queue",
       "replace_playlist_with_musiclist": "Replace playback queue with current music list",
+      "new_sheet_default_sort": "Default song order for new playlists",
+      "sort_by_title": "Sort by song title",
+      "sort_by_artist": "Sort by artist name",
+      "sort_by_album": "Sort by album name",
+      "sort_by_collected_newest": "Sort by collection time, newest first",
+      "sort_by_collected_oldest": "Sort by collection time, oldest first",
       "audio_output_device": "Audio output device",
       "when_device_removed": "When device is removed",
       "continue_playing": "Continue playing"

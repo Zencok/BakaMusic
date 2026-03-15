@@ -6,6 +6,7 @@ import ListBoxSettingItem from "../../components/ListBoxSettingItem";
 import trackPlayer from "@renderer/core/track-player";
 import { useTranslation } from "react-i18next";
 import AppConfig from "@shared/app-config/renderer";
+import { MusicSheetSortType } from "@/common/constant";
 
 
 export default function PlayMusic() {
@@ -67,6 +68,33 @@ export default function PlayMusic() {
                     }
                 }}
 
+            ></RadioGroupSettingItem>
+            <RadioGroupSettingItem
+                label={t("settings.play_music.new_sheet_default_sort")}
+                keyPath="playMusic.newSheetDefaultSort"
+                options={[
+                    MusicSheetSortType.Title,
+                    MusicSheetSortType.Artist,
+                    MusicSheetSortType.Album,
+                    MusicSheetSortType.Newest,
+                    MusicSheetSortType.Oldest,
+                ]}
+                direction="vertical"
+                renderItem={(item) => {
+                    switch (item) {
+                        case MusicSheetSortType.Title:
+                            return t("settings.play_music.sort_by_title");
+                        case MusicSheetSortType.Artist:
+                            return t("settings.play_music.sort_by_artist");
+                        case MusicSheetSortType.Album:
+                            return t("settings.play_music.sort_by_album");
+                        case MusicSheetSortType.Newest:
+                            return t("settings.play_music.sort_by_collected_newest");
+                        case MusicSheetSortType.Oldest:
+                        default:
+                            return t("settings.play_music.sort_by_collected_oldest");
+                    }
+                }}
             ></RadioGroupSettingItem>
             <ListBoxSettingItem
                 label={t("settings.play_music.audio_output_device")}
