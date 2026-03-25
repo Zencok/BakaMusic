@@ -277,7 +277,7 @@ app.whenReady().then(async () => {
     messageBus.setup(windowManager);
 
     windowManager.showMainWindow();
-    startMainMemoryTelemetry();
+    // startMainMemoryTelemetry();
 
     bootstrap();
 

@@ -32,6 +32,10 @@ class ServiceInstance {
             return;
         }
         this.started = true;
+        this.spawnProcess();
+    }
+
+    private spawnProcess() {
         const servicePath = getResourcePath(".service/" + this.subprocessName + ".js");
         this.serviceProcess = fork(servicePath);
 
@@ -48,26 +52,28 @@ class ServiceInstance {
             this.hostChangeCallback(host);
         });
 
-        this.serviceProcess.on("error", () => {
+        this.serviceProcess.on("error", (err) => {
             if (this.started) {
-                setTimeout(() => {
-                    this.start(); // 自动重启子进程
-                }, this.retryTimeOut);
-
-                this.retryTimeOut = this.retryTimeOut > 300000 ? 300000 : this.retryTimeOut * 2;
+                logger.logInfo(`[${this.serviceName}] Process error: ${err?.message}. Restarting in ${this.retryTimeOut}ms...`);
+                this.scheduleRestart();
             }
         });
 
         this.serviceProcess.on("exit", (code) => {
             if (this.started) {
-                logger.logInfo(`Service exited with code ${code}. Restarting...`);
-                setTimeout(() => {
-                    this.start(); // 自动重启子进程
-                }, this.retryTimeOut);
-
-                this.retryTimeOut = this.retryTimeOut > 300000 ? 300000 : this.retryTimeOut * 2;
+                logger.logInfo(`[${this.serviceName}] Exited with code ${code}. Restarting in ${this.retryTimeOut}ms...`);
+                this.scheduleRestart();
             }
         });
+    }
+
+    private scheduleRestart() {
+        setTimeout(() => {
+            if (this.started) {
+                this.spawnProcess();
+            }
+        }, this.retryTimeOut);
+        this.retryTimeOut = Math.min(this.retryTimeOut * 2, 300000);
     }
 
     stop() {

@@ -115,7 +115,7 @@ export default async function () {
     setupRecentlyPlaylist();
     // 本地服务
     await ServiceManager.setup();
-    startRendererMemoryTelemetry();
+    // startRendererMemoryTelemetry();
 
     // 自动更新插件
     if (AppConfig.getConfig("plugin.autoUpdatePlugin")) {
