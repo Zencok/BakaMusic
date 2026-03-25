@@ -14,6 +14,8 @@ import { getUserPreferenceIDB, setUserPreferenceIDB } from "@/renderer/utils/use
 import optimizeArtworkDataUrl, {
     shouldOptimizeArtworkDataUrl,
 } from "@/renderer/utils/optimize-artwork-data-url";
+import AppConfig from "@shared/app-config/renderer";
+import { normalizeMusicSheetSortType, sortMusicSheetMusicList } from "../common/sort";
 
 /******************** 内存缓存 ***********************/
 // 默认歌单，快速判定是否在列表中
@@ -52,6 +54,21 @@ async function optimizeLocalArtworkItem<T extends { platform?: string; artwork?:
             artwork: optimizedArtwork,
         },
         changed: true,
+    };
+}
+
+function attachSheetMusicMeta<T extends IMusic.IMusicItem>(
+    musicItem: T | null | undefined,
+    meta?: IMedia.IMediaBase | null,
+) {
+    if (!musicItem) {
+        return musicItem;
+    }
+
+    return {
+        ...musicItem,
+        [timeStampSymbol]: meta?.[timeStampSymbol],
+        [sortIndexSymbol]: meta?.[sortIndexSymbol],
     };
 }
 
@@ -132,14 +149,25 @@ export async function queryAllStarredSheets() {
  * @param sheetName 歌单名
  * @returns 新建的歌单信息
  */
-export async function addSheet(sheetName: string) {
+export async function addSheet(
+    sheetName: string,
+    options?: {
+        sortType?: IMusic.IMusicSheetSortType | null;
+    },
+) {
     const id = nanoid();
+    const sortType = normalizeMusicSheetSortType(
+        options && "sortType" in options
+            ? options.sortType
+            : AppConfig.getConfig("playMusic.newSheetDefaultSort"),
+    );
     const newSheet: IMusic.IMusicSheetItem = {
         id,
         title: sheetName,
         createAt: Date.now(),
         platform: localPluginName,
         musicList: [],
+        sortType,
         $$sortIndex: musicSheets[musicSheets.length - 1].$$sortIndex + 1,
     };
     try {
@@ -490,7 +518,7 @@ export async function getSheetItemDetail(
         );
 
         const optimizedSliceResult = await Promise.all(
-            (sliceResult ?? []).map(async (musicItem) => {
+            (sliceResult ?? []).map(async (musicItem, index) => {
                 const optimizedMusicItem = await optimizeLocalArtworkItem(musicItem);
                 if (optimizedMusicItem.changed) {
                     changedMusicItems.push(
@@ -499,7 +527,10 @@ export async function getSheetItemDetail(
                         },
                     );
                 }
-                return optimizedMusicItem.item;
+                return attachSheetMusicMeta(
+                    optimizedMusicItem.item as IMusic.IMusicItem,
+                    musicList[i * groupSize + index],
+                );
             }),
         );
 
@@ -520,7 +551,10 @@ export async function getSheetItemDetail(
 
     return {
         ...optimizedTargetSheet.item,
-        musicList: tmpResult,
+        musicList: sortMusicSheetMusicList(
+            tmpResult as IMusic.IMusicItem[],
+            targetSheet.sortType,
+        ),
     } as IMusic.IMusicSheetItem;
 }
 
@@ -553,7 +587,13 @@ export async function exportAllSheetDetails() {
 
             const allSheetDetails = produce(allSheets, (draft) => {
                 draft.forEach((sheet, index) => {
-                    sheet.musicList = musicLists[index];
+                    sheet.musicList = sortMusicSheetMusicList(
+                        (musicLists[index] ?? []).map((musicItem, musicIndex) => attachSheetMusicMeta(
+                            musicItem as IMusic.IMusicItem,
+                            allSheets[index]?.musicList?.[musicIndex],
+                        )) as IMusic.IMusicItem[],
+                        sheet.sortType,
+                    );
                 });
             });
 

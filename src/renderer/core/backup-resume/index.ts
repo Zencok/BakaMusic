@@ -17,7 +17,9 @@ async function resume(data: string | Record<string, any>, overwrite?: boolean) {
             importedDefaultSheet = sheet;
             continue;
         }
-        const newSheet = await MusicSheet.frontend.addSheet(sheet.title);
+        const newSheet = await MusicSheet.frontend.addSheet(sheet.title, {
+            sortType: sheet.sortType,
+        });
         await MusicSheet.frontend.addMusicToSheet(sheet.musicList, newSheet.id);
     }
     if (overwrite) {

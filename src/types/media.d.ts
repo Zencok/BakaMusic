@@ -25,6 +25,14 @@ declare namespace IMedia {
 }
 
 declare namespace IMusic {
+  type IMusicSheetSortType =
+    | "None"
+    | "title"
+    | "artist"
+    | "album"
+    | "time"
+    | "time-rev";
+
   interface IMusicSource {
     /** 播放的http请求头 */
     headers?: Record<string, string>;
@@ -79,6 +87,8 @@ declare namespace IMusic {
     musicList?: IMusicItem[];
     /** 歌单创建日期 */
     createAt?: number;
+    /** 歌单内歌曲排序方式 */
+    sortType?: IMusicSheetSortType;
     // 歌单作者
     artist?: string;
   }

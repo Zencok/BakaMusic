@@ -2,7 +2,7 @@ import Store from "@/common/store";
 import * as backend from "../backend";
 import defaultSheet from "../common/default-sheet";
 import { useEffect, useRef, useState } from "react";
-import { RequestStateCode, localPluginName } from "@/common/constant";
+import { MusicSheetSortType, RequestStateCode, localPluginName } from "@/common/constant";
 import { toMediaBase } from "@/common/media-util";
 
 const musicSheetsStore = new Store<IMusic.IDBMusicSheetItem[]>([]);
@@ -36,9 +36,14 @@ export async function setupMusicSheets() {
  * @param sheetName 歌单名
  * @returns 新建的歌单信息
  */
-export async function addSheet(sheetName: string) {
+export async function addSheet(
+    sheetName: string,
+    options?: {
+        sortType?: IMusic.IMusicSheetSortType | null;
+    },
+) {
     try {
-        const newSheetDetail = await backend.addSheet(sheetName);
+        const newSheetDetail = await backend.addSheet(sheetName, options);
         musicSheetsStore.setValue(backend.getAllSheets());
         return newSheetDetail;
     } catch {
@@ -79,10 +84,12 @@ export async function updateSheetMusicOrder(
             .find((it) => it.id === sheetId);
         updateSheetDetail({
             ...targetSheet,
+            sortType: MusicSheetSortType.None,
             musicList,
         });
         await backend.updateSheet(sheetId, {
             musicList: musicList.map(toMediaBase) as any,
+            sortType: MusicSheetSortType.None,
         });
         musicSheetsStore.setValue(backend.getAllSheets());
     } catch {

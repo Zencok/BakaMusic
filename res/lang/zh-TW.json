@@ -298,6 +298,12 @@
       "double_click_music_list": "雙擊歌曲列表時",
       "add_music_to_playlist": "添加歌曲到播放清單",
       "replace_playlist_with_musiclist": "用當前歌單替換播放清單",
+      "new_sheet_default_sort": "新建歌單時預設歌曲排序",
+      "sort_by_title": "按歌曲名排序",
+      "sort_by_artist": "按作者名排序",
+      "sort_by_album": "按專輯名排序",
+      "sort_by_collected_newest": "按收藏時間從新到舊排序",
+      "sort_by_collected_oldest": "按收藏時間從舊到新排序",
       "audio_output_device": "音頻輸出設備",
       "when_device_removed": "當音頻裝置被移除時",
       "continue_playing": "繼續播放"

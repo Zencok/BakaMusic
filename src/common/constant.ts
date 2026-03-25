@@ -27,6 +27,15 @@ export const supportedMediaType = [
 
 export const rem = 13;
 
+export enum MusicSheetSortType {
+    None = "None",
+    Title = "title",
+    Artist = "artist",
+    Album = "album",
+    Newest = "time",
+    Oldest = "time-rev",
+}
+
 export enum RequestStateCode {
     /** 空闲 */
     IDLE = 0b00000000,

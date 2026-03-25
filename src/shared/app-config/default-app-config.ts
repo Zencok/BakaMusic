@@ -7,6 +7,7 @@ const _defaultAppConfig: IAppConfig =  {
     "playMusic.defaultQuality": "320k",
     "playMusic.clickMusicList": "replace",
     "playMusic.caseSensitiveInSearch": false,
+    "playMusic.newSheetDefaultSort": "time",
     "playMusic.playError": "skip",
     "playMusic.whenDeviceRemoved": "play",
     "normal.taskbarThumb": "window",

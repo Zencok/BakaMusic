@@ -16,6 +16,8 @@ interface _IAppConfig {
     "playMusic.whenQualityMissing": "higher" | "lower" | "skip";
     /** 双击音乐列表时 */
     "playMusic.clickMusicList": "normal" | "replace";
+    /** 新建歌单时默认歌曲排序 */
+    "playMusic.newSheetDefaultSort": Exclude<IMusic.IMusicSheetSortType, "None">;
     /** 播放失败时 */
     "playMusic.playError": "pause" | "skip";
     /** 输出设备 */
