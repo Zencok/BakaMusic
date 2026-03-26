@@ -314,7 +314,20 @@
       "default_download_quality": "Default download quality",
       "when_quality_missing": "When download quality is missing",
       "download_lower_quality_version": "Download lower quality version",
-      "download_higher_quality_version": "Download higher quality version"
+      "download_higher_quality_version": "Download higher quality version",
+      "write_metadata": "Write metadata while downloading",
+      "write_metadata_cover": "Embed cover art",
+      "write_metadata_lyric": "Embed lyrics",
+      "download_lyric_file": "Download lyric file",
+      "lyric_file_format": "Lyric file format",
+      "lyric_content_order": "Lyric content order",
+      "lyric_content_order_tip": "Choose which lyric variants to export and adjust their order.",
+      "enable_word_by_word_lyric": "Preserve word-by-word lyrics",
+      "lyric_original": "Original lyrics",
+      "lyric_translation": "Translated lyrics",
+      "lyric_romanization": "Romanized lyrics",
+      "move_up": "Move up",
+      "move_down": "Move down"
     },
     "lyric": {
       "enable_status_bar_lyric": "Enable status bar lyric",

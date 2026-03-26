@@ -70,6 +70,20 @@ interface _IAppConfig {
     "download.whenQualityMissing": "higher" | "lower";
     /** 最多同时下载 */
     "download.concurrency": number;
+    /** 下载时写入音频标签 */
+    "download.writeMetadata": boolean;
+    /** 下载时写入封面 */
+    "download.writeMetadataCover": boolean;
+    /** 下载时写入歌词 */
+    "download.writeMetadataLyric": boolean;
+    /** 下载歌词文件 */
+    "download.downloadLyricFile": boolean;
+    /** 歌词文件格式 */
+    "download.lyricFileFormat": "lrc" | "txt";
+    /** 歌词导出顺序 */
+    "download.lyricOrder": Array<"original" | "translation" | "romanization">;
+    /** 是否保留逐字歌词 */
+    "download.enableWordByWordLyric": boolean;
 
     /** 是否自动升级插件 */
     "plugin.autoUpdatePlugin": boolean;

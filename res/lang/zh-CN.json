@@ -314,7 +314,20 @@
       "default_download_quality": "默认下载音质",
       "when_quality_missing": "下载音质缺失时",
       "download_lower_quality_version": "下载更低音质",
-      "download_higher_quality_version": "下载更高音质"
+      "download_higher_quality_version": "下载更高音质",
+      "write_metadata": "下载时写入音乐标签",
+      "write_metadata_cover": "写入封面",
+      "write_metadata_lyric": "写入歌词",
+      "download_lyric_file": "下载歌词文件",
+      "lyric_file_format": "歌词文件格式",
+      "lyric_content_order": "歌词内容顺序",
+      "lyric_content_order_tip": "勾选要导出的歌词类型，并调整写入顺序",
+      "enable_word_by_word_lyric": "保留逐字歌词",
+      "lyric_original": "原文歌词",
+      "lyric_translation": "翻译歌词",
+      "lyric_romanization": "罗马音歌词",
+      "move_up": "上移",
+      "move_down": "下移"
     },
     "lyric": {
       "enable_status_bar_lyric": "启用状态栏歌词",

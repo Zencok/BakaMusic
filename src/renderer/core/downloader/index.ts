@@ -22,7 +22,10 @@ import { useEffect, useState } from "react";
 import { DownloadEvts, ee } from "./ee";
 import AppConfig from "@shared/app-config/renderer";
 import PluginManager from "@shared/plugin-manager/renderer";
+import logger from "@shared/logger/renderer";
 import getUrlExt from "@/renderer/utils/get-url-ext";
+import { IDownloadPostprocessPayload } from "@/common/download-postprocess";
+import { buildDownloadPostprocessPayload } from "./postprocess";
 
 
 export interface IDownloadStatus {
@@ -45,6 +48,10 @@ interface IDownloaderWorker {
         mediaSource: IMusic.IMusicSource,
         filePath: string,
         onStateChange: ProxyMarkedFunction<IOnStateChangeFunc>
+    ) => Promise<void>;
+    postprocessDownloadedFile: (
+        filePath: string,
+        payload?: IDownloadPostprocessPayload | null,
     ) => Promise<void>;
 }
 
@@ -176,20 +183,17 @@ async function downloadMusicImpl(
                 mediaSource,
                 downloadPath,
                 Comlink.proxy((dataState) => {
-                    onStateChange(dataState);
                     if (dataState.state === DownloadState.DONE) {
-                        addDownloadedMusicToList(
-                            setInternalData<IMusic.IMusicItemInternalData>(
-                                musicItem as any,
-                                "downloadData",
-                                {
-                                    path: downloadPath,
-                                    quality: realQuality,
-                                },
-                                true,
-                            ) as IMusic.IMusicItem,
-                        );
+                        void finalizeDownloadedMusic(
+                            musicItem,
+                            downloadPath,
+                            realQuality,
+                        ).finally(() => {
+                            onStateChange(dataState);
+                        });
+                        return;
                     }
+                    onStateChange(dataState);
                 }),
             );
         } else {
@@ -201,6 +205,41 @@ async function downloadMusicImpl(
             msg: e?.message,
         });
     }
+}
+
+async function finalizeDownloadedMusic(
+    musicItem: IMusic.IMusicItem,
+    downloadPath: string,
+    realQuality: IMusic.IQualityKey,
+) {
+    const downloadedMusic = setInternalData<IMusic.IMusicItemInternalData>(
+        musicItem as any,
+        "downloadData",
+        {
+            path: downloadPath,
+            quality: realQuality,
+        },
+        true,
+    ) as IMusic.IMusicItem;
+
+    try {
+        const payload = await buildDownloadPostprocessPayload(musicItem);
+        if (payload) {
+            await downloaderWorker.postprocessDownloadedFile(downloadPath, payload);
+        }
+    } catch (error) {
+        logger.logError("下载后写入标签失败", error as Error, {
+            musicItem: {
+                id: musicItem.id,
+                platform: musicItem.platform,
+                title: musicItem.title,
+                artist: musicItem.artist,
+            },
+            downloadPath,
+        });
+    }
+
+    addDownloadedMusicToList(downloadedMusic);
 }
 
 function useDownloadStatus(musicItem: IMusic.IMusicItem) {

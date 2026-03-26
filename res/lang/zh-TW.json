@@ -314,7 +314,20 @@
       "default_download_quality": "預設下載音質",
       "when_quality_missing": "當下載音質缺失時",
       "download_lower_quality_version": "下載低音質版本",
-      "download_higher_quality_version": "下載高音質版本"
+      "download_higher_quality_version": "下載高音質版本",
+      "write_metadata": "下載時寫入音樂標籤",
+      "write_metadata_cover": "寫入封面",
+      "write_metadata_lyric": "寫入歌詞",
+      "download_lyric_file": "下載歌詞文件",
+      "lyric_file_format": "歌詞文件格式",
+      "lyric_content_order": "歌詞內容順序",
+      "lyric_content_order_tip": "勾選要導出的歌詞類型，並調整寫入順序",
+      "enable_word_by_word_lyric": "保留逐字歌詞",
+      "lyric_original": "原文歌詞",
+      "lyric_translation": "翻譯歌詞",
+      "lyric_romanization": "羅馬音歌詞",
+      "move_up": "上移",
+      "move_down": "下移"
     },
     "lyric": {
       "enable_status_bar_lyric": "啟用狀態欄歌詞",

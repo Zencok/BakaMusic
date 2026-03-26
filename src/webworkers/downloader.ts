@@ -1,10 +1,20 @@
 import * as Comlink from "comlink";
 import fs from "fs";
 import fsPromises from "fs/promises";
+import path from "path";
 import { Readable } from "stream";
 import { encodeUrlHeaders } from "@/common/normalize-util";
 import throttle from "lodash.throttle";
 import { DownloadState as DownloadState } from "@/common/constant";
+import {
+    formatLyricsByTimestamp,
+    IDownloadPostprocessPayload,
+} from "@/common/download-postprocess";
+import {
+    File as TagLibFile,
+    Id3v2Settings,
+    Picture,
+} from "node-taglib-sharp";
 import { rimraf } from "rimraf";
 
 async function cleanFile(filePath: string) {
@@ -16,6 +26,189 @@ async function cleanFile(filePath: string) {
     } catch {
         return false;
     }
+}
+
+function isAudioFile(filePath: string) {
+    return [
+        ".mp3",
+        ".flac",
+        ".wav",
+        ".aac",
+        ".m4a",
+        ".ogg",
+        ".wma",
+        ".opus",
+        ".mp4",
+    ].includes(path.extname(filePath).toLowerCase());
+}
+
+function resolveCoverExt(imgUrl: string, contentType?: string) {
+    const validExts = new Set([".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"]);
+    let urlExt: string | undefined;
+
+    try {
+        const pathname = new URL(imgUrl).pathname;
+        const index = pathname.lastIndexOf(".");
+        if (index >= 0) {
+            urlExt = pathname.slice(index).toLowerCase();
+        }
+    } catch {
+        urlExt = undefined;
+    }
+
+    if (urlExt && validExts.has(urlExt)) {
+        return urlExt === ".jpeg" ? ".jpg" : urlExt;
+    }
+
+    if (!contentType) {
+        return ".jpg";
+    }
+
+    if (contentType.includes("image/png")) {
+        return ".png";
+    }
+    if (contentType.includes("image/webp")) {
+        return ".webp";
+    }
+    if (contentType.includes("image/bmp")) {
+        return ".bmp";
+    }
+    if (contentType.includes("image/gif")) {
+        return ".gif";
+    }
+
+    return ".jpg";
+}
+
+async function downloadCoverTempFile(
+    filePath: string,
+    coverUrl: string,
+) {
+    const response = await fetch(coverUrl);
+    if (!response.ok) {
+        throw new Error(`download cover failed: ${response.status}`);
+    }
+
+    const ext = resolveCoverExt(
+        coverUrl,
+        response.headers.get("content-type") ?? undefined,
+    );
+    const coverPath = path.join(
+        path.dirname(filePath),
+        `.${path.basename(filePath, path.extname(filePath))}.cover-${Date.now()}${ext}`,
+    );
+    const bytes = Buffer.from(await response.arrayBuffer());
+    await fsPromises.writeFile(coverPath, bytes);
+    return coverPath;
+}
+
+function buildLyricContent(payload: IDownloadPostprocessPayload) {
+    if (!payload.lyricSource?.rawLrc) {
+        return "";
+    }
+
+    return formatLyricsByTimestamp(
+        payload.lyricSource.rawLrc,
+        payload.lyricSource.translation,
+        payload.lyricSource.romanization,
+        payload.options.lyricOrder,
+        {
+            enableWordByWord: payload.options.enableWordByWordLyric,
+        },
+    );
+}
+
+async function writeLyricFile(
+    filePath: string,
+    lyricContent: string,
+    format: "lrc" | "txt",
+) {
+    if (!lyricContent.trim()) {
+        return;
+    }
+
+    const lyricFilePath = `${filePath.replace(/\.[^.]+$/, "")}.${format}`;
+    await fsPromises.writeFile(lyricFilePath, lyricContent, "utf8");
+}
+
+async function writeMetadata(
+    filePath: string,
+    payload: IDownloadPostprocessPayload,
+    lyricContent: string,
+) {
+    const ext = path.extname(filePath).toLowerCase();
+    let coverTempFilePath: string | undefined;
+    const artists = payload.musicItem.artist
+        ? [payload.musicItem.artist]
+        : [];
+
+    if (ext === ".mp3") {
+        try {
+            Id3v2Settings.forceDefaultVersion = true;
+            Id3v2Settings.defaultVersion = 3;
+        } catch {
+            // pass
+        }
+    }
+
+    const songFile = TagLibFile.createFromPath(filePath);
+
+    try {
+        songFile.tag.title = payload.musicItem.title || path.basename(filePath, ext);
+        songFile.tag.album = payload.musicItem.album || "";
+        songFile.tag.performers = artists;
+        songFile.tag.albumArtists = artists;
+
+        if (payload.options.writeMetadataLyric && lyricContent.trim()) {
+            songFile.tag.lyrics = lyricContent;
+        }
+
+        if (payload.options.writeMetadataCover && payload.coverUrl) {
+            try {
+                coverTempFilePath = await downloadCoverTempFile(filePath, payload.coverUrl);
+                songFile.tag.pictures = [Picture.fromPath(coverTempFilePath)];
+            } catch {
+                coverTempFilePath = undefined;
+            }
+        }
+
+        if (ext !== ".wav") {
+            songFile.save();
+        }
+    } finally {
+        songFile.dispose();
+
+        if (coverTempFilePath) {
+            await fsPromises.unlink(coverTempFilePath).catch(() => {
+                // pass
+            });
+        }
+    }
+}
+
+async function postprocessDownloadedFile(
+    filePath: string,
+    payload?: IDownloadPostprocessPayload | null,
+) {
+    if (!payload) {
+        return;
+    }
+
+    const lyricContent = buildLyricContent(payload);
+
+    if (payload.options.downloadLyricFile) {
+        await writeLyricFile(
+            filePath,
+            lyricContent,
+            payload.options.lyricFileFormat,
+        );
+    }
+
+    if (!payload.options.writeMetadata || !isAudioFile(filePath)) {
+        return;
+    }
+
+    await writeMetadata(filePath, payload, lyricContent);
 }
 
 const responseToReadable = (
@@ -254,4 +447,5 @@ async function downloadFileNew(
 Comlink.expose({
     downloadFile,
     downloadFileNew,
+    postprocessDownloadedFile,
 });
