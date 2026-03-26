@@ -11,10 +11,6 @@
   box-shadow: var(--settingControlInset);
   box-sizing: border-box;
 
-  &:focus-within {
-    border-color: var(--settingControlBorderActive);
-  }
-
   & .input-label {
     min-width: 58px;
     color: var(--settingTextSecondary);
@@ -33,12 +29,6 @@
     background: var(--settingControlSurface);
     color: var(--settingTextPrimary);
     box-shadow: var(--settingControlInset);
-
-    &:focus {
-      border-color: var(--settingControlBorderActive);
-      background: color-mix(in srgb, var(--backgroundColor) 96%, transparent);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primaryColor) 10%, transparent);
-    }
   }
 
   & input:disabled {

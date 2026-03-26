@@ -10,12 +10,6 @@ input {
     color: var(--textColor);
     transition: all 0.2s ease;
 
-    &:focus {
-        border-color: var(--primaryColor);
-        background: var(--backgroundColor);
-        box-shadow: 0 0 0 2px rgba(241, 125, 52, 0.1);
-    }
-
     &::placeholder {
         opacity: 0.6;
         color: var(--textColor);
