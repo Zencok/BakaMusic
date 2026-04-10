@@ -70,7 +70,16 @@
     "music_repeat_mode": "播放模式",
     "music_repeat_mode_loop": "单曲循环",
     "music_repeat_mode_queue": "列表循环",
-    "music_repeat_mode_shuffle": "随机播放"
+    "music_repeat_mode_shuffle": "随机播放",
+    "media_filename": "文件名",
+    "media_size": "大小",
+    "media_year": "年份",
+    "media_folder": "文件夹",
+    "media_modified_time": "修改时间",
+    "media_added_time": "添加时间",
+    "sort_asc": "升序",
+    "sort_desc": "降序",
+    "sort_by": "排序"
   },
   "plugin": {
     "prop_user_variable": "用户变量",
@@ -332,12 +341,19 @@
     "lyric": {
       "enable_status_bar_lyric": "启用状态栏歌词",
       "enable_desktop_lyric": "启用桌面歌词",
+      "always_on_top": "歌词窗口置顶",
       "lock_desktop_lyric": "锁定桌面歌词",
+      "show_translation": "显示翻译",
       "show_romanization": "显示罗马音",
+      "mask_behavior": "遮罩行为",
+      "mask_behavior_auto": "自动隐藏遮罩",
+      "mask_behavior_static": "始终显示遮罩",
       "font": "字体",
       "font_size": "字体大小",
       "font_color": "字体颜色",
-      "stroke_color": "描边颜色"
+      "inactive_color": "弱化歌词颜色",
+      "stroke_color": "描边颜色",
+      "mask_color": "遮罩颜色"
     },
     "plugin": {
       "auto_update_plugin": "打开软件时自动更新插件",

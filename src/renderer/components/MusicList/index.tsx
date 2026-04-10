@@ -2,18 +2,16 @@
     ColumnDef,
     createColumnHelper,
     getCoreRowModel,
-    getSortedRowModel,
-    SortingState,
     useReactTable,
 } from "@tanstack/react-table";
 
 import "./index.scss";
 import albumImg from "@/assets/imgs/album-cover.jpg";
-import { localPluginName, qualityKeys, RequestStateCode } from "@/common/constant";
+import { localPluginName, qualityKeys, RequestStateCode, sortIndexSymbol, timeStampSymbol } from "@/common/constant";
 import { getInternalData, getMediaPrimaryKey, isSameMedia } from "@/common/media-util";
 import { normalizeFileSize } from "@/common/normalize-util";
 import { secondsToDuration } from "@/common/time-util";
-import { CSSProperties, memo, useCallback, useEffect, useRef, useState } from "react";
+import { CSSProperties, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import hotkeys from "hotkeys-js";
 import { toast } from "react-toastify";
 import useVirtualList from "@/hooks/useVirtualList";
@@ -40,6 +38,7 @@ import normalizeArtworkDisplaySrc from "@/renderer/utils/normalize-artwork-displ
 import { promptDownloadWithQuality } from "@/renderer/utils/download-quality";
 import LazyImage from "../LazyImage";
 import getCompactArtworkSrc from "@/renderer/utils/get-compact-artwork-src";
+import { getPlayCount } from "@/renderer/core/play-count";
 interface IMusicListProps {
     /** 鐏炴洜銇氶惃鍕尡閺€鎯у灙鐞?*/
     musicList: IMusic.IMusicItem[];
@@ -376,9 +375,19 @@ const compactTagStyle: CSSProperties = {
     maxWidth: "none",
 };
 
-const sortColumns = ["title", "artist", "album", "duration", "platform"] as const;
+type SortField = "title" | "album" | "artist" | "size" | "folder" | "playCount" | "duration" | "addedTime";
+type SortDirection = "asc" | "desc";
 
-type SortColumnId = typeof sortColumns[number];
+const sortFieldOptions: { id: SortField; labelKey: string }[] = [
+    { id: "title", labelKey: "media.media_filename" },
+    { id: "album", labelKey: "media.media_type_album" },
+    { id: "artist", labelKey: "media.media_type_artist" },
+    { id: "size", labelKey: "media.media_size" },
+    { id: "folder", labelKey: "media.media_folder" },
+    { id: "playCount", labelKey: "media.media_play_count" },
+    { id: "duration", labelKey: "media.media_duration" },
+    { id: "addedTime", labelKey: "media.media_added_time" },
+];
 
 function formatSizeText(size?: string | number) {
     if (size === undefined || size === null || size === "") {
@@ -431,20 +440,42 @@ function getBestQualityInfo(musicItem: IMusic.IMusicItem) {
     };
 }
 
-function getSortLabel(columnId: SortColumnId) {
-    switch (columnId) {
-        case "title":
-            return i18n.t("media.media_title");
-        case "artist":
-            return i18n.t("media.media_type_artist");
-        case "album":
-            return i18n.t("media.media_type_album");
-        case "duration":
-            return i18n.t("media.media_duration");
-        case "platform":
-            return i18n.t("media.media_platform");
-        default:
-            return columnId;
+function getSortValue(musicItem: IMusic.IMusicItem, field: SortField): string | number {
+    switch (field) {
+        case "title": return (musicItem.title ?? "").toLocaleLowerCase();
+        case "album": return (musicItem.album ?? "").toLocaleLowerCase();
+        case "artist": return (musicItem.artist ?? "").toLocaleLowerCase();
+        case "duration": return musicItem.duration ?? 0;
+        case "playCount": return getPlayCount(musicItem);
+        case "size": {
+            const qualities = musicItem?.qualities as IMusic.IQuality | undefined;
+            const source = musicItem?.source && typeof musicItem.source === "object"
+                ? musicItem.source as Partial<Record<IMusic.IQualityKey, { size?: string | number }>>
+                : undefined;
+            const quality = [...qualityKeys].reverse().find(q =>
+                qualities?.[q] !== undefined || source?.[q]?.size !== undefined,
+            );
+            if (!quality) return 0;
+            const sz = qualities?.[quality]?.size ?? source?.[quality]?.size;
+            if (typeof sz === "number") return sz;
+            const n = parseFloat(String(sz));
+            return isNaN(n) ? 0 : n;
+        }
+        case "folder": {
+            const localPath: string | undefined = (musicItem as any).$$localPath ?? (musicItem as any).localPath;
+            if (!localPath) return "";
+            const sep = localPath.includes("/") ? "/" : "\\";
+            const parts = localPath.split(sep);
+            parts.pop();
+            return parts.join(sep).toLocaleLowerCase();
+        }
+        case "addedTime": {
+            // $$addedAt is a string key persisted in IndexedDB; fall back to Symbol for same-session adds
+            const ts: number = (musicItem as any).$$addedAt ?? (musicItem as any)[timeStampSymbol] ?? 0;
+            const idx: number = (musicItem as any).$$batchIndex ?? (musicItem as any)[sortIndexSymbol] ?? 0;
+            return ts * 100000 + idx;
+        }
+        default: return "";
     }
 }
 
@@ -482,7 +513,52 @@ function _MusicList(props: IMusicListProps) {
 
     const currentMusic = useCurrentMusic();
     const hiddenRows = new Set(hideRows ?? []);
-    const [sorting, setSorting] = useState<SortingState>([]);
+    const [sortField, setSortFieldRaw] = useState<SortField>(
+        () => (localStorage.getItem("musicListSortField") as SortField) ?? "addedTime",
+    );
+    const [sortDirection, setSortDirectionRaw] = useState<SortDirection>(
+        () => (localStorage.getItem("musicListSortDirection") as SortDirection) ?? "desc",
+    );
+    const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+    const sortDropdownRef = useRef<HTMLDivElement>(null);
+
+    const setSortField = (f: SortField) => {
+        setSortFieldRaw(f);
+        localStorage.setItem("musicListSortField", f);
+    };
+    const setSortDirection = (d: SortDirection) => {
+        setSortDirectionRaw(d);
+        localStorage.setItem("musicListSortDirection", d);
+    };
+
+    const sortedMusicList = useMemo(() => {
+        return musicList.map((item, i) => ({ item, i }))
+            .sort((a, b) => {
+                const av = getSortValue(a.item, sortField);
+                const bv = getSortValue(b.item, sortField);
+                let cmp: number;
+                if (typeof av === "string") {
+                    cmp = av.localeCompare(bv as string);
+                } else {
+                    cmp = (av as number) - (bv as number);
+                }
+                // tiebreaker: original index preserves stable add-order
+                if (cmp === 0) cmp = a.i - b.i;
+                return sortDirection === "asc" ? cmp : -cmp;
+            })
+            .map(({ item }) => item);
+    }, [musicList, sortField, sortDirection]);
+
+    useEffect(() => {
+        if (!sortDropdownOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (sortDropdownRef.current && !sortDropdownRef.current.contains(e.target as Node)) {
+                setSortDropdownOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, [sortDropdownOpen]);
 
     const musicListRef = useRef(musicList);
     const columnShownRef = useRef(
@@ -497,19 +573,16 @@ function _MusicList(props: IMusicListProps) {
 
     const table = useReactTable({
         debugAll: false,
-        data: musicList,
+        data: sortedMusicList,
         columns: columnDef,
         state: {
-            sorting,
             columnVisibility: hideRows
                 ? hideRows.reduce((prev, curr) => ({ ...prev, [curr]: false }), {
                     ...columnShownRef.current,
                 })
                 : columnShownRef.current,
         },
-        onSortingChange: setSorting,
         getCoreRowModel: getCoreRowModel(),
-        getSortedRowModel: getSortedRowModel(),
     });
 
     const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -534,8 +607,8 @@ function _MusicList(props: IMusicListProps) {
     useEffect(() => {
         setActiveItems(new Set());
         lastActiveIndexRef.current = 0;
-        musicListRef.current = musicList;
-    }, [musicList]);
+        musicListRef.current = sortedMusicList;
+    }, [sortedMusicList]);
 
     useEffect(() => {
         const ctrlAHandler = (evt: Event) => {
@@ -583,8 +656,7 @@ function _MusicList(props: IMusicListProps) {
         );
     }, [doubleClickBehavior, table]);
 
-    const currentSortId = sorting[0]?.id as SortColumnId | undefined;
-    const currentSortDesc = !!sorting[0]?.desc;
+    const currentSortIsDefault = sortField === "addedTime" && sortDirection === "desc";
 
     return (
         <div
@@ -609,38 +681,48 @@ function _MusicList(props: IMusicListProps) {
                         {table.getRowModel().rows.length}
                     </span>
                 </div>
-                <div className="music-list-sorters">
-                    {sortColumns
-                        .filter((columnId) => !hiddenRows.has(columnId))
-                        .map((columnId) => {
-                            const isActive = currentSortId === columnId;
-                            const iconName = !isActive
-                                ? "sort"
-                                : currentSortDesc
-                                    ? "sort-desc"
-                                    : "sort-asc";
-
-                            return (
+                <div className="music-list-sort-wrapper" ref={sortDropdownRef}>
+                    <button
+                        type="button"
+                        className="music-list-sort-btn"
+                        data-active={!currentSortIsDefault || sortDropdownOpen}
+                        title={i18n.t("media.sort_by")}
+                        onClick={() => setSortDropdownOpen(v => !v)}
+                    >
+                        <SvgAsset iconName={sortDirection === "desc" ? "sort-desc" : "sort-asc"} size={18}></SvgAsset>
+                    </button>
+                    {sortDropdownOpen && (
+                        <div className="music-list-sort-dropdown">
+                            {sortFieldOptions.map(opt => (
                                 <button
+                                    key={opt.id}
                                     type="button"
-                                    key={columnId}
-                                    className="music-list-sorter"
-                                    data-active={isActive}
-                                    onClick={() => {
-                                        if (!isActive) {
-                                            setSorting([{ id: columnId, desc: false }]);
-                                        } else if (!currentSortDesc) {
-                                            setSorting([{ id: columnId, desc: true }]);
-                                        } else {
-                                            setSorting([]);
-                                        }
-                                    }}
+                                    className="music-list-sort-option"
+                                    data-active={sortField === opt.id}
+                                    onClick={() => setSortField(opt.id)}
                                 >
-                                    <span>{getSortLabel(columnId)}</span>
-                                    <SvgAsset iconName={iconName} size={14}></SvgAsset>
+                                    {i18n.t(opt.labelKey)}
                                 </button>
-                            );
-                        })}
+                            ))}
+                            <div className="music-list-sort-divider" />
+                            <button
+                                type="button"
+                                className="music-list-sort-option"
+                                data-active={sortDirection === "asc"}
+                                onClick={() => setSortDirection("asc")}
+                            >
+                                {i18n.t("media.sort_asc")}
+                            </button>
+                            <button
+                                type="button"
+                                className="music-list-sort-option"
+                                data-active={sortDirection === "desc"}
+                                onClick={() => setSortDirection("desc")}
+                            >
+                                {i18n.t("media.sort_desc")}
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
             {musicList.length ? (

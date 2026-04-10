@@ -70,7 +70,16 @@
     "music_repeat_mode": "Repeat Mode",
     "music_repeat_mode_loop": "Single Loop",
     "music_repeat_mode_queue": "Queue Loop",
-    "music_repeat_mode_shuffle": "Shuffle Play"
+    "music_repeat_mode_shuffle": "Shuffle Play",
+    "media_filename": "Filename",
+    "media_size": "Size",
+    "media_year": "Year",
+    "media_folder": "Folder",
+    "media_modified_time": "Modified",
+    "media_added_time": "Added",
+    "sort_asc": "Ascending",
+    "sort_desc": "Descending",
+    "sort_by": "Sort"
   },
   "plugin": {
     "prop_user_variable": "User Variable",
@@ -332,12 +341,19 @@
     "lyric": {
       "enable_status_bar_lyric": "Enable status bar lyric",
       "enable_desktop_lyric": "Enable desktop lyric",
+      "always_on_top": "Keep lyric window on top",
       "lock_desktop_lyric": "Lock desktop lyric",
+      "show_translation": "Show Translation",
       "show_romanization": "Show Romanization",
+      "mask_behavior": "Mask behavior",
+      "mask_behavior_auto": "Auto-hide mask",
+      "mask_behavior_static": "Always show mask",
       "font": "Font",
       "font_size": "Font Size",
       "font_color": "Font Color",
-      "stroke_color": "Stroke Color"
+      "inactive_color": "Inactive lyric color",
+      "stroke_color": "Stroke Color",
+      "mask_color": "Mask Color"
     },
     "plugin": {
       "auto_update_plugin": "Automatically update plugins on startup",

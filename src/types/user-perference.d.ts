@@ -40,6 +40,8 @@ declare namespace IUserPreference {
     localWatchDirChecked: string[];
     /** 收藏的歌单 */
     starredMusicSheets: IMedia.IMediaBase[];
+    /** 播放次数统计 */
+    playCountMap: Record<string, number>;
     /** 搜索历史 */
     searchHistory: string[];
     /** 插件数据 */

@@ -31,6 +31,7 @@ import { createUniqueMap } from "@/common/unique-map";
 import { getLinkedLyric } from "@renderer/core/link-lyric";
 import { fsUtil } from "@shared/utils/renderer";
 import PluginManager from "@shared/plugin-manager/renderer";
+import { incrementPlayCount } from "@renderer/core/play-count";
 
 const {
     musicQueueStore,
@@ -901,6 +902,7 @@ class TrackPlayer {
 
             if (musicItem) {
                 setUserPreference("currentMusic", musicItem);
+                incrementPlayCount(musicItem);
             } else {
                 removeUserPreference("currentMusic");
             }

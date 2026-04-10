@@ -7,6 +7,7 @@ import AppConfig from "@shared/app-config/renderer";
 import { setupI18n } from "@/shared/i18n/renderer";
 import ThemePack from "@/shared/themepack/renderer";
 import { addToRecentlyPlaylist, setupRecentlyPlaylist } from "../core/recently-playlist";
+import { setupPlayCount } from "../core/play-count";
 import ServiceManager from "@shared/service-manager/renderer";
 import { CurrentTime, PlayerEvents } from "@renderer/core/track-player/enum";
 import { appWindowUtil, fsUtil } from "@shared/utils/renderer";
@@ -113,6 +114,7 @@ export default async function () {
     setupDeviceChange();
     await Downloader.setupDownloader();
     setupRecentlyPlaylist();
+    void setupPlayCount();
     // 本地服务
     await ServiceManager.setup();
     // startRendererMemoryTelemetry();

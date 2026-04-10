@@ -70,7 +70,16 @@
     "music_repeat_mode": "重複模式",
     "music_repeat_mode_loop": "單曲重複",
     "music_repeat_mode_queue": "列表重複",
-    "music_repeat_mode_shuffle": "隨機播放"
+    "music_repeat_mode_shuffle": "隨機播放",
+    "media_filename": "檔名",
+    "media_size": "大小",
+    "media_year": "年份",
+    "media_folder": "資料夾",
+    "media_modified_time": "修改時間",
+    "media_added_time": "加入時間",
+    "sort_asc": "升序",
+    "sort_desc": "降序",
+    "sort_by": "排序"
   },
   "plugin": {
     "prop_user_variable": "用戶變量",
@@ -332,12 +341,19 @@
     "lyric": {
       "enable_status_bar_lyric": "啟用狀態欄歌詞",
       "enable_desktop_lyric": "啟用桌面歌詞",
+      "always_on_top": "歌詞視窗置頂",
       "lock_desktop_lyric": "鎖定桌面歌詞",
+      "show_translation": "顯示翻譯",
       "show_romanization": "顯示羅馬音",
+      "mask_behavior": "遮罩行為",
+      "mask_behavior_auto": "自動隱藏遮罩",
+      "mask_behavior_static": "始終顯示遮罩",
       "font": "字體",
       "font_size": "字體大小",
       "font_color": "字體顏色",
-      "stroke_color": "描邊顏色"
+      "inactive_color": "弱化歌詞顏色",
+      "stroke_color": "描邊顏色",
+      "mask_color": "遮罩顏色"
     },
     "plugin": {
       "auto_update_plugin": "啟動應用時自動更新插件",

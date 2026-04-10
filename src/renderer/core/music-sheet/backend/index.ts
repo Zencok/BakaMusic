@@ -67,8 +67,10 @@ function attachSheetMusicMeta<T extends IMusic.IMusicItem>(
 
     return {
         ...musicItem,
-        [timeStampSymbol]: meta?.[timeStampSymbol],
-        [sortIndexSymbol]: meta?.[sortIndexSymbol],
+        [timeStampSymbol]: meta?.[timeStampSymbol] ?? (meta as any)?.$$addedAt,
+        [sortIndexSymbol]: meta?.[sortIndexSymbol] ?? (meta as any)?.$$batchIndex,
+        $$addedAt: (meta as any)?.$$addedAt ?? meta?.[timeStampSymbol],
+        $$batchIndex: (meta as any)?.$$batchIndex ?? meta?.[sortIndexSymbol],
     };
 }
 
@@ -373,6 +375,8 @@ export async function addMusicToSheet(
                                 id: item.id,
                                 [sortIndexSymbol]: index,
                                 [timeStampSymbol]: timeStamp,
+                                $$addedAt: timeStamp,
+                                $$batchIndex: index,
                             })),
                         ];
                         targetSheet.artwork = obj.artwork;
