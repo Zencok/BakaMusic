@@ -32,6 +32,8 @@ coverage
 # Compiled binary addons (https://nodejs.org/api/addons.html)
 build/Release
 native/
+!res/.service/native/
+!res/.service/native/*.node
 
 # Dependency directories
 node_modules/
