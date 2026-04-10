@@ -63,6 +63,27 @@ async function checkUpdate() {
     return await ipcRenderer.invoke("@shared/utils/check-update");
 }
 
+async function downloadUpdate(urls: string[]): Promise<string> {
+    return await ipcRenderer.invoke("@shared/utils/download-update", urls);
+}
+
+function onUpdateDownloadProgress(
+    callback: (progress: { downloaded: number; total: number }) => void,
+): () => void {
+    const handler = (_: Electron.IpcRendererEvent, progress: { downloaded: number; total: number }) =>
+        callback(progress);
+    ipcRenderer.on("@shared/utils/update-download-progress", handler);
+    return () => ipcRenderer.off("@shared/utils/update-download-progress", handler);
+}
+
+function installUpdate(filePath: string): void {
+    ipcRenderer.send("@shared/utils/install-update", filePath);
+}
+
+function cancelUpdateDownload(): void {
+    ipcRenderer.send("@shared/utils/cancel-update-download");
+}
+
 async function getCacheSize() {
     return await ipcRenderer.invoke("@shared/utils/get-cache-size");
 }
@@ -75,6 +96,10 @@ const app = {
     exitApp,
     getPath,
     checkUpdate,
+    downloadUpdate,
+    onUpdateDownloadProgress,
+    installUpdate,
+    cancelUpdateDownload,
     getCacheSize,
     clearCache,
 };
@@ -97,6 +122,18 @@ function setMinimodeWindow(enabled: boolean) {
     ipcRenderer.send("@shared/utils/set-minimode-window", enabled);
 }
 
+function setLyricWindowLock(lockState: boolean) {
+    ipcRenderer.send("@shared/utils/set-lyric-window-lock", lockState);
+}
+
+async function getCurrentWindowBounds() {
+    return await ipcRenderer.invoke("@shared/utils/get-current-window-bounds");
+}
+
+async function getAllWorkAreas() {
+    return await ipcRenderer.invoke("@shared/utils/get-all-work-areas");
+}
+
 function ignoreMouseEvent(ignore: boolean) {
     ipcRenderer.send("@shared/utils/ignore-mouse-event", ignore);
 }
@@ -106,6 +143,10 @@ function setCurrentWindowSize(width: number, height: number) {
         width,
         height,
     });
+}
+
+function setCurrentWindowBounds(bounds: Electron.Rectangle) {
+    ipcRenderer.send("@shared/utils/set-current-window-bounds", bounds);
 }
 
 function toggleMainWindowVisible() {
@@ -121,8 +162,12 @@ const appWindow = {
     showMainWindow,
     setLyricWindow,
     setMinimodeWindow,
+    setLyricWindowLock,
+    getCurrentWindowBounds,
+    getAllWorkAreas,
     ignoreMouseEvent,
     setCurrentWindowSize,
+    setCurrentWindowBounds,
     toggleMainWindowVisible,
     toggleMainWindowMaximize,
 };

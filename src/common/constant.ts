@@ -174,10 +174,18 @@ export const themePackStoreBaseUrl = [
     "https://dev.azure.com/maotoumao/MusicFree/_apis/git/repositories/MusicFreeThemePacks/items?scopePath=/.publish/publish.json&api-version=6.0", // azure
 ];
 
-export const appUpdateSources = [
-    "https://raw.githubusercontent.com/Zencok/BakaMusic/master/release/version.json",
-    "https://cdn.jsdelivr.net/gh/Zencok/BakaMusic@master/release/version.json",
-    "https://raw.githubusercontent.com/Zencok/BakaMusic/dev/release/version.json",
+// GitHub API 端点，优先使用国内镜像
+export const appUpdateApiSources = [
+    "https://api.gitmirror.com/repos/Zencok/BakaMusic/releases/latest",
+    "https://api.github.com/repos/Zencok/BakaMusic/releases/latest",
+];
+
+// GitHub 下载加速镜像前缀（空字符串表示直连）
+export const githubDownloadMirrors = [
+    "https://mirror.ghproxy.com/",
+    "https://ghproxy.com/",
+    "https://hub.gitmirror.com/",
+    "",
 ];
 
 export enum TrackPlayerSyncType {

@@ -14,6 +14,10 @@ interface IMod {
         exitApp: () => void;
         getPath: (pathName: "home" | "appData" | "userData" | "sessionData" | "temp" | "exe" | "module" | "desktop" | "documents" | "downloads" | "music" | "pictures" | "videos" | "recent" | "logs" | "crashDumps") => Promise<string>;
         checkUpdate: () => Promise<ICommon.IUpdateInfo>;
+        downloadUpdate: (urls: string[]) => Promise<string>;
+        onUpdateDownloadProgress: (callback: (progress: { downloaded: number; total: number }) => void) => () => void;
+        installUpdate: (filePath: string) => void;
+        cancelUpdateDownload: () => void;
         clearCache: () => void;
         getCacheSize: () => Promise<number>;
     }
@@ -23,8 +27,11 @@ interface IMod {
         setLyricWindow: (enabled: boolean) => void;
         setMinimodeWindow: (enabled: boolean) => void;
         setLyricWindowLock: (lockState: boolean) => void;
+        getCurrentWindowBounds: () => Promise<Electron.Rectangle>;
+        getAllWorkAreas: () => Promise<Electron.Rectangle[]>;
         ignoreMouseEvent: (ignore: boolean) => void;
         setCurrentWindowSize: (width: number, height: number) => void;
+        setCurrentWindowBounds: (bounds: Electron.Rectangle) => void;
         toggleMainWindowVisible: () => void;
         toggleMainWindowMaximize: () => void;
     },
