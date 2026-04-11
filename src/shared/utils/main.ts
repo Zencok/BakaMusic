@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, net, screen, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, screen, shell } from "electron";
 import { IWindowManager } from "@/types/main/window-manager";
 import fs from "fs/promises";
 import fsSync from "fs";
@@ -92,33 +92,32 @@ class Utils {
                     const fileName = path.basename(new URL(url).pathname) || "bakamusic-update";
                     filePath = path.join(tempDir, `bakamusic-update-${fileName}`);
 
-                    const response = await net.fetch(url, { redirect: "follow" });
+                    const response = await axios.get<NodeJS.ReadableStream>(url, {
+                        responseType: "stream",
+                        maxRedirects: 5,
+                    });
 
-                    if (!response.ok) {
+                    if (response.status < 200 || response.status >= 300) {
                         throw new Error(`HTTP ${response.status}`);
                     }
-                    if (!response.body) {
-                        throw new Error("Empty response body");
-                    }
 
-                    const total = parseInt(response.headers.get("content-length") || "0", 10);
+                    const total = parseInt(response.headers["content-length"] || "0", 10);
                     let downloaded = 0;
 
                     fileStream = fsSync.createWriteStream(filePath);
-                    const reader = response.body.getReader();
 
-                    // eslint-disable-next-line no-constant-condition
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-                        await new Promise<void>((res, rej) => fileStream!.write(value, (e) => (e ? rej(e) : res())));
-                        downloaded += value.length;
-                        if (!evt.sender.isDestroyed()) {
-                            evt.sender.send("@shared/utils/update-download-progress", { downloaded, total });
-                        }
-                    }
-
-                    await new Promise<void>((res, rej) => fileStream!.end((e: any) => (e ? rej(e) : res())));
+                    await new Promise<void>((res, rej) => {
+                        response.data.on("data", (chunk: Buffer) => {
+                            downloaded += chunk.length;
+                            if (!evt.sender.isDestroyed()) {
+                                evt.sender.send("@shared/utils/update-download-progress", { downloaded, total });
+                            }
+                        });
+                        response.data.on("error", rej);
+                        response.data.pipe(fileStream!);
+                        fileStream!.on("finish", res);
+                        fileStream!.on("error", rej);
+                    });
                     fileStream = null;
 
                     // 校验文件大小，防止下载到错误页
