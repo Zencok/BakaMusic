@@ -79,7 +79,8 @@
     "media_added_time": "Added",
     "sort_asc": "Ascending",
     "sort_desc": "Descending",
-    "sort_by": "Sort"
+    "sort_by": "Sort",
+    "sort_custom": "Custom"
   },
   "plugin": {
     "prop_user_variable": "User Variable",

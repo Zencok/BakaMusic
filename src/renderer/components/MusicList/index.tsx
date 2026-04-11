@@ -375,10 +375,11 @@ const compactTagStyle: CSSProperties = {
     maxWidth: "none",
 };
 
-type SortField = "title" | "album" | "artist" | "size" | "folder" | "playCount" | "duration" | "addedTime";
+type SortField = "custom" | "title" | "album" | "artist" | "size" | "folder" | "playCount" | "duration" | "addedTime";
 type SortDirection = "asc" | "desc";
 
 const sortFieldOptions: { id: SortField; labelKey: string }[] = [
+    { id: "custom", labelKey: "media.sort_custom" },
     { id: "title", labelKey: "media.media_filename" },
     { id: "album", labelKey: "media.media_type_album" },
     { id: "artist", labelKey: "media.media_type_artist" },
@@ -532,6 +533,9 @@ function _MusicList(props: IMusicListProps) {
     };
 
     const sortedMusicList = useMemo(() => {
+        if (sortField === "custom") {
+            return musicList;
+        }
         return musicList.map((item, i) => ({ item, i }))
             .sort((a, b) => {
                 const av = getSortValue(a.item, sortField);
@@ -542,7 +546,6 @@ function _MusicList(props: IMusicListProps) {
                 } else {
                     cmp = (av as number) - (bv as number);
                 }
-                // tiebreaker: original index preserves stable add-order
                 if (cmp === 0) cmp = a.i - b.i;
                 return sortDirection === "asc" ? cmp : -cmp;
             })
@@ -657,7 +660,6 @@ function _MusicList(props: IMusicListProps) {
     }, [doubleClickBehavior, table]);
 
     const currentSortIsDefault = sortField === "addedTime" && sortDirection === "desc";
-
     return (
         <div
             className="music-list-container"
@@ -705,6 +707,7 @@ function _MusicList(props: IMusicListProps) {
                                 </button>
                             ))}
                             <div className="music-list-sort-divider" />
+                            {sortField !== "custom" && (<>
                             <button
                                 type="button"
                                 className="music-list-sort-option"
@@ -721,6 +724,7 @@ function _MusicList(props: IMusicListProps) {
                             >
                                 {i18n.t("media.sort_desc")}
                             </button>
+                            </>)}
                         </div>
                     )}
                 </div>
@@ -827,7 +831,7 @@ function _MusicList(props: IMusicListProps) {
                                         onDoubleClick={() => {
                                             playMusicItem(musicItem);
                                         }}
-                                        draggable={enableDrag}
+                                        draggable={enableDrag && sortField === "custom"}
                                         onDragStart={(e) => {
                                             startDrag(e, virtualItem.rowIndex, "musiclist");
                                         }}
@@ -980,7 +984,7 @@ function _MusicList(props: IMusicListProps) {
                                             </div>
                                         </div>
                                     </div>
-                                    <IfTruthy condition={enableDrag}>
+                                    <IfTruthy condition={enableDrag && sortField === "custom"}>
                                         <IfTruthy condition={index === 0}>
                                             <DragReceiver
                                                 position="top"
