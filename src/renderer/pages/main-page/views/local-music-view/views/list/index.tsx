@@ -13,6 +13,7 @@ export default function ListView(props: IProps) {
             containerStyle={{
                 marginTop: "12px",
             }}
+            sortStorageKey="local-music"
             musicList={localMusicList}
             virtualProps={{
                 getScrollElement() {

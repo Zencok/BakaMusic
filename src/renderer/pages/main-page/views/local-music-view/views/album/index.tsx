@@ -49,6 +49,7 @@ export default function AlbumView(props: IProps) {
             </div>
             <div className="right-part" ref={rightPartRef}>
                 <MusicList
+                    sortStorageKey="local-music"
                     musicList={allMusic[actualSelectedKey as any] ?? []}
                     hideRows={["album"]}
                     virtualProps={{

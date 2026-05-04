@@ -54,6 +54,7 @@ export default function ArtistView(props: IProps) {
             </div>
             <div className="right-part" ref={rightPartRef}>
                 <MusicList
+                    sortStorageKey="local-music"
                     musicList={allMusic[actualSelectedKey] ?? []}
                     hideRows={["artist"]}
                     virtualProps={{

@@ -15,6 +15,8 @@ function MusicResult(props: IMediaResultProps) {
 
     return (
         <MusicList
+            sortStorageKey="search"
+            useSearchDefaultSort
             doubleClickBehavior="normal"
             musicList={data}
             state={state}

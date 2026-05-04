@@ -67,6 +67,10 @@ interface IMusicListProps {
     onDragEnd?: (newMusicList: IMusic.IMusicItem[]) => void;
     /** context */
     contextMenu?: IContextMenuItem[];
+    /** 排序配置存储标识；相同标识共享排序配置 */
+    sortStorageKey?: string;
+    /** 是否使用搜索结果默认排序（自定义排序） */
+    useSearchDefaultSort?: boolean;
 }
 
 function ArtworkContent(props: {
@@ -510,27 +514,57 @@ function _MusicList(props: IMusicListProps) {
         hideRows,
         enableDrag,
         onDragEnd,
+        sortStorageKey,
+        useSearchDefaultSort = false,
     } = props;
 
     const currentMusic = useCurrentMusic();
     const hiddenRows = new Set(hideRows ?? []);
-    const [sortField, setSortFieldRaw] = useState<SortField>(
-        () => (localStorage.getItem("musicListSortField") as SortField) ?? "addedTime",
-    );
-    const [sortDirection, setSortDirectionRaw] = useState<SortDirection>(
-        () => (localStorage.getItem("musicListSortDirection") as SortDirection) ?? "desc",
-    );
+
+    const listKey = useMemo(() => {
+        if (sortStorageKey) {
+            return sortStorageKey;
+        }
+        if (musicSheet) {
+            return `sheet_${musicSheet.platform}_${musicSheet.id}`;
+        }
+        return "default";
+    }, [sortStorageKey, musicSheet]);
+
+    const getDefaultSort = useCallback((): { field: SortField; direction: SortDirection } => {
+        if (useSearchDefaultSort) {
+            return { field: "custom", direction: "desc" };
+        }
+        return { field: "addedTime", direction: "desc" };
+    }, [useSearchDefaultSort]);
+
+    const [sortField, setSortFieldRaw] = useState<SortField>(() => {
+        const stored = localStorage.getItem(`musicListSortField_${listKey}`) as SortField;
+        return stored ?? getDefaultSort().field;
+    });
+    const [sortDirection, setSortDirectionRaw] = useState<SortDirection>(() => {
+        const stored = localStorage.getItem(`musicListSortDirection_${listKey}`) as SortDirection;
+        return stored ?? getDefaultSort().direction;
+    });
     const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
     const sortDropdownRef = useRef<HTMLDivElement>(null);
 
     const setSortField = (f: SortField) => {
         setSortFieldRaw(f);
-        localStorage.setItem("musicListSortField", f);
+        localStorage.setItem(`musicListSortField_${listKey}`, f);
     };
     const setSortDirection = (d: SortDirection) => {
         setSortDirectionRaw(d);
-        localStorage.setItem("musicListSortDirection", d);
+        localStorage.setItem(`musicListSortDirection_${listKey}`, d);
     };
+
+    useEffect(() => {
+        const stored = localStorage.getItem(`musicListSortField_${listKey}`) as SortField;
+        const storedDirection = localStorage.getItem(`musicListSortDirection_${listKey}`) as SortDirection;
+        const defaults = getDefaultSort();
+        setSortFieldRaw(stored ?? defaults.field);
+        setSortDirectionRaw(storedDirection ?? defaults.direction);
+    }, [listKey, getDefaultSort]);
 
     const sortedMusicList = useMemo(() => {
         if (sortField === "custom") {
@@ -546,8 +580,10 @@ function _MusicList(props: IMusicListProps) {
                 } else {
                     cmp = (av as number) - (bv as number);
                 }
-                if (cmp === 0) cmp = a.i - b.i;
-                return sortDirection === "asc" ? cmp : -cmp;
+                if (cmp !== 0) {
+                    return sortDirection === "asc" ? cmp : -cmp;
+                }
+                return a.i - b.i;
             })
             .map(({ item }) => item);
     }, [musicList, sortField, sortDirection]);
@@ -659,7 +695,8 @@ function _MusicList(props: IMusicListProps) {
         );
     }, [doubleClickBehavior, table]);
 
-    const currentSortIsDefault = sortField === "addedTime" && sortDirection === "desc";
+    const defaultSort = getDefaultSort();
+    const currentSortIsDefault = sortField === defaultSort.field && sortDirection === defaultSort.direction;
     return (
         <div
             className="music-list-container"
@@ -708,22 +745,22 @@ function _MusicList(props: IMusicListProps) {
                             ))}
                             <div className="music-list-sort-divider" />
                             {sortField !== "custom" && (<>
-                            <button
-                                type="button"
-                                className="music-list-sort-option"
-                                data-active={sortDirection === "asc"}
-                                onClick={() => setSortDirection("asc")}
-                            >
-                                {i18n.t("media.sort_asc")}
-                            </button>
-                            <button
-                                type="button"
-                                className="music-list-sort-option"
-                                data-active={sortDirection === "desc"}
-                                onClick={() => setSortDirection("desc")}
-                            >
-                                {i18n.t("media.sort_desc")}
-                            </button>
+                                <button
+                                    type="button"
+                                    className="music-list-sort-option"
+                                    data-active={sortDirection === "asc"}
+                                    onClick={() => setSortDirection("asc")}
+                                >
+                                    {i18n.t("media.sort_asc")}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="music-list-sort-option"
+                                    data-active={sortDirection === "desc"}
+                                    onClick={() => setSortDirection("desc")}
+                                >
+                                    {i18n.t("media.sort_desc")}
+                                </button>
                             </>)}
                         </div>
                     )}
@@ -1029,13 +1066,12 @@ export default memo(
         prev.musicList === curr.musicList &&
         prev.onPageChange === curr.onPageChange &&
         prev.onDragEnd === curr.onDragEnd &&
+        prev.sortStorageKey === curr.sortStorageKey &&
+        prev.useSearchDefaultSort === curr.useSearchDefaultSort &&
         prev.musicSheet &&
         curr.musicSheet &&
         isSameMedia(prev.musicSheet, curr.musicSheet),
 );
-
-
-
 
 
 

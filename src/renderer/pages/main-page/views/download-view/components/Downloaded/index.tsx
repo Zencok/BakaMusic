@@ -9,6 +9,7 @@ export default function Downloaded() {
     return (
         <div ref={musicListContainerRef}>
             <MusicList
+                sortStorageKey="downloaded"
                 musicList={downloadedList}
                 virtualProps={{
                     getScrollElement() {

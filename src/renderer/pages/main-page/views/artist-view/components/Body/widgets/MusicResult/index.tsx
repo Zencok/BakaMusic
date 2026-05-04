@@ -28,6 +28,7 @@ export default function MusicResult(props: IBodyProps) {
             falsy={<Loading></Loading>}
         >
             <MusicList
+                sortStorageKey={`artist_${artistItem.platform}_${artistItem.id}`}
                 musicList={queryResult.data ?? []}
                 state={queryResult.state}
                 onPageChange={() => {
