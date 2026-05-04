@@ -30,6 +30,7 @@ export default function PlayMusic() {
                     "flac",
                     "flac24bit",
                     "hires",
+                    "vinyl",
                     "dolby",
                     "atmos",
                     "atmos_plus",

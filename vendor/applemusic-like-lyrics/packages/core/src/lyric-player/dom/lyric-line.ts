@@ -78,10 +78,10 @@ type MouseEventListener = (
 export class LyricLineEl extends LyricLineBase {
 	private element: HTMLElement = document.createElement("div");
 	private splittedWords: RealWord[] = [];
-	// 鏍囪鏄惁宸茬粡鏋勫缓浜嗚鍐呯殑瀹為檯 DOM锛堝崟璇嶄笌鍔ㄧ敾绛夛級
+	// 标记是否已经构建了行内的实际 DOM（单词与动画等）
 	private built = false;
 
-	// 鐢?LyricPlayer 鏉ヨ缃?
+	// 由 LyricPlayer 来设置
 	lineSize: number[] = [0, 0];
 
 	private renderMode = LyricLineRenderMode.SOLID;
@@ -115,16 +115,16 @@ export class LyricLineEl extends LyricLineBase {
 			this.element.classList.add(styles.lyricDuetLine);
 		}
 		this.lineTransforms.posY.setPosition(window.innerHeight * 2);
-		this.element.appendChild(document.createElement("div")); // 姝岃瘝琛?
-		this.element.appendChild(document.createElement("div")); // 缈昏瘧琛?
-		this.element.appendChild(document.createElement("div")); // 闊宠瘧琛?
+		this.element.appendChild(document.createElement("div")); // 歌词行
+		this.element.appendChild(document.createElement("div")); // 翻译行
+		this.element.appendChild(document.createElement("div")); // 音译行
 		const main = this.element.children[0] as HTMLDivElement;
 		const trans = this.element.children[1] as HTMLDivElement;
 		const roman = this.element.children[2] as HTMLDivElement;
 		main.setAttribute("class", styles.lyricMainLine);
 		trans.setAttribute("class", styles.lyricSubLine);
 		roman.setAttribute("class", styles.lyricSubLine);
-		// 寤惰繜鏋勫缓鍏蜂綋琛屽唴瀹癸紝杩涘叆鍙鍖猴紙鍚?overscan锛夋椂鍐嶆瀯寤?
+		// 延迟构建具体行内容，进入可视区（含 overscan）时再构建
 		this.rebuildStyle();
 	}
 	private listenersMap = new Map<string, Set<MouseEventListener>>();
@@ -178,10 +178,10 @@ export class LyricLineEl extends LyricLineBase {
 			const rect1 = word1el.getBoundingClientRect();
 			const rect2 = word2el.getBoundingClientRect();
 
-			// 妫€鏌ヤ袱涓崟璇嶇殑椤堕儴璺濈鏄惁鐩哥瓑锛堟垨鑰呭樊鍊煎緢灏忥級
+			// 检查两个单词的顶部距离是否相等（或者差值很小）
 			const topDifference = Math.abs(rect1.top - rect2.top);
 
-			// 濡傛灉椤堕儴璺濈鐩稿樊寰堝皬锛屽彲浠ヨ涓哄畠浠湪鍚屼竴琛屼笂
+			// 如果顶部距离相差很小，可以认为它们在同一行上
 			return topDifference < 10;
 		}
 
@@ -393,7 +393,7 @@ export class LyricLineEl extends LyricLineBase {
 		const main = this.element.children[0] as HTMLDivElement;
 		const trans = this.element.children[1] as HTMLDivElement;
 		const roman = this.element.children[2] as HTMLDivElement;
-		// 闈炲姩鎬佹瓕璇嶏紝鐩存帴娓叉煋鏁磋涓庡壇琛?
+		// 非动态歌词，直接渲染整行与副行
 		if (this.lyricPlayer._getIsNonDynamic()) {
 			main.innerText = this.lyricLine.words
 				.map((w) => this.lyricPlayer.processObsceneWord(w))
@@ -418,7 +418,7 @@ export class LyricLineEl extends LyricLineBase {
 		this.setSubLinesText(trans, roman);
 	}
 
-	/** 璁剧疆缈昏瘧涓庨煶璇戣鏂囨湰 */
+	/** 设置翻译与音译行文本 */
 	private setSubLinesText(trans: HTMLDivElement, roman: HTMLDivElement) {
 		trans.innerText = this.lyricLine.translatedLyric;
 		roman.innerText = this.lyricLine.romanLyric;
@@ -620,8 +620,8 @@ export class LyricLineEl extends LyricLineBase {
 		a.pause();
 		return a;
 	}
-	// 鎸夌収鍘?Apple Music 鍙傝€冿紝寮鸿皟鏁堟灉鍙簲鐢ㄧ缉鏀俱€佽交寰乏鍙充綅绉诲拰杈夊厜鏁堟灉锛屽師涓昏鐨勬偓娴綅绉绘晥鏋滀笉鍙?
-	// 涓轰簡閬垮厤浜х敓閿娇鎶栧姩鎰燂紝浣跨敤 matrix3d 鏉ュ疄鐜扮缉鏀惧拰浣嶇Щ
+	// 按照原 Apple Music 参考，强调效果只应用缩放、轻微左右位移和辉光效果，原主要的悬浮位移效果不变
+	// 为了避免产生锯齿抖动感，使用 matrix3d 来实现缩放和位移
 	private initEmphasizeAnimation(
 		word: LyricWord,
 		characterElements: HTMLElement[],
@@ -801,8 +801,8 @@ export class LyricLineEl extends LyricLineBase {
 	}
 
 	private generateWebAnimationBasedMaskImage() {
-		// 鍥犱负姝岃瘝琛屾湁鍙兘姣旇鍐呭崟璇嶇殑缁撴潫鏃堕棿鏃╋紝鏈夊彲鑳藉鑷磋繃娓″姩鐢绘彁鏃╁仠姝㈠嚭鐜扮憰鐤?
-		// 鎵€浠ヨ浠ュ崟璇嶇殑缁撴潫鏃堕棿涓哄噯
+		// 因为歌词行有可能比行内单词的结束时间早，有可能导致过渡动画提早停止出现瑕疵
+		// 所以要以单词的结束时间为准
 		const totalFadeDuration =
 			Math.max(
 				this.splittedWords.reduce((pv, w) => Math.max(w.endTime, pv), 0),
@@ -827,8 +827,8 @@ export class LyricLineEl extends LyricLineBase {
 					wordEl.style.webkitMaskOrigin = "left";
 					wordEl.style.webkitMaskSize = totalAspectStr;
 				}
-				// 涓轰簡灏藉彲鑳藉皢娓愬彉鍔ㄧ敾鍦ㄧ浉杩炵殑姣忎釜鍗曡瘝闂磋繎浼艰鎺ヨ捣鏉?
-				// 瑕佺患鍚堟瘡涓崟璇嶇殑鏁堟灉鏃堕棿鍜岄棿闅欑敓鎴愬姩鐢诲抚鏁扮粍
+				// 为了尽可能将渐变动画在相连的每个单词间近似衔接起来
+				// 要综合每个单词的效果时间和间隙生成动画帧数组
 				const widthBeforeSelf =
 					this.splittedWords.slice(0, i).reduce((a, b) => a + b.width, 0) +
 					(this.splittedWords[0] ? fadeWidth : 0);
@@ -840,13 +840,13 @@ export class LyricLineEl extends LyricLineBase {
 				let lastPos = curPos;
 				let lastTime = 0;
 				const pushFrame = () => {
-					// 姝ゅ濡傛灉娣诲姞杩囨浮鍑芥暟锛屼細瀵艰嚧鍗曡瘝鏃跺簭涓嶅噯纭紝鎵€浠ヤ笉娣诲姞
+					// 此处如果添加过渡函数，会导致单词时序不准确，所以不添加
 					// const easing = "cubic-bezier(.33,.12,.83,.9)";
 					const moveOffset = curPos - lastPos;
 					const time = Math.max(0, Math.min(1, timeOffset));
 					const duration = time - lastTime;
 					const d = Math.abs(duration / moveOffset);
-					// 鍥犱负鏈夊彲鑳戒細鍜屼箣鍓嶇殑鍔ㄧ敾鏈夎竟鐣?
+					// 因为有可能会和之前的动画有边界
 					if (curPos > minOffset && lastPos < minOffset) {
 						const staticTime = Math.abs(lastPos - minOffset) * d;
 						const value = `${clampOffset(lastPos)}px 0`;
@@ -977,8 +977,8 @@ export class LyricLineEl extends LyricLineBase {
 					a.cancel();
 				}
 				try {
-					// TODO: 濡傛灉姝ゅ鍔ㄧ敾甯ц绠楀嚭閿欙紝闇€瑕佷竴涓悗澶囨柟妗?
-					// 姝ゅ濡傛灉娣诲姞杩囨浮鍑芥暟锛屼細瀵艰嚧鍗曡瘝鏃跺簭涓嶅噯纭紝鎵€浠ヤ笉娣诲姞
+					// TODO: 如果此处动画帧计算出错，需要一个后备方案
+					// 此处如果添加过渡函数，会导致单词时序不准确，所以不添加
 					const ani = wordEl.animate(frames, {
 						duration: totalFadeDuration || 1,
 						id: `fade-word-${word.word}-${i}`,
@@ -1016,8 +1016,8 @@ export class LyricLineEl extends LyricLineBase {
 		const RELEASE_SPEED = 7.0;
 		const getFactor = (speed: number) => 1 - Math.exp(-speed * dt);
 
-		// 鏍规嵁鍗冲皢鍙樹寒杩樻槸鍙樻殫閫夋嫨閫熷害
-		// 濡傛灉鍗冲皢鍙樹寒锛岃閫熷害闈炲父蹇紝浠ュ厤鎾斁鍒扮涓€涓瓧鐨勬椂鍊欓€忔槑搴﹁繕鍦ㄦ參鎱㈠鍔犲鑷寸湅涓嶆竻
+		// 根据即将变亮还是变暗选择速度
+		// 如果即将变亮，让速度非常快，以免播放到第一个字的时候透明度还在慢慢增加导致看不清
 		const isBrightening = this.targetBrightAlpha > this.currentBrightAlpha;
 		const brightSpeed = isBrightening ? ATTACK_SPEED : RELEASE_SPEED;
 		const brightFactor = getFactor(brightSpeed);
@@ -1141,7 +1141,7 @@ export class LyricLineEl extends LyricLineBase {
 	}
 
 	_getDebugTargetPos(): string {
-		return `[浣嶇Щ: ${this.top}; 缂╂斁: ${this.scale}; 寤舵椂: ${this.delay}]`;
+		return `[位移: ${this.top}; 缩放: ${this.scale}; 延时: ${this.delay}]`;
 	}
 
 	get isInSight() {

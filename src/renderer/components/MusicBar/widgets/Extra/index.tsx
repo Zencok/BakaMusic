@@ -594,6 +594,7 @@ const qualityAbbr: Record<IMusic.IQualityKey, string> = {
     "flac": "SQ",
     "flac24bit": "HR",
     "hires": "HR",
+    "vinyl": "VN",
     "dolby": "DB",
     "atmos": "AT",
     "atmos_plus": "A+",

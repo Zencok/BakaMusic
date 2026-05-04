@@ -21,6 +21,7 @@ const newToLegacyQualityMap: Record<string, string> = {
     "flac": "super",
     "flac24bit": "super",
     "hires": "super",
+    "vinyl": "super",
     "dolby": "super",
     "atmos": "super",
     "atmos_plus": "super",

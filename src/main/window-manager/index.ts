@@ -82,7 +82,7 @@ class WindowManager implements IWindowManager {
 
     /**************************** Main Window ***************************/
     private createMainWindow() {
-        // 娓呯悊鏃х獥鍙?
+        // 清理旧窗口
         if (WindowManager.mainWindow) {
             WindowManager.mainWindow.removeAllListeners();
             if (!WindowManager.mainWindow.isDestroyed()) {
@@ -91,7 +91,7 @@ class WindowManager implements IWindowManager {
             }
             WindowManager.mainWindow = null;
         }
-        // 1. 鍒涘缓涓荤獥鍙?
+        // 1. 创建主窗口
         const initSize = AppConfig.getConfig("private.mainWindowSize");
         const mainWindow = new BrowserWindow({
             height: initSize?.height ?? 700,
@@ -125,19 +125,19 @@ class WindowManager implements IWindowManager {
         });
         mainWindow.on("resize", updateWindowSizeConfig);
 
-        // 2. 鍔犺浇涓荤晫闈?
+        // 2. 加载主界面
         const initUrl = new URL(MAIN_WINDOW_WEBPACK_ENTRY);
         initUrl.hash = `/main/musicsheet/${localPluginName}/favorite`;
         mainWindow.loadURL(initUrl.toString()).then(voidCallback);
 
-        // 3. 寮€鍙戣€呭伐鍏?
+        // 3. 开发者工具
         if (!app.isPackaged) {
             mainWindow.on("ready-to-show", () => {
                 mainWindow.webContents.openDevTools();
             });
         }
 
-        // 4. 涓荤獥鍙ttp hack閫昏緫
+        // 4. 主窗口 HTTP hack 逻辑
         mainWindow.webContents.session.webRequest.onBeforeSendHeaders(
             (details, callback) => {
                 /** hack headers */
@@ -340,7 +340,7 @@ class WindowManager implements IWindowManager {
         if (process.platform !== "darwin") {
             lyricWindow.on("moved", savePositionConfig);
         }
-        // 鍒濆鍖栬缃?
+        // 初始化设置
         lyricWindow.once("ready-to-show", async () => {
             const position = AppConfig.getConfig("private.lyricWindowPosition");
             if (position) {
@@ -510,7 +510,7 @@ class WindowManager implements IWindowManager {
         const currentDisplayBounds =
             screen.getDisplayNearestPoint(position).bounds;
         const windowBounds = window.getBounds();
-        // 濡傛灉瀹屽叏鍦ㄦ槸绐楀锛岄噸缃綅缃?
+        // 如果窗口完全在屏幕外，重置位置
         const [left, top, right, bottom] = [
             position.x,
             position.y,
@@ -543,6 +543,5 @@ class WindowManager implements IWindowManager {
 
 
 export default new WindowManager();
-
 
 

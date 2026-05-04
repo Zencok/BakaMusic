@@ -63,7 +63,7 @@ async function setupDownloader() {
 }
 
 function setupDownloaderWorker() {
-    // 鍒濆鍖杦orker
+    // 初始化 worker
     const downloaderWorkerPath = getGlobalContext().workersPath.downloader;
     if (downloaderWorkerPath) {
         const worker = new Worker(downloaderWorkerPath);
@@ -268,7 +268,7 @@ function useDownloadStatus(musicItem: IMusic.IMusicItem) {
     return downloadStatus;
 }
 
-// 涓嬭浇鐘舵€?
+// 下载状态
 function useDownloadState(musicItem: IMusic.IMusicItem) {
     const musicStatus = useDownloadStatus(musicItem);
     const downloaded = useDownloaded(musicItem);

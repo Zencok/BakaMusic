@@ -184,6 +184,7 @@ export default function Download() {
                     "flac",
                     "flac24bit",
                     "hires",
+                    "vinyl",
                     "dolby",
                     "atmos",
                     "atmos_plus",
@@ -240,4 +241,3 @@ export default function Download() {
         </div>
     );
 }
-

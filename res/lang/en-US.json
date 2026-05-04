@@ -63,6 +63,7 @@
     "music_quality_flac": "FLAC",
     "music_quality_flac24bit": "FLAC Hires",
     "music_quality_hires": "Hires",
+    "music_quality_vinyl": "Vinyl",
     "music_quality_dolby": "Dolby",
     "music_quality_atmos": "Atmos",
     "music_quality_atmos_plus": "Atmos 2.0",

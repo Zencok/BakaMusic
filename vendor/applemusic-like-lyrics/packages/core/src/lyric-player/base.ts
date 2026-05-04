@@ -16,7 +16,7 @@ import { InterludeDots } from "./dom/interlude-dots.ts";
 import { LyricLineRenderMode, MaskObsceneWordsMode } from "./enums.ts";
 
 /**
- * 姝岃瘝鎾斁鍣ㄧ殑鍩虹被锛屽凡缁忓寘鍚簡鏈夊叧姝岃瘝鎿嶄綔鍜屾帓鐗堢殑鍔熻兘锛屽瓙绫婚渶瑕佷负鍏跺疄鐜板搴旂殑鏄剧ず灞曠ず鎿嶄綔
+ * 歌词播放器的基类，已经包含了有关歌词操作和排版的功能，子类需要为其实现对应的显示展示操作
  */
 export abstract class LyricPlayerBase
 	extends EventTarget
@@ -63,14 +63,14 @@ export abstract class LyricPlayerBase
 	protected initialLayoutFinished = false;
 
 	/**
-	 * 鏍囪鐢ㄦ埛鏄惁姝ｅ湪杩涜婊氬姩浜や簰
+	 * 标记用户是否正在进行滚动交互
 	 */
 	protected isUserScrolling = false;
 	protected wheelTimeout: ReturnType<typeof setTimeout> | undefined;
 
 	/**
-	 * 瑙嗗浘棰濆棰勬覆鏌擄紙overscan锛夎窛绂伙紝鍗曚綅锛氬儚绱犮€?
-	 * 鐢ㄤ簬鍐冲畾鍦ㄨ鍙ｄ箣澶栧灏戣窛绂诲唴涔熻涓烘槸鈥滃彲瑙佲€濓紝浠ヤ究鎻愬墠鍒涘缓/淇濈暀琛屽厓绱犮€?
+	 * 视图额外预渲染（overscan）距离，单位：像素。
+	 * 用于决定在视口之外多少距离内也认为是“可见”，以便提前创建/保留行元素。
 	 */
 	protected overscanPx = 300;
 
@@ -365,43 +365,43 @@ export abstract class LyricPlayerBase
 	}
 
 	/**
-	 * 璁剧疆鏂囧瓧鍔ㄧ敾鐨勬笎鍙樺搴︼紝鍗曚綅浠ユ瓕璇嶈鐨勪富鏂囧瓧瀛椾綋澶у皬鐨勫€嶆暟涓哄崟浣嶏紝榛樿涓?0.5锛屽嵆涓€涓叏瑙掑瓧绗︾殑涓€鍗婂搴?
+	 * 设置文字动画的渐变宽度，单位以歌词行的主文字字体大小的倍数为单位，默认为 0.5，即一个全角字符的一半宽度
 	 *
-	 * 濡傛灉瑕佹ā鎷?Apple Music for Android 鐨勬晥鏋滐紝鍙互璁剧疆涓?1
+	 * 如果要模拟 Apple Music for Android 的效果，可以设置为 1
 	 *
-	 * 濡傛灉瑕佹ā鎷?Apple Music for iPad 鐨勬晥鏋滐紝鍙互璁剧疆涓?0.5
+	 * 如果要模拟 Apple Music for iPad 的效果，可以设置为 0.5
 	 *
-	 * 濡傛灉鎯宠杩戜箮绂佺敤娓愬彉鏁堟灉锛屽彲浠ヨ缃垚闈炲父鎺ヨ繎 0 鐨勫皬鏁帮紙渚嬪 `0.0001` 锛夛紝浣嗘槸**涓嶅彲浠ヤ负 0**
+	 * 如果想要近乎禁用渐变效果，可以设置成非常接近 0 的小数（例如 `0.0001` ），但是**不可以为 0**
 	 *
-	 * @param value 闇€瑕佽缃殑娓愬彉瀹藉害锛屽崟浣嶄互姝岃瘝琛岀殑涓绘枃瀛楀瓧浣撳ぇ灏忕殑鍊嶆暟涓哄崟浣嶏紝榛樿涓?0.5
+	 * @param value 需要设置的渐变宽度，单位以歌词行的主文字字体大小的倍数为单位，默认为 0.5
 	 */
 	setWordFadeWidth(value = 0.5) {
 		this.wordFadeWidth = Math.max(0.0001, value);
 	}
 
 	/**
-	 * 鏄惁鍚敤姝岃瘝琛岀缉鏀炬晥鏋滐紝榛樿鍚敤
+	 * 是否启用歌词行缩放效果，默认启用
 	 *
-	 * 濡傛灉鍚敤锛岄潪閫変腑鐨勬瓕璇嶈浼氳交寰缉灏忎互鍑告樉褰撳墠鎾斁姝岃瘝琛屾晥鏋?
+	 * 如果启用，非选中的歌词行会轻微缩小以凸显当前播放歌词行效果
 	 *
-	 * 姝ゆ晥鏋滃鎬ц兘褰卞搷寰箮鍏跺井锛屾帹鑽愬惎鐢?
-	 * @param enable 鏄惁鍚敤姝岃瘝琛岀缉鏀炬晥鏋?
+	 * 此效果对性能影响微乎其微，推荐启用
+	 * @param enable 是否启用歌词行缩放效果
 	 */
 	setEnableScale(enable = true) {
 		this.enableScale = enable;
 		this.calcLayout();
 	}
 	/**
-	 * 鑾峰彇褰撳墠鏄惁鍚敤浜嗘瓕璇嶈缂╂斁鏁堟灉
-	 * @returns 鏄惁鍚敤姝岃瘝琛岀缉鏀炬晥鏋?
+	 * 获取当前是否启用了歌词行缩放效果
+	 * @returns 是否启用歌词行缩放效果
 	 */
 	getEnableScale() {
 		return this.enableScale;
 	}
 
 	/**
-	 * 鑾峰彇褰撳墠鏂囧瓧鍔ㄧ敾鐨勬笎鍙樺搴︼紝鍗曚綅浠ユ瓕璇嶈鐨勪富鏂囧瓧瀛椾綋澶у皬鐨勫€嶆暟涓哄崟浣?
-	 * @returns 褰撳墠鏂囧瓧鍔ㄧ敾鐨勬笎鍙樺搴︼紝鍗曚綅浠ユ瓕璇嶈鐨勪富鏂囧瓧瀛椾綋澶у皬鐨勫€嶆暟涓哄崟浣?
+	 * 获取当前文字动画的渐变宽度，单位以歌词行的主文字字体大小的倍数为单位
+	 * @returns 当前文字动画的渐变宽度，单位以歌词行的主文字字体大小的倍数为单位
 	 */
 	getWordFadeWidth() {
 		return this.wordFadeWidth;
@@ -411,16 +411,16 @@ export abstract class LyricPlayerBase
 		this.isSeeking = isSeeking;
 	}
 	/**
-	 * 璁剧疆鏄惁闅愯棌宸茬粡鎾斁杩囩殑姝岃瘝琛岋紝榛樿涓嶉殣钘?
-	 * @param hide 鏄惁闅愯棌宸茬粡鎾斁杩囩殑姝岃瘝琛岋紝榛樿涓嶉殣钘?
+	 * 设置是否隐藏已经播放过的歌词行，默认不隐藏
+	 * @param hide 是否隐藏已经播放过的歌词行，默认不隐藏
 	 */
 	setHidePassedLines(hide: boolean) {
 		this.hidePassedLines = hide;
 		this.calcLayout();
 	}
 	/**
-	 * 璁剧疆鏄惁鍚敤姝岃瘝琛岀殑妯＄硦鏁堟灉
-	 * @param enable 鏄惁鍚敤
+	 * 设置是否启用歌词行的模糊效果
+	 * @param enable 是否启用
 	 */
 	setEnableBlur(enable: boolean) {
 		if (this.enableBlur === enable) return;
@@ -429,7 +429,7 @@ export abstract class LyricPlayerBase
 	}
 
 	/**
-	 * 璁剧疆姝岃瘝涓笉闆呯敤璇殑鎺╃爜妯″紡
+	 * 设置歌词中不雅用语的掩码模式
 	 * @param mode 鎺╃爜妯″紡
 	 * @see {@link MaskObsceneWordsMode}
 	 */
@@ -441,8 +441,8 @@ export abstract class LyricPlayerBase
 	}
 
 	/**
-	 * 璁剧疆涓嶉泤鐢ㄨ鎺╃爜浣跨敤鐨勫瓧绗︼紝榛樿涓?`*`
-	 * @param char 鍗曚釜瀛楃锛岀敤浜庢浛鎹笉闆呯敤璇腑鐨勫瓧绗?
+	 * 设置不雅用语掩码使用的字符，默认为 `*`
+	 * @param char 单个字符，用于替换不雅用语中的字符
 	 */
 	setMaskObsceneWordChar(char: string) {
 		const c = char.charAt(0) || "*";
@@ -460,7 +460,7 @@ export abstract class LyricPlayerBase
 		}
 	}
 	/**
-	 * 鏍规嵁褰撳墠閰嶇疆澶勭悊涓嶉泤鐢ㄨ鍗曡瘝
+	 * 根据当前配置处理不雅用语单词
 	 * @param word 鍗曡瘝瀵硅薄
 	 * @internal
 	 */
@@ -500,41 +500,41 @@ export abstract class LyricPlayerBase
 		return text;
 	}
 	/**
-	 * 璁剧疆鐩爣姝岃瘝琛岀殑瀵归綈鏂瑰紡锛岄粯璁や负 `center`
+	 * 设置目标歌词行的对齐方式，默认为 `center`
 	 *
-	 * - 璁剧疆鎴?`top` 鐨勮瘽灏嗕細鍚戠洰鏍囨瓕璇嶈鐨勯《閮ㄥ榻?
-	 * - 璁剧疆鎴?`bottom` 鐨勮瘽灏嗕細鍚戠洰鏍囨瓕璇嶈鐨勫簳閮ㄥ榻?
-	 * - 璁剧疆鎴?`center` 鐨勮瘽灏嗕細鍚戠洰鏍囨瓕璇嶈鐨勫瀭鐩翠腑蹇冨榻?
-	 * @param alignAnchor 姝岃瘝琛屽榻愭柟寮忥紝璇︽儏瑙佸嚱鏁拌鏄?
+	 * - 设置成 `top` 的话将会向目标歌词行的顶部对齐
+	 * - 设置成 `bottom` 的话将会向目标歌词行的底部对齐
+	 * - 设置成 `center` 的话将会向目标歌词行的垂直中心对齐
+	 * @param alignAnchor 歌词行对齐方式，详情见函数说明
 	 */
 	setAlignAnchor(alignAnchor: "top" | "bottom" | "center") {
 		this.alignAnchor = alignAnchor;
 	}
 	/**
-	 * 璁剧疆榛樿鐨勬瓕璇嶈瀵归綈浣嶇疆锛岀浉瀵逛簬鏁翠釜姝岃瘝鎾斁缁勪欢鐨勫ぇ灏忎綅缃紝榛樿涓?`0.5`
-	 * @param alignPosition 涓€涓?`[0.0-1.0]` 涔嬮棿鐨勪换鎰忔暟瀛楋紝浠ｈ〃缁勪欢楂樺害鐢变笂鍒颁笅鐨勬瘮渚嬩綅缃?
+	 * 设置默认的歌词行对齐位置，相对于整个歌词播放组件的大小位置，默认为 `0.5`
+	 * @param alignPosition 一个 `[0.0-1.0]` 之间的任意数字，代表组件高度由上到下的比例位置
 	 */
 	setAlignPosition(alignPosition: number) {
 		this.alignPosition = alignPosition;
 	}
 
 	/**
-	 * 璁剧疆 overscan锛堣鍥句笂涓嬮澶栫紦鍐叉覆鏌撳尯锛夎窛绂伙紝鍗曚綅锛氬儚绱犮€?
-	 * @param px 鍍忕礌鍊硷紝榛樿 300
+	 * 设置 overscan（视图上下额外缓冲渲染区）距离，单位：像素。
+	 * @param px 像素值，默认 300
 	 */
 	setOverscanPx(px: number) {
 		this.overscanPx = Math.max(0, px | 0);
 	}
-	/** 鑾峰彇褰撳墠 overscan 鍍忕礌璺濈 */
+	/** 获取当前 overscan 像素距离 */
 	getOverscanPx() {
 		return this.overscanPx;
 	}
 	/**
-	 * 璁剧疆鏄惁浣跨敤鐗╃悊寮圭哀绠楁硶瀹炵幇姝岃瘝鍔ㄧ敾鏁堟灉锛岄粯璁ゅ惎鐢?
+	 * 设置是否使用物理弹簧算法实现歌词动画效果，默认启用
 	 *
-	 * 濡傛灉鍚敤锛屽垯浼氶€氳繃寮圭哀绠楁硶瀹炴椂澶勭悊姝岃瘝浣嶇疆锛屼絾鏄渶瑕佹€ц兘瓒冲寮哄姴鐨勭數鑴戞柟鍙祦鐣呰繍琛?
+	 * 如果启用，则会通过弹簧算法实时处理歌词位置，但是需要性能足够强劲的电脑方可流畅运行
 	 *
-	 * 濡傛灉涓嶅惎鐢紝鍒欎細鍥為€€鍒板熀浜?`transition` 鐨勮繃娓℃晥鏋滐紝瀵逛綆鎬ц兘鐨勬満鍣ㄦ瘮杈冨弸濂斤紝浣嗘槸鏁堟灉浼氭瘮杈冨崟涓€
+	 * 如果不启用，则会回退到基于 `transition` 的过渡效果，对低性能的机器比较友好，但是效果会比较单一
 	 */
 	setEnableSpring(enable = true) {
 		this.disableSpring = !enable;
@@ -546,20 +546,20 @@ export abstract class LyricPlayerBase
 		this.calcLayout(true);
 	}
 	/**
-	 * 鑾峰彇褰撳墠鏄惁鍚敤浜嗙墿鐞嗗脊绨?
-	 * @returns 鏄惁鍚敤鐗╃悊寮圭哀
+	 * 获取当前是否启用了物理弹簧
+	 * @returns 是否启用物理弹簧
 	 */
 	getEnableSpring() {
 		return !this.disableSpring;
 	}
 
 	/**
-	 * 鑾峰彇褰撳墠鎾斁鏃堕棿閲屾槸鍚﹀浜庨棿濂忓尯闂?
-	 * 濡傛灉鏄垯浼氳繑鍥炲崟浣嶄负姣鐨勫鏈椂闂?
-	 * 鍚﹀垯杩斿洖 undefined
+	 * 获取当前播放时间里是否处于间奏区间
+	 * 如果是则会返回单位为毫秒的始末时间
+	 * 否则返回 undefined
 	 *
-	 * 杩欎釜鍙厑璁稿唴閮ㄨ皟鐢?
-	 * @returns [寮€濮嬫椂闂?缁撴潫鏃堕棿,澶ф澶勪簬鐨勬瓕璇嶈ID,涓嬩竴鍙ユ槸鍚︿负瀵瑰敱姝岃瘝] 鎴?undefined 濡傛灉涓嶅浜庨棿濂忓尯闂?
+	 * 这个只允许内部调用
+	 * @returns [开始时间,结束时间,大概处于的歌词行ID,下一句是否为对唱歌词] 或 undefined 如果不处于间奏区间
 	 */
 	protected getCurrentInterlude():
 		| [number, number, number, boolean]
@@ -597,10 +597,10 @@ export abstract class LyricPlayerBase
 	}
 
 	/**
-	 * 璁剧疆姝岃瘝鐨勪紭鍖栭厤缃」锛岃繖浜涢厤缃」榛樿鍏ㄩ儴寮€鍚?
+	 * 设置歌词的优化配置项，这些配置项默认全部开启
 	 *
-	 * 娉ㄦ剰锛屽鏋滃湪 `setLyricLines` 涔嬪悗淇敼姝ら厤缃紝闇€瑕侀噸鏂拌皟鐢?`setLyricLines()` 鎵嶈兘瀵瑰綋鍓嶆瓕璇嶇敓鏁?
-	 * @param options 浼樺寲閰嶇疆閫夐」
+	 * 注意，如果在 `setLyricLines` 之后修改此配置，需要重新调用 `setLyricLines()` 才能对当前歌词生效
+	 * @param options 优化配置选项
 	 * @see {@link OptimizeLyricOptions}
 	 */
 	setOptimizeOptions(options: OptimizeLyricOptions) {
@@ -608,9 +608,9 @@ export abstract class LyricPlayerBase
 	}
 
 	/**
-	 * 璁剧疆褰撳墠鎾斁姝岃瘝锛岃娉ㄦ剰浼犲叆鍚庤繖涓暟缁勫唴鐨勪俊鎭笉寰椾慨鏀癸紝鍚﹀垯浼氬彂鐢熼敊璇?
-	 * @param lines 姝岃瘝鏁扮粍
-	 * @param initialTime 鍒濆鏃堕棿锛岄粯璁や负 0
+	 * 设置当前播放歌词，要注意传入后这个数组内的信息不得修改，否则会发生错误
+	 * @param lines 歌词数组
+	 * @param initialTime 初始时间，默认为 0
 	 */
 	setLyricLines(lines: LyricLine[], initialTime = 0) {
 		this.initialLayoutFinished = true;
@@ -642,30 +642,30 @@ export abstract class LyricPlayerBase
 	}
 
 	/**
-	 * 鑾峰彇褰撳墠鏄惁鍦ㄦ挱鏀?
-	 * @returns 褰撳墠鏄惁鍦ㄦ挱鏀?
+	 * 获取当前是否在播放
+	 * @returns 当前是否在播放
 	 */
 	public getIsPlaying() {
 		return this.isPlaying;
 	}
 
 	/**
-	 * 璁剧疆褰撳墠鎾斁杩涘害锛屽崟浣嶄负姣涓?*蹇呴』鏄暣鏁?*锛屾鏃跺皢浼氭洿鏂板唴閮ㄧ殑姝岃瘝杩涘害淇℃伅
-	 * 鍐呴儴浼氭牴鎹皟鐢ㄩ棿闅斿拰鎾斁杩涘害鑷姩鍐冲畾濡備綍婊氬姩鍜屾樉绀烘瓕璇嶏紝鎵€浠ヨ繖涓殑璋冪敤棰戠巼瓒婂揩瓒婂噯纭秺濂?
+	 * 设置当前播放进度，单位为毫秒且**必须是整数**，此时将会更新内部的歌词进度信息
+	 * 内部会根据调用间隔和播放进度自动决定如何滚动和显示歌词，所以这个的调用频率越快越准确越好
 	 *
-	 * 璋冪敤瀹屾垚鍚庯紝鍙互姣忓抚璋冪敤 `update` 鍑芥暟鏉ユ墽琛屾瓕璇嶅姩鐢绘晥鏋?
-	 * @param time 褰撳墠鎾斁杩涘害锛屽崟浣嶄负姣
+	 * 调用完成后，可以每帧调用 `update` 函数来执行歌词动画效果
+	 * @param time 当前播放进度，单位为毫秒
 	 */
 	setCurrentTime(time: number, isSeek = false) {
-		// 鎴戝湪杩欓噷瀹氫箟浜嗘瓕璇嶇殑閫夋嫨鐘舵€侊細
-		// 鏅€氳锛氬綋鍓嶄笉澶勪簬鏃堕棿鑼冨洿鍐呯殑姝岃瘝琛?
-		// 鐑锛氬綋鍓嶇粷瀵瑰浜庢挱鏀炬椂闂村唴鐨勬瓕璇嶈锛屼笖涓€鑸細琚珛鍒诲姞鍏ュ埌缂撳啿琛屼腑
-		// 缂撳啿琛岋細涓€鑸浜庢挱鏀炬椂闂村悗鐨勬瓕璇嶈锛屼細鍥犱负褰撳墠鎾斁鐘舵€佺殑缂樻晠鎺ㄨ繜瑙ｉ櫎鐘舵€?
+		// 我在这里定义了歌词的选择状态：
+		// 普通行：当前不处于时间范围内的歌词行
+		// 热行：当前绝对处于播放时间内的歌词行，且一般会被立刻加入到缓冲行中
+		// 缓冲行：一般处于播放时间后的歌词行，会因为当前播放状态的缘故推迟解除状态
 
-		// 鐒跺悗鎴戜滑闇€瑕佽姝岃瘝琛屼负濡備笅锛?
-		// 濡傛灉褰撳墠浠嶆湁缂撳啿琛岀殑鎯呭喌涓嬪姞鍏ユ柊鐑锛屽垯涓嶄細瑙ｉ櫎褰撳墠缂撳啿琛岋紝涓斾篃涓嶄細淇敼褰撳墠婊氬姩浣嶇疆
-		// 濡傛灉褰撳墠鎵€鏈夌紦鍐茶閮藉皢琚垹闄や笖娌℃湁鏂扮儹琛屽姞鍏ワ紝鍒欏垹闄ゆ墍鏈夌紦鍐茶锛屼笖涔熶笉浼氫慨鏀瑰綋鍓嶆粴鍔ㄤ綅缃?
-		// 濡傛灉褰撳墠鎵€鏈夌紦鍐茶閮藉皢琚垹闄や笖鏈夋柊鐑鍔犲叆锛屽垯鍒犻櫎鎵€鏈夌紦鍐茶骞跺姞鍏ユ柊鐑浣滀负缂撳啿琛岋紝鐒跺悗淇敼褰撳墠婊氬姩浣嶇疆
+		// 然后我们需要让歌词行为如下：
+		// 如果当前仍有缓冲行的情况下加入新热行，则不会解除当前缓冲行，且也不会修改当前滚动位置
+		// 如果当前所有缓冲行都将被删除且没有新热行加入，则删除所有缓冲行，且也不会修改当前滚动位置
+		// 如果当前所有缓冲行都将被删除且有新热行加入，则删除所有缓冲行并加入新热行作为缓冲行，然后修改当前滚动位置
 
 		this.currentTime = time;
 
@@ -675,7 +675,7 @@ export abstract class LyricPlayerBase
 		const removedIds = new Set<number>();
 		const addedIds = new Set<number>();
 
-		// 鍏堟绱㈠綋鍓嶅凡缁忚秴鍑烘椂闂磋寖鍥寸殑缂撳啿琛岋紝鍒楀叆寰呭垹闄ら泦鍐?
+		// 先检索当前已经超出时间范围的缓冲行，列入待删除集内
 		for (const lastHotId of this.hotLines) {
 			const line = this.processedLines[lastHotId];
 			if (line) {
@@ -798,21 +798,21 @@ export abstract class LyricPlayerBase
 	}
 
 	/**
-	 * 閲嶆柊甯冨眬瀹氫綅姝岃瘝琛岀殑浣嶇疆锛岃皟鐢ㄥ畬鎴愬悗鍐嶉€愬抚璋冪敤 `update`
-	 * 鍑芥暟鍗冲彲璁╂瓕璇嶉€氳繃鍔ㄧ敾绉诲姩鍒扮洰鏍囦綅缃€?
+	 * 重新布局定位歌词行的位置，调用完成后再逐帧调用 `update`
+	 * 函数即可让歌词通过动画移动到目标位置。
 	 *
-	 * 鍑芥暟鏈変竴涓?`force` 鍙傛暟锛岀敤浜庢寚瀹氭槸鍚﹀己鍒朵慨鏀瑰竷灞€锛屼篃灏辨槸涓嶇粡杩囧姩鐢荤洿鎺ヨ皟鏁村厓绱犱綅缃拰澶у皬銆?
+	 * 函数有一个 `force` 参数，用于指定是否强制修改布局，也就是不经过动画直接调整元素位置和大小。
 	 *
-	 * 姝ゅ嚱鏁拌繕鏈変竴涓?`reflow` 鍙傛暟锛岀敤浜庢寚瀹氭槸鍚﹂渶瑕侀噸鏂拌绠楀竷灞€
+	 * 此函数还有一个 `reflow` 参数，用于指定是否需要重新计算布局
 	 *
-	 * 鍥犱负璁＄畻甯冨眬蹇呭畾浼氬鑷存祻瑙堝櫒閲嶆帓甯冨眬锛屾墍浠ヤ細澶у箙搴﹀奖鍝嶆祦鐣呭害鍜屾€ц兘锛屾晠璇峰彧鍦ㄤ互涓嬫儏鍐典笅灏嗗叾鈥嬭缃负 true锛?
+	 * 因为计算布局必定会导致浏览器重排布局，所以会大幅度影响流畅度和性能，故请只在以下情况下将其​设置为 true：
 	 *
-	 * 1. 姝岃瘝椤甸潰澶у皬鍙戠敓鏀瑰彉鏃讹紙杩欎釜缁勪欢浼氳嚜琛屽鐞嗭級
-	 * 2. 鍔犺浇浜嗘柊鐨勬瓕璇嶆椂锛堜笉璁哄墠鍚庢瓕璇嶆槸鍚﹀畬鍏ㄤ竴鏍凤級
-	 * 3. 鐢ㄦ埛鑷璺宠浆浜嗘瓕鏇叉挱鏀句綅缃紙涓嶈璺濈杩滆繎锛?
+	 * 1. 歌词页面大小发生改变时（这个组件会自行处理）
+	 * 2. 加载了新的歌词时（不论前后歌词是否完全一样）
+	 * 3. 用户自行跳转了歌曲播放位置（不论距离远近）
 	 *
-	 * @param sync 鏄惁鍚屾鎵ц锛岄€氬父鐢ㄤ簬鍒濆鍖栨垨 Resize 鏃剁珛鍗冲竷灞€
-	 * @param force 鏄惁缁曡繃寮圭哀鏁堟灉寮哄埗鏇存柊浣嶇疆
+	 * @param sync 是否同步执行，通常用于初始化或 Resize 时立即布局
+	 * @param force 是否绕过弹簧效果强制更新位置
 	 */
 	async calcLayout(sync = false, force = false) {
 		const interlude = this.getCurrentInterlude();
@@ -834,7 +834,7 @@ export abstract class LyricPlayerBase
 				curPos -= totalInterludeHeight;
 			}
 		}
-		// 閬垮厤涓€寮€濮嬪氨璁╂墍鏈夋瓕璇嶈鎸ゅ湪涓€璧?
+		// 避免一开始就让所有歌词行挤在一起
 		const LINE_HEIGHT_FALLBACK = this.size[1] / 5;
 		const scrollOffset = this.currentLyricLineObjects
 			.slice(0, targetAlignIndex)
@@ -903,7 +903,7 @@ export abstract class LyricPlayerBase
 					i < (interlude ? interlude[2] + 1 : this.scrollToIndex) &&
 					this.isPlaying
 				) {
-					// 涓轰簡閬垮厤娴忚鍣ㄤ紭鍖栵紝杩欓噷浣跨敤浜嗕竴涓瀬灏忎絾涓嶄负闆剁殑鍊硷紙鍑犱箮涓嶅彲瑙侊級
+					// 为了避免浏览器优化，这里使用了一个极小但不为零的值（几乎不可见）
 					targetOpacity = 0.00001;
 				} else if (hasBuffered) {
 					targetOpacity = 0.85;
@@ -980,16 +980,16 @@ export abstract class LyricPlayerBase
 	}
 
 	/**
-	 * 璁剧疆鎵€鏈夋瓕璇嶈鍦ㄦí鍧愭爣涓婄殑寮圭哀灞炴€э紝鍖呮嫭閲嶉噺銆佸脊鍔涘拰闃诲姏銆?
+	 * 设置所有歌词行在横坐标上的弹簧属性，包括重量、弹力和阻力。
 	 *
-	 * @param params 闇€瑕佽缃殑寮圭哀灞炴€э紝鎻愪緵鐨勫睘鎬у皢浼氳鐩栧師鏉ョ殑灞炴€э紝鏈彁渚涚殑灞炴€у皢浼氫繚鎸佸師鏍?
-	 * @deprecated 鑰冭檻鍒版í鍚戝脊绨ф晥鏋滃苟涓嶅父瑙侊紝鎵€浠ヨ繖涓嚱鏁板皢浼氬湪鏈潵鐨勭増鏈腑绉婚櫎
+	 * @param params 需要设置的弹簧属性，提供的属性将会覆盖原来的属性，未提供的属性将会保持原样
+	 * @deprecated 考虑到横向弹簧效果并不常见，所以这个函数将会在未来的版本中移除
 	 */
 	setLinePosXSpringParams(_params: Partial<SpringParams> = {}) {}
 	/**
-	 * 璁剧疆鎵€鏈夋瓕璇嶈鍦ㄢ€嬬旱鍧愭爣涓婄殑寮圭哀灞炴€э紝鍖呮嫭閲嶉噺銆佸脊鍔涘拰闃诲姏銆?
+	 * 设置所有歌词行在​纵坐标上的弹簧属性，包括重量、弹力和阻力。
 	 *
-	 * @param params 闇€瑕佽缃殑寮圭哀灞炴€э紝鎻愪緵鐨勫睘鎬у皢浼氳鐩栧師鏉ョ殑灞炴€э紝鏈彁渚涚殑灞炴€у皢浼氫繚鎸佸師鏍?
+	 * @param params 需要设置的弹簧属性，提供的属性将会覆盖原来的属性，未提供的属性将会保持原样
 	 */
 	setLinePosYSpringParams(params: Partial<SpringParams> = {}) {
 		this.posYSpringParams = {
@@ -1002,9 +1002,9 @@ export abstract class LyricPlayerBase
 		}
 	}
 	/**
-	 * 璁剧疆鎵€鏈夋瓕璇嶈鍦ㄢ€嬬缉鏀惧ぇ灏忎笂鐨勫脊绨у睘鎬э紝鍖呮嫭閲嶉噺銆佸脊鍔涘拰闃诲姏銆?
+	 * 设置所有歌词行在​缩放大小上的弹簧属性，包括重量、弹力和阻力。
 	 *
-	 * @param params 闇€瑕佽缃殑寮圭哀灞炴€э紝鎻愪緵鐨勫睘鎬у皢浼氳鐩栧師鏉ョ殑灞炴€э紝鏈彁渚涚殑灞炴€у皢浼氫繚鎸佸師鏍?
+	 * @param params 需要设置的弹簧属性，提供的属性将会覆盖原来的属性，未提供的属性将会保持原样
 	 */
 	setLineScaleSpringParams(params: Partial<SpringParams> = {}) {
 		this.scaleSpringParams = {
@@ -1025,7 +1025,7 @@ export abstract class LyricPlayerBase
 	}
 	protected isPlaying = true;
 	/**
-	 * 鏆傚仠閮ㄥ垎鏁堟灉婕斿嚭锛岀洰鍓嶄細鏆傚仠鎾斁闂村鐐圭殑鍔ㄧ敾锛屼笖灏嗚儗鏅瓕璇嶆樉绀哄嚭鏉?
+	 * 暂停部分效果演出，目前会暂停播放间奏点的动画，且将背景歌词显示出来
 	 */
 	pause() {
 		this.interludeDots.pause();
@@ -1035,7 +1035,7 @@ export abstract class LyricPlayerBase
 		}
 	}
 	/**
-	 * 鎭㈠閮ㄥ垎鏁堟灉婕斿嚭锛岀洰鍓嶄細鎭㈠鎾斁闂村鐐圭殑鍔ㄧ敾
+	 * 恢复部分效果演出，目前会恢复播放间奏点的动画
 	 */
 	resume() {
 		this.interludeDots.resume();
@@ -1045,10 +1045,10 @@ export abstract class LyricPlayerBase
 		}
 	}
 	/**
-	 * 鏇存柊鍔ㄧ敾锛岃繖涓嚱鏁板簲璇ヨ閫愬抚璋冪敤鎴栬€呭湪浠ヤ笅鎯呭喌涓嬭皟鐢ㄤ竴娆★細
+	 * 更新动画，这个函数应该被逐帧调用或者在以下情况下调用一次：
 	 *
-	 * 1. 鍒氬垰璋冪敤瀹岃缃瓕璇嶅嚱鏁扮殑鏃跺€?
-	 * @param delta 璺濈涓婁竴娆¤璋冪敤鍒扮幇鍦ㄧ殑鏃堕暱锛屽崟浣嶄负姣锛堝彲涓烘诞鐐规暟锛?
+	 * 1. 刚刚调用完设置歌词函数的时候
+	 * @param delta 距离上一次被调用到现在的时长，单位为毫秒（可为浮点数）
 	 */
 
 	update(delta = 0) {
@@ -1059,21 +1059,21 @@ export abstract class LyricPlayerBase
 	protected onResize() {}
 
 	/**
-	 * 鑾峰彇涓€涓壒娈婄殑搴曟爮鍏冪礌锛岄粯璁ゆ槸绌虹櫧鐨勶紝鍙互寰€鍐呴儴娣诲姞浠绘剰鍏冪礌
+	 * 获取一个特殊的底栏元素，默认是空白的，可以往内部添加任意元素
 	 *
-	 * 杩欎釜鍏冪礌濮嬬粓鍦ㄦ瓕璇嶇殑搴曢儴锛屽彲浠ョ敤浜庢樉绀烘瓕鏇插垱浣滆€呯瓑淇℃伅
+	 * 这个元素始终在歌词的底部，可以用于显示歌曲创作者等信息
 	 *
-	 * 浣嗘槸璇峰嬁鍒犻櫎璇ュ厓绱狅紝鍙兘鍦ㄥ唴閮ㄥ瓨鏀惧厓绱?
+	 * 但是请勿删除该元素，只能在内部存放元素
 	 *
-	 * @returns 涓€涓厓绱狅紝鍙互寰€鍐呴儴娣诲姞浠绘剰鍏冪礌
+	 * @returns 一个元素，可以往内部添加任意元素
 	 */
 	getBottomLineElement(): HTMLElement {
 		return this.bottomLine.getElement();
 	}
 	/**
-	 * 閲嶇疆鐢ㄦ埛婊氬姩鐘舵€?
+	 * 重置用户滚动状态
 	 *
-	 * 璇峰湪鐢ㄦ埛瀹屾垚婊氬姩鐐瑰嚮璺宠浆姝岃瘝鏃惰皟鐢ㄦ湰浜嬩欢鍐嶈皟鐢?`calcLayout` 浠ユ纭粴鍔ㄥ埌鐩爣浣嶇疆
+	 * 请在用户完成滚动点击跳转歌词时调用本事件再调用 `calcLayout` 以正确滚动到目标位置
 	 */
 	resetScroll() {
 		this.isScrolled = false;
@@ -1082,19 +1082,19 @@ export abstract class LyricPlayerBase
 		this.scrolledHandler = 0;
 	}
 	/**
-	 * 鑾峰彇褰撳墠姝岃瘝鏁扮粍
+	 * 获取当前歌词数组
 	 *
-	 * 涓€鑸拰鏈€鍚庤皟鐢?`setLyricLines` 缁欎簣鐨勫弬鏁颁竴鏍?
-	 * @returns 褰撳墠姝岃瘝鏁扮粍
+	 * 一般和最后调用 `setLyricLines` 给予的参数一样
+	 * @returns 当前歌词数组
 	 */
 	getLyricLines() {
 		return this.currentLyricLines;
 	}
 	/**
-	 * 鑾峰彇褰撳墠姝岃瘝鐨勬挱鏀句綅缃?
+	 * 获取当前歌词的播放位置
 	 *
-	 * 涓€鑸拰鏈€鍚庤皟鐢?`setCurrentTime` 缁欎簣鐨勫弬鏁颁竴鏍?
-	 * @returns 褰撳墠鎾斁浣嶇疆
+	 * 一般和最后调用 `setCurrentTime` 给予的参数一样
+	 * @returns 当前播放位置
 	 */
 	getCurrentTime() {
 		return this.currentTime;
@@ -1116,7 +1116,7 @@ export abstract class LyricPlayerBase
 }
 
 /**
- * 鎵€鏈夋爣鍑嗘瓕璇嶈鐨勫熀绫?
+ * 所有标准歌词行的基类
  * @internal
  */
 export abstract class LyricLineBase extends EventTarget implements Disposable {
@@ -1154,14 +1154,14 @@ export abstract class LyricLineBase extends EventTarget implements Disposable {
 	rebuildElement() {}
 
 	/**
-	 * 鍒ゅ畾姝岃瘝鏄惁鍙互搴旂敤寮鸿皟杈夊厜鏁堟灉
+	 * 判定歌词是否可以应用强调辉光效果
 	 *
-	 * 鏋滃瓙鍦ㄥ杈夊厜鏁堟灉鐨勮В閲婃槸涓€绉嶅己璋冿紙emphasized锛夋晥鏋?
+	 * 果子在对辉光效果的解释是一种强调（emphasized）效果
 	 *
-	 * 鏉′欢鏄竴涓崟璇嶆椂闀垮ぇ浜庣瓑浜?1s 涓旈暱搴﹀皬浜庣瓑浜?7
+	 * 条件是一个单词时长大于等于 1s 且长度小于等于 7
 	 *
-	 * @param word 鍗曡瘝
-	 * @returns 鏄惁鍙互搴旂敤寮鸿皟杈夊厜鏁堟灉
+	 * @param word 单词
+	 * @returns 是否可以应用强调辉光效果
 	 */
 	static shouldEmphasize(word: LyricWord): boolean {
 		if (isCJK(word.word)) return word.endTime - word.startTime >= 1000;

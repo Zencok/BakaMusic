@@ -40,20 +40,20 @@ import LazyImage from "../LazyImage";
 import getCompactArtworkSrc from "@/renderer/utils/get-compact-artwork-src";
 import { getPlayCount } from "@/renderer/core/play-count";
 interface IMusicListProps {
-    /** 鐏炴洜銇氶惃鍕尡閺€鎯у灙鐞?*/
+    /** 音乐列表 */
     musicList: IMusic.IMusicItem[];
-    /** 鐎圭偤妾惃鍕尡閺€鎯у灙鐞?*/
+    /** 获取完整音乐列表 */
     getAllMusicItems?: () => IMusic.IMusicItem[];
-    /** 闂婂厖绠伴崚妤勩€冮幍鈧仦鐐垫畱濮濆苯宕熸穱鈩冧紖 */
+    /** 所在歌单 */
     musicSheet?: IMusic.IMusicSheetItem;
-    // enablePagination?: boolean; // 閸掑棝銆?閾忔碍瀚欓梹鍨灙鐞?
-    state?: RequestStateCode; // 缂冩垹绮堕悩鑸碘偓?
-    doubleClickBehavior?: "replace" | "normal"; // 閸欏苯鍤悰灞艰礋
-    onPageChange?: (page?: number) => void; // 閸掑棝銆?
-    /** 閾忔碍瀚欏姘З閸欏倹鏆?*/
+    // enablePagination?: boolean; // 是否启用分页
+    state?: RequestStateCode; // 请求状态
+    doubleClickBehavior?: "replace" | "normal"; // 双击行为
+    onPageChange?: (page?: number) => void; // 分页加载
+    /** 虚拟列表属性 */
     virtualProps?: {
-        offsetHeight?: number | (() => number); // 鐠烘繄顬囨い鍫曞劥閻ㄥ嫰鐝惔?
-        getScrollElement?: () => HTMLElement | null; // 濠婃艾濮?
+        offsetHeight?: number | (() => number); // 额外偏移高度
+        getScrollElement?: () => HTMLElement | null; // 获取滚动元素
         fallbackRenderCount?: number;
     };
     headerOnlySurface?: boolean;
@@ -61,9 +61,9 @@ interface IMusicListProps {
     hideRows?: Array<
         "like" | "index" | "title" | "artist" | "album" | "duration" | "platform"
     >;
-    /** 閸忎浇顔忛幏鏍ㄥ */
+    /** 是否启用拖拽 */
     enableDrag?: boolean;
-    /** 閹锋牗瀚跨紒鎾存将 */
+    /** 拖拽结束回调 */
     onDragEnd?: (newMusicList: IMusic.IMusicItem[]) => void;
     /** context */
     contextMenu?: IContextMenuItem[];
@@ -365,6 +365,7 @@ const qualityAbbr: Record<IMusic.IQualityKey, string> = {
     "flac": "SQ",
     "flac24bit": "HR",
     "hires": "HR",
+    "vinyl": "VN",
     "dolby": "DB",
     "atmos": "AT",
     "atmos_plus": "A+",
@@ -1072,6 +1073,5 @@ export default memo(
         curr.musicSheet &&
         isSameMedia(prev.musicSheet, curr.musicSheet),
 );
-
 
 
