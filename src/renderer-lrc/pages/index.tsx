@@ -273,6 +273,7 @@ export default function LyricWindowPage() {
                     hoverBackgroundColor="transparent"
                     alignAnchor="center"
                     alignPosition={0.5}
+                    centerInterludeDots
                     enableBlur={false}
                     enableScale={false}
                     enableSpring

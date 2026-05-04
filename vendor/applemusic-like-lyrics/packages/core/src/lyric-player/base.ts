@@ -54,6 +54,7 @@ export abstract class LyricPlayerBase
 	protected lastCurrentTime = 0;
 	protected alignAnchor: "top" | "bottom" | "center" = "center";
 	protected alignPosition = 0.35;
+	protected centerInterludeDots = false;
 	protected scrollOffset = 0;
 	readonly size: [number, number] = [0, 0];
 	protected allowScroll = true;
@@ -518,6 +519,11 @@ export abstract class LyricPlayerBase
 		this.alignPosition = alignPosition;
 	}
 
+	setCenterInterludeDots(center = true) {
+		this.centerInterludeDots = center;
+		this.calcLayout(true);
+	}
+
 	/**
 	 * 设置 overscan（视图上下额外缓冲渲染区）距离，单位：像素。
 	 * @param px 像素值，默认 300
@@ -882,7 +888,9 @@ export abstract class LyricPlayerBase
 
 				curPos += dotMargin;
 
-				let targetX = 0;
+				let targetX = this.centerInterludeDots
+					? Math.max(0, (this.size[0] - this.interludeDotsSize[0]) / 2)
+					: 0;
 				if (interlude && isNextDuet) {
 					targetX = this.size[0] - this.interludeDotsSize[0];
 				}

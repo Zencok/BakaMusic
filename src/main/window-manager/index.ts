@@ -221,9 +221,13 @@ class WindowManager implements IWindowManager {
     }
 
     /**************************** Lyric Window ***************************/
+    private static lyricWindowDefaultSize: ICommon.ISize = {
+        width: 583,
+        height: 218,
+    };
     private static lyricWindowMinSize: ICommon.ISize = {
-        width: 520,
-        height: 120,
+        width: 480,
+        height: 132,
     };
     private static lyricWindowMaxSize: ICommon.ISize = {
         width: Infinity,
@@ -249,13 +253,17 @@ class WindowManager implements IWindowManager {
         WindowManager.lyricWindowMaxSize.height = display.workArea.height;
 
         const isLegacyBubbleWindow = !!initSize && initSize.width <= 560 && initSize.height <= 180;
+        const isLegacyDefaultWindow = !!initSize
+            && ((initSize.width === 900 && initSize.height === 180)
+                || (initSize.width === 810 && initSize.height === 198)
+                || (initSize.width === 729 && initSize.height === 218));
+        const preferredSize = (isLegacyBubbleWindow || isLegacyDefaultWindow)
+            ? WindowManager.lyricWindowDefaultSize
+            : (initSize ?? WindowManager.lyricWindowDefaultSize);
         let {
             width,
             height,
-        } = this.formatLyricWindowSize(
-            isLegacyBubbleWindow ? 900 : (initSize?.width ?? 900),
-            isLegacyBubbleWindow ? 180 : (initSize?.height ?? 180),
-        );
+        } = this.formatLyricWindowSize(preferredSize.width, preferredSize.height);
 
         const lyricWindow = new BrowserWindow({
             height,

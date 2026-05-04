@@ -54,6 +54,7 @@ declare module "@amll-core/lyric-player/dom/index" {
     setMaskObsceneWords(mode: unknown): void;
     setAlignAnchor(alignAnchor: "top" | "bottom" | "center"): void;
     setAlignPosition(alignPosition: number): void;
+    setCenterInterludeDots(center?: boolean): void;
     setEnableBlur(enable?: boolean): void;
     setEnableScale(enable?: boolean): void;
     setEnableSpring(enable?: boolean): void;

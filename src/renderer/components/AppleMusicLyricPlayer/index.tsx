@@ -17,6 +17,7 @@ interface IAppleMusicLyricPlayerProps {
     placeholder?: React.ReactNode;
     alignAnchor?: "top" | "bottom" | "center";
     alignPosition?: number;
+    centerInterludeDots?: boolean;
     enableBlur?: boolean;
     enableScale?: boolean;
     enableSpring?: boolean;
@@ -37,6 +38,7 @@ export default function AppleMusicLyricPlayer({
     placeholder,
     alignAnchor = "center",
     alignPosition = 0.5,
+    centerInterludeDots = false,
     enableBlur = true,
     enableScale = true,
     enableSpring = true,
@@ -74,6 +76,7 @@ export default function AppleMusicLyricPlayer({
         player.setMaskObsceneWords(MaskObsceneWordsMode.Disabled);
         player.setAlignAnchor(alignAnchor);
         player.setAlignPosition(alignPosition);
+        player.setCenterInterludeDots(centerInterludeDots);
         player.setEnableBlur(enableBlur);
         player.setEnableScale(enableScale);
         player.setEnableSpring(enableSpring);
@@ -103,12 +106,13 @@ export default function AppleMusicLyricPlayer({
 
         player.setAlignAnchor(alignAnchor);
         player.setAlignPosition(alignPosition);
+        player.setCenterInterludeDots(centerInterludeDots);
         player.setEnableBlur(enableBlur);
         player.setEnableScale(enableScale);
         player.setEnableSpring(enableSpring);
         player.setHidePassedLines(hidePassedLines);
         player.setWordFadeWidth(wordFadeWidth);
-    }, [alignAnchor, alignPosition, enableBlur, enableScale, enableSpring, hidePassedLines, wordFadeWidth]);
+    }, [alignAnchor, alignPosition, centerInterludeDots, enableBlur, enableScale, enableSpring, hidePassedLines, wordFadeWidth]);
 
     useEffect(() => {
         const player = playerRef.current;
