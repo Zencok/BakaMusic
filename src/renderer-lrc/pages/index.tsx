@@ -6,25 +6,26 @@ import useAppConfig from "@/hooks/useAppConfig";
 import SvgAsset, { type SvgAssetIconNames } from "@/renderer/components/SvgAsset";
 import AppleMusicLyricPlayer from "@renderer/components/AppleMusicLyricPlayer";
 import { useUserPreference } from "@/renderer/utils/user-perference";
-import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
 import AppConfig from "@shared/app-config/renderer";
 import messageBus, { useAppStatePartial } from "@shared/message-bus/renderer/extension";
 import { appWindowUtil } from "@shared/utils/renderer";
-import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-type ResizeAxis = "x" | "y" | "xy";
+const BASE_FONT_SIZE = 24;
+const MIN_DISPLAY_FONT_SIZE = 16;
+const MAX_DISPLAY_FONT_SIZE = 80;
+const HOVER_VISIBLE_MS = 1000;
 
-interface IResizeState {
-    axis: ResizeAxis;
-    screenX: number;
-    screenY: number;
+interface IDragState {
+    pointerId: number;
+    startScreenX: number;
+    startScreenY: number;
+    startWindowX: number;
+    startWindowY: number;
     width: number;
     height: number;
 }
-
-const MIN_WIDTH = 360;
-const MIN_HEIGHT = 64;
 
 export default function LyricWindowPage() {
     const currentMusic = useAppStatePartial("musicItem");
@@ -32,80 +33,63 @@ export default function LyricWindowPage() {
     const currentFullLyric = useAppStatePartial("fullLyric");
     const lyricClock = useAppStatePartial("lyricClock");
     const lockLyric = useAppConfig("lyric.lockLyric");
+    const fontDataConfig = useAppConfig("lyric.fontData");
     const fontSizeConfig = useAppConfig("lyric.fontSize");
     const fontColorConfig = useAppConfig("lyric.fontColor");
     const fontStrokeConfig = useAppConfig("lyric.strokeColor");
     const [showTranslation] = useUserPreference("showTranslation");
     const [showRomanization] = useUserPreference("showRomanization");
-    const [showOperations, setShowOperations] = useState(false);
-    const [dragging, setDragging] = useState(false);
-    const [resizing, setResizing] = useState(false);
-    const [windowSize, setWindowSize] = useState(() => ({
-        width: window.innerWidth,
-        height: window.innerHeight,
-    }));
-    const resizeStateRef = useRef<IResizeState | null>(null);
+    const [isHovered, setIsHovered] = useState(false);
+    const dragStateRef = useRef<IDragState | null>(null);
 
     useEffect(() => {
-        appWindowUtil.ignoreMouseEvent(false);
-        if (lockLyric) {
-            AppConfig.setConfig({
-                "lyric.lockLyric": false,
-            });
-        }
+        appWindowUtil.ignoreMouseEvent(!!lockLyric);
+
+        return () => {
+            appWindowUtil.ignoreMouseEvent(false);
+        };
     }, [lockLyric]);
 
     useEffect(() => {
-        const syncWindowSize = () => {
-            setWindowSize({
-                width: window.innerWidth,
-                height: window.innerHeight,
-            });
-        };
+        if (lockLyric) {
+            setIsHovered(false);
+            return undefined;
+        }
 
-        const stopInteractions = () => {
-            setDragging(false);
-            setResizing(false);
-            resizeStateRef.current = null;
-            syncWindowSize();
+        let hoverTimer = 0;
+        const hideHover = () => {
+            setIsHovered(false);
+            hoverTimer = 0;
         };
-
-        const handleMouseMove = (evt: MouseEvent) => {
-            const resizeState = resizeStateRef.current;
-            if (!resizeState) {
-                return;
+        const scheduleHide = () => {
+            if (hoverTimer) {
+                window.clearTimeout(hoverTimer);
             }
-
-            const deltaX = evt.screenX - resizeState.screenX;
-            const deltaY = evt.screenY - resizeState.screenY;
-            const nextWidth = resizeState.axis === "y"
-                ? resizeState.width
-                : resizeState.width + deltaX;
-            const nextHeight = resizeState.axis === "x"
-                ? resizeState.height
-                : resizeState.height + deltaY;
-            const clampedWidth = Math.max(MIN_WIDTH, Math.round(nextWidth));
-            const clampedHeight = Math.max(MIN_HEIGHT, Math.round(nextHeight));
-
-            setWindowSize({
-                width: clampedWidth,
-                height: clampedHeight,
-            });
-            appWindowUtil.setCurrentWindowSize(clampedWidth, clampedHeight);
+            hoverTimer = window.setTimeout(hideHover, HOVER_VISIBLE_MS);
+        };
+        const handleMouseMove = () => {
+            setIsHovered(true);
+            scheduleHide();
+        };
+        const handleMouseLeave = () => {
+            if (hoverTimer) {
+                window.clearTimeout(hoverTimer);
+                hoverTimer = 0;
+            }
+            setIsHovered(false);
         };
 
-        window.addEventListener("resize", syncWindowSize);
-        window.addEventListener("mousemove", handleMouseMove);
-        window.addEventListener("mouseup", stopInteractions);
-        window.addEventListener("blur", stopInteractions);
+        document.addEventListener("mousemove", handleMouseMove);
+        document.addEventListener("mouseleave", handleMouseLeave);
 
         return () => {
-            window.removeEventListener("resize", syncWindowSize);
-            window.removeEventListener("mousemove", handleMouseMove);
-            window.removeEventListener("mouseup", stopInteractions);
-            window.removeEventListener("blur", stopInteractions);
+            if (hoverTimer) {
+                window.clearTimeout(hoverTimer);
+            }
+            document.removeEventListener("mousemove", handleMouseMove);
+            document.removeEventListener("mouseleave", handleMouseLeave);
         };
-    }, []);
+    }, [lockLyric]);
 
     const lyricLines = useMemo(() => {
         const mappedLines = mapLyricLinesToAml(currentFullLyric ?? [], {
@@ -120,182 +104,185 @@ export default function LyricWindowPage() {
         return createFallbackAmlLyricLines(currentMusic);
     }, [currentFullLyric, currentMusic, showRomanization, showTranslation]);
 
-    const artwork = currentMusic?.artwork;
     const title = currentMusic?.title || "BakaMusic";
-    const subtitle = [currentMusic?.artist, currentMusic?.album]
+    const artist = currentMusic?.artist;
+    const subtitle = [artist, currentMusic?.album]
         .filter(Boolean)
-        .join(" · ") || "Desktop Lyrics";
-    const responsiveFontSize = useMemo(() => {
-        const configScale = Math.max(0.88, Math.min((fontSizeConfig || 54) / 54, 1.06));
-        const sizeFromHeight = 15 + Math.max(0, windowSize.height - MIN_HEIGHT) * 0.2;
-        const sizeFromWidth = 15 + Math.max(0, windowSize.width - MIN_WIDTH) * 0.022;
+        .join(" - ") || "Desktop Lyrics";
+    const songInfo = subtitle ? `${title} - ${subtitle}` : title;
+    const platform = currentMusic?.platform || currentMusic?._musicSheetPlatform;
+    const displayTitle = artist ? `${title} - ${artist}` : title;
+    const lyricFontSize = Math.max(
+        MIN_DISPLAY_FONT_SIZE,
+        Math.min(fontSizeConfig || BASE_FONT_SIZE, MAX_DISPLAY_FONT_SIZE),
+    );
+    const lyricFontFamily = fontDataConfig?.family ? String(fontDataConfig.family) : undefined;
+    const lineWidthAspect = Math.max(0.86, Math.min(window.innerWidth / 900, 1.22));
 
-        return Math.max(
-            15,
-            Math.min((sizeFromHeight * 0.74 + sizeFromWidth * 0.26) * configScale, 34),
-        );
-    }, [fontSizeConfig, windowSize.height, windowSize.width]);
-    const lineWidthAspect = useMemo(() => {
-        return Math.max(0.94, Math.min(windowSize.width / 340, 1.22));
-    }, [windowSize.width]);
+    const startDrag = async (event: ReactPointerEvent<HTMLDivElement>) => {
+        if (lockLyric || event.button !== 0) {
+            return;
+        }
 
-    const startResize = (axis: ResizeAxis, evt: ReactMouseEvent<HTMLDivElement>) => {
-        evt.preventDefault();
-        evt.stopPropagation();
-        setDragging(false);
-        setResizing(true);
-        resizeStateRef.current = {
-            axis,
-            screenX: evt.screenX,
-            screenY: evt.screenY,
+        const pointerId = event.pointerId;
+        const screenX = event.screenX;
+        const screenY = event.screenY;
+        const currentTarget = event.currentTarget;
+        const target = event.target as HTMLElement | null;
+        if (target?.closest("[data-no-drag='true']")) {
+            return;
+        }
+
+        currentTarget.setPointerCapture(pointerId);
+        dragStateRef.current = {
+            pointerId,
+            startScreenX: screenX,
+            startScreenY: screenY,
+            startWindowX: 0,
+            startWindowY: 0,
             width: window.innerWidth,
             height: window.innerHeight,
         };
+        event.preventDefault();
+
+        const bounds = await appWindowUtil.getCurrentWindowBounds();
+        const dragState = dragStateRef.current;
+        if (!bounds || !dragState || dragState.pointerId !== pointerId) {
+            return;
+        }
+
+        dragStateRef.current = {
+            ...dragState,
+            startWindowX: bounds.x,
+            startWindowY: bounds.y,
+            width: bounds.width,
+            height: bounds.height,
+        };
+    };
+
+    const dragWindow = (event: ReactPointerEvent<HTMLDivElement>) => {
+        const dragState = dragStateRef.current;
+        if (!dragState || dragState.pointerId !== event.pointerId) {
+            return;
+        }
+
+        appWindowUtil.setCurrentWindowBounds({
+            x: Math.round(dragState.startWindowX + event.screenX - dragState.startScreenX),
+            y: Math.round(dragState.startWindowY + event.screenY - dragState.startScreenY),
+            width: dragState.width,
+            height: dragState.height,
+        });
+        event.preventDefault();
+    };
+
+    const stopDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+        const dragState = dragStateRef.current;
+        if (!dragState || dragState.pointerId !== event.pointerId) {
+            return;
+        }
+
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+        dragStateRef.current = null;
     };
 
     return (
         <div
             className={classNames({
                 "desktop-lyric-page": true,
-                "show-operations": showOperations,
-                dragging,
-                resizing,
+                locked: !!lockLyric,
+                hovered: isHovered,
             })}
             style={{
                 "--desktop-lyric-color": fontColorConfig || "#ffffff",
-                "--desktop-lyric-shadow": fontStrokeConfig || "rgba(0,0,0,0.28)",
-                "--desktop-lyric-artwork": artwork ? `url("${artwork}")` : "none",
+                "--desktop-lyric-stroke-color": fontStrokeConfig || "rgba(0,0,0,0.78)",
+                "--desktop-lyric-font-size": `${lyricFontSize}px`,
+                "--desktop-lyric-font-family": lyricFontFamily,
+                fontSize: `${lyricFontSize}px`,
+                fontFamily: lyricFontFamily,
             } as CSSProperties}
-            onMouseDown={(evt) => {
-                if (resizing || evt.button !== 0) {
-                    return;
-                }
-
-                const target = evt.target as HTMLElement | null;
-                if (target?.closest("[data-no-drag='true']")) {
-                    return;
-                }
-
-                setDragging(true);
-            }}
-            onMouseEnter={() => {
-                setShowOperations(true);
-            }}
-            onMouseLeave={() => {
-                setShowOperations(false);
-            }}
         >
-            <div className="desktop-lyric-page--card">
-                <div className="desktop-lyric-page--header">
-                    <div className="desktop-lyric-page--track">
-                        <div className="desktop-lyric-page--cover-wrap">
-                            {artwork ? (
-                                <img
-                                    className="desktop-lyric-page--cover"
-                                    src={artwork}
-                                    onError={setFallbackAlbum}
-                                ></img>
-                            ) : (
-                                <div className="desktop-lyric-page--cover desktop-lyric-page--cover-placeholder">
-                                    <SvgAsset iconName="musical-note"></SvgAsset>
-                                </div>
-                            )}
+            <div className="desktop-lyric-page--header" data-no-drag="true">
+                <div className="desktop-lyric-page--info" title={songInfo}>
+                    <SvgAsset iconName="musical-note"></SvgAsset>
+                    <span>{displayTitle}</span>
+                </div>
+
+                <div className="desktop-lyric-page--controls">
+                    <DesktopActionButton
+                        iconName="skip-left"
+                        onClick={() => {
+                            messageBus.sendCommand("SkipToPrevious");
+                        }}
+                    ></DesktopActionButton>
+                    <DesktopActionButton
+                        emphasis
+                        iconName={playerState === PlayerState.Playing ? "pause" : "play"}
+                        onClick={() => {
+                            if (currentMusic) {
+                                messageBus.sendCommand("TogglePlayerState");
+                            }
+                        }}
+                    ></DesktopActionButton>
+                    <DesktopActionButton
+                        iconName="skip-right"
+                        onClick={() => {
+                            messageBus.sendCommand("SkipToNext");
+                        }}
+                    ></DesktopActionButton>
+                    <DesktopActionButton
+                        iconName={lockLyric ? "lock-open" : "lock-closed"}
+                        onClick={() => {
+                            AppConfig.setConfig({
+                                "lyric.lockLyric": !lockLyric,
+                            });
+                        }}
+                    ></DesktopActionButton>
+                    <DesktopActionButton
+                        iconName="x-mark"
+                        onClick={() => {
+                            appWindowUtil.setLyricWindow(false);
+                        }}
+                    ></DesktopActionButton>
+                </div>
+
+                <div className="desktop-lyric-page--platform-container">
+                    {platform ? (
+                        <div className="desktop-lyric-page--platform" title={platform}>
+                            {platform}
                         </div>
-
-                        <div className="desktop-lyric-page--copy">
-                            <div className="desktop-lyric-page--title" title={title}>
-                                {title}
-                            </div>
-                            <div className="desktop-lyric-page--meta-row">
-                                <div className="desktop-lyric-page--subtitle" title={subtitle}>
-                                    {subtitle}
-                                </div>
-                                {currentMusic?.platform ? (
-                                    <div className="desktop-lyric-page--badge">
-                                        {currentMusic.platform}
-                                    </div>
-                                ) : null}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="desktop-lyric-page--operations">
-                        <DesktopActionButton
-                            iconName="skip-left"
-                            onClick={() => {
-                                messageBus.sendCommand("SkipToPrevious");
-                            }}
-                        ></DesktopActionButton>
-                        <DesktopActionButton
-                            emphasis
-                            iconName={playerState === PlayerState.Playing ? "pause" : "play"}
-                            onClick={() => {
-                                if (currentMusic) {
-                                    messageBus.sendCommand("TogglePlayerState");
-                                }
-                            }}
-                        ></DesktopActionButton>
-                        <DesktopActionButton
-                            iconName="skip-right"
-                            onClick={() => {
-                                messageBus.sendCommand("SkipToNext");
-                            }}
-                        ></DesktopActionButton>
-                        <DesktopActionButton
-                            iconName="x-mark"
-                            onClick={() => {
-                                appWindowUtil.setLyricWindow(false);
-                            }}
-                        ></DesktopActionButton>
-                    </div>
+                    ) : null}
                 </div>
+            </div>
 
-                <div className="desktop-lyric-page--content">
-                    <AppleMusicLyricPlayer
-                        lyricLines={lyricLines}
-                        currentTimeMs={estimateLyricClockProgressMs(lyricClock)}
-                        playing={playerState === PlayerState.Playing}
-                        speed={lyricClock?.speed || 1}
-                        fontSize={responsiveFontSize}
-                        textColor={fontColorConfig || "#ffffff"}
-                        hoverBackgroundColor="rgba(255,255,255,0.02)"
-                        alignAnchor="center"
-                        alignPosition={0.5}
-                        enableBlur={!dragging && !resizing}
-                        enableScale={false}
-                        enableSpring={!dragging && !resizing}
-                        wordFadeWidth={0.84}
-                        style={{
-                            "--amll-lp-line-width-aspect": lineWidthAspect,
-                            "--amll-lp-line-padding-x": "0.08em",
-                            "--amll-lp-bg-line-scale": 0.9,
-                        } as CSSProperties}
-                    ></AppleMusicLyricPlayer>
-                </div>
-
-                <div className="desktop-lyric-page--footer">
-                    <div
-                        className="desktop-lyric-page--resize-handle desktop-lyric-page--resize-handle-x"
-                        data-no-drag="true"
-                        onMouseDown={(evt) => {
-                            startResize("x", evt);
-                        }}
-                    ></div>
-                    <div
-                        className="desktop-lyric-page--resize-handle desktop-lyric-page--resize-handle-y"
-                        data-no-drag="true"
-                        onMouseDown={(evt) => {
-                            startResize("y", evt);
-                        }}
-                    ></div>
-                    <div
-                        className="desktop-lyric-page--grabber"
-                        data-no-drag="true"
-                        onMouseDown={(evt) => {
-                            startResize("xy", evt);
-                        }}
-                    ></div>
-                </div>
+            <div
+                className="desktop-lyric-page--content"
+                onPointerCancel={stopDrag}
+                onPointerDown={startDrag}
+                onPointerMove={dragWindow}
+                onPointerUp={stopDrag}
+            >
+                <AppleMusicLyricPlayer
+                    lyricLines={lyricLines}
+                    currentTimeMs={estimateLyricClockProgressMs(lyricClock)}
+                    playing={playerState === PlayerState.Playing}
+                    speed={lyricClock?.speed || 1}
+                    fontSize="var(--desktop-lyric-font-size)"
+                    textColor={fontColorConfig || "#ffffff"}
+                    hoverBackgroundColor="transparent"
+                    alignAnchor="center"
+                    alignPosition={0.5}
+                    enableBlur={false}
+                    enableScale={false}
+                    enableSpring
+                    wordFadeWidth={0.82}
+                    style={{
+                        "--amll-lp-line-width-aspect": lineWidthAspect,
+                        "--amll-lp-line-padding-x": "0.08em",
+                        "--amll-lp-bg-line-scale": 0.82,
+                    } as CSSProperties}
+                ></AppleMusicLyricPlayer>
             </div>
         </div>
     );

@@ -236,44 +236,36 @@ class TrayManager {
         ctxMenu.push({
             type: "separator",
         });
-        /** TODO: 桌面歌词 */
-        // const lyricConfig = await getAppConfigPath("lyric");
-        // if (lyricConfig?.enableDesktopLyric) {
-        //     ctxMenu.push({
-        //         label: t("main.close_desktop_lyric"),
-        //         click() {
-        //             setLyricWindow(false);
-        //         },
-        //     });
-        // } else {
-        //     ctxMenu.push({
-        //         label: t("main.open_desktop_lyric"),
-        //         click() {
-        //             setLyricWindow(true);
-        //         },
-        //     });
-        // }
-        //
-        // if (lyricConfig?.lockLyric) {
-        //     ctxMenu.push({
-        //         label: t("main.unlock_desktop_lyric"),
-        //         click() {
-        //             setDesktopLyricLock(false);
-        //         },
-        //     });
-        // } else {
-        //     ctxMenu.push({
-        //         label: t("main.lock_desktop_lyric"),
-        //         click() {
-        //             setDesktopLyricLock(true);
-        //         },
-        //     });
-        // }
+        /********* Desktop lyric **********/
+        const desktopLyricEnabled = AppConfig.getConfig("lyric.enableDesktopLyric");
+        const desktopLyricLocked = AppConfig.getConfig("lyric.lockLyric");
+
+        ctxMenu.push({
+            label: t(desktopLyricEnabled ? "main.close_desktop_lyric" : "main.open_desktop_lyric"),
+            click: () => {
+                if (desktopLyricEnabled) {
+                    windowManager.closeLyricWindow();
+                } else {
+                    windowManager.showLyricWindow();
+                }
+            },
+        });
+
+        if (desktopLyricEnabled) {
+            ctxMenu.push({
+                label: t(desktopLyricLocked ? "main.unlock_desktop_lyric" : "main.lock_desktop_lyric"),
+                click: () => {
+                    AppConfig.setConfig({
+                        "lyric.lockLyric": !desktopLyricLocked,
+                    });
+                },
+            });
+        }
 
         ctxMenu.push({
             type: "separator",
         });
-        /********* 其他操作 **********/
+        /********* Other actions **********/
         ctxMenu.push({
             label: t("app_header.settings"),
             click() {

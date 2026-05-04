@@ -222,8 +222,8 @@ class WindowManager implements IWindowManager {
 
     /**************************** Lyric Window ***************************/
     private static lyricWindowMinSize: ICommon.ISize = {
-        width: 360,
-        height: 64,
+        width: 520,
+        height: 120,
     };
     private static lyricWindowMaxSize: ICommon.ISize = {
         width: Infinity,
@@ -248,12 +248,13 @@ class WindowManager implements IWindowManager {
         WindowManager.lyricWindowMaxSize.width = display.workArea.width;
         WindowManager.lyricWindowMaxSize.height = display.workArea.height;
 
+        const isLegacyBubbleWindow = !!initSize && initSize.width <= 560 && initSize.height <= 180;
         let {
             width,
             height,
         } = this.formatLyricWindowSize(
-            initSize?.width ?? 530,
-            initSize?.height ?? 163,
+            isLegacyBubbleWindow ? 900 : (initSize?.width ?? 900),
+            isLegacyBubbleWindow ? 180 : (initSize?.height ?? 180),
         );
 
         const lyricWindow = new BrowserWindow({
@@ -291,53 +292,34 @@ class WindowManager implements IWindowManager {
             lyricWindow.webContents.openDevTools();
         }
 
-        // 璁剧疆绐楀彛鍙嫋鎷?
-        WindowDrag.setWindowDraggable(lyricWindow, {
-            width, // 瀹為檯涓嶇敓鏁?
-            height, // 瀹為檯涓嶇敓鏁?
-            getWindowSize() {
-                return {
-                    width,
-                    height,
-                };
-            },
-            onDragEnd: (point) => {
-                if (!point) {
-                    return;
-                }
-
-                AppConfig.setConfig({
-                    "private.lyricWindowPosition": point,
-                });
-                const currentDisplayBounds = screen.getDisplayNearestPoint(point).workArea;
-                if (
-                    currentDisplayBounds.width !== WindowManager.lyricWindowMaxSize.width ||
-                    currentDisplayBounds.height !== WindowManager.lyricWindowMaxSize.height
-                ) {
-                    WindowManager.lyricWindowMaxSize.width = currentDisplayBounds.width;
-                    WindowManager.lyricWindowMaxSize.height = currentDisplayBounds.height;
-                    lyricWindow.setMaximumSize(WindowManager.lyricWindowMaxSize.width, WindowManager.lyricWindowMaxSize.height);
-
-                    const nextSize = this.formatLyricWindowSize(...lyricWindow.getSize());
-                    if (nextSize.width !== width || nextSize.height !== height) {
-                        width = nextSize.width;
-                        height = nextSize.height;
-                        lyricWindow.setSize(width, height);
-                        AppConfig.setConfig({
-                            "private.lyricWindowSize": nextSize,
-                        });
-                    }
-                }
-            },
-        });
-
         const updateCallback = (_patch: IAppConfig, _: any, _from: "main" | "renderer") => {
             const [nextWidth, nextHeight] = lyricWindow.getSize();
             width = nextWidth;
             height = nextHeight;
         };
+        const savePositionConfig = () => {
+            if (lyricWindow.isDestroyed()) {
+                return;
+            }
+            const [x, y] = lyricWindow.getPosition();
+            AppConfig.setConfig({
+                "private.lyricWindowPosition": {
+                    x,
+                    y,
+                },
+            });
+        };
+        const updatePositionConfig = debounce(savePositionConfig, 300, {
+            leading: false,
+            trailing: true,
+        });
         AppConfig.onConfigUpdated(updateCallback);
+        lyricWindow.on("close", () => {
+            updatePositionConfig.cancel();
+            savePositionConfig();
+        });
         lyricWindow.on("closed", () => {
+            updatePositionConfig.cancel();
             AppConfig.offConfigUpdated(updateCallback);
         });
 
@@ -354,6 +336,10 @@ class WindowManager implements IWindowManager {
             });
         });
 
+        lyricWindow.on("move", updatePositionConfig);
+        if (process.platform !== "darwin") {
+            lyricWindow.on("moved", savePositionConfig);
+        }
         // 鍒濆鍖栬缃?
         lyricWindow.once("ready-to-show", async () => {
             const position = AppConfig.getConfig("private.lyricWindowPosition");
@@ -402,7 +388,17 @@ class WindowManager implements IWindowManager {
     }
 
     public closeLyricWindow() {
-        WindowManager.lrcWindow?.close();
+        const lyricWindow = WindowManager.lrcWindow;
+        if (lyricWindow && !lyricWindow.isDestroyed()) {
+            const [x, y] = lyricWindow.getPosition();
+            AppConfig.setConfig({
+                "private.lyricWindowPosition": {
+                    x,
+                    y,
+                },
+            });
+            lyricWindow.close();
+        }
         WindowManager.lrcWindow = null;
         AppConfig.setConfig({
             "lyric.enableDesktopLyric": false,

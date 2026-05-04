@@ -2,295 +2,212 @@
     position: relative;
     width: 100%;
     height: 100%;
+    padding: 0 18px;
+    box-sizing: border-box;
     overflow: hidden;
-    user-select: none;
     color: var(--desktop-lyric-color, #fff);
-    border-radius: 24px;
     background: transparent;
+    border-radius: 18px;
+    user-select: none;
+    transition: background-color 120ms ease-out;
 
-    &.dragging .desktop-lyric-page--card,
-    &.resizing .desktop-lyric-page--card {
-        background: rgba(14, 14, 18, 0.92);
-        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-        backdrop-filter: none;
+    &.hovered:not(.locked) {
+        background: rgba(0, 0, 0, 0.62);
     }
 
-    &.dragging .desktop-lyric-page--card::before,
-    &.resizing .desktop-lyric-page--card::before {
-        opacity: 0.16;
-        filter: blur(18px) saturate(112%);
-        transform: scale(1.04);
-    }
-
-    &.dragging .desktop-lyric-page--card::after,
-    &.resizing .desktop-lyric-page--card::after {
-        background: rgba(10, 10, 14, 0.34);
-    }
-
-    &.dragging .desktop-lyric-page--content,
-    &.resizing .desktop-lyric-page--content {
-        -webkit-mask-image: none;
-        mask-image: none;
-    }
-
-    &.dragging .desktop-lyric-page--content .apple-music-lyric-player .amll-lyric-player,
-    &.resizing .desktop-lyric-page--content .apple-music-lyric-player .amll-lyric-player {
-        text-shadow: none;
-    }
-
-    & .desktop-lyric-page--card {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        padding: 10px 14px 7px;
-        box-sizing: border-box;
-        border-radius: 24px;
-        overflow: hidden;
-        isolation: isolate;
-        background: linear-gradient(180deg, rgba(12, 12, 16, 0.72), rgba(12, 12, 16, 0.56));
-        border: 1px solid rgba(255, 255, 255, 0.09);
-        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(8px) saturate(118%);
-        will-change: opacity;
-        -webkit-app-region: drag;
-
-        &::before {
-            content: "";
-            position: absolute;
-            inset: -14%;
-            z-index: 0;
-            background-image: var(--desktop-lyric-artwork, none);
-            background-size: cover;
-            background-position: center;
-            filter: blur(36px) saturate(148%);
-            transform: scale(1.12);
-            opacity: 0.42;
-            pointer-events: none;
-        }
-
-        &::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            z-index: 0;
-            background: linear-gradient(180deg, rgba(10, 10, 14, 0.28), rgba(10, 10, 14, 0.42));
-            pointer-events: none;
-        }
-
-        & > * {
-            position: relative;
-            z-index: 1;
-        }
+    &.locked {
+        pointer-events: none;
     }
 
     & .desktop-lyric-page--header {
-        display: flex;
+        position: absolute;
+        top: 8px;
+        right: 18px;
+        left: 18px;
+        z-index: 2;
+        min-height: 34px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
         align-items: center;
-        justify-content: space-between;
+        justify-content: stretch;
         gap: 12px;
-        min-height: 36px;
-        -webkit-app-region: drag;
-    }
-
-    & .desktop-lyric-page--track {
-        min-width: 0;
-        flex: 1;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+        opacity: 0;
+        transition: opacity 100ms ease-out;
+        pointer-events: none;
         -webkit-app-region: no-drag;
     }
 
-    & .desktop-lyric-page--cover-wrap {
-        flex-shrink: 0;
+    &.hovered:not(.locked) .desktop-lyric-page--header {
+        opacity: 1;
+        pointer-events: auto;
     }
 
-    & .desktop-lyric-page--cover {
-        width: 34px;
-        height: 34px;
-        display: block;
-        border-radius: 11px;
-        object-fit: cover;
-        background: rgba(255, 255, 255, 0.12);
-        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
-
-        & svg {
-            width: 16px;
-            height: 16px;
-        }
-    }
-
-    & .desktop-lyric-page--cover-placeholder {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: rgba(255, 255, 255, 0.82);
-    }
-
-    & .desktop-lyric-page--copy {
-        min-width: 0;
-        display: flex;
-        flex: 1;
-        flex-direction: column;
-        gap: 2px;
-    }
-
-    & .desktop-lyric-page--title,
-    & .desktop-lyric-page--subtitle {
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-        text-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-    }
-
-    & .desktop-lyric-page--title {
-        font-size: 0.88rem;
-        font-weight: 700;
-        letter-spacing: -0.01em;
-    }
-
-    & .desktop-lyric-page--meta-row {
+    & .desktop-lyric-page--info {
         min-width: 0;
         display: flex;
         align-items: center;
         gap: 8px;
-    }
+        justify-self: start;
+        max-width: min(280px, 100%);
+        padding: 0 10px;
+        color: rgba(255, 255, 255, 0.88);
+        font-size: 0.86rem;
+        font-weight: 650;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
 
-    & .desktop-lyric-page--subtitle {
-        min-width: 0;
-        font-size: 0.7rem;
-        opacity: 0.74;
-    }
+        & span {
+            min-width: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
 
-    & .desktop-lyric-page--badge {
-        flex-shrink: 0;
-        height: 20px;
-        padding: 0 7px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 999px;
-        font-size: 0.66rem;
-        font-weight: 700;
-        color: rgba(255, 255, 255, 0.86);
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    & .desktop-lyric-page--content {
-        position: relative;
-        flex: 1;
-        min-height: 0;
-        overflow: hidden;
-        margin-top: 4px;
-        margin-bottom: 2px;
-        padding: 0 8px;
-        display: flex;
-        justify-content: center;
-        -webkit-app-region: no-drag;
-        -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 94%, transparent 100%);
-        mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 94%, transparent 100%);
-
-        & .apple-music-lyric-player {
-            width: min(100%, 92%);
-            height: 100%;
-
-            & .amll-lyric-player {
-                text-shadow: 0 4px 14px rgba(0, 0, 0, 0.24), 0 0 14px var(--desktop-lyric-shadow, rgba(0, 0, 0, 0.16));
-            }
-
-            & .amll-lyric-player.dom {
-                --amll-lp-line-padding-x: 0.08em;
-                --amll-lp-bg-line-scale: 0.9;
-            }
+        & svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
         }
     }
 
-    & .desktop-lyric-page--operations {
+    & .desktop-lyric-page--controls {
         display: flex;
         align-items: center;
-        gap: 7px;
-        opacity: 0;
-        transform: translateY(-4px);
-        pointer-events: none;
-        transition: opacity 160ms ease, transform 160ms ease;
+        justify-content: center;
+        justify-self: center;
+        gap: 8px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 10px 22px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(12px) saturate(120%);
         -webkit-app-region: no-drag;
     }
 
-    &.show-operations .desktop-lyric-page--operations {
-        opacity: 1;
-        transform: translateY(0);
-        pointer-events: auto;
+    & .desktop-lyric-page--platform-container {
+        min-width: 0;
+        display: flex;
+        justify-content: flex-end;
+        justify-self: end;
+        pointer-events: none;
+    }
+
+    & .desktop-lyric-page--platform {
+        max-width: min(170px, 100%);
+        padding: 4px 10px;
+        border-radius: 999px;
+        color: rgba(255, 255, 255, 0.92);
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        font-size: 0.78rem;
+        font-weight: 700;
+        line-height: 1.2;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
     }
 
     & .desktop-lyric-page--action {
-        width: 28px;
-        height: 28px;
+        width: 30px;
+        height: 30px;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
         border-radius: 50%;
+        color: rgba(255, 255, 255, 0.94);
         cursor: pointer;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        transition: transform 160ms ease, background-color 160ms ease;
+        transition: transform 140ms ease, background-color 140ms ease, opacity 140ms ease;
 
         &:hover {
-            transform: translateY(-1px);
-            background: rgba(255, 255, 255, 0.14);
-        }
-
-        &[data-emphasis="true"] {
-            width: 32px;
-            height: 32px;
             background: rgba(255, 255, 255, 0.18);
         }
 
+        &:active {
+            transform: scale(0.96);
+        }
+
+        &[data-emphasis="true"] {
+            width: 34px;
+            height: 34px;
+            background: rgba(255, 255, 255, 0.16);
+        }
+
         & svg {
-            width: 16px;
-            height: 16px;
+            width: 17px;
+            height: 17px;
         }
     }
 
-    & .desktop-lyric-page--footer {
-        position: relative;
-        display: flex;
-        justify-content: flex-end;
-        align-items: flex-end;
-        min-height: 12px;
-        -webkit-app-region: no-drag;
-    }
-
-    & .desktop-lyric-page--resize-handle {
+    & .desktop-lyric-page--content {
         position: absolute;
-        opacity: 0;
+        inset: 0 18px;
+        z-index: 1;
+        min-height: 0;
+        overflow: hidden;
+        cursor: move;
+        -webkit-app-region: no-drag;
+        -webkit-mask-image: linear-gradient(to right, transparent 0, #000 8%, #000 92%, transparent 100%);
+        mask-image: linear-gradient(to right, transparent 0, #000 8%, #000 92%, transparent 100%);
     }
 
-    & .desktop-lyric-page--resize-handle-x {
-        top: 10px;
-        right: 0;
-        bottom: 16px;
-        width: 12px;
-        cursor: ew-resize;
+    &.locked .desktop-lyric-page--content {
+        cursor: default;
     }
 
-    & .desktop-lyric-page--resize-handle-y {
-        left: 18px;
-        right: 18px;
-        bottom: 0;
-        height: 12px;
-        cursor: ns-resize;
-    }
+    & .apple-music-lyric-player {
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        font-family: var(--desktop-lyric-font-family, inherit);
 
-    & .desktop-lyric-page--grabber {
-        width: 13px;
-        height: 13px;
-        border-right: 2px solid rgba(255, 255, 255, 0.22);
-        border-bottom: 2px solid rgba(255, 255, 255, 0.22);
-        border-radius: 0 0 8px 0;
-        opacity: 0.84;
-        cursor: nwse-resize;
+        & .amll-lyric-player {
+            color: var(--desktop-lyric-color, #fff);
+            font-size: var(--desktop-lyric-font-size, 24px);
+            font-family: var(--desktop-lyric-font-family, inherit);
+            font-weight: 700;
+            filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.68)) drop-shadow(0 8px 18px rgba(0, 0, 0, 0.45));
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.96), 0 0 6px var(--desktop-lyric-stroke-color, rgba(0, 0, 0, 0.78));
+            -webkit-text-stroke: 0.035em var(--desktop-lyric-stroke-color, rgba(0, 0, 0, 0.78));
+            paint-order: stroke fill;
+        }
+
+        & .amll-lyric-player *,
+        & .amll-lyric-player *::before,
+        & .amll-lyric-player *::after {
+            font-family: var(--desktop-lyric-font-family, inherit);
+            -webkit-text-stroke-color: var(--desktop-lyric-stroke-color, rgba(0, 0, 0, 0.78));
+        }
+
+        & .amll-lyric-player [class*="lyricLine"],
+        & .amll-lyric-player [class*="lyricBgLine"] {
+            align-items: center;
+            text-align: center !important;
+            transform-origin: center !important;
+        }
+
+        & .amll-lyric-player [class*="lyricLine"],
+        & .amll-lyric-player [class*="lyricBgLine"],
+        & .amll-lyric-player [class*="lyricMainLine"],
+        & .amll-lyric-player [class*="lyricSubLine"],
+        & .amll-lyric-player [class*="word"],
+        & .amll-lyric-player [class*="roman"],
+        & .amll-lyric-player [class*="ruby"] {
+            opacity: 1 !important;
+            color: var(--desktop-lyric-color, #fff) !important;
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.96), 0 0 6px var(--desktop-lyric-stroke-color, rgba(0, 0, 0, 0.78));
+        }
+
+        & .amll-lyric-player [class*="lyricSubLine"] {
+            font-weight: 650;
+        }
+
+        & .amll-lyric-player.dom {
+            --amll-lp-line-padding-x: 0.08em;
+            --amll-lp-bg-line-scale: 0.82;
+            line-height: 1.16em;
+            text-align: center;
+        }
     }
 }

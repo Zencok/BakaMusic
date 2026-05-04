@@ -1,6 +1,6 @@
 import { Popover } from "@headlessui/react";
 import "./index.scss";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HexAlphaColorPicker, HexColorInput } from "react-colorful";
 import useAppConfig from "@/hooks/useAppConfig";
 import { IAppConfig } from "@/types/app-config";
@@ -16,7 +16,31 @@ export default function ColorPickerSettingItem<T extends keyof IAppConfig>(
 ) {
     const { keyPath, label } = props;
     const realColor = useAppConfig(keyPath);
-    const [color, setColor] = useState<string>(realColor as string);
+    const [color, setColor] = useState<string>((realColor as string) || "#ffffff");
+    const lastCommittedColorRef = useRef<string>((realColor as string) || "#ffffff");
+
+    useEffect(() => {
+        const nextColor = (realColor as string) || "#ffffff";
+        lastCommittedColorRef.current = nextColor;
+        setColor(nextColor);
+    }, [realColor]);
+
+    useEffect(() => {
+        if (!color || color === lastCommittedColorRef.current) {
+            return undefined;
+        }
+
+        const timer = window.setTimeout(() => {
+            lastCommittedColorRef.current = color;
+            AppConfig.setConfig({
+                [keyPath]: color as any,
+            });
+        }, 120);
+
+        return () => {
+            window.clearTimeout(timer);
+        };
+    }, [color, keyPath]);
 
     return (
         <Popover className="setting-row">
@@ -50,6 +74,7 @@ export default function ColorPickerSettingItem<T extends keyof IAppConfig>(
                                 <div
                                     role="button"
                                     onClick={() => {
+                                        lastCommittedColorRef.current = color;
                                         AppConfig.setConfig({
                                             [keyPath]: color as any,
                                         });

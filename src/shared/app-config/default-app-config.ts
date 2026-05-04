@@ -30,7 +30,7 @@ const _defaultAppConfig: IAppConfig =  {
     "lyric.fontData": defaultFont,
     "lyric.fontColor": "#fff",
     "lyric.strokeColor": "#b48f1d",
-    "lyric.fontSize": 54,
+    "lyric.fontSize": 24,
     "shortCut.enableLocal": true,
     "shortCut.enableGlobal": false,
     "download.concurrency": 5,
@@ -38,8 +38,8 @@ const _defaultAppConfig: IAppConfig =  {
     "backup.resumeBehavior": "append",
     "normal.language": "zh-CN",
     "private.lyricWindowSize": {
-        width: 530,
-        height: 163,
+        width: 900,
+        height: 180,
     },
 };
 
