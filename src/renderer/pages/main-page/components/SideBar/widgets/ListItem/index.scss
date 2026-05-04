@@ -6,6 +6,7 @@
   position: relative;
   display: flex;
   align-items: center;
+  gap: 0.5rem;
   box-sizing: border-box;
   padding: 0 0.95rem;
   margin-bottom: 0.28rem;
@@ -22,7 +23,6 @@
   & svg {
     width: 1.15rem;
     height: 1.15rem;
-    margin-right: 0.75rem;
     flex-shrink: 0;
     opacity: 0.9;
   }
