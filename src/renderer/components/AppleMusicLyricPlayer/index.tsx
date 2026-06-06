@@ -83,7 +83,6 @@ export default function AppleMusicLyricPlayer({
         player.setHidePassedLines(hidePassedLines);
         player.setWordFadeWidth(wordFadeWidth);
         stage.appendChild(player.getElement());
-        player.setLyricLines(lyricLines, currentTimeMs);
 
         if (playing) {
             player.resume();
@@ -114,19 +113,36 @@ export default function AppleMusicLyricPlayer({
         player.setWordFadeWidth(wordFadeWidth);
     }, [alignAnchor, alignPosition, centerInterludeDots, enableBlur, enableScale, enableSpring, hidePassedLines, wordFadeWidth]);
 
+    const lyricSignature = useMemo(
+        () => lyricLines
+            .map((line) => {
+                const wordsKey = line.words
+                    ?.map((word) => `${word.word}${word.romanWord ?? ""}`)
+                    .join("") ?? "";
+                return `${line.startTime}${wordsKey}${line.translatedLyric ?? ""}${line.romanLyric ?? ""}`;
+            })
+            .join(""),
+        [lyricLines],
+    );
+    const lastLyricSignatureRef = useRef<string | null>(null);
+
     useEffect(() => {
         const player = playerRef.current;
         if (!player) {
             return;
         }
 
+        if (lastLyricSignatureRef.current === lyricSignature) {
+            return;
+        }
+        lastLyricSignatureRef.current = lyricSignature;
+
         player.setLyricLines(lyricLines, currentTimeMs);
-        player.setCurrentTime(currentTimeMs, true);
         lastSyncedTimeRef.current = currentTimeMs;
         lastPropTimeRef.current = currentTimeMs;
         anchorTimeRef.current = currentTimeMs;
         anchorFrameTimeRef.current = performance.now();
-    }, [lyricLines]);
+    }, [lyricSignature]);
 
     useEffect(() => {
         const player = playerRef.current;
@@ -177,7 +193,7 @@ export default function AppleMusicLyricPlayer({
                     ? anchorTimeRef.current + (timestamp - anchorFrameTimeRef.current) * speedRef.current
                     : anchorTimeRef.current;
 
-                if (hasLyricLines) {
+                if (hasLyricLines && playingRef.current) {
                     player.setCurrentTime(frameTime);
                     lastSyncedTimeRef.current = frameTime;
                 }

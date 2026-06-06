@@ -8,7 +8,6 @@ import EventEmitter from "eventemitter3";
 import WindowDrag from "@shared/window-drag/main";
 import AppConfig from "@shared/app-config/main";
 import messageBus from "@shared/message-bus/main";
-import { IAppConfig } from "@/types/app-config";
 import debounce from "@/common/debounce";
 
 
@@ -222,8 +221,8 @@ class WindowManager implements IWindowManager {
 
     /**************************** Lyric Window ***************************/
     private static lyricWindowDefaultSize: ICommon.ISize = {
-        width: 583,
-        height: 218,
+        width: 940,
+        height: 180,
     };
     private static lyricWindowMinSize: ICommon.ISize = {
         width: 480,
@@ -256,7 +255,8 @@ class WindowManager implements IWindowManager {
         const isLegacyDefaultWindow = !!initSize
             && ((initSize.width === 900 && initSize.height === 180)
                 || (initSize.width === 810 && initSize.height === 198)
-                || (initSize.width === 729 && initSize.height === 218));
+                || (initSize.width === 729 && initSize.height === 218)
+                || (initSize.width === 583 && initSize.height === 218));
         const preferredSize = (isLegacyBubbleWindow || isLegacyDefaultWindow)
             ? WindowManager.lyricWindowDefaultSize
             : (initSize ?? WindowManager.lyricWindowDefaultSize);
@@ -300,13 +300,8 @@ class WindowManager implements IWindowManager {
             lyricWindow.webContents.openDevTools();
         }
 
-        const updateCallback = (_patch: IAppConfig, _: any, _from: "main" | "renderer") => {
-            const [nextWidth, nextHeight] = lyricWindow.getSize();
-            width = nextWidth;
-            height = nextHeight;
-        };
         const savePositionConfig = () => {
-            if (lyricWindow.isDestroyed()) {
+            if (!lyricWindow || lyricWindow.isDestroyed()) {
                 return;
             }
             const [x, y] = lyricWindow.getPosition();
@@ -321,14 +316,37 @@ class WindowManager implements IWindowManager {
             leading: false,
             trailing: true,
         });
-        AppConfig.onConfigUpdated(updateCallback);
+        const saveSizeConfig = () => {
+            if (!lyricWindow || lyricWindow.isDestroyed()) {
+                return;
+            }
+            const [wWidth, wHeight] = lyricWindow.getSize();
+            // 确保值是有效的数字
+            if (typeof wWidth === "number" && typeof wHeight === "number" &&
+                !isNaN(wWidth) && !isNaN(wHeight) &&
+                isFinite(wWidth) && isFinite(wHeight)) {
+                AppConfig.setConfig({
+                    "private.lyricWindowSize": {
+                        width: Math.round(wWidth),
+                        height: Math.round(wHeight),
+                    },
+                });
+            }
+        };
+        const updateSizeConfig = debounce(saveSizeConfig, 300, {
+            leading: false,
+            trailing: true,
+        });
         lyricWindow.on("close", () => {
             updatePositionConfig.cancel();
             savePositionConfig();
+            updateSizeConfig.cancel();
+            saveSizeConfig();
         });
         lyricWindow.on("closed", () => {
             updatePositionConfig.cancel();
-            AppConfig.offConfigUpdated(updateCallback);
+            updateSizeConfig.cancel();
+            WindowManager.lrcWindow = null;
         });
 
 
@@ -336,12 +354,7 @@ class WindowManager implements IWindowManager {
             const [wWidth, wHeight] = lyricWindow.getSize();
             width = wWidth;
             height = wHeight;
-            AppConfig.setConfig({
-                "private.lyricWindowSize": {
-                    width: wWidth,
-                    height: wHeight,
-                },
-            });
+            updateSizeConfig();
         });
 
         lyricWindow.on("move", updatePositionConfig);
@@ -382,7 +395,7 @@ class WindowManager implements IWindowManager {
 
 
     public showLyricWindow() {
-        if (!WindowManager.lrcWindow) {
+        if (!WindowManager.lrcWindow || WindowManager.lrcWindow.isDestroyed()) {
             this.createLyricWindow();
         }
 

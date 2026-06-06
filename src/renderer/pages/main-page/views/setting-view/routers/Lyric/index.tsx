@@ -1,9 +1,8 @@
 import CheckBoxSettingItem from "../../components/CheckBoxSettingItem";
 import "./index.scss";
-import ColorPickerSettingItem from "../../components/ColorPickerSettingItem";
+import ColorInputSettingItem from "../../components/ColorInputSettingItem";
 import ListBoxSettingItem from "../../components/ListBoxSettingItem";
 import FontPickerSettingItem from "../../components/FontPickerSettingItem";
-import UserPreferenceCheckBoxSettingItem from "../../components/UserPreferenceCheckBoxSettingItem";
 import { IfTruthy } from "@/renderer/components/Condition";
 import { useTranslation } from "react-i18next";
 import { getGlobalContext } from "@/shared/global-context/renderer";
@@ -31,19 +30,14 @@ export default function Lyric() {
                     appWindowUtil.setLyricWindow(checked);
                 }}
             ></CheckBoxSettingItem>
-            {/* <CheckBoxSettingItem
-        label="置顶桌面歌词"
-        checked={data.alwaysOnTop}
-        keyPath="lyric.alwaysOnTop"
-      ></CheckBoxSettingItem> */}
             <CheckBoxSettingItem
                 label={t("settings.lyric.lock_desktop_lyric")}
                 keyPath="lyric.lockLyric"
             ></CheckBoxSettingItem>
-            <UserPreferenceCheckBoxSettingItem
+            <CheckBoxSettingItem
                 label={t("settings.lyric.show_romanization")}
-                keyPath="showRomanization"
-            ></UserPreferenceCheckBoxSettingItem>
+                keyPath="lyric.showRomanization"
+            ></CheckBoxSettingItem>
             <FontPickerSettingItem
                 label={t("settings.lyric.font")}
                 keyPath="lyric.fontData"
@@ -53,14 +47,10 @@ export default function Lyric() {
                 options={numberArray}
                 label={t("settings.lyric.font_size")}
             ></ListBoxSettingItem>
-            <ColorPickerSettingItem
+            <ColorInputSettingItem
                 label={t("settings.lyric.font_color")}
                 keyPath="lyric.fontColor"
-            ></ColorPickerSettingItem>
-            <ColorPickerSettingItem
-                label={t("settings.lyric.stroke_color")}
-                keyPath="lyric.strokeColor"
-            ></ColorPickerSettingItem>
+            ></ColorInputSettingItem>
         </div>
     );
 }

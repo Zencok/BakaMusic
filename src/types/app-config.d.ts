@@ -29,8 +29,6 @@ interface _IAppConfig {
     "lyric.enableStatusBarLyric": boolean;
     /** 显示桌面歌词 */
     "lyric.enableDesktopLyric": boolean;
-    /** 桌面歌词置顶 */
-    "lyric.alwaysOnTop": boolean;
     /** 锁定桌面歌词 */
     "lyric.lockLyric": boolean;
     /** 字体 */
@@ -39,8 +37,10 @@ interface _IAppConfig {
     "lyric.fontColor": string;
     /** 字体大小 */
     "lyric.fontSize": number;
-    /** 描边颜色 */
-    "lyric.strokeColor": string;
+    /** 展示翻译 */
+    "lyric.showTranslation": boolean;
+    /** 展示罗马音 */
+    "lyric.showRomanization": boolean;
 
     /** 是否启用本地快捷键 */
     "shortCut.enableLocal": boolean;

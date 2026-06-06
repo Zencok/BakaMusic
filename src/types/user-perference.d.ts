@@ -21,10 +21,6 @@ declare namespace IUserPreference {
     }>;
     skipVersion: string;
     inlineLyricFontSize: string;
-    /** 展示翻译 */
-    showTranslation: boolean;
-    /** 展示罗马音 */
-    showRomanization: boolean;
   }
 
   interface IDBType {

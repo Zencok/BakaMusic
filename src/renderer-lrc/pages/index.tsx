@@ -5,11 +5,11 @@ import { PlayerState } from "@/common/constant";
 import useAppConfig from "@/hooks/useAppConfig";
 import SvgAsset, { type SvgAssetIconNames } from "@/renderer/components/SvgAsset";
 import AppleMusicLyricPlayer from "@renderer/components/AppleMusicLyricPlayer";
-import { useUserPreference } from "@/renderer/utils/user-perference";
+import useFramelessWindowResize, { FramelessResizeAxis } from "@/hooks/useFramelessWindowResize";
 import AppConfig from "@shared/app-config/renderer";
 import messageBus, { useAppStatePartial } from "@shared/message-bus/renderer/extension";
 import { appWindowUtil } from "@shared/utils/renderer";
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const BASE_FONT_SIZE = 24;
@@ -36,19 +36,20 @@ export default function LyricWindowPage() {
     const fontDataConfig = useAppConfig("lyric.fontData");
     const fontSizeConfig = useAppConfig("lyric.fontSize");
     const fontColorConfig = useAppConfig("lyric.fontColor");
-    const fontStrokeConfig = useAppConfig("lyric.strokeColor");
-    const [showTranslation] = useUserPreference("showTranslation");
-    const [showRomanization] = useUserPreference("showRomanization");
+    const showTranslation = useAppConfig("lyric.showTranslation");
+    const showRomanization = useAppConfig("lyric.showRomanization");
     const [isHovered, setIsHovered] = useState(false);
+    const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
     const dragStateRef = useRef<IDragState | null>(null);
+    const dragRafRef = useRef(0);
+    const pendingBoundsRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
 
-    useEffect(() => {
-        appWindowUtil.ignoreMouseEvent(!!lockLyric);
-
-        return () => {
-            appWindowUtil.ignoreMouseEvent(false);
-        };
-    }, [lockLyric]);
+    const {
+        startResize,
+        resizeWindow,
+        stopResize,
+        cancelResize,
+    } = useFramelessWindowResize({ disabled: !!lockLyric });
 
     useEffect(() => {
         if (lockLyric) {
@@ -91,6 +92,24 @@ export default function LyricWindowPage() {
         };
     }, [lockLyric]);
 
+    useEffect(() => {
+        if (!lockLyric) {
+            return undefined;
+        }
+        cancelResize();
+        return undefined;
+    }, [cancelResize, lockLyric]);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setViewportWidth(window.innerWidth);
+        };
+        window.addEventListener("resize", handleResize);
+        return () => {
+            window.removeEventListener("resize", handleResize);
+        };
+    }, []);
+
     const lyricLines = useMemo(() => {
         const mappedLines = mapLyricLinesToAml(currentFullLyric ?? [], {
             includeTranslation: !!showTranslation,
@@ -117,7 +136,7 @@ export default function LyricWindowPage() {
         Math.min(fontSizeConfig || BASE_FONT_SIZE, MAX_DISPLAY_FONT_SIZE),
     );
     const lyricFontFamily = fontDataConfig?.family ? String(fontDataConfig.family) : undefined;
-    const lineWidthAspect = Math.max(0.86, Math.min(window.innerWidth / 900, 1.22));
+    const lineWidthAspect = Math.max(0.86, Math.min(viewportWidth / 900, 1.22));
 
     const startDrag = async (event: ReactPointerEvent<HTMLDivElement>) => {
         if (lockLyric || event.button !== 0) {
@@ -138,8 +157,8 @@ export default function LyricWindowPage() {
             pointerId,
             startScreenX: screenX,
             startScreenY: screenY,
-            startWindowX: 0,
-            startWindowY: 0,
+            startWindowX: window.screenX,
+            startWindowY: window.screenY,
             width: window.innerWidth,
             height: window.innerHeight,
         };
@@ -166,12 +185,21 @@ export default function LyricWindowPage() {
             return;
         }
 
-        appWindowUtil.setCurrentWindowBounds({
+        pendingBoundsRef.current = {
             x: Math.round(dragState.startWindowX + event.screenX - dragState.startScreenX),
             y: Math.round(dragState.startWindowY + event.screenY - dragState.startScreenY),
             width: dragState.width,
             height: dragState.height,
-        });
+        };
+        if (!dragRafRef.current) {
+            dragRafRef.current = requestAnimationFrame(() => {
+                dragRafRef.current = 0;
+                const bounds = pendingBoundsRef.current;
+                if (bounds) {
+                    appWindowUtil.setCurrentWindowBounds(bounds);
+                }
+            });
+        }
         event.preventDefault();
     };
 
@@ -181,6 +209,15 @@ export default function LyricWindowPage() {
             return;
         }
 
+        if (dragRafRef.current) {
+            cancelAnimationFrame(dragRafRef.current);
+            dragRafRef.current = 0;
+        }
+        const bounds = pendingBoundsRef.current;
+        if (bounds) {
+            appWindowUtil.setCurrentWindowBounds(bounds);
+            pendingBoundsRef.current = null;
+        }
         if (event.currentTarget.hasPointerCapture(event.pointerId)) {
             event.currentTarget.releasePointerCapture(event.pointerId);
         }
@@ -196,7 +233,6 @@ export default function LyricWindowPage() {
             })}
             style={{
                 "--desktop-lyric-color": fontColorConfig || "#ffffff",
-                "--desktop-lyric-stroke-color": fontStrokeConfig || "rgba(0,0,0,0.78)",
                 "--desktop-lyric-font-size": `${lyricFontSize}px`,
                 "--desktop-lyric-font-family": lyricFontFamily,
                 fontSize: `${lyricFontSize}px`,
@@ -285,6 +321,28 @@ export default function LyricWindowPage() {
                     } as CSSProperties}
                 ></AppleMusicLyricPlayer>
             </div>
+
+            <DesktopResizeHandle
+                axis="x"
+                onPointerCancel={stopResize}
+                onPointerDown={startResize}
+                onPointerMove={resizeWindow}
+                onPointerUp={stopResize}
+            ></DesktopResizeHandle>
+            <DesktopResizeHandle
+                axis="y"
+                onPointerCancel={stopResize}
+                onPointerDown={startResize}
+                onPointerMove={resizeWindow}
+                onPointerUp={stopResize}
+            ></DesktopResizeHandle>
+            <DesktopResizeHandle
+                axis="xy"
+                onPointerCancel={stopResize}
+                onPointerDown={startResize}
+                onPointerMove={resizeWindow}
+                onPointerUp={stopResize}
+            ></DesktopResizeHandle>
         </div>
     );
 }
@@ -305,6 +363,43 @@ function DesktopActionButton({ iconName, onClick, emphasis }: IDesktopActionButt
             onClick={onClick}
         >
             <SvgAsset iconName={iconName}></SvgAsset>
+        </div>
+    );
+}
+
+interface IDesktopResizeHandleProps {
+    axis: FramelessResizeAxis;
+    onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => void;
+    onPointerDown: (axis: FramelessResizeAxis, event: ReactPointerEvent<HTMLElement>) => void;
+    onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
+    onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
+    children?: ReactNode;
+}
+
+function DesktopResizeHandle(props: IDesktopResizeHandleProps) {
+    const {
+        axis,
+        children,
+        onPointerCancel,
+        onPointerDown,
+        onPointerMove,
+        onPointerUp,
+    } = props;
+
+    return (
+        <div
+            className="desktop-lyric-page--resize-handle"
+            data-axis={axis}
+            data-no-drag="true"
+            onPointerCancel={onPointerCancel}
+            onPointerDown={(event) => {
+                onPointerDown(axis, event);
+            }}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            role="presentation"
+        >
+            {children}
         </div>
     );
 }

@@ -26,11 +26,18 @@ interface IMod {
         showMainWindow: () => void;
         setLyricWindow: (enabled: boolean) => void;
         setMinimodeWindow: (enabled: boolean) => void;
-        setLyricWindowLock: (lockState: boolean) => void;
         getCurrentWindowBounds: () => Promise<Electron.Rectangle>;
         getAllWorkAreas: () => Promise<Electron.Rectangle[]>;
         ignoreMouseEvent: (ignore: boolean) => void;
-        setCurrentWindowSize: (width: number, height: number) => void;
+        setCurrentWindowSize: (width: number | Partial<ICommon.ISize>, height?: number) => void;
+        startCurrentWindowResize: (options: {
+            axis: "x" | "y" | "xy";
+            startScreenX: number;
+            startScreenY: number;
+            startWidth: number;
+            startHeight: number;
+        }) => void;
+        stopCurrentWindowResize: () => void;
         setCurrentWindowBounds: (bounds: Electron.Rectangle) => void;
         toggleMainWindowVisible: () => void;
         toggleMainWindowMaximize: () => void;

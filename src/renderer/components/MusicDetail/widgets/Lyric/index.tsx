@@ -19,8 +19,9 @@ import LyricParser from "@/renderer/utils/lyric-parser";
 import {
     getUserPreference,
     setUserPreference,
-    useUserPreference,
 } from "@/renderer/utils/user-perference";
+import useAppConfig from "@/hooks/useAppConfig";
+import AppConfig from "@shared/app-config/renderer";
 import { dialogUtil, fsUtil } from "@shared/utils/renderer";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -37,9 +38,8 @@ export default function Lyric() {
     const [fontSize, setFontSize] = useState<string | null>(
         getUserPreference("inlineLyricFontSize"),
     );
-    const [showTranslation, setShowTranslation] =
-        useUserPreference("showTranslation");
-    const [showRomanization] = useUserPreference("showRomanization");
+    const showTranslation = useAppConfig("lyric.showTranslation");
+    const showRomanization = useAppConfig("lyric.showRomanization");
     const { t } = useTranslation();
 
     const lyricLines = useMemo(() => {
@@ -93,7 +93,9 @@ export default function Lyric() {
                         title={t("music_detail.translation")}
                         onClick={() => {
                             if (lyricParser?.hasTranslation) {
-                                setShowTranslation(!showTranslation);
+                                AppConfig.setConfig({
+                                    "lyric.showTranslation": !showTranslation,
+                                });
                             }
                         }}
                     >
@@ -179,8 +181,7 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
     const [fontSize, setFontSize] = useState<string | null>(
         getUserPreference("inlineLyricFontSize") ?? "13",
     );
-    const [showTranslation, setShowTranslation] =
-        useUserPreference("showTranslation");
+    const showTranslation = useAppConfig("lyric.showTranslation");
     const [linkedLyricInfo, setLinkedLyricInfo] = useState<IMedia.IUnique>(null);
     const { t } = useTranslation();
 
@@ -302,7 +303,9 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
                 data-disabled={!lyricParser?.hasTranslation}
                 onClick={() => {
                     if (lyricParser?.hasTranslation) {
-                        setShowTranslation(!showTranslation);
+                        AppConfig.setConfig({
+                            "lyric.showTranslation": !showTranslation,
+                        });
                     }
                 }}
             >

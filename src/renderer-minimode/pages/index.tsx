@@ -6,7 +6,7 @@ import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
 
 import "./index.scss";
 import { useTranslation } from "react-i18next";
-import { useUserPreference } from "@/renderer/utils/user-perference";
+import useAppConfig from "@/hooks/useAppConfig";
 import { appWindowUtil } from "@shared/utils/renderer";
 import messageBus, { useAppStatePartial } from "@shared/message-bus/renderer/extension";
 
@@ -17,8 +17,8 @@ export default function MinimodePage() {
     const lyricItem = useAppStatePartial("parsedLrc");
 
     const { t } = useTranslation();
-    const [showTranslation] = useUserPreference("showTranslation");
-    const [showRomanization] = useUserPreference("showRomanization");
+    const showTranslation = useAppConfig("lyric.showTranslation");
+    const showRomanization = useAppConfig("lyric.showRomanization");
 
     const title = currentMusicItem?.title || t("media.unknown_title");
     const artist = currentMusicItem?.artist || t("media.unknown_artist");

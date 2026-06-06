@@ -6,10 +6,22 @@ import path from "path";
 import { appUpdateApiSources, githubDownloadMirrors } from "@/common/constant";
 import axios from "axios";
 import { compare } from "compare-versions";
-import AppConfig from "@shared/app-config/main";
+
+const WM_MOUSEMOVE = 0x0200;
+const WM_LBUTTONUP = 0x0202;
+const MK_LBUTTON = 0x0001;
+
+interface IWindowResizeOptions {
+    axis: "x" | "y" | "xy";
+    startScreenX: number;
+    startScreenY: number;
+    startWidth: number;
+    startHeight: number;
+}
 
 class Utils {
     private windowManager: IWindowManager;
+    private stopWindowResizeSessionMap = new WeakMap<BrowserWindow, () => void>();
 
     public setup(windowManager: IWindowManager) {
         this.windowManager = windowManager;
@@ -181,12 +193,6 @@ class Utils {
             }
         });
 
-        ipcMain.on("@shared/utils/set-lyric-window-lock", (_, lockState) => {
-            AppConfig.setConfig({
-                "lyric.lockLyric": !!lockState,
-            });
-        });
-
         ipcMain.handle("@shared/utils/get-current-window-bounds", (evt) => {
             const targetWindow = BrowserWindow.fromWebContents(evt.sender);
             return targetWindow?.getBounds() ?? null;
@@ -207,9 +213,21 @@ class Utils {
             });
         });
 
-        ipcMain.on("@shared/utils/set-current-window-size", (evt, { width, height }) => {
+        ipcMain.on("@shared/utils/set-current-window-size", (evt, size?: { width?: number | Partial<ICommon.ISize>; height?: number }) => {
             const targetWindow = BrowserWindow.fromWebContents(evt.sender);
             if (!targetWindow) {
+                return;
+            }
+
+            let width = size?.width;
+            let height = size?.height;
+
+            if (typeof width === "object" && width !== null) {
+                height = width.height;
+                width = width.width;
+            }
+
+            if (typeof width !== "number" || typeof height !== "number" || !Number.isFinite(width) || !Number.isFinite(height)) {
                 return;
             }
 
@@ -230,9 +248,74 @@ class Utils {
             );
         });
 
-        ipcMain.on("@shared/utils/set-current-window-bounds", (evt, bounds: Electron.Rectangle) => {
+        ipcMain.on("@shared/utils/start-current-window-resize", (evt, options?: IWindowResizeOptions) => {
+            const targetWindow = BrowserWindow.fromWebContents(evt.sender);
+            if (process.platform !== "win32" || !targetWindow || !this.isValidWindowResizeOptions(options)) {
+                return;
+            }
+
+            this.stopWindowResizeSession(targetWindow);
+
+            const resizeWindow = () => {
+                if (targetWindow.isDestroyed()) {
+                    this.stopWindowResizeSession(targetWindow);
+                    return;
+                }
+
+                const point = screen.getCursorScreenPoint();
+                const deltaX = point.x - options.startScreenX;
+                const deltaY = point.y - options.startScreenY;
+                let nextWidth = options.startWidth;
+                let nextHeight = options.startHeight;
+
+                if (options.axis === "x" || options.axis === "xy") {
+                    nextWidth = options.startWidth + deltaX;
+                }
+
+                if (options.axis === "y" || options.axis === "xy") {
+                    nextHeight = options.startHeight + deltaY;
+                }
+
+                this.setWindowSizeSafely(targetWindow, nextWidth, nextHeight);
+            };
+
+            const stopResize = () => this.stopWindowResizeSession(targetWindow);
+            const resizeTimer = setInterval(resizeWindow, 16);
+            const safetyTimer = setTimeout(stopResize, 15000);
+
+            targetWindow.hookWindowMessage(WM_MOUSEMOVE, (wParam: Buffer) => {
+                const wParamNumber = wParam.readInt16LE(0);
+                if (!(wParamNumber & MK_LBUTTON)) {
+                    stopResize();
+                    return;
+                }
+                resizeWindow();
+            });
+            targetWindow.hookWindowMessage(WM_LBUTTONUP, stopResize);
+            targetWindow.once("closed", stopResize);
+
+            this.stopWindowResizeSessionMap.set(targetWindow, () => {
+                clearInterval(resizeTimer);
+                clearTimeout(safetyTimer);
+                if (!targetWindow.isDestroyed()) {
+                    targetWindow.unhookWindowMessage(WM_MOUSEMOVE);
+                    targetWindow.unhookWindowMessage(WM_LBUTTONUP);
+                    targetWindow.off("closed", stopResize);
+                }
+            });
+        });
+
+        ipcMain.on("@shared/utils/stop-current-window-resize", (evt) => {
             const targetWindow = BrowserWindow.fromWebContents(evt.sender);
             if (!targetWindow) {
+                return;
+            }
+            this.stopWindowResizeSession(targetWindow);
+        });
+
+        ipcMain.on("@shared/utils/set-current-window-bounds", (evt, bounds: Electron.Rectangle) => {
+            const targetWindow = BrowserWindow.fromWebContents(evt.sender);
+            if (!targetWindow || !Number.isFinite(bounds?.width) || !Number.isFinite(bounds?.height)) {
                 return;
             }
 
@@ -281,6 +364,43 @@ class Utils {
             }
         });
 
+    }
+
+    private stopWindowResizeSession(targetWindow: BrowserWindow) {
+        const stop = this.stopWindowResizeSessionMap.get(targetWindow);
+        if (!stop) {
+            return;
+        }
+        this.stopWindowResizeSessionMap.delete(targetWindow);
+        stop();
+    }
+
+    private isValidWindowResizeOptions(options?: IWindowResizeOptions): options is IWindowResizeOptions {
+        return !!options
+            && (options.axis === "x" || options.axis === "y" || options.axis === "xy")
+            && Number.isFinite(options.startScreenX)
+            && Number.isFinite(options.startScreenY)
+            && Number.isFinite(options.startWidth)
+            && Number.isFinite(options.startHeight);
+    }
+
+    private setWindowSizeSafely(targetWindow: BrowserWindow, width: number, height: number) {
+        if (!Number.isFinite(width) || !Number.isFinite(height)) {
+            return;
+        }
+
+        const [minWidth, minHeight] = targetWindow.getMinimumSize();
+        const [maxWidth, maxHeight] = targetWindow.getMaximumSize();
+        const nextWidth = Math.max(
+            minWidth,
+            Math.min(Math.round(width), maxWidth || Number.MAX_SAFE_INTEGER),
+        );
+        const nextHeight = Math.max(
+            minHeight,
+            Math.min(Math.round(height), maxHeight || Number.MAX_SAFE_INTEGER),
+        );
+
+        targetWindow.setSize(nextWidth, nextHeight);
     }
 
     private setupShellUtil() {

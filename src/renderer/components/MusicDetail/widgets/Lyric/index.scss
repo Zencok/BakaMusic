@@ -84,6 +84,15 @@
   min-height: 0;
   overflow: hidden;
   border-radius: 0 0 18px 18px;
+
+  // emphasize 强调字（时长 ≥1s 的逐字）会被 amll 拆成无 class 的字符 span，并通过 Web Animations API
+  // 注入硬编码白色辉光 text-shadow（rgba(255,255,255,...)），普通字无此辉光，导致长字与普通字不一致。
+  // 主播放页字色为白、普通字本无描边，故下探到这些无 class 字符 span，用 !important 强制 text-shadow:none
+  // 压制白光，使长字与普通字保持一致干净（缩放/浮动等强调动感由 transform 实现，不受影响、保留）。
+  & [class*="lyricLine"] span,
+  & [class*="lyricBgLine"] span {
+    text-shadow: none !important;
+  }
 }
 
 .music-detail-lyric-loading,

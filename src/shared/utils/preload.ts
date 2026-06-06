@@ -122,10 +122,6 @@ function setMinimodeWindow(enabled: boolean) {
     ipcRenderer.send("@shared/utils/set-minimode-window", enabled);
 }
 
-function setLyricWindowLock(lockState: boolean) {
-    ipcRenderer.send("@shared/utils/set-lyric-window-lock", lockState);
-}
-
 async function getCurrentWindowBounds() {
     return await ipcRenderer.invoke("@shared/utils/get-current-window-bounds");
 }
@@ -138,11 +134,28 @@ function ignoreMouseEvent(ignore: boolean) {
     ipcRenderer.send("@shared/utils/ignore-mouse-event", ignore);
 }
 
-function setCurrentWindowSize(width: number, height: number) {
+function setCurrentWindowSize(width: number | Partial<ICommon.ISize>, height?: number) {
+    const nextWidth = typeof width === "number" ? width : width?.width;
+    const nextHeight = typeof width === "number" ? height : width?.height;
+
     ipcRenderer.send("@shared/utils/set-current-window-size", {
-        width,
-        height,
+        width: nextWidth,
+        height: nextHeight,
     });
+}
+
+function startCurrentWindowResize(options: {
+    axis: "x" | "y" | "xy";
+    startScreenX: number;
+    startScreenY: number;
+    startWidth: number;
+    startHeight: number;
+}) {
+    ipcRenderer.send("@shared/utils/start-current-window-resize", options);
+}
+
+function stopCurrentWindowResize() {
+    ipcRenderer.send("@shared/utils/stop-current-window-resize");
 }
 
 function setCurrentWindowBounds(bounds: Electron.Rectangle) {
@@ -162,11 +175,12 @@ const appWindow = {
     showMainWindow,
     setLyricWindow,
     setMinimodeWindow,
-    setLyricWindowLock,
     getCurrentWindowBounds,
     getAllWorkAreas,
     ignoreMouseEvent,
     setCurrentWindowSize,
+    startCurrentWindowResize,
+    stopCurrentWindowResize,
     setCurrentWindowBounds,
     toggleMainWindowVisible,
     toggleMainWindowMaximize,

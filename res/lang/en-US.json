@@ -354,7 +354,6 @@
       "font_size": "Font Size",
       "font_color": "Font Color",
       "inactive_color": "Inactive lyric color",
-      "stroke_color": "Stroke Color",
       "mask_color": "Mask Color"
     },
     "plugin": {

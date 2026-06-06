@@ -354,7 +354,6 @@
       "font_size": "字體大小",
       "font_color": "字體顏色",
       "inactive_color": "弱化歌詞顏色",
-      "stroke_color": "描邊顏色",
       "mask_color": "遮罩顏色"
     },
     "plugin": {

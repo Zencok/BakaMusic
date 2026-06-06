@@ -148,12 +148,16 @@
         overflow: hidden;
         cursor: move;
         -webkit-app-region: no-drag;
-        -webkit-mask-image: linear-gradient(to right, transparent 0, #000 8%, #000 92%, transparent 100%);
-        mask-image: linear-gradient(to right, transparent 0, #000 8%, #000 92%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+        mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
     }
 
     &.locked .desktop-lyric-page--content {
         cursor: default;
+    }
+
+    &.locked .desktop-lyric-page--resize-handle {
+        display: none;
     }
 
     & .apple-music-lyric-player {
@@ -168,17 +172,13 @@
             font-size: var(--desktop-lyric-font-size, 24px);
             font-family: var(--desktop-lyric-font-family, inherit);
             font-weight: 700;
-            filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.68)) drop-shadow(0 8px 18px rgba(0, 0, 0, 0.45));
-            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.96), 0 0 6px var(--desktop-lyric-stroke-color, rgba(0, 0, 0, 0.78));
-            -webkit-text-stroke: 0.035em var(--desktop-lyric-stroke-color, rgba(0, 0, 0, 0.78));
-            paint-order: stroke fill;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 1px 1px rgba(0, 0, 0, 0.45);
         }
 
         & .amll-lyric-player *,
         & .amll-lyric-player *::before,
         & .amll-lyric-player *::after {
             font-family: var(--desktop-lyric-font-family, inherit);
-            -webkit-text-stroke-color: var(--desktop-lyric-stroke-color, rgba(0, 0, 0, 0.78));
         }
 
         & .amll-lyric-player [class*="lyricLine"],
@@ -195,13 +195,26 @@
         & .amll-lyric-player [class*="word"],
         & .amll-lyric-player [class*="roman"],
         & .amll-lyric-player [class*="ruby"] {
-            opacity: 1 !important;
             color: var(--desktop-lyric-color, #fff) !important;
-            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.96), 0 0 6px var(--desktop-lyric-stroke-color, rgba(0, 0, 0, 0.78));
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 1px 1px rgba(0, 0, 0, 0.45) !important;
+        }
+
+        // emphasize 强调字（时长 ≥1s 的逐字）会被 amll 拆成无 class 的字符 span，并通过 Web Animations API
+        // 注入硬编码白色辉光 text-shadow（rgba(255,255,255,...)），普通字无此辉光，导致长字与普通字视觉不一致。
+        // 上方 [class*="word"] 选择器匹配不到这些无 class 的字符 span，且 text-shadow 不可继承，故必须用
+        // 「后代 span + !important」下探到字符元素：!important 优先级高于 WAAPI 动画值，可稳定压制白光、
+        // 统一为与普通字相同的黑色描边（缩放/浮动等强调动感由 transform 实现，不受影响，保留）。
+        & .amll-lyric-player [class*="lyricLine"] span,
+        & .amll-lyric-player [class*="lyricBgLine"] span {
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 1px 1px rgba(0, 0, 0, 0.45) !important;
         }
 
         & .amll-lyric-player [class*="lyricSubLine"] {
             font-weight: 650;
+        }
+
+        & .amll-lyric-player [class*="interludeDots"] {
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
         }
 
         & .amll-lyric-player.dom {
@@ -210,5 +223,56 @@
             line-height: 1.16em;
             text-align: center;
         }
+    }
+
+    & .desktop-lyric-page--resize-handle {
+        position: absolute;
+        z-index: 5;
+        --desktop-lyric-resize-handle-bg: rgba(255, 255, 255, 0.01);
+        --desktop-lyric-resize-corner-line: rgba(255, 255, 255, 0.08);
+        pointer-events: auto;
+        background: var(--desktop-lyric-resize-handle-bg);
+        transition: background-color 140ms ease;
+        touch-action: none;
+        -webkit-app-region: no-drag;
+    }
+
+    &.hovered:not(.locked) .desktop-lyric-page--resize-handle {
+        --desktop-lyric-resize-handle-bg: rgba(255, 255, 255, 0.12);
+        --desktop-lyric-resize-corner-line: rgba(255, 255, 255, 0.3);
+    }
+
+    & .desktop-lyric-page--resize-handle:hover {
+        --desktop-lyric-resize-handle-bg: rgba(255, 255, 255, 0.24);
+        --desktop-lyric-resize-corner-line: rgba(255, 255, 255, 0.38);
+    }
+
+    & .desktop-lyric-page--resize-handle[data-axis="x"] {
+        top: 32px;
+        right: 0;
+        bottom: 12px;
+        width: 16px;
+        cursor: ew-resize;
+    }
+
+    & .desktop-lyric-page--resize-handle[data-axis="y"] {
+        right: 18px;
+        bottom: 0;
+        left: 18px;
+        height: 16px;
+        cursor: ns-resize;
+    }
+
+    & .desktop-lyric-page--resize-handle[data-axis="xy"] {
+        right: 0;
+        bottom: 0;
+        width: 24px;
+        height: 24px;
+        cursor: nwse-resize;
+        border-top-left-radius: 12px;
+        background:
+            linear-gradient(135deg, transparent 0 48%, var(--desktop-lyric-resize-corner-line) 49% 56%, transparent 57%),
+            linear-gradient(135deg, transparent 0 66%, var(--desktop-lyric-resize-corner-line) 67% 74%, transparent 75%),
+            var(--desktop-lyric-resize-handle-bg);
     }
 }

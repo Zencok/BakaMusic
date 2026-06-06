@@ -25,12 +25,12 @@ const _defaultAppConfig: IAppConfig =  {
     "download.lyricOrder": ["romanization", "original", "translation"],
     "download.enableWordByWordLyric": false,
     "lyric.enableDesktopLyric": false,
-    "lyric.alwaysOnTop": false,
     "lyric.lockLyric": false,
     "lyric.fontData": defaultFont,
     "lyric.fontColor": "#fff",
-    "lyric.strokeColor": "#b48f1d",
     "lyric.fontSize": 24,
+    "lyric.showTranslation": false,
+    "lyric.showRomanization": false,
     "shortCut.enableLocal": true,
     "shortCut.enableGlobal": false,
     "download.concurrency": 5,
@@ -38,7 +38,7 @@ const _defaultAppConfig: IAppConfig =  {
     "backup.resumeBehavior": "append",
     "normal.language": "zh-CN",
     "private.lyricWindowSize": {
-        width: 900,
+        width: 940,
         height: 180,
     },
 };

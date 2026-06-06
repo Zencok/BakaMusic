@@ -110,12 +110,10 @@ class AppConfig {
 
                 "lyric.enableStatusBarLyric": oldConfig.lyric?.enableStatusBarLyric,
                 "lyric.enableDesktopLyric": oldConfig.lyric?.enableDesktopLyric,
-                "lyric.alwaysOnTop": oldConfig.lyric?.alwaysOnTop,
                 "lyric.lockLyric": oldConfig.lyric?.lockLyric,
                 "lyric.fontData": oldConfig.lyric?.fontData,
                 "lyric.fontColor": oldConfig.lyric?.fontColor,
                 "lyric.fontSize": oldConfig.lyric?.fontSize,
-                "lyric.strokeColor": oldConfig.lyric?.strokeColor,
 
                 "shortCut.enableLocal": oldConfig.shortCut?.enableLocal,
                 "shortCut.enableGlobal": oldConfig.shortCut?.enableGlobal,
@@ -218,7 +216,15 @@ class AppConfig {
             originalFs.writeFileSync(this.configPath, rawConfig, "utf-8");
             // 3. Notify to all windows
             this.windowManager.getAllWindows().forEach((window) => {
-                window.webContents.send("@shared/app-config/update-app-config", data);
+                if (!window.isDestroyed() && window.webContents && !window.webContents.isDestroyed()) {
+                    try {
+                        // 使用 JSON 序列化确保数据可以安全传输
+                        const serializedData = JSON.parse(JSON.stringify(data));
+                        window.webContents.send("@shared/app-config/update-app-config", serializedData);
+                    } catch (e) {
+                        logger.logError("发送配置更新失败", e);
+                    }
+                }
             });
 
             this.onAppConfigUpdatedCallbacks.forEach((callback) => {
