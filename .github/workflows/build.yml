@@ -1,7 +1,11 @@
 name: Build
 
 permissions:
+  actions: read
   contents: write
+
+env:
+  NODE_VERSION: "22.12.0"
 
 on:
   push:
@@ -11,12 +15,18 @@ on:
 
 jobs:
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: 18
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+      - name: Print build environment
+        run: |
+          node -v
+          npm -v
+          node -e "const pkg=require('./package.json'); const lock=require('./package-lock.json'); console.log('electron='+pkg.devDependencies.electron); console.log('@electron/rebuild='+(lock.packages['node_modules/@electron/rebuild']?.version || 'missing')); console.log('better-sqlite3='+(lock.packages['node_modules/better-sqlite3']?.version || 'missing'));"
       - name: Set build version
         run: |
           node -e "const fs=require('fs'); const pkg=require('./package.json'); const ref=process.env.GITHUB_REF||''; const refName=process.env.GITHUB_REF_NAME||''; const version=ref.startsWith('refs/tags/v') ? refName.slice(1) : pkg.version; fs.appendFileSync(process.env.GITHUB_ENV, 'VERSION='+version+'\nSYNC_PACKAGE_VERSION=' + String(pkg.version !== version) + '\n'); console.log('VERSION=' + version);"
@@ -25,6 +35,8 @@ jobs:
         run: |
           node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\n'); }"
       - run: npm install
+      - name: Clean build output
+        run: Remove-Item -Recurse -Force -ErrorAction SilentlyContinue ".webpack", "out"
       - run: npm run package
       - name: Install Inno Setup
         run: choco install innosetup -y
@@ -33,27 +45,33 @@ jobs:
       - name: Rename Setup
         run: Rename-Item -Path "./out/BakaMusicSetup.exe" -NewName "BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe"
       - name: Generate Portable
-        run: mkdir ./out/BakaMusic-win32-x64/portable
-      - uses: vimtor/action-zip@v1.1
-        with:
-          files: ./out/BakaMusic-win32-x64
-          dest: BakaMusic-${{ env.VERSION }}-win32-x64-portable.zip
-      - uses: actions/upload-artifact@v4
+        run: New-Item -ItemType Directory -Force -Path "./out/BakaMusic-win32-x64/portable"
+      - name: Build Portable Zip
+        run: Compress-Archive -Path "./out/BakaMusic-win32-x64" -DestinationPath "BakaMusic-${{ env.VERSION }}-win32-x64-portable.zip" -Force
+      - uses: actions/upload-artifact@v6
         with:
           name: BakaMusic-${{ env.VERSION }}-win32-x64-setup
           path: ./out/BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe
-      - uses: actions/upload-artifact@v4
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v6
         with:
           name: BakaMusic-${{ env.VERSION }}-win32-x64-portable
           path: BakaMusic-${{ env.VERSION }}-win32-x64-portable.zip
+          if-no-files-found: error
 
   build-windows-legacy:
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: 18
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+      - name: Print build environment
+        run: |
+          node -v
+          npm -v
+          node -e "const pkg=require('./package.json'); const lock=require('./package-lock.json'); console.log('electron='+pkg.devDependencies.electron); console.log('@electron/rebuild='+(lock.packages['node_modules/@electron/rebuild']?.version || 'missing')); console.log('better-sqlite3='+(lock.packages['node_modules/better-sqlite3']?.version || 'missing'));"
       - name: Set build version
         run: |
           node -e "const fs=require('fs'); const pkg=require('./package.json'); const ref=process.env.GITHUB_REF||''; const refName=process.env.GITHUB_REF_NAME||''; const version=ref.startsWith('refs/tags/v') ? refName.slice(1) : pkg.version; fs.appendFileSync(process.env.GITHUB_ENV, 'VERSION='+version+'\nSYNC_PACKAGE_VERSION=' + String(pkg.version !== version) + '\n'); console.log('VERSION=' + version);"
@@ -63,6 +81,8 @@ jobs:
           node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\n'); }"
       - run: npm install
       - run: npm install electron@22
+      - name: Clean build output
+        run: Remove-Item -Recurse -Force -ErrorAction SilentlyContinue ".webpack", "out"
       - run: npm run package
       - name: Install Inno Setup
         run: choco install innosetup -y
@@ -71,30 +91,36 @@ jobs:
       - name: Rename Setup
         run: Rename-Item -Path "./out/BakaMusicSetup.exe" -NewName "BakaMusic-${{ env.VERSION }}-win32-x64-legacy-setup.exe"
       - name: Generate Portable
-        run: mkdir ./out/BakaMusic-win32-x64/portable
-      - uses: vimtor/action-zip@v1.1
-        with:
-          files: ./out/BakaMusic-win32-x64
-          dest: BakaMusic-${{ env.VERSION }}-win32-x64-legacy-portable.zip
-      - uses: actions/upload-artifact@v4
+        run: New-Item -ItemType Directory -Force -Path "./out/BakaMusic-win32-x64/portable"
+      - name: Build Portable Zip
+        run: Compress-Archive -Path "./out/BakaMusic-win32-x64" -DestinationPath "BakaMusic-${{ env.VERSION }}-win32-x64-legacy-portable.zip" -Force
+      - uses: actions/upload-artifact@v6
         with:
           name: BakaMusic-${{ env.VERSION }}-win32-x64-legacy-setup
           path: ./out/BakaMusic-${{ env.VERSION }}-win32-x64-legacy-setup.exe
-      - uses: actions/upload-artifact@v4
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v6
         with:
           name: BakaMusic-${{ env.VERSION }}-win32-x64-legacy-portable
           path: BakaMusic-${{ env.VERSION }}-win32-x64-legacy-portable.zip
+          if-no-files-found: error
 
   build-macos-x64:
     runs-on: macos-15-intel
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.10"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 18
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+      - name: Print build environment
+        run: |
+          node -v
+          npm -v
+          node -e "const pkg=require('./package.json'); const lock=require('./package-lock.json'); console.log('electron='+pkg.devDependencies.electron); console.log('@electron/rebuild='+(lock.packages['node_modules/@electron/rebuild']?.version || 'missing')); console.log('better-sqlite3='+(lock.packages['node_modules/better-sqlite3']?.version || 'missing'));"
       - name: Set build version
         run: |
           node -e "const fs=require('fs'); const pkg=require('./package.json'); const ref=process.env.GITHUB_REF||''; const refName=process.env.GITHUB_REF_NAME||''; const version=ref.startsWith('refs/tags/v') ? refName.slice(1) : pkg.version; fs.appendFileSync(process.env.GITHUB_ENV, 'VERSION='+version+'\nSYNC_PACKAGE_VERSION=' + String(pkg.version !== version) + '\n'); console.log('VERSION=' + version);"
@@ -103,24 +129,33 @@ jobs:
         run: |
           node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\n'); }"
       - run: npm install
+      - name: Clean build output
+        run: rm -rf .webpack out
       - run: npm run make -- --arch="x64"
       - name: Rename DMG
         run: mv "./out/make/BakaMusic-${{ env.VERSION }}-x64.dmg" "./out/make/BakaMusic-${{ env.VERSION }}-darwin-x64.dmg"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: BakaMusic-${{ env.VERSION }}-darwin-x64
           path: ./out/make/BakaMusic-${{ env.VERSION }}-darwin-x64.dmg
+          if-no-files-found: error
 
   build-macos-arm64:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.10"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 18
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+      - name: Print build environment
+        run: |
+          node -v
+          npm -v
+          node -e "const pkg=require('./package.json'); const lock=require('./package-lock.json'); console.log('electron='+pkg.devDependencies.electron); console.log('@electron/rebuild='+(lock.packages['node_modules/@electron/rebuild']?.version || 'missing')); console.log('better-sqlite3='+(lock.packages['node_modules/better-sqlite3']?.version || 'missing'));"
       - name: Set build version
         run: |
           node -e "const fs=require('fs'); const pkg=require('./package.json'); const ref=process.env.GITHUB_REF||''; const refName=process.env.GITHUB_REF_NAME||''; const version=ref.startsWith('refs/tags/v') ? refName.slice(1) : pkg.version; fs.appendFileSync(process.env.GITHUB_ENV, 'VERSION='+version+'\nSYNC_PACKAGE_VERSION=' + String(pkg.version !== version) + '\n'); console.log('VERSION=' + version);"
@@ -129,21 +164,30 @@ jobs:
         run: |
           node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\n'); }"
       - run: npm install
+      - name: Clean build output
+        run: rm -rf .webpack out
       - run: npm run make -- --arch="arm64"
       - name: Rename DMG
         run: mv "./out/make/BakaMusic-${{ env.VERSION }}-arm64.dmg" "./out/make/BakaMusic-${{ env.VERSION }}-darwin-arm64.dmg"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: BakaMusic-${{ env.VERSION }}-darwin-arm64
           path: ./out/make/BakaMusic-${{ env.VERSION }}-darwin-arm64.dmg
+          if-no-files-found: error
 
   build-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: 18
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+      - name: Print build environment
+        run: |
+          node -v
+          npm -v
+          node -e "const pkg=require('./package.json'); const lock=require('./package-lock.json'); console.log('electron='+pkg.devDependencies.electron); console.log('@electron/rebuild='+(lock.packages['node_modules/@electron/rebuild']?.version || 'missing')); console.log('better-sqlite3='+(lock.packages['node_modules/better-sqlite3']?.version || 'missing'));"
       - name: Set build version
         run: |
           node -e "const fs=require('fs'); const pkg=require('./package.json'); const ref=process.env.GITHUB_REF||''; const refName=process.env.GITHUB_REF_NAME||''; const version=ref.startsWith('refs/tags/v') ? refName.slice(1) : pkg.version; fs.appendFileSync(process.env.GITHUB_ENV, 'VERSION='+version+'\nSYNC_PACKAGE_VERSION=' + String(pkg.version !== version) + '\n'); console.log('VERSION=' + version);"
@@ -152,6 +196,8 @@ jobs:
         run: |
           node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\n'); }"
       - run: npm install
+      - name: Clean build output
+        run: rm -rf .webpack out
       - run: npm run make
       - name: Rename DEB
         run: |
@@ -159,10 +205,11 @@ jobs:
           if [ -n "$DEB_FILE" ]; then
             mv "$DEB_FILE" "./out/make/deb/x64/BakaMusic-${{ env.VERSION }}-linux-amd64.deb"
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: BakaMusic-${{ env.VERSION }}-linux-amd64
           path: ./out/make/deb/x64/BakaMusic-${{ env.VERSION }}-linux-amd64.deb
+          if-no-files-found: error
 
   publish-release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -175,14 +222,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: ./release-assets
           merge-multiple: true
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           generate_release_notes: true
           files: ./release-assets/*
+          fail_on_unmatched_files: true

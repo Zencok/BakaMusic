@@ -1,5 +1,9 @@
 name: Release
 
+permissions:
+  actions: read
+  contents: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -21,40 +25,26 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
       - name: Download all artifacts
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RUN_ID: ${{ github.event.inputs.run_id }}
+        uses: actions/download-artifact@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.inputs.run_id }}
+          path: ./release-assets
+          merge-multiple: true
+
+      - name: List release assets
         run: |
-          mkdir -p ./release-assets
-          artifacts=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID/artifacts")
-
-          echo "$artifacts" | jq -r '.artifacts[] | "\(.id) \(.name)"' | while read id name; do
-            echo "Downloading: $name"
-            curl -L -H "Authorization: token $GITHUB_TOKEN" \
-              "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$id/zip" \
-              -o "./release-assets/${name}.zip"
-            cd ./release-assets
-            unzip -o "${name}.zip"
-            rm "${name}.zip"
-            cd ..
-          done
-
           echo "Release assets:"
           ls -lh ./release-assets/
 
       - name: Create GitHub Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          FLAGS="--title ${{ github.event.inputs.tag }}"
-          if [ "${{ github.event.inputs.prerelease }}" = "true" ]; then
-            FLAGS="$FLAGS --prerelease"
-          fi
-          gh release create ${{ github.event.inputs.tag }} \
-            ./release-assets/* \
-            $FLAGS \
-            --generate-notes
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          name: ${{ github.event.inputs.tag }}
+          prerelease: ${{ github.event.inputs.prerelease }}
+          generate_release_notes: true
+          files: ./release-assets/*
+          fail_on_unmatched_files: true
