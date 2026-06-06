@@ -20,9 +20,6 @@ interface IUseFramelessWindowResizeOptions {
     disabled?: boolean;
 }
 
-// 临时诊断开关：定位「事件是否触发 / setBounds 是否生效」后移除
-const DEBUG_RESIZE = true;
-
 /**
  * 无边框窗口的鼠标缩放。
  *
@@ -43,9 +40,6 @@ export default function useFramelessWindowResize(options: IUseFramelessWindowRes
         rafRef.current = 0;
         const bounds = pendingBoundsRef.current;
         if (bounds) {
-            if (DEBUG_RESIZE) {
-                console.info("[lyric-resize] setBounds", bounds);
-            }
             appWindowUtil.setCurrentWindowBounds(bounds);
             pendingBoundsRef.current = null;
         }
@@ -112,10 +106,6 @@ export default function useFramelessWindowResize(options: IUseFramelessWindowRes
             const target = event.currentTarget;
             event.preventDefault();
             event.stopPropagation();
-
-            if (DEBUG_RESIZE) {
-                console.info("[lyric-resize] start", axis, "pointer", pointerId);
-            }
 
             resizeStateRef.current = {
                 axis,
