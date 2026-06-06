@@ -23,6 +23,7 @@ interface IAppleMusicLyricPlayerProps {
     enableSpring?: boolean;
     hidePassedLines?: boolean;
     wordFadeWidth?: number;
+    inactiveBrightness?: number;
 }
 
 export default function AppleMusicLyricPlayer({
@@ -44,6 +45,7 @@ export default function AppleMusicLyricPlayer({
     enableSpring = true,
     hidePassedLines = false,
     wordFadeWidth = 0.68,
+    inactiveBrightness = 0.2,
 }: IAppleMusicLyricPlayerProps) {
     const stageRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<DomLyricPlayer | null>(null);
@@ -82,6 +84,7 @@ export default function AppleMusicLyricPlayer({
         player.setEnableSpring(enableSpring);
         player.setHidePassedLines(hidePassedLines);
         player.setWordFadeWidth(wordFadeWidth);
+        player.setInactiveBrightness(inactiveBrightness);
         stage.appendChild(player.getElement());
 
         if (playing) {
@@ -111,7 +114,8 @@ export default function AppleMusicLyricPlayer({
         player.setEnableSpring(enableSpring);
         player.setHidePassedLines(hidePassedLines);
         player.setWordFadeWidth(wordFadeWidth);
-    }, [alignAnchor, alignPosition, centerInterludeDots, enableBlur, enableScale, enableSpring, hidePassedLines, wordFadeWidth]);
+        player.setInactiveBrightness(inactiveBrightness);
+    }, [alignAnchor, alignPosition, centerInterludeDots, enableBlur, enableScale, enableSpring, hidePassedLines, wordFadeWidth, inactiveBrightness]);
 
     const lyricSignature = useMemo(
         () => lyricLines

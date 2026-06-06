@@ -102,6 +102,7 @@ plugins
 
 .idea/
 .claude/
+.context/
 
 undefinedelectron-log-preload.js
 

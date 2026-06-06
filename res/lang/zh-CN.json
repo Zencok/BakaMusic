@@ -353,6 +353,9 @@
       "font": "字体",
       "font_size": "字体大小",
       "font_color": "字体颜色",
+      "inactive_brightness": "歌词亮度",
+      "reset_to_default": "重置为默认",
+      "reset_success": "已重置歌词配置",
       "inactive_color": "弱化歌词颜色",
       "mask_color": "遮罩颜色"
     },

@@ -37,6 +37,8 @@ interface _IAppConfig {
     "lyric.fontColor": string;
     /** 字体大小 */
     "lyric.fontSize": number;
+    /** 未高亮歌词内容（非当前行、当前行未唱字）亮度 0~1 */
+    "lyric.inactiveBrightness": number;
     /** 展示翻译 */
     "lyric.showTranslation": boolean;
     /** 展示罗马音 */

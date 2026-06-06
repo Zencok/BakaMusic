@@ -114,6 +114,7 @@ class AppConfig {
                 "lyric.fontData": oldConfig.lyric?.fontData,
                 "lyric.fontColor": oldConfig.lyric?.fontColor,
                 "lyric.fontSize": oldConfig.lyric?.fontSize,
+                "lyric.inactiveBrightness": oldConfig.lyric?.inactiveBrightness,
 
                 "shortCut.enableLocal": oldConfig.shortCut?.enableLocal,
                 "shortCut.enableGlobal": oldConfig.shortCut?.enableGlobal,

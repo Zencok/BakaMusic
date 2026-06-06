@@ -183,6 +183,7 @@ export abstract class LyricPlayerBase
 		}
 	}) as ResizeObserverCallback);
 	protected wordFadeWidth = 0.5;
+	protected inactiveBrightness = 0.2;
 	protected targetAlignIndex = 0;
 
 	constructor(element?: HTMLElement) {
@@ -406,6 +407,24 @@ export abstract class LyricPlayerBase
 	 */
 	getWordFadeWidth() {
 		return this.wordFadeWidth;
+	}
+
+	/**
+	 * 设置未高亮歌词内容（非当前行整行、以及当前行尚未唱到的字）的亮度基线，取值 0~1，默认 0.2
+	 *
+	 * 该值会作为暗色遮罩 alpha 的基线，越大未高亮内容越亮；当前行已唱字的亮度不受影响
+	 * @param value 未高亮内容的亮度基线，范围 0~1
+	 */
+	setInactiveBrightness(value = 0.2) {
+		this.inactiveBrightness = Math.max(0, Math.min(1, value));
+	}
+
+	/**
+	 * 获取未高亮歌词内容的亮度基线
+	 * @returns 未高亮内容的亮度基线，范围 0~1
+	 */
+	getInactiveBrightness() {
+		return this.inactiveBrightness;
 	}
 
 	setIsSeeking(isSeeking: boolean) {

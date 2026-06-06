@@ -353,6 +353,9 @@
       "font": "Font",
       "font_size": "Font Size",
       "font_color": "Font Color",
+      "inactive_brightness": "Lyric Brightness",
+      "reset_to_default": "Reset to Default",
+      "reset_success": "Lyric settings reset",
       "inactive_color": "Inactive lyric color",
       "mask_color": "Mask Color"
     },

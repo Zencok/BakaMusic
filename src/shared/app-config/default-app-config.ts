@@ -29,6 +29,7 @@ const _defaultAppConfig: IAppConfig =  {
     "lyric.fontData": defaultFont,
     "lyric.fontColor": "#fff",
     "lyric.fontSize": 24,
+    "lyric.inactiveBrightness": 0.35,
     "lyric.showTranslation": false,
     "lyric.showRomanization": false,
     "shortCut.enableLocal": true,

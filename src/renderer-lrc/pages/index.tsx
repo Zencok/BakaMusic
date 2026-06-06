@@ -36,6 +36,7 @@ export default function LyricWindowPage() {
     const fontDataConfig = useAppConfig("lyric.fontData");
     const fontSizeConfig = useAppConfig("lyric.fontSize");
     const fontColorConfig = useAppConfig("lyric.fontColor");
+    const inactiveBrightnessConfig = useAppConfig("lyric.inactiveBrightness");
     const showTranslation = useAppConfig("lyric.showTranslation");
     const showRomanization = useAppConfig("lyric.showRomanization");
     const [isHovered, setIsHovered] = useState(false);
@@ -314,6 +315,7 @@ export default function LyricWindowPage() {
                     enableScale={false}
                     enableSpring
                     wordFadeWidth={0.82}
+                    inactiveBrightness={inactiveBrightnessConfig ?? 0.35}
                     style={{
                         "--amll-lp-line-width-aspect": lineWidthAspect,
                         "--amll-lp-line-padding-x": "0.08em",

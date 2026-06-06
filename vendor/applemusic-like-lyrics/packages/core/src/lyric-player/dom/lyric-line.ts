@@ -998,7 +998,7 @@ export class LyricLineEl extends LyricLineBase {
 
 	private updateMaskAlphaTargets(scale: number) {
 		const factor = Math.max(0.0, Math.min(1.0, (scale - 0.97) / 0.03));
-		const dynamicDarkAlpha = factor * 0.2 + 0.2;
+		const dynamicDarkAlpha = factor * 0.2 + this.lyricPlayer.getInactiveBrightness();
 		const dynamicBrightAlpha = factor * 0.8 + 0.2;
 
 		if (this.renderMode === LyricLineRenderMode.SOLID) {
