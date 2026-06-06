@@ -209,8 +209,37 @@
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 1px 1px rgba(0, 0, 0, 0.45) !important;
         }
 
+        & .amll-lyric-player [class*="lyricMainLine"],
+        & .amll-lyric-player [class*="lyricMainLine"] [class*="word"],
+        & .amll-lyric-player [class*="lyricMainLine"] span {
+            opacity: 1 !important;
+            text-shadow:
+                0 1px 2px rgba(0, 0, 0, 0.62),
+                0 1px 1px rgba(0, 0, 0, 0.52) !important;
+        }
+
+        & .amll-lyric-player [class*="lyricSubLine"] *,
+        & .amll-lyric-player [class*="roman"] *,
+        & .amll-lyric-player [class*="ruby"] * {
+            opacity: 1 !important;
+            filter: none !important;
+        }
+
         & .amll-lyric-player [class*="lyricSubLine"] {
-            font-weight: 650;
+            opacity: 0.82 !important;
+            filter: none !important;
+            font-size: clamp(15px, 0.8em, 32px) !important;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        & .amll-lyric-player [class*="roman"],
+        & .amll-lyric-player [class*="ruby"] {
+            opacity: 0.76 !important;
+            filter: none !important;
+            font-size: clamp(12px, 0.68em, 24px) !important;
+            font-weight: 700;
+            line-height: 1.16;
         }
 
         & .amll-lyric-player [class*="interludeDots"] {
