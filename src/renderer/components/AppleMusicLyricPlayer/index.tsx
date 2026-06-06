@@ -24,6 +24,56 @@ interface IAppleMusicLyricPlayerProps {
     hidePassedLines?: boolean;
     wordFadeWidth?: number;
     inactiveBrightness?: number;
+    markLinePlayState?: boolean;
+}
+
+type LyricLinePlayState = "played" | "current" | "future";
+
+interface IAmlLyricLineObject {
+    getLine: () => LyricLine;
+    getElement: () => HTMLElement;
+}
+
+interface IAmlLyricPlayerWithLineObjects {
+    currentLyricLineObjects?: IAmlLyricLineObject[];
+}
+
+interface IAmlLyricPlayerWithInactiveBrightness {
+    setInactiveBrightness?: (value?: number) => void;
+}
+
+function setPlayerInactiveBrightness(player: DomLyricPlayer, value: number) {
+    (player as unknown as IAmlLyricPlayerWithInactiveBrightness)
+        .setInactiveBrightness?.(value);
+}
+
+function syncLyricLinePlayState(
+    player: DomLyricPlayer | null,
+    currentTimeMs: number,
+    enabled: boolean,
+) {
+    if (!enabled || !player) {
+        return;
+    }
+
+    const lineObjects = (player as unknown as IAmlLyricPlayerWithLineObjects)
+        .currentLyricLineObjects;
+    if (!lineObjects?.length) {
+        return;
+    }
+
+    lineObjects.forEach((lineObject) => {
+        const line = lineObject.getLine();
+        let playState: LyricLinePlayState = "future";
+
+        if (line.endTime <= currentTimeMs) {
+            playState = "played";
+        } else if (line.startTime <= currentTimeMs && line.endTime > currentTimeMs) {
+            playState = "current";
+        }
+
+        lineObject.getElement().dataset.lyricPlayState = playState;
+    });
 }
 
 export default function AppleMusicLyricPlayer({
@@ -46,6 +96,7 @@ export default function AppleMusicLyricPlayer({
     hidePassedLines = false,
     wordFadeWidth = 0.68,
     inactiveBrightness = 0.2,
+    markLinePlayState = false,
 }: IAppleMusicLyricPlayerProps) {
     const stageRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<DomLyricPlayer | null>(null);
@@ -84,7 +135,7 @@ export default function AppleMusicLyricPlayer({
         player.setEnableSpring(enableSpring);
         player.setHidePassedLines(hidePassedLines);
         player.setWordFadeWidth(wordFadeWidth);
-        player.setInactiveBrightness(inactiveBrightness);
+        setPlayerInactiveBrightness(player, inactiveBrightness);
         stage.appendChild(player.getElement());
 
         if (playing) {
@@ -114,7 +165,7 @@ export default function AppleMusicLyricPlayer({
         player.setEnableSpring(enableSpring);
         player.setHidePassedLines(hidePassedLines);
         player.setWordFadeWidth(wordFadeWidth);
-        player.setInactiveBrightness(inactiveBrightness);
+        setPlayerInactiveBrightness(player, inactiveBrightness);
     }, [alignAnchor, alignPosition, centerInterludeDots, enableBlur, enableScale, enableSpring, hidePassedLines, wordFadeWidth, inactiveBrightness]);
 
     const lyricSignature = useMemo(
@@ -137,16 +188,18 @@ export default function AppleMusicLyricPlayer({
         }
 
         if (lastLyricSignatureRef.current === lyricSignature) {
+            syncLyricLinePlayState(player, currentTimeMs, markLinePlayState);
             return;
         }
         lastLyricSignatureRef.current = lyricSignature;
 
         player.setLyricLines(lyricLines, currentTimeMs);
+        syncLyricLinePlayState(player, currentTimeMs, markLinePlayState);
         lastSyncedTimeRef.current = currentTimeMs;
         lastPropTimeRef.current = currentTimeMs;
         anchorTimeRef.current = currentTimeMs;
         anchorFrameTimeRef.current = performance.now();
-    }, [lyricSignature]);
+    }, [lyricSignature, markLinePlayState]);
 
     useEffect(() => {
         const player = playerRef.current;
@@ -160,8 +213,9 @@ export default function AppleMusicLyricPlayer({
         } else {
             player.pause();
             player.setCurrentTime(anchorTimeRef.current, true);
+            syncLyricLinePlayState(player, anchorTimeRef.current, markLinePlayState);
         }
-    }, [playing]);
+    }, [markLinePlayState, playing]);
 
     useEffect(() => {
         anchorTimeRef.current = currentTimeMs;
@@ -175,9 +229,10 @@ export default function AppleMusicLyricPlayer({
         const prevPropTime = lastPropTimeRef.current;
         const isSeek = Math.abs(currentTimeMs - prevPropTime) > 1200;
         player.setCurrentTime(currentTimeMs, isSeek);
+        syncLyricLinePlayState(player, currentTimeMs, markLinePlayState);
         lastSyncedTimeRef.current = currentTimeMs;
         lastPropTimeRef.current = currentTimeMs;
-    }, [currentTimeMs]);
+    }, [currentTimeMs, markLinePlayState]);
 
     useEffect(() => {
         speedRef.current = speed || 1;
@@ -199,6 +254,7 @@ export default function AppleMusicLyricPlayer({
 
                 if (hasLyricLines && playingRef.current) {
                     player.setCurrentTime(frameTime);
+                    syncLyricLinePlayState(player, frameTime, markLinePlayState);
                     lastSyncedTimeRef.current = frameTime;
                 }
                 player.update(delta);
@@ -212,7 +268,7 @@ export default function AppleMusicLyricPlayer({
             cancelAnimationFrame(rafRef.current);
             lastFrameTimeRef.current = 0;
         };
-    }, [hasLyricLines]);
+    }, [hasLyricLines, markLinePlayState]);
 
     return (
         <div

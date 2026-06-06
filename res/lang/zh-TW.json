@@ -353,6 +353,7 @@
       "font": "字體",
       "font_size": "字體大小",
       "font_color": "字體顏色",
+      "apply_font_color_only_to_played_lines": "未播放歌詞保持白色",
       "inactive_brightness": "歌詞亮度",
       "reset_to_default": "重置為預設",
       "reset_success": "已重置歌詞設定",

@@ -353,6 +353,7 @@
       "font": "Font",
       "font_size": "Font Size",
       "font_color": "Font Color",
+      "apply_font_color_only_to_played_lines": "Keep unplayed lyrics white",
       "inactive_brightness": "Lyric Brightness",
       "reset_to_default": "Reset to Default",
       "reset_success": "Lyric settings reset",

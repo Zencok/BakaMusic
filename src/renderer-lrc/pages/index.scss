@@ -225,6 +225,18 @@
         }
     }
 
+    &[data-font-color-scope="played"] {
+        & .amll-lyric-player [data-lyric-play-state="future"],
+        & .amll-lyric-player [data-lyric-play-state="future"] [class*="lyricMainLine"],
+        & .amll-lyric-player [data-lyric-play-state="future"] [class*="lyricSubLine"],
+        & .amll-lyric-player [data-lyric-play-state="future"] [class*="word"],
+        & .amll-lyric-player [data-lyric-play-state="future"] [class*="roman"],
+        & .amll-lyric-player [data-lyric-play-state="future"] [class*="ruby"],
+        & .amll-lyric-player [data-lyric-play-state="future"] span {
+            color: var(--desktop-lyric-unplayed-color, #fff) !important;
+        }
+    }
+
     // 缩放热区：全程完全透明，仅靠光标形状（↔ ↕ ⤡）提示可拉伸，绝不绘制任何可见背景/边线
     & .desktop-lyric-page--resize-handle {
         position: absolute;

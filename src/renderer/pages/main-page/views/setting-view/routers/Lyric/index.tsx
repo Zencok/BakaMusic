@@ -26,6 +26,7 @@ export default function Lyric() {
             "lyric.fontData": defaultAppConfig["lyric.fontData"],
             "lyric.fontSize": defaultAppConfig["lyric.fontSize"],
             "lyric.fontColor": defaultAppConfig["lyric.fontColor"],
+            "lyric.applyFontColorOnlyToPlayedLines": defaultAppConfig["lyric.applyFontColorOnlyToPlayedLines"],
             "lyric.inactiveBrightness": defaultAppConfig["lyric.inactiveBrightness"],
             "private.lyricWindowSize": defaultAppConfig["private.lyricWindowSize"],
         });
@@ -68,6 +69,10 @@ export default function Lyric() {
                 label={t("settings.lyric.font_color")}
                 keyPath="lyric.fontColor"
             ></ColorInputSettingItem>
+            <CheckBoxSettingItem
+                label={t("settings.lyric.apply_font_color_only_to_played_lines")}
+                keyPath="lyric.applyFontColorOnlyToPlayedLines"
+            ></CheckBoxSettingItem>
             <SliderSettingItem
                 keyPath="lyric.inactiveBrightness"
                 min={0.2}

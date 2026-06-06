@@ -28,6 +28,7 @@ const _defaultAppConfig: IAppConfig =  {
     "lyric.lockLyric": false,
     "lyric.fontData": defaultFont,
     "lyric.fontColor": "#fff",
+    "lyric.applyFontColorOnlyToPlayedLines": false,
     "lyric.fontSize": 24,
     "lyric.inactiveBrightness": 0.35,
     "lyric.showTranslation": false,

@@ -113,6 +113,7 @@ class AppConfig {
                 "lyric.lockLyric": oldConfig.lyric?.lockLyric,
                 "lyric.fontData": oldConfig.lyric?.fontData,
                 "lyric.fontColor": oldConfig.lyric?.fontColor,
+                "lyric.applyFontColorOnlyToPlayedLines": oldConfig.lyric?.applyFontColorOnlyToPlayedLines,
                 "lyric.fontSize": oldConfig.lyric?.fontSize,
                 "lyric.inactiveBrightness": oldConfig.lyric?.inactiveBrightness,
 

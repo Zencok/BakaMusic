@@ -36,6 +36,7 @@ export default function LyricWindowPage() {
     const fontDataConfig = useAppConfig("lyric.fontData");
     const fontSizeConfig = useAppConfig("lyric.fontSize");
     const fontColorConfig = useAppConfig("lyric.fontColor");
+    const applyFontColorOnlyToPlayedLines = useAppConfig("lyric.applyFontColorOnlyToPlayedLines");
     const inactiveBrightnessConfig = useAppConfig("lyric.inactiveBrightness");
     const showTranslation = useAppConfig("lyric.showTranslation");
     const showRomanization = useAppConfig("lyric.showRomanization");
@@ -234,11 +235,13 @@ export default function LyricWindowPage() {
             })}
             style={{
                 "--desktop-lyric-color": fontColorConfig || "#ffffff",
+                "--desktop-lyric-unplayed-color": "#ffffff",
                 "--desktop-lyric-font-size": `${lyricFontSize}px`,
                 "--desktop-lyric-font-family": lyricFontFamily,
                 fontSize: `${lyricFontSize}px`,
                 fontFamily: lyricFontFamily,
             } as CSSProperties}
+            data-font-color-scope={applyFontColorOnlyToPlayedLines ? "played" : "all"}
         >
             <div className="desktop-lyric-page--header" data-no-drag="true">
                 <div className="desktop-lyric-page--info" title={songInfo}>
@@ -316,6 +319,7 @@ export default function LyricWindowPage() {
                     enableSpring
                     wordFadeWidth={0.82}
                     inactiveBrightness={inactiveBrightnessConfig ?? 0.35}
+                    markLinePlayState={!!applyFontColorOnlyToPlayedLines}
                     style={{
                         "--amll-lp-line-width-aspect": lineWidthAspect,
                         "--amll-lp-line-padding-x": "0.08em",

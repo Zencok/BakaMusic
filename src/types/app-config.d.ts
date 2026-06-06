@@ -35,6 +35,8 @@ interface _IAppConfig {
     "lyric.fontData": FontData;
     /** 字体颜色 */
     "lyric.fontColor": string;
+    /** 未播放歌词保持白色，过去行和当前行使用字体颜色 */
+    "lyric.applyFontColorOnlyToPlayedLines": boolean;
     /** 字体大小 */
     "lyric.fontSize": number;
     /** 未高亮歌词内容（非当前行、当前行未唱字）亮度 0~1 */
