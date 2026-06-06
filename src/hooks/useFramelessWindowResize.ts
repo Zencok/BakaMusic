@@ -9,6 +9,9 @@ interface IResizeState {
     pointerId: number;
     startScreenX: number;
     startScreenY: number;
+    /** 窗口左上角屏幕坐标，缩放期间固定，仅右/下边跟随光标 */
+    originX: number;
+    originY: number;
     startWidth: number;
     startHeight: number;
 }
@@ -17,11 +20,38 @@ interface IUseFramelessWindowResizeOptions {
     disabled?: boolean;
 }
 
+// 临时诊断开关：定位「事件是否触发 / setBounds 是否生效」后移除
+const DEBUG_RESIZE = true;
+
+/**
+ * 无边框窗口的鼠标缩放。
+ *
+ * 缩放走与窗口拖动相同的 setCurrentWindowBounds 通道（setBounds 在 transparent
+ * 窗口上稳定可用），左上角 x/y 固定、右/下边跟随光标，requestAnimationFrame 节流。
+ *
+ * 事件驱动用原生 document 监听而非 React onPointerMove：React 18 在 setPointerCapture
+ * 之后可能不再派发合成 pointermove；原生监听 + capture 可稳定跟踪（含窗口边界外移动）。
+ */
 export default function useFramelessWindowResize(options: IUseFramelessWindowResizeOptions = {}) {
     const { disabled = false } = options;
     const resizeStateRef = useRef<IResizeState | null>(null);
+    const rafRef = useRef(0);
+    const pendingBoundsRef = useRef<Electron.Rectangle | null>(null);
+    const detachRef = useRef<() => void>(() => undefined);
 
-    const resizeWindowByScreenPoint = useCallback((screenX: number, screenY: number) => {
+    const flushBounds = useCallback(() => {
+        rafRef.current = 0;
+        const bounds = pendingBoundsRef.current;
+        if (bounds) {
+            if (DEBUG_RESIZE) {
+                console.info("[lyric-resize] setBounds", bounds);
+            }
+            appWindowUtil.setCurrentWindowBounds(bounds);
+            pendingBoundsRef.current = null;
+        }
+    }, []);
+
+    const applyResize = useCallback((screenX: number, screenY: number) => {
         const resizeState = resizeStateRef.current;
         if (!resizeState) {
             return;
@@ -36,75 +66,39 @@ export default function useFramelessWindowResize(options: IUseFramelessWindowRes
         if (resizeState.axis === "x" || resizeState.axis === "xy") {
             nextWidth = resizeState.startWidth + deltaX;
         }
-
         if (resizeState.axis === "y" || resizeState.axis === "xy") {
             nextHeight = resizeState.startHeight + deltaY;
         }
 
-        appWindowUtil.setCurrentWindowSize(
-            Math.round(nextWidth),
-            Math.round(nextHeight),
-        );
-    }, []);
+        pendingBoundsRef.current = {
+            x: resizeState.originX,
+            y: resizeState.originY,
+            width: Math.round(nextWidth),
+            height: Math.round(nextHeight),
+        };
+        if (!rafRef.current) {
+            rafRef.current = requestAnimationFrame(flushBounds);
+        }
+    }, [flushBounds]);
 
-    const removeWindowListenersRef = useRef<() => void>(() => undefined);
+    const endResize = useCallback(() => {
+        detachRef.current();
+        detachRef.current = () => undefined;
 
-    const clearWindowListeners = useCallback(() => {
-        removeWindowListenersRef.current();
-        removeWindowListenersRef.current = () => undefined;
-    }, []);
+        if (rafRef.current) {
+            cancelAnimationFrame(rafRef.current);
+            rafRef.current = 0;
+        }
 
-    const stopResizeByPointerId = useCallback((pointerId?: number) => {
-        const resizeState = resizeStateRef.current;
-        if (typeof pointerId === "number" && resizeState && resizeState.pointerId !== pointerId) {
-            return;
+        // 立即落定最后一帧，避免节流丢失收尾尺寸
+        const bounds = pendingBoundsRef.current;
+        if (bounds) {
+            appWindowUtil.setCurrentWindowBounds(bounds);
+            pendingBoundsRef.current = null;
         }
 
         resizeStateRef.current = null;
-        clearWindowListeners();
-    }, [clearWindowListeners]);
-
-    const handleWindowPointerMove = useCallback((event: PointerEvent) => {
-        const resizeState = resizeStateRef.current;
-        if (!resizeState || resizeState.pointerId !== event.pointerId) {
-            return;
-        }
-
-        if (event.pointerType === "mouse" && !(event.buttons & 1)) {
-            appWindowUtil.stopCurrentWindowResize();
-            stopResizeByPointerId(event.pointerId);
-            return;
-        }
-
-        resizeWindowByScreenPoint(event.screenX, event.screenY);
-        event.preventDefault();
-        event.stopPropagation();
-    }, [resizeWindowByScreenPoint, stopResizeByPointerId]);
-
-    const handleWindowPointerEnd = useCallback((event: PointerEvent) => {
-        appWindowUtil.stopCurrentWindowResize();
-        stopResizeByPointerId(event.pointerId);
-    }, [stopResizeByPointerId]);
-
-    const handleWindowBlur = useCallback(() => {
-        appWindowUtil.stopCurrentWindowResize();
-        stopResizeByPointerId();
-    }, [stopResizeByPointerId]);
-
-    const bindWindowListeners = useCallback(() => {
-        clearWindowListeners();
-        window.addEventListener("pointermove", handleWindowPointerMove, true);
-        window.addEventListener("pointerup", handleWindowPointerEnd, true);
-        window.addEventListener("pointercancel", handleWindowPointerEnd, true);
-        window.addEventListener("blur", handleWindowBlur, true);
-
-        removeWindowListenersRef.current = () => {
-            window.removeEventListener("pointermove", handleWindowPointerMove, true);
-            window.removeEventListener("pointerup", handleWindowPointerEnd, true);
-            window.removeEventListener("pointercancel", handleWindowPointerEnd, true);
-            window.removeEventListener("blur", handleWindowBlur, true);
-        };
-    }, [clearWindowListeners, handleWindowBlur, handleWindowPointerEnd, handleWindowPointerMove]);
+    }, []);
 
     const startResize = useCallback(
         async (axis: FramelessResizeAxis, event: ReactPointerEvent<HTMLElement>) => {
@@ -113,62 +107,102 @@ export default function useFramelessWindowResize(options: IUseFramelessWindowRes
             }
 
             const pointerId = event.pointerId;
-            const screenX = event.screenX;
-            const screenY = event.screenY;
-            const currentTarget = event.currentTarget;
+            const startScreenX = event.screenX;
+            const startScreenY = event.screenY;
+            const target = event.currentTarget;
+            event.preventDefault();
+            event.stopPropagation();
 
-            currentTarget.setPointerCapture(pointerId);
+            if (DEBUG_RESIZE) {
+                console.info("[lyric-resize] start", axis, "pointer", pointerId);
+            }
+
             resizeStateRef.current = {
                 axis,
                 pointerId,
-                startScreenX: screenX,
-                startScreenY: screenY,
+                startScreenX,
+                startScreenY,
+                originX: window.screenX,
+                originY: window.screenY,
                 startWidth: window.innerWidth,
                 startHeight: window.innerHeight,
             };
-            appWindowUtil.startCurrentWindowResize({
-                axis,
-                startScreenX: screenX,
-                startScreenY: screenY,
-                startWidth: window.innerWidth,
-                startHeight: window.innerHeight,
-            });
-            bindWindowListeners();
-            event.preventDefault();
-            event.stopPropagation();
+
+            const handleMove = (moveEvent: PointerEvent) => {
+                const resizeState = resizeStateRef.current;
+                if (!resizeState || moveEvent.pointerId !== resizeState.pointerId) {
+                    return;
+                }
+                if (moveEvent.pointerType === "mouse" && !(moveEvent.buttons & 1)) {
+                    endResize();
+                    return;
+                }
+                applyResize(moveEvent.screenX, moveEvent.screenY);
+                moveEvent.preventDefault();
+            };
+            const handleEnd = (endEvent: PointerEvent) => {
+                const resizeState = resizeStateRef.current;
+                if (resizeState && endEvent.pointerId !== resizeState.pointerId) {
+                    return;
+                }
+                endResize();
+            };
+
+            document.addEventListener("pointermove", handleMove, true);
+            document.addEventListener("pointerup", handleEnd, true);
+            document.addEventListener("pointercancel", handleEnd, true);
+            window.addEventListener("blur", endResize, true);
+            detachRef.current = () => {
+                document.removeEventListener("pointermove", handleMove, true);
+                document.removeEventListener("pointerup", handleEnd, true);
+                document.removeEventListener("pointercancel", handleEnd, true);
+                window.removeEventListener("blur", endResize, true);
+            };
+
+            try {
+                // capture 让窗口边界外的移动仍派发到本元素（缩放时光标常移出当前边界）
+                target.setPointerCapture(pointerId);
+            } catch {
+                // 某些场景下可能抛错；document 监听仍可工作，忽略即可
+                void 0;
+            }
+
+            const bounds = await appWindowUtil.getCurrentWindowBounds();
+            const resizeState = resizeStateRef.current;
+            if (!bounds || !resizeState || resizeState.pointerId !== pointerId) {
+                return;
+            }
+            resizeStateRef.current = {
+                ...resizeState,
+                originX: bounds.x,
+                originY: bounds.y,
+                startWidth: bounds.width,
+                startHeight: bounds.height,
+            };
         },
-        [bindWindowListeners, disabled],
+        [applyResize, disabled, endResize],
     );
 
+    // React 事件路径（冗余兜底）：主力为上面的 document 监听，二者幂等
     const resizeWindow = useCallback((event: ReactPointerEvent<HTMLElement>) => {
         const resizeState = resizeStateRef.current;
         if (!resizeState || resizeState.pointerId !== event.pointerId) {
             return;
         }
-
-        resizeWindowByScreenPoint(event.screenX, event.screenY);
-
-        event.preventDefault();
-        event.stopPropagation();
-    }, [resizeWindowByScreenPoint]);
+        applyResize(event.screenX, event.screenY);
+    }, [applyResize]);
 
     const stopResize = useCallback((event: ReactPointerEvent<HTMLElement>) => {
         const resizeState = resizeStateRef.current;
         if (!resizeState || resizeState.pointerId !== event.pointerId) {
             return;
         }
-
-        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-            event.currentTarget.releasePointerCapture(event.pointerId);
-        }
-        appWindowUtil.stopCurrentWindowResize();
-        stopResizeByPointerId(event.pointerId);
-    }, [stopResizeByPointerId]);
+        endResize();
+    }, [endResize]);
 
     const cancelResize = useCallback(() => {
-        appWindowUtil.stopCurrentWindowResize();
-        stopResizeByPointerId();
-    }, [stopResizeByPointerId]);
+        endResize();
+    }, [endResize]);
 
     useEffect(() => cancelResize, [cancelResize]);
 

@@ -134,30 +134,6 @@ function ignoreMouseEvent(ignore: boolean) {
     ipcRenderer.send("@shared/utils/ignore-mouse-event", ignore);
 }
 
-function setCurrentWindowSize(width: number | Partial<ICommon.ISize>, height?: number) {
-    const nextWidth = typeof width === "number" ? width : width?.width;
-    const nextHeight = typeof width === "number" ? height : width?.height;
-
-    ipcRenderer.send("@shared/utils/set-current-window-size", {
-        width: nextWidth,
-        height: nextHeight,
-    });
-}
-
-function startCurrentWindowResize(options: {
-    axis: "x" | "y" | "xy";
-    startScreenX: number;
-    startScreenY: number;
-    startWidth: number;
-    startHeight: number;
-}) {
-    ipcRenderer.send("@shared/utils/start-current-window-resize", options);
-}
-
-function stopCurrentWindowResize() {
-    ipcRenderer.send("@shared/utils/stop-current-window-resize");
-}
-
 function setCurrentWindowBounds(bounds: Electron.Rectangle) {
     ipcRenderer.send("@shared/utils/set-current-window-bounds", bounds);
 }
@@ -178,9 +154,6 @@ const appWindow = {
     getCurrentWindowBounds,
     getAllWorkAreas,
     ignoreMouseEvent,
-    setCurrentWindowSize,
-    startCurrentWindowResize,
-    stopCurrentWindowResize,
     setCurrentWindowBounds,
     toggleMainWindowVisible,
     toggleMainWindowMaximize,

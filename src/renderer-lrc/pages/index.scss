@@ -225,54 +225,37 @@
         }
     }
 
+    // 缩放热区：全程完全透明，仅靠光标形状（↔ ↕ ⤡）提示可拉伸，绝不绘制任何可见背景/边线
     & .desktop-lyric-page--resize-handle {
         position: absolute;
         z-index: 5;
-        --desktop-lyric-resize-handle-bg: rgba(255, 255, 255, 0.01);
-        --desktop-lyric-resize-corner-line: rgba(255, 255, 255, 0.08);
         pointer-events: auto;
-        background: var(--desktop-lyric-resize-handle-bg);
-        transition: background-color 140ms ease;
+        background: transparent;
         touch-action: none;
         -webkit-app-region: no-drag;
-    }
-
-    &.hovered:not(.locked) .desktop-lyric-page--resize-handle {
-        --desktop-lyric-resize-handle-bg: rgba(255, 255, 255, 0.12);
-        --desktop-lyric-resize-corner-line: rgba(255, 255, 255, 0.3);
-    }
-
-    & .desktop-lyric-page--resize-handle:hover {
-        --desktop-lyric-resize-handle-bg: rgba(255, 255, 255, 0.24);
-        --desktop-lyric-resize-corner-line: rgba(255, 255, 255, 0.38);
     }
 
     & .desktop-lyric-page--resize-handle[data-axis="x"] {
         top: 32px;
         right: 0;
-        bottom: 12px;
-        width: 16px;
+        bottom: 14px;
+        width: 14px;
         cursor: ew-resize;
     }
 
     & .desktop-lyric-page--resize-handle[data-axis="y"] {
-        right: 18px;
+        right: 14px;
         bottom: 0;
         left: 18px;
-        height: 16px;
+        height: 14px;
         cursor: ns-resize;
     }
 
     & .desktop-lyric-page--resize-handle[data-axis="xy"] {
         right: 0;
         bottom: 0;
-        width: 24px;
-        height: 24px;
+        width: 18px;
+        height: 18px;
         cursor: nwse-resize;
-        border-top-left-radius: 12px;
-        background:
-            linear-gradient(135deg, transparent 0 48%, var(--desktop-lyric-resize-corner-line) 49% 56%, transparent 57%),
-            linear-gradient(135deg, transparent 0 66%, var(--desktop-lyric-resize-corner-line) 67% 74%, transparent 75%),
-            var(--desktop-lyric-resize-handle-bg);
     }
 }
