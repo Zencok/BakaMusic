@@ -46,7 +46,74 @@ function patchNodeAbiRegistry() {
 }
 
 // ============================================
-// Patch 1: node_modules/node-gyp/lib/find-visualstudio.js
+// Patch 1: node_modules/better-sqlite3 native sources
+// ============================================
+function patchBetterSqlite3ForElectron42() {
+  const baseDir = path.join(__dirname, '..', 'node_modules', 'better-sqlite3', 'src');
+  const macroPath = path.join(baseDir, 'util', 'macros.cpp');
+  const helperPath = path.join(baseDir, 'util', 'helpers.cpp');
+  const entryPath = path.join(baseDir, 'better_sqlite3.cpp');
+
+  if (!fs.existsSync(macroPath) || !fs.existsSync(helperPath) || !fs.existsSync(entryPath)) {
+    console.log('[patch-node-gyp] better-sqlite3 sources not found, skipping Electron 42 patch');
+    return;
+  }
+
+  let macroContent = fs.readFileSync(macroPath, 'utf8');
+  const oldOnlyAddon = "#define OnlyAddon static_cast<Addon*>(info.Data().As<v8::External>()->Value())";
+  const newOnlyAddon = "#define OnlyAddon static_cast<Addon*>(info.Data().As<v8::External>()->Value(v8::kExternalPointerTypeTagDefault))";
+  if (macroContent.includes(oldOnlyAddon)) {
+    macroContent = macroContent.replace(oldOnlyAddon, newOnlyAddon);
+    fs.writeFileSync(macroPath, macroContent, 'utf8');
+    console.log('[patch-node-gyp] Patched better-sqlite3 External::Value tag');
+    patchedCount++;
+  } else if (macroContent.includes(newOnlyAddon)) {
+    console.log('[patch-node-gyp] better-sqlite3 External::Value tag already patched');
+  } else {
+    console.error('[patch-node-gyp] Could not find better-sqlite3 External::Value pattern to patch');
+  }
+
+  let helperContent = fs.readFileSync(helperPath, 'utf8');
+  const oldSetter = `recv->InstanceTemplate()->SetNativeDataProperty(
+\t\tInternalizedFromLatin1(isolate, name),
+\t\tfunc,
+\t\t0,
+\t\tdata
+\t);`;
+  const newSetter = `recv->InstanceTemplate()->SetNativeDataProperty(
+\t\tInternalizedFromLatin1(isolate, name),
+\t\tfunc,
+\t\tnullptr,
+\t\tdata
+\t);`;
+  if (helperContent.includes(oldSetter)) {
+    helperContent = helperContent.replace(oldSetter, newSetter);
+    fs.writeFileSync(helperPath, helperContent, 'utf8');
+    console.log('[patch-node-gyp] Patched better-sqlite3 SetNativeDataProperty setter');
+    patchedCount++;
+  } else if (helperContent.includes(newSetter)) {
+    console.log('[patch-node-gyp] better-sqlite3 SetNativeDataProperty setter already patched');
+  } else {
+    console.error('[patch-node-gyp] Could not find better-sqlite3 SetNativeDataProperty pattern to patch');
+  }
+
+  let entryContent = fs.readFileSync(entryPath, 'utf8');
+  const oldExternalNew = 'v8::Local<v8::External> data = v8::External::New(isolate, addon);';
+  const newExternalNew = 'v8::Local<v8::External> data = v8::External::New(isolate, addon, v8::kExternalPointerTypeTagDefault);';
+  if (entryContent.includes(oldExternalNew)) {
+    entryContent = entryContent.replace(oldExternalNew, newExternalNew);
+    fs.writeFileSync(entryPath, entryContent, 'utf8');
+    console.log('[patch-node-gyp] Patched better-sqlite3 External::New tag');
+    patchedCount++;
+  } else if (entryContent.includes(newExternalNew)) {
+    console.log('[patch-node-gyp] better-sqlite3 External::New tag already patched');
+  } else {
+    console.error('[patch-node-gyp] Could not find better-sqlite3 External::New pattern to patch');
+  }
+}
+
+// ============================================
+// Patch 2: node_modules/node-gyp/lib/find-visualstudio.js
 // ============================================
 function patchFindVisualStudio() {
   const filePath = path.join(__dirname, '..', 'node_modules', 'node-gyp', 'lib', 'find-visualstudio.js');
@@ -114,7 +181,7 @@ function patchFindVisualStudio() {
 }
 
 // ============================================
-// Patch 2: node-gyp cache common.gypi (replace ClangCL with v145)
+// Patch 3: node-gyp cache common.gypi (replace ClangCL with v145)
 // ============================================
 function patchNodeGypCache() {
   // Find node-gyp cache directory
@@ -154,6 +221,7 @@ function patchNodeGypCache() {
 
 // Run patches
 patchNodeAbiRegistry();
+patchBetterSqlite3ForElectron42();
 patchFindVisualStudio();
 patchNodeGypCache();
 
