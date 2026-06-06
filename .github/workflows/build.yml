@@ -59,52 +59,6 @@ jobs:
           path: BakaMusic-${{ env.VERSION }}-win32-x64-portable.zip
           if-no-files-found: error
 
-  build-windows-legacy:
-    runs-on: windows-2022
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          package-manager-cache: false
-      - name: Print build environment
-        run: |
-          node -v
-          npm -v
-          node -e "const pkg=require('./package.json'); const lock=require('./package-lock.json'); console.log('electron='+pkg.devDependencies.electron); console.log('@electron/rebuild='+(lock.packages['node_modules/@electron/rebuild']?.version || 'missing')); console.log('better-sqlite3='+(lock.packages['node_modules/better-sqlite3']?.version || 'missing'));"
-      - name: Set build version
-        run: |
-          node -e "const fs=require('fs'); const pkg=require('./package.json'); const ref=process.env.GITHUB_REF||''; const refName=process.env.GITHUB_REF_NAME||''; const version=ref.startsWith('refs/tags/v') ? refName.slice(1) : pkg.version; fs.appendFileSync(process.env.GITHUB_ENV, 'VERSION='+version+'\nSYNC_PACKAGE_VERSION=' + String(pkg.version !== version) + '\n'); console.log('VERSION=' + version);"
-      - name: Sync package version
-        if: env.SYNC_PACKAGE_VERSION == 'true'
-        run: |
-          node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\n'); }"
-      - run: npm install
-      - run: npm install electron@22
-      - name: Clean build output
-        run: Remove-Item -Recurse -Force -ErrorAction SilentlyContinue ".webpack", "out"
-      - run: npm run package
-      - name: Install Inno Setup
-        run: choco install innosetup -y
-      - name: Build Installer
-        run: iscc /DMyAppVersion=${{ env.VERSION }} /DMyAppId=${{ secrets.MYAPPID }} "./release/build-windows.iss"
-      - name: Rename Setup
-        run: Rename-Item -Path "./out/BakaMusicSetup.exe" -NewName "BakaMusic-${{ env.VERSION }}-win32-x64-legacy-setup.exe"
-      - name: Generate Portable
-        run: New-Item -ItemType Directory -Force -Path "./out/BakaMusic-win32-x64/portable"
-      - name: Build Portable Zip
-        run: Compress-Archive -Path "./out/BakaMusic-win32-x64" -DestinationPath "BakaMusic-${{ env.VERSION }}-win32-x64-legacy-portable.zip" -Force
-      - uses: actions/upload-artifact@v6
-        with:
-          name: BakaMusic-${{ env.VERSION }}-win32-x64-legacy-setup
-          path: ./out/BakaMusic-${{ env.VERSION }}-win32-x64-legacy-setup.exe
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v6
-        with:
-          name: BakaMusic-${{ env.VERSION }}-win32-x64-legacy-portable
-          path: BakaMusic-${{ env.VERSION }}-win32-x64-legacy-portable.zip
-          if-no-files-found: error
-
   build-macos-x64:
     runs-on: macos-15-intel
     steps:
@@ -215,7 +169,6 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs:
       - build-windows
-      - build-windows-legacy
       - build-macos-x64
       - build-macos-arm64
       - build-linux
