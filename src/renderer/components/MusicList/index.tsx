@@ -988,7 +988,7 @@ function _MusicList(props: IMusicListProps) {
                                                             e.stopPropagation();
                                                         }}
                                                     >
-                                                        <MusicFavorite musicItem={musicItem} size={18}></MusicFavorite>
+                                                        <MusicFavorite musicItem={musicItem} size={18} fillContainer></MusicFavorite>
                                                     </div>
                                                     <div
                                                         className="music-list-action-button"
