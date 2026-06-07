@@ -2,42 +2,35 @@
   width: 100%;
   min-width: 0;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.58rem;
-  padding: 0.9rem;
-  border-radius: 24px;
-  background:
-    radial-gradient(
-      circle at top left,
-      color-mix(in srgb, var(--primaryColor) 16%, transparent),
-      transparent 36%
-    ),
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--backgroundColor) 90%, var(--textColor) 10%),
-      color-mix(in srgb, var(--backgroundColor) 80%, var(--textColor) 20%)
-    );
-  border: 1px solid var(--appSurfaceBorder);
-  box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
-  transition:
-    transform 180ms ease,
-    box-shadow 180ms ease,
-    border-color 180ms ease;
+  border-radius: 18px;
+  background: var(--appImageFallback);
+  isolation: isolate;
+  transition: transform 180ms ease;
 
   &:hover {
-    transform: translateY(-4px);
-    border-color: var(--appSurfaceBorderStrong);
-    box-shadow: 0 22px 44px rgba(15, 23, 42, 0.16), var(--appSurfaceInset);
+    transform: translateY(-3px);
   }
 
   & .theme-thumb-container {
-    height: 132px;
+    width: 100%;
+    aspect-ratio: 1 / 1;
     position: relative;
     overflow: hidden;
-    border-radius: 18px;
+    border-radius: inherit;
     background: color-mix(in srgb, var(--backgroundColor) 72%, var(--textColor) 28%);
-    box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    transition: box-shadow 180ms ease;
+
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, rgba(6, 9, 16, 0) 30%, rgba(6, 9, 16, 0.72) 100%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 24%);
+    }
 
     & .theme-selected {
       width: 100%;
@@ -45,9 +38,13 @@
       box-sizing: border-box;
       position: absolute;
       inset: 0;
-      border-radius: 18px;
+      z-index: 4;
+      border-radius: inherit;
       border: 2px solid color-mix(in srgb, var(--primaryColor) 84%, white);
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.24),
+        0 0 0 3px color-mix(in srgb, var(--primaryColor) 18%, transparent);
+      pointer-events: none;
     }
 
     & .theme-thumb {
@@ -56,16 +53,13 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 320ms ease;
-    }
-
-    &:hover .theme-thumb {
-      transform: scale(1.04);
+      transition: transform 360ms ease;
     }
 
     & .theme-options-mask {
       position: absolute;
       inset: 0;
+      z-index: 6;
       width: 100%;
       height: 100%;
       transition: opacity 240ms ease-in-out, background-color 240ms ease-in-out;
@@ -78,8 +72,7 @@
 
       &[data-show="true"] {
         opacity: 1;
-        background:
-          linear-gradient(180deg, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.66));
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.66));
         backdrop-filter: blur(14px);
       }
 
@@ -109,42 +102,62 @@
     }
   }
 
+  &:hover .theme-thumb-container,
+  &:focus-within .theme-thumb-container {
+    box-shadow: 0 18px 34px rgba(15, 23, 42, 0.14);
+  }
+
+  &:hover .theme-thumb,
+  &:focus-within .theme-thumb {
+    transform: scale(1.055);
+  }
+
   & .theme-meta {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    gap: 0.12rem;
+    gap: 0.28rem;
+    padding: 1.3rem 1rem 0.95rem;
+    pointer-events: none;
 
     & .theme-name {
-      font-size: 1rem;
-      font-weight: 700;
-      line-height: 1.28;
-      color: var(--appTextPrimary);
-      white-space: nowrap;
       overflow: hidden;
-      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      font-size: 1.02rem;
+      font-weight: 780;
+      line-height: 1.25;
+      color: #fff;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.38);
       user-select: none;
       cursor: pointer;
+      pointer-events: auto;
 
       &:hover {
-        color: color-mix(in srgb, var(--primaryColor) 80%, var(--appTextPrimary));
+        color: #fff;
       }
     }
 
     & .theme-author {
-      font-size: 0.86rem;
-      line-height: 1.2;
-      color: var(--appTextSecondary);
+      overflow: hidden;
+      font-size: 0.78rem;
+      font-weight: 560;
+      line-height: 1.25;
+      color: rgba(255, 255, 255, 0.78);
+      text-shadow: 0 1px 5px rgba(0, 0, 0, 0.36);
       user-select: none;
       white-space: nowrap;
-      overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    & .theme-name-placeholder {
-      visibility: hidden;
-    }
-
+    & .theme-name-placeholder,
     & .theme-author-placeholder {
       visibility: hidden;
     }

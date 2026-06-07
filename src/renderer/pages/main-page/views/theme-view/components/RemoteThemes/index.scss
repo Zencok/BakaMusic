@@ -5,8 +5,8 @@
 
   & .remote-themes-inner-container {
     display: grid;
-    gap: 20px;
-    grid-template-columns: repeat(auto-fill, minmax(208px, 1fr));
+    gap: 1.05rem;
+    grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
     align-items: start;
   }
 
@@ -30,5 +30,14 @@
     color: var(--appTextSecondary);
     background: var(--appSurface);
     border: 1px solid var(--appSurfaceBorder);
+  }
+}
+
+@media (max-width: 920px) {
+  .remote-themes-container {
+    & .remote-themes-inner-container {
+      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+      gap: 0.9rem;
+    }
   }
 }
