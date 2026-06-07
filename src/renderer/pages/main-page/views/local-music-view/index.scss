@@ -46,6 +46,52 @@
       font-weight: 600;
     }
 
+    & .manual-scan-button[data-type="normalButton"] {
+      height: 2.58rem;
+      min-height: 2.58rem;
+      gap: 0.5rem;
+      padding: 0 1.08rem 0 0.92rem;
+      border-radius: 12px;
+      color: color-mix(in srgb, var(--primaryColor) 72%, var(--appTextPrimary));
+      border-color: color-mix(in srgb, var(--primaryColor) 28%, transparent);
+      background:
+        linear-gradient(
+          180deg,
+          color-mix(in srgb, var(--primaryColor) 13%, white 12%),
+          color-mix(in srgb, var(--primaryColor) 6%, var(--backgroundColor) 48%)
+        );
+      box-shadow:
+        inset 0 1px 0 color-mix(in srgb, white 26%, transparent),
+        0 8px 18px color-mix(in srgb, var(--primaryColor) 10%, transparent);
+      backdrop-filter: blur(18px) saturate(145%);
+      font-weight: 680;
+
+      & svg {
+        width: 1.12rem;
+        height: 1.12rem;
+        opacity: 0.92;
+        transition: transform 180ms ease;
+      }
+
+      &:hover {
+        color: color-mix(in srgb, var(--primaryColor) 82%, var(--appTextPrimary));
+        border-color: color-mix(in srgb, var(--primaryColor) 38%, transparent);
+        background:
+          linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--primaryColor) 17%, white 14%),
+            color-mix(in srgb, var(--primaryColor) 9%, var(--backgroundColor) 52%)
+          );
+        box-shadow:
+          inset 0 1px 0 color-mix(in srgb, white 30%, transparent),
+          0 12px 22px color-mix(in srgb, var(--primaryColor) 14%, transparent);
+
+        & svg {
+          transform: rotate(18deg);
+        }
+      }
+    }
+
     & .operations-layout {
       display: flex;
       align-items: center;

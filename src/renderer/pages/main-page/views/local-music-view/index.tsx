@@ -83,13 +83,16 @@ export default function LocalMusicView() {
             <div className="header">{t("local_music_page.local_music")}</div>
             <div className="operations">
                 <div
+                    className="manual-scan-button"
                     data-type="normalButton"
                     role="button"
+                    title={t("local_music_page.auto_scan")}
                     onClick={() => {
                         showModal("WatchLocalDir");
                     }}
                 >
-                    {t("local_music_page.auto_scan")}
+                    <SvgAsset iconName="arrow-path"></SvgAsset>
+                    <span>{t("local_music_page.auto_scan")}</span>
                 </div>
                 <div className="operations-layout">
                     <input

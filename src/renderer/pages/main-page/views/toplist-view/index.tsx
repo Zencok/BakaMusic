@@ -1,5 +1,8 @@
 import Condition from "@/renderer/components/Condition";
-import MusicSheetlikeItem from "@/renderer/components/MusicSheetlikeItem";
+import LazyImage from "@/renderer/components/LazyImage";
+import albumImg from "@/assets/imgs/album-cover.jpg";
+import getCompactArtworkSrc from "@/renderer/utils/get-compact-artwork-src";
+import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
 import { Tab } from "@headlessui/react";
 import { pluginsTopListStore } from "./store";
 import { RequestStateCode } from "@/common/constant";
@@ -106,7 +109,6 @@ interface IToplistGroupItemProps {
 }
 function ToplistGroupItem(props: IToplistGroupItemProps) {
     const { groupItem, platform } = props;
-    const navigate = useNavigate();
 
     return (
         <div className="toplist-group-item--container">
@@ -115,21 +117,66 @@ function ToplistGroupItem(props: IToplistGroupItemProps) {
             </Condition>
             <div className="body">
                 {(groupItem.data ?? []).map((item) => (
-                    <MusicSheetlikeItem
+                    <ToplistCoverItem
                         key={item.id}
-                        mediaItem={item}
-                        onClick={(mediaItem) => {
-                            navigate(`/main/toplist-detail/${platform}`, {
-                                state: {
-                                    toplist: {
-                                        ...mediaItem,
-                                        platform,
-                                    },
-                                },
-                            });
-                        }}
-                    ></MusicSheetlikeItem>
+                        item={item}
+                        platform={platform}
+                    ></ToplistCoverItem>
                 ))}
+            </div>
+        </div>
+    );
+}
+
+interface IToplistCoverItemProps {
+    item: IMusic.IMusicSheetItem;
+    platform: string;
+}
+
+function ToplistCoverItem(props: IToplistCoverItemProps) {
+    const { item, platform } = props;
+    const navigate = useNavigate();
+    const metaText = item.artist ?? item.description;
+
+    const openToplist = () => {
+        navigate(`/main/toplist-detail/${platform}`, {
+            state: {
+                toplist: {
+                    ...item,
+                    platform,
+                },
+            },
+        });
+    };
+
+    return (
+        <div
+            className="toplist-cover-item"
+            role="button"
+            tabIndex={0}
+            title={item.title}
+            onClick={openToplist}
+            onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") {
+                    return;
+                }
+
+                event.preventDefault();
+                openToplist();
+            }}
+        >
+            <LazyImage
+                src={getCompactArtworkSrc(item, 420) ?? albumImg}
+                fallbackSrc={albumImg}
+                releaseWhenHidden={false}
+                onError={setFallbackAlbum}
+                alt={item.title}
+            ></LazyImage>
+            <div className="toplist-cover-item--overlay">
+                <div className="toplist-cover-item--title">{item.title}</div>
+                <Condition condition={metaText}>
+                    <div className="toplist-cover-item--meta">{metaText}</div>
+                </Condition>
             </div>
         </div>
     );
