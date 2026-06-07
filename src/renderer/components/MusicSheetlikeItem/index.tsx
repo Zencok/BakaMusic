@@ -10,24 +10,17 @@ import { isCN } from "@/shared/i18n/renderer";
 import LazyImage from "../LazyImage";
 import getCompactArtworkSrc from "@/renderer/utils/get-compact-artwork-src";
 
-export type MusicSheetlikeItemVariant = "default" | "coverOverlay";
-
 interface IMusicSheetlikeItemProps {
     mediaItem: IMusic.IMusicSheetItem;
     onClick?: (mediaItem: IMusic.IMusicSheetItem) => void;
-    variant?: MusicSheetlikeItemVariant;
 }
 
 function MusicSheetlikeItem(props: IMusicSheetlikeItemProps) {
-    const { mediaItem, onClick, variant = "default" } = props;
-    const containerClassName =
-        variant === "coverOverlay"
-            ? "components--albumlike-item-container components--albumlike-item-container--cover-overlay"
-            : "components--albumlike-item-container";
+    const { mediaItem, onClick } = props;
 
     return (
         <div
-            className={containerClassName}
+            className="components--albumlike-item-container"
             role="button"
             onClick={() => {
                 onClick?.(mediaItem);
@@ -76,7 +69,5 @@ function MusicSheetlikeItem(props: IMusicSheetlikeItemProps) {
 export default memo(
     MusicSheetlikeItem,
     (prev, curr) =>
-        prev.mediaItem === curr.mediaItem &&
-        prev.onClick === curr.onClick &&
-        prev.variant === curr.variant,
+        prev.mediaItem === curr.mediaItem && prev.onClick === curr.onClick,
 );

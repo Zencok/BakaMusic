@@ -2,9 +2,7 @@ import { RequestStateCode } from "@/common/constant";
 import { memo } from "react";
 import "./index.scss";
 import BottomLoadingState from "@/renderer/components/BottomLoadingState";
-import MusicSheetlikeItem, {
-    type MusicSheetlikeItemVariant,
-} from "@/renderer/components/MusicSheetlikeItem";
+import MusicSheetlikeItem from "@/renderer/components/MusicSheetlikeItem";
 import Condition from "../Condition";
 import Empty from "../Empty";
 
@@ -13,19 +11,15 @@ interface IMusicSheetlikeListProps {
     state: RequestStateCode;
     onLoadMore?: () => void;
     onClick?: (mediaItem: IMusic.IMusicSheetItem) => void;
-    variant?: MusicSheetlikeItemVariant;
 }
 
 function MusicSheetlikeList(props: IMusicSheetlikeListProps) {
-    const { data = [], state, onLoadMore, onClick, variant = "default" } = props;
+    const { data = [], state, onLoadMore, onClick } = props;
 
     return (
         <div className="music-sheet-like-list--container">
             <Condition condition={data.length !== 0} falsy={<Empty></Empty>}>
-                <div
-                    className="music-sheet-like-list--body"
-                    data-variant={variant}
-                >
+                <div className="music-sheet-like-list--body">
                     {data.map((mediaItem, index) => {
                         return (
                             <MusicSheetlikeItem
@@ -33,7 +27,6 @@ function MusicSheetlikeList(props: IMusicSheetlikeListProps) {
                                     onClick?.(mediaItem);
                                 }}
                                 mediaItem={mediaItem}
-                                variant={variant}
                                 key={index}
                             ></MusicSheetlikeItem>
                         );
@@ -53,7 +46,5 @@ function MusicSheetlikeList(props: IMusicSheetlikeListProps) {
 export default memo(
     MusicSheetlikeList,
     (prev, curr) =>
-        prev.data === curr.data &&
-        prev.state === curr.state &&
-        prev.variant === curr.variant,
+        prev.data === curr.data && prev.state === curr.state,
 );
