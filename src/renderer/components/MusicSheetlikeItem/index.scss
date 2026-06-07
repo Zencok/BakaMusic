@@ -123,3 +123,108 @@
     }
   }
 }
+
+.components--albumlike-item-container--cover-overlay {
+  position: relative;
+  overflow: visible;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  isolation: isolate;
+
+  &:hover {
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  & .album-img-wrapper {
+    border-radius: inherit;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    transition: box-shadow 180ms ease;
+
+    &::after {
+      inset: 0;
+      z-index: 1;
+      height: auto;
+      background:
+        linear-gradient(180deg, rgba(6, 9, 16, 0) 30%, rgba(6, 9, 16, 0.72) 100%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 24%);
+    }
+
+    & .album-play-info {
+      top: 0.72rem;
+      right: 0.72rem;
+      bottom: auto;
+      left: auto;
+      z-index: 2;
+      gap: 0.42rem;
+      width: auto;
+      max-width: calc(100% - 1.44rem);
+      min-height: 1.72rem;
+      padding: 0 0.62rem;
+      border-radius: 999px;
+      background: rgba(7, 10, 18, 0.34);
+      border-color: rgba(255, 255, 255, 0.12);
+      justify-content: flex-end;
+
+      & > div:empty {
+        display: none;
+      }
+    }
+
+    & img {
+      z-index: 0;
+    }
+  }
+
+  &:hover .album-img-wrapper,
+  &:focus-visible .album-img-wrapper {
+    box-shadow: 0 18px 34px rgba(15, 23, 42, 0.14);
+  }
+
+  &:hover .album-img-wrapper img,
+  &:focus-visible .album-img-wrapper img {
+    transform: scale(1.055);
+  }
+
+  & .media-info {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+    box-sizing: border-box;
+    min-height: 0;
+    margin-top: 0;
+    padding: 1.3rem 1rem 0.95rem;
+    color: #fff;
+    pointer-events: none;
+
+    & .title {
+      font-size: 1.02rem;
+      font-weight: 780;
+      line-height: 1.25;
+      color: #fff;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.38);
+
+      &:hover {
+        color: #fff;
+      }
+    }
+
+    & .author {
+      margin-top: 0.28rem;
+      font-size: 0.78rem;
+      font-weight: 560;
+      line-height: 1.25;
+
+      & span {
+        color: rgba(255, 255, 255, 0.78);
+        text-shadow: 0 1px 5px rgba(0, 0, 0, 0.36);
+      }
+    }
+  }
+}

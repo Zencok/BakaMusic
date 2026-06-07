@@ -21,6 +21,7 @@ function SheetResult(props: IMediaResultProps) {
         <MusicSheetlikeList
             data={data}
             state={state}
+            variant="coverOverlay"
             onLoadMore={() => {
                 search(undefined, undefined, "sheet", pluginHash);
             }}
