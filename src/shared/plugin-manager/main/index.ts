@@ -114,7 +114,9 @@ class PluginManager {
             this.syncPlugins();
         });
 
-        ipcMain.on("@shared/plugin-manager/update-all-plugins", this.updateAllPlugins);
+        ipcMain.handle("@shared/plugin-manager/update-all-plugins", async () => {
+            return await this.updateAllPlugins();
+        });
 
         ipcMain.handle("@shared/plugin-manager/install-plugin-remote", async (_, urlLike) => {
             return await this.installPluginFromRemoteUrl(urlLike);

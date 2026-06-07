@@ -1,0 +1,10 @@
+.modal--loading {
+  width: 420px;
+  display: flex;
+  flex-direction: column;
+  min-height: 260px;
+
+  & .loading-container {
+    min-height: 194px;
+  }
+}

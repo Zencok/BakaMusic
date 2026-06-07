@@ -3,7 +3,10 @@ import A from "@/renderer/components/A";
 import PluginTable from "./components/plugin-table";
 import SvgAsset, { type SvgAssetIconNames } from "@/renderer/components/SvgAsset";
 import "./index.scss";
-import { getUserPreference } from "@/renderer/utils/user-perference";
+import {
+    getUserPreference,
+    useUserPreference,
+} from "@/renderer/utils/user-perference";
 import { toast } from "react-toastify";
 import { Trans, useTranslation } from "react-i18next";
 import { dialogUtil } from "@shared/utils/renderer";
@@ -36,7 +39,7 @@ function ActionButton(props: IActionButtonProps) {
 export default function PluginManagerView() {
     const { t } = useTranslation();
     const plugins = useSortedPlugins();
-    const subscriptionList = getUserPreference("subscription") ?? [];
+    const [subscriptionList] = useUserPreference("subscription");
 
     async function onInstallFromLocal() {
         try {
@@ -117,22 +120,50 @@ export default function PluginManagerView() {
     }
 
     async function onUpdateSubscriptions() {
-        if (!subscriptionList.length) {
+        const currentSubscriptions = (
+            getUserPreference("subscription") ??
+            subscriptionList ??
+            []
+        )
+            .map((subscription) => ({
+                ...subscription,
+                srcUrl: (subscription.srcUrl ?? "").trim(),
+            }))
+            .filter((subscription) => subscription.srcUrl);
+
+        if (!currentSubscriptions.length) {
             toast.warn(t("plugin_management_page.no_subscription"));
             return;
         }
 
-        try {
-            for (const subscription of subscriptionList) {
+        showModal("Loading", {
+            title: t("plugin_management_page.update_subscription"),
+            text: t("plugin_management_page.installing"),
+        });
+
+        const failedErrors: Error[] = [];
+        for (const subscription of currentSubscriptions) {
+            try {
                 await PluginManager.installPluginFromRemote(subscription.srcUrl);
+            } catch (error) {
+                failedErrors.push(error as Error);
             }
-            toast.success(t("plugin_management_page.update_successfully"));
-        } catch (error) {
-            toast.error(
-                (error as Error)?.message ??
-                t("plugin_management_page.update_failed"),
-            );
         }
+
+        hideModal();
+
+        if (!failedErrors.length) {
+            toast.success(t("plugin_management_page.update_successfully"));
+            return;
+        }
+
+        toast.error(
+            `${t("plugin_management_page.update_failed")} ` +
+            `(${failedErrors.length}/${currentSubscriptions.length}): ${
+                failedErrors[0]?.message ??
+                t("plugin_management_page.invalid_plugin")
+            }`,
+        );
     }
 
     return (

@@ -46,7 +46,7 @@ async function uninstallAllPlugins() {
 }
 
 async function updateAllPlugins() {
-    ipcRenderer.emit("@shared/plugin-manager/update-all-plugins");
+    await ipcRenderer.invoke("@shared/plugin-manager/update-all-plugins");
 }
 
 async function installPluginFromRemote(url: string) {

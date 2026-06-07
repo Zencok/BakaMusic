@@ -3,6 +3,7 @@ import AddNewSheet from "./AddNewSheet";
 import Base from "./Base";
 import ExitConfirm from "./ExitConfirm";
 import ImportMusicSheet from "./ImportMusicSheet";
+import Loading from "./Loading";
 import PlayMusicById from "./PlayMusicById";
 import PluginSubscription from "./PluginSubscription";
 import Reconfirm from "./Reconfirm";
@@ -27,5 +28,6 @@ export default {
     PluginSubscription,
     SearchLyric,
     ImportMusicSheet,
+    Loading,
     PlayMusicById,
 };
