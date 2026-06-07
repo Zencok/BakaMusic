@@ -49,6 +49,13 @@ export default function About() {
                     {t("settings.about.qq_group_name")}
                 </A>
             </div>
+
+            <div className="setting-row about-version">
+                {t("settings.about.telegram_group")}
+                <A href="https://t.me/mvscute">
+                    {t("settings.about.telegram_group_name")}
+                </A>
+            </div>
         </div>
     );
 }
