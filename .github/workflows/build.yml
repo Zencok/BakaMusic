@@ -6,6 +6,7 @@ permissions:
 
 env:
   NODE_VERSION: "22.12.0"
+  WINDOWS_APP_ID: "BakaMusic"
 
 on:
   push:
@@ -41,7 +42,7 @@ jobs:
       - name: Install Inno Setup
         run: choco install innosetup -y
       - name: Build Installer
-        run: iscc /DMyAppVersion=${{ env.VERSION }} /DMyAppId=${{ secrets.MYAPPID }} "./release/build-windows.iss"
+        run: iscc /DMyAppVersion=${{ env.VERSION }} /DMyAppId=${{ env.WINDOWS_APP_ID }} "./release/build-windows.iss"
       - name: Rename Setup
         run: Rename-Item -Path "./out/BakaMusicSetup.exe" -NewName "BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe"
       - name: Generate Portable

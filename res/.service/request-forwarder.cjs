@@ -2,10 +2,7 @@ const http = require("http");
 const https = require("https");
 
 
-const defaultPort = 52735;
-const maxRetries = 20;
-
-let retryCount = 0;
+const defaultPort = Number(process.env.REQUEST_FORWARDER_PORT || 0);
 
 function forwardRequest(clientRes, url, method, headers) {
 
@@ -92,25 +89,20 @@ function startServer(port) {
         });
     });
 
-    server.listen(port, () => {
+    server.listen(port, "127.0.0.1", () => {
+        const address = server.address();
+        const servicePort = typeof address === "object" && address ? address.port : port;
         process.send?.({
             type: "port",
-            port
+            port: servicePort
         });
-        console.log(`Proxy server is running on http://localhost:${port}`);
+        console.log(`Proxy server is running on http://127.0.0.1:${servicePort}`);
     });
 
     server.on("error", (err) => {
         console.error("Server error:", err);
-        if (retryCount < maxRetries) {
-            retryCount++;
-            const newPort = port + 1; // 尝试下一个端口
-            console.log(`Retrying on port: ${newPort} (attempt ${retryCount})`);
-            startServer(newPort);
-        } else {
-            process.send?.({ type: "error", error: "Max retries reached" });
-        }
-    })
+        process.send?.({ type: "error", error: err.message });
+    });
 }
 
 

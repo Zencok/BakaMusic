@@ -24,10 +24,8 @@ const path = require("path");
 const nativeQmc2 = require(path.join(__dirname, "native", "qmc2.node"));
 console.log("[mflac-proxy] Native QMC2 module loaded");
 
-const defaultPort = 17863;
-const maxRetries = 20;
-let retryCount = 0;
-let currentPort = defaultPort;
+const defaultPort = Number(process.env.MFLAC_PROXY_PORT || 0);
+let currentPort = null;
 
 // =========================================================================
 // EKey normalization (kept in JS — trivial string op)
@@ -62,6 +60,11 @@ function generateToken() {
 process.on("message", (msg) => {
     if (msg && msg.type === "register") {
         const { src, ekey, headers } = msg;
+        if (!currentPort) {
+            process.send({ type: "error", error: "mflac-proxy is not listening" });
+            return;
+        }
+
         const normalizedEkey = normalizeEkey(ekey);
 
         let keyBuf = null;
@@ -294,21 +297,15 @@ function startServer(port) {
     });
 
     server.listen(port, "127.0.0.1", () => {
-        currentPort = port;
-        process.send?.({ type: "port", port });
-        console.log(`mflac-proxy is running on http://localhost:${port}`);
+        const address = server.address();
+        currentPort = typeof address === "object" && address ? address.port : port;
+        process.send?.({ type: "port", port: currentPort });
+        console.log(`mflac-proxy is running on http://127.0.0.1:${currentPort}`);
     });
 
     server.on("error", (err) => {
         console.error("Server error:", err);
-        if (retryCount < maxRetries) {
-            retryCount++;
-            const newPort = port + 1;
-            console.log(`Retrying on port: ${newPort} (attempt ${retryCount})`);
-            startServer(newPort);
-        } else {
-            process.send?.({ type: "error", error: "Max retries reached" });
-        }
+        process.send?.({ type: "error", error: err.message });
     });
 }
 

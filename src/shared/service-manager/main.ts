@@ -1,5 +1,6 @@
 import { ChildProcess, fork } from "child_process";
 import { app, ipcMain } from "electron";
+import path from "path";
 import { IWindowManager } from "@/types/main/window-manager";
 import { ServiceName } from "@shared/service-manager/common";
 import getResourcePath from "@/common/get-resource-path";
@@ -36,19 +37,43 @@ class ServiceInstance {
     }
 
     private spawnProcess() {
-        const servicePath = getResourcePath(".service/" + this.subprocessName + ".js");
-        this.serviceProcess = fork(servicePath);
+        const servicePath = getResourcePath(".service/" + this.subprocessName + ".cjs");
+        const serviceEnv: NodeJS.ProcessEnv = {
+            ...process.env,
+            ELECTRON_RUN_AS_NODE: "1",
+        };
+        delete serviceEnv["NODE_OPTIONS"];
+
+        this.serviceProcess = fork(servicePath, [], {
+            cwd: path.dirname(servicePath),
+            env: serviceEnv,
+            execArgv: [],
+            stdio: ["ignore", "pipe", "pipe", "ipc"],
+        });
 
         interface IMessage {
             type: "port",
             port: number
         }
 
+        const logServiceError = (chunk: Buffer) => {
+            const output = chunk.toString().trim();
+            if (output) {
+                logger.logInfo(`[${this.serviceName}] stderr: ${output}`);
+            }
+        };
+
+        this.serviceProcess.stderr?.on("data", (chunk: Buffer) => {
+            logServiceError(chunk);
+        });
+
         this.serviceProcess.on("message", (msg: IMessage) => {
             if (msg.type !== "port") {
                 return;
             }
             const host = "http://127.0.0.1:" + msg.port;
+            this.retryTimeOut = 6000;
+            logger.logInfo(`[${this.serviceName}] Listening on ${host}`);
             this.hostChangeCallback(host);
         });
 
@@ -59,9 +84,9 @@ class ServiceInstance {
             }
         });
 
-        this.serviceProcess.on("exit", (code) => {
+        this.serviceProcess.on("exit", (code, signal) => {
             if (this.started) {
-                logger.logInfo(`[${this.serviceName}] Exited with code ${code}. Restarting in ${this.retryTimeOut}ms...`);
+                logger.logInfo(`[${this.serviceName}] Exited with code ${code}, signal ${signal}. Restarting in ${this.retryTimeOut}ms...`);
                 this.scheduleRestart();
             }
         });
@@ -78,13 +103,13 @@ class ServiceInstance {
 
     stop() {
         this.started = false;
-        if (!this.serviceProcess.killed) {
+        if (this.serviceProcess && !this.serviceProcess.killed) {
             this.serviceProcess.removeAllListeners();
             this.serviceProcess.kill();
-            this.serviceProcess = null;
-            this.retryTimeOut = 6000;
-            this.hostChangeCallback(null);
         }
+        this.serviceProcess = null;
+        this.retryTimeOut = 6000;
+        this.hostChangeCallback(null);
     }
 }
 

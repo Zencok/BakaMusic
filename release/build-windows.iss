@@ -9,7 +9,7 @@
 #define MyAppURL "https://github.com/Zencok/BakaMusic"
 #define MyAppExeName "BakaMusic.exe"
 #ifndef MyAppId
-#define MyAppId
+#define MyAppId "BakaMusic"
 #endif
 
 
