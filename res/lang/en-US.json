@@ -412,13 +412,14 @@
       "current_version": "Current Version: {{version}}",
       "already_latest": "Already up to date!",
       "check_update": "Check for Update",
-      "original_author": "Original Author: ",
-      "current_author": "Maintained by: ",
+      "current_project": "Current Project: ",
+      "reference_project": "Reference Project: ",
       "software_author": "Software Author: ",
       "open_source_declaration": "Source Code: Software is open-source under AGPL3.0 license. <Github>Github Link</Github>",
       "official_site": "Official Website",
       "mobile_version": "Mobile Version",
-      "qq_group": "QQ Group:"
+      "qq_group": "QQ Group: ",
+      "qq_group_name": "1064805856"
     }
   },
   "main": {

@@ -30,33 +30,24 @@ export default function About() {
             </div>
 
             <div className="setting-row about-version">
-                {t("settings.about.original_author")}{" "}
-                <A href="https://github.com/maotoumao">Github@maotoumao</A>
-            </div>
-
-            <div className="setting-row about-version">
-                {t("settings.about.current_author")}{" "}
-                <A href="https://github.com/Zencok">Github@Zencok</A>
-            </div>
-
-            <div className="setting-row about-version">
-                当前项目：
+                {t("settings.about.current_project")}
                 <A href="https://github.com/Zencok/BakaMusic">
-                    BakaMusic
+                    BakaMusic@Zencok
                 </A>
-                <span>（独立维护版本）</span>
             </div>
 
             <div className="setting-row about-version">
-                原始桌面项目：
+                {t("settings.about.reference_project")}
                 <A href="https://github.com/maotoumao/MusicFreeDesktop">
-                    MusicFreeDesktop
+                    MusicFreeDesktop@maotoumao
                 </A>
             </div>
 
             <div className="setting-row about-version">
-                原始安卓项目：
-                <A href="https://github.com/maotoumao/MusicFree">MusicFree</A>
+                {t("settings.about.qq_group")}
+                <A href="https://qm.qq.com/q/VNyG9RoygE">
+                    {t("settings.about.qq_group_name")}
+                </A>
             </div>
         </div>
     );

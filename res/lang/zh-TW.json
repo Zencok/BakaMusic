@@ -412,13 +412,14 @@
       "current_version": "當前版本：{{version}}",
       "already_latest": "已是最新版本！",
       "check_update": "檢查更新",
-      "original_author": "原作者：",
-      "current_author": "當前維護者：",
+      "current_project": "當前項目：",
+      "reference_project": "參考項目：",
       "software_author": "軟件作者：",
       "open_source_declaration": "源碼：軟件是基於 AGPL3.0 授權的開源軟件。<Github>Github 地址</Github>",
       "official_site": "官方網站",
       "mobile_version": "移動版",
-      "qq_group": "QQ群:"
+      "qq_group": "QQ交流群：",
+      "qq_group_name": "1064805856"
     }
   },
   "main": {
