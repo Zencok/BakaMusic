@@ -153,7 +153,7 @@ function ListBoxOptions<T extends keyof IAppConfig>(
 
     const virtualController = useVirtualList({
         data: options ?? [],
-        estimateItemHeight: 2.2 * rem,
+        estimateItemHeight: 2.5 * rem,
         getScrollElement: () => containerRef.current,
         renderCount: 40,
         fallbackRenderCount: 20,
@@ -180,6 +180,17 @@ function ListBoxOptions<T extends keyof IAppConfig>(
             window.removeEventListener("resize", updatePosition);
         };
     }, [buttonRef]);
+
+    useLayoutEffect(() => {
+        if (!portalTarget) {
+            return;
+        }
+
+        virtualController.setScrollElement(containerRef.current);
+        return () => {
+            virtualController.setScrollElement(null);
+        };
+    }, [portalTarget]);
 
     if (!portalTarget) {
         return null;

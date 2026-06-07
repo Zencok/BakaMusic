@@ -101,52 +101,58 @@ function LyricOrderSettingItem() {
             <div className="label-container">
                 {t("settings.download.lyric_content_order")}
             </div>
-            <div className="lyric-order-tip">
-                {t("settings.download.lyric_content_order_tip")}
-            </div>
-            <div className="lyric-order-list">
-                {lyricOrderItems.map((item) => {
-                    const checked = lyricOrder.includes(item.key);
-                    const currentIndex = lyricOrder.indexOf(item.key);
+            <div className="lyric-order-content">
+                <div className="lyric-order-tip">
+                    {t("settings.download.lyric_content_order_tip")}
+                </div>
+                <div className="lyric-order-list">
+                    {lyricOrderItems.map((item) => {
+                        const checked = lyricOrder.includes(item.key);
+                        const currentIndex = lyricOrder.indexOf(item.key);
 
-                    return (
-                        <div className="lyric-order-item" key={item.key}>
-                            <div
-                                className={`option-item-container ${checked ? "highlight" : ""}`}
-                                role="button"
-                                title={t(item.labelKey)}
-                                onClick={() => {
-                                    toggleLyricType(item.key);
-                                }}
-                            >
-                                <div className="checkbox">
-                                    {checked ? <SvgAsset iconName="check"></SvgAsset> : null}
+                        return (
+                            <div className="lyric-order-item" key={item.key}>
+                                <div
+                                    className={`option-item-container ${checked ? "highlight" : ""}`}
+                                    role="button"
+                                    title={t(item.labelKey)}
+                                    onClick={() => {
+                                        toggleLyricType(item.key);
+                                    }}
+                                >
+                                    <div className="checkbox">
+                                        {checked ? <SvgAsset iconName="check"></SvgAsset> : null}
+                                    </div>
+                                    {t(item.labelKey)}
                                 </div>
-                                {t(item.labelKey)}
+                                <div className="lyric-order-actions">
+                                    <button
+                                        aria-label={t("settings.download.move_up")}
+                                        type="button"
+                                        title={t("settings.download.move_up")}
+                                        disabled={!checked || currentIndex <= 0}
+                                        onClick={() => {
+                                            moveLyricType(item.key, -1);
+                                        }}
+                                    >
+                                        <SvgAsset iconName="chevron-double-up" size={16}></SvgAsset>
+                                    </button>
+                                    <button
+                                        aria-label={t("settings.download.move_down")}
+                                        type="button"
+                                        title={t("settings.download.move_down")}
+                                        disabled={!checked || currentIndex >= lyricOrder.length - 1}
+                                        onClick={() => {
+                                            moveLyricType(item.key, 1);
+                                        }}
+                                    >
+                                        <SvgAsset iconName="chevron-double-down" size={16}></SvgAsset>
+                                    </button>
+                                </div>
                             </div>
-                            <div className="lyric-order-actions">
-                                <button
-                                    type="button"
-                                    disabled={!checked || currentIndex <= 0}
-                                    onClick={() => {
-                                        moveLyricType(item.key, -1);
-                                    }}
-                                >
-                                    {t("settings.download.move_up")}
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={!checked || currentIndex >= lyricOrder.length - 1}
-                                    onClick={() => {
-                                        moveLyricType(item.key, 1);
-                                    }}
-                                >
-                                    {t("settings.download.move_down")}
-                                </button>
-                            </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );

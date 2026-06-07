@@ -1,8 +1,88 @@
-.setting-view--about-container{
-    & .about-version {
-        display: flex;
-        align-items: center;
-        column-gap: 16px;
+.setting-view--about-container {
+  width: 100%;
 
+  & .about-info-row {
+    min-height: 4rem;
+  }
+
+  & .about-info-label {
+    grid-column: 1;
+    min-width: 0;
+    color: var(--settingTextSecondary);
+    font-size: 0.9rem;
+    font-weight: 650;
+    line-height: 1.42;
+    user-select: none;
+  }
+
+  & .about-info-content {
+    grid-column: 2;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  & .about-link-chip {
+    max-width: 100%;
+    min-height: 2.55rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.58rem;
+    padding: 0 0.92rem;
+    border: 1px solid var(--settingControlBorder);
+    border-radius: 8px;
+    color: var(--settingTextPrimary);
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--settingControlSurface) 92%, white 8%),
+        var(--settingControlSurface)
+      );
+    box-shadow: var(--settingControlInset);
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 680;
+    line-height: 1;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition:
+      color 160ms ease,
+      border-color 160ms ease,
+      background-color 160ms ease,
+      transform 160ms ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      color: color-mix(in srgb, var(--primaryColor) 74%, var(--settingTextPrimary));
+      border-color: var(--settingControlBorderActive);
+      background: var(--settingControlSurfaceHover);
     }
+
+    &:active {
+      transform: translateY(0);
+    }
+
+    & svg {
+      width: 1.05rem;
+      height: 1.05rem;
+      color: color-mix(in srgb, var(--primaryColor) 72%, var(--settingTextPrimary));
+    }
+
+    & span {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+  }
+}
+
+@media (max-width: 820px) {
+  .setting-view--about-container {
+    & .about-info-label,
+    & .about-info-content {
+      grid-column: auto;
+    }
+  }
 }

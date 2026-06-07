@@ -391,6 +391,7 @@
       "enable_network_proxy": "Enable Network Proxy"
     },
     "backup": {
+      "resume_behavior": "Restore behavior",
       "resume_mode_append": "Append to existing playlist",
       "resume_mode_overwrite": "Overwrite existing playlist",
       "backup_by_file": "File Backup",

@@ -6,6 +6,47 @@ import { hideModal } from "../..";
 import { useTranslation } from "react-i18next";
 import { appUtil, shellUtil } from "@shared/utils/renderer";
 
+function escapeHtml(s: string) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function renderMd(lines: string[]): string {
+    return lines.join("\n")
+        .split("\n")
+        .map(rawLine => {
+            const line = rawLine.trim();
+            if (!line) return "";
+
+            // split line into link vs non-link segments, escape only non-link parts
+            const segments: string[] = [];
+            const linkRe = /\[(.+?)\]\((https?:\/\/[^)]+)\)|(https?:\/\/\S+)/g;
+            let last = 0, m: RegExpExecArray | null;
+            while ((m = linkRe.exec(line)) !== null) {
+                if (m.index > last) segments.push(escapeHtml(line.slice(last, m.index)));
+                const url = m[2] ?? m[3];
+                const label = m[1] ?? m[3];
+                segments.push(`<a href="${url}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`);
+                last = m.index + m[0].length;
+            }
+            if (last < line.length) segments.push(escapeHtml(line.slice(last)));
+            let out = segments.join("");
+
+            // block-level
+            if (/^#{1,6}\s/.test(line)) return `<strong>${out.replace(/^#+\s+/, "")}</strong>`;
+            if (/^[*+-]\s/.test(line)) return `<li>${out.replace(/^[*+-]\s+/, "")}</li>`;
+
+            // inline formatting
+            out = out
+                .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+                .replace(/\*(.+?)\*/g, "<em>$1</em>")
+                .replace(/`(.+?)`/g, "<code>$1</code>");
+
+            return `<p>${out}</p>`;
+        })
+        .join("\n")
+        .replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`);
+}
+
 interface IUpdateProps {
     currentVersion: string;
     update: ICommon.IUpdateInfo["update"];
@@ -95,9 +136,17 @@ export default function Update(props: IUpdateProps) {
                         {currentVersion}
                     </div>
                     <div className="divider"></div>
-                    {update?.changeLog?.map((item, index) => (
-                        <p key={index}>{item}</p>
-                    ))}
+                    <div
+                        dangerouslySetInnerHTML={{ __html: renderMd(update?.changeLog ?? []) }}
+                        onClick={(e) => {
+                            const a = (e.target as HTMLElement).closest("a");
+                            const href = a?.getAttribute("href");
+                            if (href) {
+                                e.preventDefault();
+                                shellUtil.openExternal(href);
+                            }
+                        }}
+                    />
                 </div>
 
                 {phase === "downloading" && (

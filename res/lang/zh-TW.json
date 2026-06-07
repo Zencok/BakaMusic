@@ -391,6 +391,7 @@
       "enable_network_proxy": "啟用網絡代理"
     },
     "backup": {
+      "resume_behavior": "恢復方式",
       "resume_mode_append": "附加到現有清單後",
       "resume_mode_overwrite": "覆蓋現有清單",
       "backup_by_file": "通過文件備份",

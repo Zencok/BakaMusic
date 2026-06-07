@@ -4,14 +4,18 @@
   & .proxy-container {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-    margin-bottom: 0.85rem;
+    gap: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--textColor) 9%, transparent);
 
-    & .proxy-item {
-      display: flex;
+    & .setting-view--input-setting-item-container {
+      border-right: 1px solid color-mix(in srgb, var(--textColor) 9%, transparent);
 
-      & input {
-        flex: 1;
+      &:nth-child(2n) {
+        border-right: 0;
+      }
+
+      &:nth-last-child(-n + 2) {
+        border-bottom: 0;
       }
     }
   }
@@ -19,6 +23,24 @@
   & .network-cache-container {
     display: flex;
     align-items: center;
-    gap: 24px;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 4.35rem;
+  }
+}
+
+@media (max-width: 920px) {
+  .setting-view--network-container {
+    & .proxy-container {
+      grid-template-columns: 1fr;
+
+      & .setting-view--input-setting-item-container {
+        border-right: 0;
+
+        &:nth-last-child(2) {
+          border-bottom: 1px solid color-mix(in srgb, var(--textColor) 9%, transparent);
+        }
+      }
+    }
   }
 }

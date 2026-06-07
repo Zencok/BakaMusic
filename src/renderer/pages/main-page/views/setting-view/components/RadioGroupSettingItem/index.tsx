@@ -27,10 +27,16 @@ export default function RadioGroupSettingItem<T extends keyof IAppConfig>(
     } = props;
 
     const value = useAppConfig(keyPath);
+    const layout = direction === "vertical" || options.length > 6 ? "wide" : "compact";
 
     return (
-        <div className="setting-view--radio-group-setting-item-container setting-row">
+        <div
+            className="setting-view--radio-group-setting-item-container setting-row"
+            data-layout={layout}
+        >
             <RadioGroup
+                as="div"
+                className="setting-row-content"
                 value={value}
                 onChange={(val) => {
                     AppConfig.setConfig({

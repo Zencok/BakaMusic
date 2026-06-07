@@ -22,14 +22,16 @@ export default function CheckBoxSettingItem<T extends keyof IAppConfig>(
     const checked = useAppConfig(keyPath);
 
     return (
-        <div className="setting-row">
-            <div
+        <div className="setting-row setting-toggle-row">
+            <div className="label-container">{label}</div>
+            <button
                 className={classNames({
-                    "option-item-container": true,
+                    "setting-toggle-control": true,
                     highlight: checked as boolean,
                 })}
                 title={label}
-                role="button"
+                type="button"
+                aria-pressed={!!checked}
                 onClick={() => {
                     const event = new Event("ConfigChanged", {
                         cancelable: true,
@@ -44,11 +46,10 @@ export default function CheckBoxSettingItem<T extends keyof IAppConfig>(
                     }
                 }}
             >
-                <div className="checkbox">
+                <span className="setting-toggle-thumb">
                     {checked ? <SvgAsset iconName="check"></SvgAsset> : null}
-                </div>
-                {label}
-            </div>
+                </span>
+            </button>
         </div>
     );
 }

@@ -1,44 +1,170 @@
 .setting-view--backup-container {
   width: 100%;
 
-  & .backup-row {
+  & .backup-block-row {
+    align-items: start;
+    min-height: 4.7rem;
+  }
+
+  & .backup-block-title {
+    grid-column: 1;
+    min-width: 0;
+    padding-top: 0.64rem;
+    color: var(--settingTextSecondary);
+    font-size: 0.9rem;
+    font-weight: 650;
+    line-height: 1.42;
+    user-select: none;
+  }
+
+  & .backup-block-content {
+    grid-column: 2;
+    min-width: 0;
+  }
+
+  & .backup-file-actions,
+  & .webdav-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 12px;
+    gap: 0.65rem;
+  }
 
-    & > div[role="button"][data-type="normalButton"] {
-      min-height: 2.5rem;
-      padding: 0.6rem 1.05rem;
-      border-radius: 14px;
-      font-weight: 600;
+  & .backup-action-button {
+    min-width: 10.4rem;
+    min-height: 2.55rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    padding: 0 0.95rem;
+    border: 1px solid var(--settingControlBorder);
+    border-radius: 8px;
+    color: var(--settingTextPrimary);
+    background: var(--settingControlSurface);
+    box-shadow: var(--settingControlInset);
+    font: inherit;
+    font-size: 0.94rem;
+    font-weight: 650;
+    line-height: 1;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition:
+      color 160ms ease,
+      border-color 160ms ease,
+      background-color 160ms ease,
+      transform 160ms ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      border-color: var(--settingControlBorderActive);
+      background: var(--settingControlSurfaceHover);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+
+    & svg {
+      width: 1rem;
+      height: 1rem;
+      color: color-mix(in srgb, var(--primaryColor) 70%, var(--settingTextPrimary));
+    }
+
+    & span {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
     }
   }
 
-  & .webdav-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  & .webdav-panel-title {
-    color: var(--settingTextSecondary);
-    font-size: 0.9rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
+  & .webdav-block-content {
+    display: grid;
+    gap: 0.78rem;
   }
 
   & .webdav-backup-container {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
+    gap: 0.7rem 0.82rem;
 
-    & > :last-child {
+    & > :first-child {
       grid-column: 1 / -1;
     }
-  }
 
-  & .webdav-actions {
-    padding-top: 2px;
+    & .setting-view--input-setting-item-container {
+      min-height: auto;
+      display: grid;
+      grid-template-columns: minmax(4.3rem, auto) minmax(0, 1fr);
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0;
+      border: 0;
+      background: transparent;
+
+      &:hover {
+        background: transparent;
+      }
+
+      & .label-container {
+        grid-column: 1;
+        color: var(--settingTextMuted);
+        font-size: 0.8rem;
+        font-weight: 720;
+        white-space: nowrap;
+      }
+
+      & input {
+        grid-column: 2;
+        width: 100%;
+        min-height: 2.45rem;
+      }
+    }
+  }
+}
+
+@media (max-width: 920px) {
+  .setting-view--backup-container {
+    & .webdav-backup-container {
+      grid-template-columns: 1fr;
+
+      & .setting-view--input-setting-item-container {
+        grid-template-columns: minmax(4.3rem, auto) minmax(0, 1fr);
+      }
+    }
+  }
+}
+
+@media (max-width: 820px) {
+  .setting-view--backup-container {
+    & .backup-block-title,
+    & .backup-block-content {
+      grid-column: auto;
+    }
+
+    & .backup-block-title {
+      padding-top: 0;
+    }
+  }
+}
+
+@media (max-width: 560px) {
+  .setting-view--backup-container {
+    & .backup-action-button {
+      width: 100%;
+    }
+
+    & .webdav-backup-container {
+      & .setting-view--input-setting-item-container {
+        grid-template-columns: 1fr;
+        gap: 0.42rem;
+
+        & .label-container,
+        & input {
+          grid-column: auto;
+        }
+      }
+    }
   }
 }

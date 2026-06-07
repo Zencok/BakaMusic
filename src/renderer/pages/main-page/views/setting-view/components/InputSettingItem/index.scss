@@ -1,38 +1,27 @@
 .setting-view--input-setting-item-container {
-  display: flex;
-  align-items: center;
-  width: 200px;
-  min-height: 56px;
-  column-gap: 12px;
-  padding: 0.72rem 0.9rem;
-  border-radius: 18px;
-  border: 1px solid var(--settingControlBorder);
-  background: var(--settingRowSurface);
-  box-shadow: var(--settingControlInset);
-  box-sizing: border-box;
-
-  & .input-label {
-    min-width: 58px;
-    color: var(--settingTextSecondary);
-    font-weight: 600;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
+  width: 100%;
 
   & input {
-    flex: 1;
+    grid-column: 2;
+    width: min(100%, 420px);
     min-width: 0;
-    min-height: 2.5rem;
-    padding: 0 0.9rem;
-    border-radius: 14px;
+    min-height: 2.55rem;
+    padding: 0 0.85rem;
+    border-radius: 8px;
     border: 1px solid var(--settingControlBorder);
     background: var(--settingControlSurface);
     color: var(--settingTextPrimary);
     box-shadow: var(--settingControlInset);
-  }
+    box-sizing: border-box;
 
-  & input:disabled {
-    opacity: 0.48;
-    cursor: not-allowed;
+    &:focus {
+      border-color: var(--settingControlBorderActive);
+      background: color-mix(in srgb, var(--backgroundColor) 92%, var(--primaryColor) 6%);
+    }
+
+    &:disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
+    }
   }
 }

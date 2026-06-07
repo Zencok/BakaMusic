@@ -1,5 +1,7 @@
 .setting-view--slider-setting-item-container {
     & .slider-container {
+        grid-column: 2;
+        min-width: 0;
         display: flex;
         align-items: center;
         gap: 1rem;
@@ -22,8 +24,8 @@
                 to right,
                 var(--primaryColor) 0,
                 var(--primaryColor) var(--slider-percent, 0%),
-                var(--settingControlSurface) var(--slider-percent, 0%),
-                var(--settingControlSurface) 100%
+                color-mix(in srgb, var(--textColor) 10%, transparent) var(--slider-percent, 0%),
+                color-mix(in srgb, var(--textColor) 10%, transparent) 100%
             );
         }
 
@@ -34,7 +36,7 @@
             height: 16px;
             border-radius: 50%;
             background: var(--primaryColor);
-            border: 2px solid var(--settingCardSurface, #fff);
+            border: 2px solid var(--backgroundColor);
             box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
             transition: transform 140ms ease;
         }

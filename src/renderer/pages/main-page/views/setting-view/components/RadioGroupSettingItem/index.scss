@@ -1,15 +1,18 @@
 .setting-view--radio-group-setting-item-container {
   & .options-container {
-    margin-top: 0.2rem;
+    grid-column: 2;
+    min-width: 0;
+    margin-top: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.65rem;
+    gap: 0.55rem;
   }
 
   & .option-item-container {
     white-space: nowrap;
-    padding: 0.62rem 0.9rem;
-    border-radius: 14px;
+    min-height: 2.35rem;
+    padding: 0.5rem 0.78rem;
+    border-radius: 8px;
     color: var(--settingTextPrimary);
     background: var(--settingControlSurface);
     border: 1px solid var(--settingControlBorder);
@@ -17,11 +20,9 @@
 
     &.highlight {
       color: color-mix(in srgb, var(--primaryColor) 72%, var(--settingTextPrimary));
-      background: var(--settingControlSurfaceHover);
+      background: color-mix(in srgb, var(--primaryColor) 12%, var(--backgroundColor));
       border-color: var(--settingControlBorderActive);
-      box-shadow:
-        0 10px 20px rgba(15, 23, 42, 0.06),
-        var(--settingControlInset);
+      box-shadow: var(--settingControlInset);
     }
 
     & .checkbox {

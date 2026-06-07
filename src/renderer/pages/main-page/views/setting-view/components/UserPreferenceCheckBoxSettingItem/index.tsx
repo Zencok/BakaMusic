@@ -28,25 +28,26 @@ export default function UserPreferenceCheckBoxSettingItem<
     const [checked, setChecked] = useUserPreference(keyPath);
 
     return (
-        <div className="setting-row">
-            <div
+        <div className="setting-row setting-toggle-row">
+            <div className="label-container">{label}</div>
+            <button
                 className={classNames({
-                    "option-item-container": true,
+                    "setting-toggle-control": true,
                     highlight: !!checked,
                 })}
                 title={label}
-                role="button"
+                type="button"
+                aria-pressed={!!checked}
                 onClick={() => {
                     const nextChecked = !checked;
                     onChange?.(!!nextChecked);
                     setChecked(nextChecked);
                 }}
             >
-                <div className="checkbox">
+                <span className="setting-toggle-thumb">
                     {checked ? <SvgAsset iconName="check"></SvgAsset> : null}
-                </div>
-                {label}
-            </div>
+                </span>
+            </button>
         </div>
     );
 }

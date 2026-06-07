@@ -42,43 +42,49 @@ function ShortCutTable() {
 
     return (
         <div className="setting-view--short-cut-table-container">
-            <div className="setting-view--short-cut-table-row">
-                <div className="short-cut-cell">{t("settings.short_cut.ability")}</div>
-                <div className="short-cut-cell">
-                    {t("settings.short_cut.enable_local")}
-                </div>
-                <div className="short-cut-cell">
-                    {t("settings.short_cut.enable_global")}
+            <div className="setting-view--short-cut-table-header">
+                <div className="short-cut-table-title">{t("settings.short_cut.ability")}</div>
+                <div className="short-cut-table-bindings">
+                    <div>{t("settings.short_cut.local_short_cut")}</div>
+                    <div>{t("settings.short_cut.global_short_cut")}</div>
                 </div>
             </div>
             {shortCutKeys.map((it: string) => (
                 <div className="setting-view--short-cut-table-row" key={it}>
-                    <div className="short-cut-cell">{t(`settings.short_cut.${it}`)}</div>
-                    <div className="short-cut-cell">
-                        <ShortCutItem
-                            enabled={enableLocalShortCut}
-                            value={shortCuts?.[it]?.local}
-                            onChange={(val) => {
-                                shortCut.registerLocalShortCut(it as IShortCutKeys, val);
-                            }}
-                            showClearButton
-                            onClear={() => {
-                                shortCut.unregisterLocalShortCut(it as IShortCutKeys);
-                            }}
-                        ></ShortCutItem>
-                    </div>
-                    <div className="short-cut-cell">
-                        <ShortCutItem
-                            enabled={enableGlobalShortCut}
-                            value={shortCuts?.[it]?.global}
-                            onChange={(val) => {
-                                shortCut.registerGlobalShortCut(it as IShortCutKeys, val);
-                            }}
-                            showClearButton
-                            onClear={() => {
-                                shortCut.unregisterGlobalShortCut(it as IShortCutKeys);
-                            }}
-                        ></ShortCutItem>
+                    <div className="short-cut-ability">{t(`settings.short_cut.${it}`)}</div>
+                    <div className="short-cut-bindings">
+                        <div className="short-cut-binding">
+                            <div className="short-cut-binding-label">
+                                {t("settings.short_cut.local_short_cut")}
+                            </div>
+                            <ShortCutItem
+                                enabled={enableLocalShortCut}
+                                value={shortCuts?.[it]?.local}
+                                onChange={(val) => {
+                                    shortCut.registerLocalShortCut(it as IShortCutKeys, val);
+                                }}
+                                showClearButton
+                                onClear={() => {
+                                    shortCut.unregisterLocalShortCut(it as IShortCutKeys);
+                                }}
+                            ></ShortCutItem>
+                        </div>
+                        <div className="short-cut-binding">
+                            <div className="short-cut-binding-label">
+                                {t("settings.short_cut.global_short_cut")}
+                            </div>
+                            <ShortCutItem
+                                enabled={enableGlobalShortCut}
+                                value={shortCuts?.[it]?.global}
+                                onChange={(val) => {
+                                    shortCut.registerGlobalShortCut(it as IShortCutKeys, val);
+                                }}
+                                showClearButton
+                                onClear={() => {
+                                    shortCut.unregisterGlobalShortCut(it as IShortCutKeys);
+                                }}
+                            ></ShortCutItem>
+                        </div>
                     </div>
                 </div>
             ))}
@@ -207,7 +213,7 @@ function ShortCutItem(props: IShortCutItemProps) {
     }, []);
 
     return (
-        <div className="short-cut-item--container">
+        <div className="short-cut-item--container" data-disabled={!enabled}>
             <input
                 data-capture="true"
                 data-disabled={!enabled}
@@ -233,9 +239,15 @@ function ShortCutItem(props: IShortCutItemProps) {
             >
             </input>
             {
-                (enabled && showClearButton) ? <div className='short-cut-item--clear-button' role="button" onClick={onClear}>
+                (enabled && showClearButton) ? <button
+                    className="short-cut-item--clear-button"
+                    title={t("common.clear")}
+                    aria-label={t("common.clear")}
+                    type="button"
+                    onClick={onClear}
+                >
                     <SvgAsset iconName='x-mark'></SvgAsset>
-                </div> : null
+                </button> : null
             }
         </div>
     );

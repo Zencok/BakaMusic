@@ -38,12 +38,12 @@ export default function InputSettingItem<T extends keyof IAppConfig>(
 
     return (
         <div
-            className="setting-view--input-setting-item-container"
+            className="setting-view--input-setting-item-container setting-row"
             style={{
                 width,
             }}
         >
-            {label ? <div className="input-label">{label}</div> : null}
+            {label ? <div className="label-container input-label">{label}</div> : null}
             <input
                 disabled={disabled}
                 spellCheck={false}
