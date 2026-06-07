@@ -21,7 +21,6 @@ function AlbumResult(props: IMediaResultProps) {
         <MusicSheetlikeList
             data={data}
             state={state}
-            variant="coverOverlay"
             onLoadMore={() => {
                 search(undefined, undefined, "album", pluginHash);
             }}

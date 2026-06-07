@@ -124,7 +124,6 @@ export default function Body(props: IBodyProps) {
                     <MusicSheetlikeList
                         data={sheets}
                         state={status}
-                        variant="coverOverlay"
                         onLoadMore={() => {
                             query();
                         }}

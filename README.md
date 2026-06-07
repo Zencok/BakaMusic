@@ -1,40 +1,32 @@
 # BakaMusic
 
-![GitHub Repo stars](https://img.shields.io/github/stars/Zencok/BakaMusic)
-![GitHub forks](https://img.shields.io/github/forks/Zencok/BakaMusic)
-
-![GitHub License](https://img.shields.io/github/license/Zencok/BakaMusic)
-![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/Zencok/BakaMusic/total)
-![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/Zencok/BakaMusic)
-![GitHub package.json version](https://img.shields.io/github/package-json/v/Zencok/BakaMusic)
+[![Stars](https://badgen.net/github/stars/Zencok/BakaMusic)](https://github.com/Zencok/BakaMusic/stargazers)
+[![Forks](https://badgen.net/github/forks/Zencok/BakaMusic)](https://github.com/Zencok/BakaMusic/forks)
+[![Latest Release](https://badgen.net/github/release/Zencok/BakaMusic)](https://github.com/Zencok/BakaMusic/releases/latest)
+[![Downloads](https://badgen.net/github/assets-dl/Zencok/BakaMusic)](https://github.com/Zencok/BakaMusic/releases)
+[![Issues](https://badgen.net/github/issues/Zencok/BakaMusic)](https://github.com/Zencok/BakaMusic/issues)
+[![License](https://badgen.net/badge/license/AGPL-3.0-only/blue)](LICENSE)
 
 ---
 
-一个插件化、定制化、无广告的免费桌面音乐播放器。
+**无广告。无内置音源。完全由你掌控。**
 
-BakaMusic 基于 [MusicFreeDesktop](https://github.com/maotoumao/MusicFreeDesktop) 重构而来，采用 Electron + React + TypeScript 技术栈，支持 Windows、macOS 和 Linux 平台。应用本身不集成任何音源——所有搜索、播放、歌单导入等功能均通过插件实现。
+BakaMusic 是一款基于插件的跨平台桌面音乐播放器，构建于 Electron 40 + React 18 + TypeScript 之上，支持 Windows、macOS 和 Linux。应用本身不绑定任何平台——通过插件，互联网上的任意音源均可接入。
 
 ## 特性
 
-- **插件化音源** — 本身不内置任何平台音源，通过插件扩展搜索、播放、歌词、专辑、歌单导入等能力。只要有对应插件，互联网上的任意音源都可接入。
-- **逐字歌词** — 支持 word-level 逐字歌词显示与罗马音注音。
-- **桌面歌词** — 独立歌词悬浮窗，支持自定义字体与样式。
-- **迷你模式** — 紧凑型播放器窗口，不占桌面空间。
-- **主题包系统** — 通过 CSS 变量 + iframe 背景实现高度自定义外观。
-- **多音质支持** — 128k / 192k / 320k / FLAC / Hi-Res / Dolby Atmos 等。
-- **下载管理** — 并发下载队列，支持音质选择与进度追踪。
-- **本地音乐** — 扫描本地目录，自动识别元信息与编码，支持列表/作者/专辑/文件夹视图。
-- **多语言** — 简体中文、繁体中文、英文。
-- **隐私优先** — 所有数据存储在本地，不上传个人信息。
-- **免费开源** — 基于 GPL 协议开源。
-
-## 截图
-
-![screenshot](./.imgs/screenshot.png)
-
-![screenshot](./.imgs/screenshot1.png)
-
-![screenshot](./.imgs/screenshot2.png)
+| | 功能 | 说明 |
+|---|---|---|
+| 🔌 | **插件化音源** | 不内置任何平台，通过插件扩展搜索、播放、歌词、歌单导入等能力 |
+| 🎤 | **逐字歌词** | 支持 word-level 逐字歌词、翻译歌词与罗马音注音 |
+| 🖥️ | **桌面歌词** | 独立悬浮歌词窗口，支持自定义字体与样式 |
+| 📦 | **迷你模式** | 紧凑型播放器，不占桌面空间 |
+| 🎨 | **主题包系统** | CSS 变量 + iframe 背景，外观高度可定制 |
+| 🎵 | **多音质支持** | 128k / 320k / FLAC / Hi-Res / Dolby Atmos 等 |
+| ⬇️ | **下载管理** | 并发下载队列，支持音质选择与进度追踪 |
+| 📁 | **本地音乐** | 扫描本地目录，自动识别元信息，支持多种视图 |
+| 🌐 | **多语言** | 简体中文、繁体中文、英文 |
+| 🔒 | **隐私优先** | 所有数据存储在本地，不上传个人信息 |
 
 ## 下载
 
@@ -79,6 +71,66 @@ npm run package
 MSYS_NO_PATHCONV=1 iscc /DMyAppVersion=1.0.0 /DMyAppId=BakaMusic "release/build-windows.iss"
 ```
 
+## 插件
+
+插件协议与 [MusicFree 安卓版](https://github.com/maotoumao/MusicFree) 完全兼容，可实现搜索、播放、歌词获取、专辑/作者详情、歌单导入等。
+
+开发文档：[插件开发指南](https://musicfree.catcat.work/plugin/introduction.html)
+
+## 截图
+
+**主页** — 聚合推荐、最近播放与快速入口
+
+![主页](./.imgs/home.png)
+
+**播放详细页** — 流体云歌词面板，沉浸式封面背景
+
+![播放详细页](./.imgs/player.png)
+
+**推荐歌单 / 榜单** — 来自插件的聚合内容，支持一键导入
+
+![推荐歌单](./.imgs/playlist.png)
+
+![榜单](./.imgs/toplist.png)
+
+**主题市场** — 在线浏览、预览并安装社区主题包
+
+![主题市场](./.imgs/theme-market.png)
+
+**设置** — 音源、音质、外观、快捷键等全局配置
+
+![设置](./.imgs/settings.png)
+
+**多窗口联动** — 播放详细页、桌面歌词悬浮窗与迷你模式同时使用
+
+![播放详细页、桌面歌词与迷你模式](./.imgs/showcase.png)
+
+## 主题包
+
+主题包是包含 `index.css` 和 `config.json` 的文件夹。通过覆盖 CSS 变量自定义外观：
+
+```css
+:root {
+  --primaryColor: #f17d34;
+  --backgroundColor: #fdfdfd;
+  --textColor: #333333;
+  --dividerColor: rgba(0, 0, 0, 0.1);
+  --listHoverColor: rgba(0, 0, 0, 0.05);
+  --listActiveColor: rgba(0, 0, 0, 0.1);
+  --maskColor: rgba(51, 51, 51, 0.2);
+  --shadowColor: rgba(0, 0, 0, 0.2);
+  --successColor: #08A34C;
+  --dangerColor: #FC5F5F;
+  --infoColor: #0A95C8;
+}
+```
+
+`config.json` 支持通过 `iframes` 字段将 HTML 页面作为软件背景。
+
+| 主题 | 预览 |
+|------|------|
+| 暗黑模式 | ![暗黑模式](./.imgs/darkmode.png) |
+
 ## 架构
 
 ```
@@ -100,44 +152,6 @@ src/
 └── webworkers/           # Web Workers（下载、本地文件监听、数据库）
 native/qmc2/             # QMC2 解密 native 模块 (C++ / node-gyp)
 ```
-
-## 插件
-
-插件协议与 [MusicFree 安卓版](https://github.com/maotoumao/MusicFree) 完全兼容。
-
-插件可实现的能力：搜索（音乐/专辑/作者/歌单）、播放、获取歌词、查看专辑与作者详情、导入单曲与歌单等。
-
-开发文档：[插件开发指南](https://musicfree.catcat.work/plugin/introduction.html)
-
-## 主题包
-
-主题包是一个包含 `index.css` 和 `config.json` 的文件夹。
-
-`index.css` 通过覆盖 CSS 变量自定义外观：
-
-```css
-:root {
-  --primaryColor: #f17d34;
-  --backgroundColor: #fdfdfd;
-  --textColor: #333333;
-  --dividerColor: rgba(0, 0, 0, 0.1);
-  --listHoverColor: rgba(0, 0, 0, 0.05);
-  --listActiveColor: rgba(0, 0, 0, 0.1);
-  --maskColor: rgba(51, 51, 51, 0.2);
-  --shadowColor: rgba(0, 0, 0, 0.2);
-  --successColor: #08A34C;
-  --dangerColor: #FC5F5F;
-  --infoColor: #0A95C8;
-}
-```
-
-`config.json` 定义主题元信息，支持通过 `iframes` 字段将 HTML 页面作为软件背景。
-
-主题包示例：
-
-| 主题 | 预览 |
-|------|------|
-| 暗黑模式 | ![暗黑模式](./.imgs/darkmode.png) |
 
 ## 技术栈
 
@@ -202,6 +216,6 @@ native/qmc2/             # QMC2 解密 native 模块 (C++ / node-gyp)
 
 ## 协议
 
-本项目基于 [GPL](LICENSE) 协议开源。
+本项目基于 [AGPL-3.0](LICENSE) 协议开源。
 
 > 原始桌面项目致谢：[MusicFreeDesktop](https://github.com/maotoumao/MusicFreeDesktop) by [maotoumao](https://github.com/maotoumao)
