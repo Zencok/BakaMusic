@@ -73,7 +73,7 @@ export default function Body(props: IProps) {
                 <div className="buttons">
                     <div
                         role="button"
-                        className="option-button"
+                        className="play-sheet option-button"
                         data-disabled={!musicList?.length}
                         data-type="primaryButton"
                         title={t("music_sheet_like_view.play_all")}

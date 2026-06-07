@@ -14,9 +14,10 @@ export default function RecentlyPlayView() {
         <>
             <div
                 role="button"
-                className="option-button"
-                data-type="normalButton"
+                className="clear-sheet option-button"
+                data-type="dangerButton"
                 data-disabled={!recentlyPlaylistSheet.playCount}
+                title={t("common.clear")}
                 onClick={() => {
                     clearRecentlyPlaylist();
                 }}

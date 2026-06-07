@@ -1,33 +1,148 @@
 ﻿.music-sheetlike-view--body-container {
   & .operations {
-    margin-top: 1rem;
-    margin-bottom: 1rem;
+    margin-top: 1.05rem;
+    margin-bottom: 1.05rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 14px;
-    padding: 0.95rem 1rem;
-    border-radius: 22px;
-    background: var(--appSurfaceMuted);
-    border: 1px solid var(--appSurfaceBorder);
-    box-shadow: var(--appSurfaceInset);
+    gap: 0.9rem;
+    padding: 0.72rem;
+    border-radius: 18px;
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--backgroundColor) 64%, white 10%),
+        color-mix(in srgb, var(--backgroundColor) 46%, transparent)
+      );
+    border: 1px solid color-mix(in srgb, white 18%, var(--appSurfaceBorder));
+    box-shadow:
+      var(--appSurfaceInset),
+      0 12px 28px rgba(15, 23, 42, 0.05);
+    backdrop-filter: blur(24px) saturate(150%);
 
     & .buttons {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.75rem;
+      align-items: center;
+      gap: 0.48rem;
 
       & .option-button {
-        gap: 6px;
-        min-height: 2.45rem;
-        padding-left: 1rem;
-        padding-right: 1rem;
-        border-radius: 999px;
-        font-weight: 600;
+        --sheet-action-color: var(--appTextPrimary);
+        height: 2.58rem;
+        min-height: 2.58rem;
+        gap: 0.46rem;
+        padding: 0 0.9rem;
+        border-radius: 10px;
+        border: 1px solid color-mix(in srgb, var(--sheet-action-color) 18%, transparent);
+        color: var(--sheet-action-color);
+        background:
+          linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--sheet-action-color) 10%, white 10%),
+            color-mix(in srgb, var(--sheet-action-color) 5%, var(--backgroundColor) 32%)
+          );
+        box-shadow:
+          inset 0 1px 0 color-mix(in srgb, white 22%, transparent),
+          0 1px 0 color-mix(in srgb, white 10%, transparent);
+        backdrop-filter: blur(18px) saturate(145%);
+        font-size: 0.94rem;
+        font-weight: 650;
+        line-height: 1;
+        white-space: nowrap;
+        transition:
+          transform 160ms ease,
+          border-color 160ms ease,
+          background-color 160ms ease,
+          box-shadow 160ms ease,
+          color 160ms ease;
 
         & svg {
-          width: 1.15rem;
-          height: 1.15rem;
+          width: 1.08rem;
+          height: 1.08rem;
+          opacity: 0.84;
+        }
+
+        &:hover {
+          transform: translateY(-1px);
+          border-color: color-mix(in srgb, var(--sheet-action-color) 30%, transparent);
+          background:
+            linear-gradient(
+              180deg,
+              color-mix(in srgb, var(--sheet-action-color) 14%, white 12%),
+              color-mix(in srgb, var(--sheet-action-color) 8%, var(--backgroundColor) 34%)
+            );
+          box-shadow:
+            inset 0 1px 0 color-mix(in srgb, white 28%, transparent),
+            0 8px 18px rgba(15, 23, 42, 0.07);
+        }
+
+        &:active {
+          transform: translateY(0);
+          box-shadow: none;
+        }
+
+        &.play-sheet {
+          --sheet-action-color: var(--primaryColor);
+          min-width: 6.8rem;
+          padding: 0 1.12rem;
+          color: white;
+          border-color: color-mix(in srgb, var(--primaryColor) 62%, transparent);
+          background:
+            linear-gradient(
+              180deg,
+              color-mix(in srgb, var(--primaryColor) 84%, white 16%),
+              color-mix(in srgb, var(--primaryColor) 70%, black 12%)
+            );
+          box-shadow:
+            0 10px 20px color-mix(in srgb, var(--primaryColor) 22%, transparent),
+            inset 0 1px 0 color-mix(in srgb, white 34%, transparent);
+
+          & svg {
+            opacity: 1;
+          }
+
+          &:hover {
+            border-color: color-mix(in srgb, var(--primaryColor) 74%, transparent);
+            background:
+              linear-gradient(
+                180deg,
+                color-mix(in srgb, var(--primaryColor) 88%, white 18%),
+                color-mix(in srgb, var(--primaryColor) 74%, black 10%)
+              );
+            box-shadow:
+              0 14px 24px color-mix(in srgb, var(--primaryColor) 26%, transparent),
+              inset 0 1px 0 color-mix(in srgb, white 26%, transparent);
+          }
+        }
+
+        &.add-to-sheet {
+          --sheet-action-color: color-mix(in srgb, var(--primaryColor) 64%, var(--appTextPrimary));
+        }
+
+        &.download-sheet {
+          --sheet-action-color: color-mix(in srgb, #1f7a67 70%, var(--appTextPrimary));
+        }
+
+        &.clear-sheet {
+          --sheet-action-color: var(--dangerColor);
+          margin-left: 0.18rem;
+          border-color: color-mix(in srgb, var(--dangerColor) 24%, transparent);
+          background:
+            linear-gradient(
+              180deg,
+              color-mix(in srgb, var(--dangerColor) 9%, white 10%),
+              color-mix(in srgb, var(--dangerColor) 5%, var(--backgroundColor) 32%)
+            );
+
+          &:hover {
+            border-color: color-mix(in srgb, var(--dangerColor) 38%, transparent);
+            background:
+              linear-gradient(
+                180deg,
+                color-mix(in srgb, var(--dangerColor) 13%, white 12%),
+                color-mix(in srgb, var(--dangerColor) 8%, var(--backgroundColor) 34%)
+              );
+          }
         }
       }
     }
