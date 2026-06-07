@@ -45,17 +45,19 @@ export default function () {
 
     return (
         <div className="side-bar-container">
-            {options.map((item) => (
-                <ListItem
-                    key={item.route}
-                    iconName={item.iconName}
-                    title={item.title}
-                    selected={routePathMatch?.params?.routePath === item.route}
-                    onClick={() => {
-                        navigate(`/main/${item.route}`);
-                    }}
-                ></ListItem>
-            ))}
+            <nav className="side-bar-container--primary-nav">
+                {options.map((item) => (
+                    <ListItem
+                        key={item.route}
+                        iconName={item.iconName}
+                        title={item.title}
+                        selected={routePathMatch?.params?.routePath === item.route}
+                        onClick={() => {
+                            navigate(`/main/${item.route}`);
+                        }}
+                    ></ListItem>
+                ))}
+            </nav>
             <MySheets></MySheets>
             <StarredSheets></StarredSheets>
         </div>

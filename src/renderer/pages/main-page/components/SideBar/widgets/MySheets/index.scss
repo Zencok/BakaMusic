@@ -1,37 +1,46 @@
 .side-bar-container--my-sheets {
-  margin-top: 0.7rem;
+  margin-top: 0.72rem;
 
   & .divider {
-    margin: 0.8rem 0 0.7rem;
+    margin: 0.78rem 0 0.58rem;
     width: 100%;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.08), transparent);
+    background:
+      linear-gradient(
+        90deg,
+        transparent,
+        color-mix(in srgb, var(--textColor) 10%, transparent),
+        transparent
+      );
   }
 
   & .title {
-    height: 2.6rem;
+    height: 2.18rem;
     display: flex;
     align-items: center;
-    padding: 0 0.85rem;
-    border-radius: 12px;
-    color: color-mix(in srgb, var(--textColor) 60%, white);
+    padding: 0 0.58rem;
+    border-radius: 8px;
+    color: var(--sideBarTextMuted, color-mix(in srgb, var(--textColor) 58%, transparent));
     user-select: none;
-    transition: background-color 160ms ease, color 160ms ease;
+    transition:
+      background-color 160ms ease,
+      color 160ms ease;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.38);
-      color: color-mix(in srgb, var(--textColor) 78%, white);
+      background: color-mix(in srgb, var(--textColor) 4%, transparent);
+      color: var(--sideBarTextSecondary, var(--appTextPrimary));
     }
 
-    $tag-size: 4px;
+    $tag-size: 3.5px;
 
     & .my-sheets {
       display: flex;
       align-items: center;
       flex: 1;
-      font-size: 0.84rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
+      min-width: 0;
+      font-size: 0.75rem;
+      font-weight: 720;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
 
       &::after {
@@ -53,22 +62,27 @@
     }
 
     & .option-btn {
-      $size: 26px;
+      $size: 24px;
       width: $size;
       height: $size;
-      margin-left: 6px;
+      margin-left: 0.25rem;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
+      color: var(--sideBarTextMuted, currentColor);
+      transition:
+        color 160ms ease,
+        background-color 160ms ease;
 
       &:hover {
-        background: rgba(255, 255, 255, 0.5);
+        color: color-mix(in srgb, var(--primaryColor) 70%, var(--sideBarTextPrimary, var(--appTextPrimary)));
+        background: color-mix(in srgb, var(--primaryColor) 9%, transparent);
       }
 
       & svg {
-        width: 16px;
-        height: 16px;
+        width: 14px;
+        height: 14px;
       }
     }
   }
