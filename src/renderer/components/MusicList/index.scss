@@ -86,6 +86,22 @@
     font-variant-numeric: tabular-nums;
   }
 
+  & .music-list-operations {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  & .music-list-operation-button {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+  }
+
   & .music-list-sort-wrapper {
     position: relative;
   }

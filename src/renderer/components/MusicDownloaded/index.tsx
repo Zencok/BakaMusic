@@ -10,10 +10,12 @@ import "./index.scss";
 interface IMusicDownloadedProps {
     musicItem: IMusic.IMusicItem;
     size?: number;
+    /** 点击热区撑满父容器，使整个按钮外壳都成为可点击范围 */
+    fillContainer?: boolean;
 }
 
 function MusicDownloaded(props: IMusicDownloadedProps) {
-    const { musicItem, size = 18 } = props;
+    const { musicItem, size = 18, fillContainer } = props;
     const downloadState = Downloader.useDownloadState(musicItem);
 
     const { t } = useTranslation();
@@ -37,6 +39,7 @@ function MusicDownloaded(props: IMusicDownloadedProps) {
             className={`music-download-base ${
                 isDownloadedOrLocal ? "music-downloaded" : "music-can-download"
             }`}
+            data-fill-container={fillContainer}
             title={
                 isDownloadedOrLocal ? t("common.downloaded") : t("common.download")
             }

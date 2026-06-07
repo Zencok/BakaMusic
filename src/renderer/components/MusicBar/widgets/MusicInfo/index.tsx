@@ -59,6 +59,10 @@ export default function MusicInfo() {
     const musicItem = useCurrentMusic();
     const musicDetailShown = useMusicDetailShown();
     const { t } = useTranslation();
+    const canShowComments = PluginManager.isSupportFeatureMethod(
+        musicItem?.platform,
+        "getMusicComments",
+    );
 
     function toggleMusicDetail() {
         if (musicDetailShown) {
@@ -150,16 +154,20 @@ export default function MusicInfo() {
 
             <div className="music-info-actions">
                 <div className="music-info-action-shell">
-                    <MusicFavorite musicItem={musicItem} size={18}></MusicFavorite>
+                    <MusicFavorite musicItem={musicItem} size={18} fillContainer></MusicFavorite>
                 </div>
                 <div className="music-info-action-shell">
-                    <MusicDownloaded musicItem={musicItem} size={18}></MusicDownloaded>
+                    <MusicDownloaded musicItem={musicItem} size={18} fillContainer></MusicDownloaded>
                 </div>
                 <div
                     role="button"
                     className="music-info-action music-info-action-shell"
-                    data-disabled={!PluginManager.isSupportFeatureMethod(musicItem?.platform, "getMusicComments")}
+                    data-disabled={!canShowComments}
                     onClick={() => {
+                        if (!canShowComments) {
+                            return;
+                        }
+
                         showPanel("MusicComment", {
                             musicItem,
                             coverHeader: true,

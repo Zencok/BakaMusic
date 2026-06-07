@@ -123,8 +123,12 @@ const columnDef: ColumnDef<IMusic.IMusicItem>[] = [
         maxSize: 42,
         cell: (info) => (
             <div className="music-list-operations">
-                <MusicFavorite musicItem={info.row.original} size={18}></MusicFavorite>
-                <MusicDownloaded musicItem={info.row.original}></MusicDownloaded>
+                <div className="music-list-operation-button">
+                    <MusicFavorite musicItem={info.row.original} size={18} fillContainer></MusicFavorite>
+                </div>
+                <div className="music-list-operation-button">
+                    <MusicDownloaded musicItem={info.row.original} fillContainer></MusicDownloaded>
+                </div>
             </div>
         ),
         enableResizing: false,
@@ -999,7 +1003,7 @@ function _MusicList(props: IMusicListProps) {
                                                             e.stopPropagation();
                                                         }}
                                                     >
-                                                        <MusicDownloaded musicItem={musicItem} size={18}></MusicDownloaded>
+                                                        <MusicDownloaded musicItem={musicItem} size={18} fillContainer></MusicDownloaded>
                                                     </div>
                                                 </IfTruthy>
                                                 <button
@@ -1073,5 +1077,3 @@ export default memo(
         curr.musicSheet &&
         isSameMedia(prev.musicSheet, curr.musicSheet),
 );
-
-

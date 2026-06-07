@@ -153,6 +153,7 @@
     background: color-mix(in srgb, var(--musicBarText) 9%, var(--musicBarSurface));
     border: 1px solid color-mix(in srgb, var(--musicBarText) 10%, transparent);
     box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
+    cursor: pointer;
     transition: transform 160ms ease, background-color 160ms ease, color 160ms ease;
 
     &:hover {
@@ -174,5 +175,6 @@
 
   & .music-info-action-shell[data-disabled]:not([data-disabled="false"]) {
     opacity: 0.34;
+    cursor: default;
   }
 }

@@ -305,8 +305,12 @@ function _PlayListMusicItem(props: IPlayListMusicItemProps) {
                         {musicItem.title ?? "-"}
                     </div>
                     <div className="playlist--options">
-                        <MusicFavorite musicItem={musicItem} size={16}></MusicFavorite>
-                        <MusicDownloaded musicItem={musicItem} size={16}></MusicDownloaded>
+                        <div className="playlist--option-button">
+                            <MusicFavorite musicItem={musicItem} size={16} fillContainer></MusicFavorite>
+                        </div>
+                        <div className="playlist--option-button">
+                            <MusicDownloaded musicItem={musicItem} size={16} fillContainer></MusicDownloaded>
+                        </div>
                     </div>
                 </div>
                 <div className="playlist--meta-row">
