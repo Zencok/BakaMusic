@@ -5,7 +5,6 @@ import { localPluginName, PlayerState, ResourceName } from "@/common/constant";
 import voidCallback from "@/common/void-callback";
 import ThumbBarUtil from "@/common/thumb-bar-util";
 import EventEmitter from "eventemitter3";
-import WindowDrag from "@shared/window-drag/main";
 import AppConfig from "@shared/app-config/main";
 import messageBus from "@shared/message-bus/main";
 import debounce from "@/common/debounce";
@@ -469,15 +468,34 @@ class WindowManager implements IWindowManager {
             });
         }
 
-        WindowDrag.setWindowDraggable(miniWindow, {
-            width,
-            height,
-            onDragEnd(point) {
-                AppConfig.setConfig({
-                    "private.minimodeWindowPosition": point,
-                });
-            },
+        const savePositionConfig = () => {
+            if (miniWindow.isDestroyed()) {
+                return;
+            }
+            const [x, y] = miniWindow.getPosition();
+            AppConfig.setConfig({
+                "private.minimodeWindowPosition": {
+                    x: Math.round(x),
+                    y: Math.round(y),
+                },
+            });
+        };
+        const updatePositionConfig = debounce(savePositionConfig, 300, {
+            leading: false,
+            trailing: true,
         });
+        miniWindow.on("close", () => {
+            updatePositionConfig.cancel();
+            savePositionConfig();
+        });
+        miniWindow.on("closed", () => {
+            updatePositionConfig.cancel();
+            WindowManager.miniModeWindow = null;
+        });
+        miniWindow.on("move", updatePositionConfig);
+        if (process.platform !== "darwin") {
+            miniWindow.on("moved", savePositionConfig);
+        }
 
         miniWindow.once("ready-to-show", () => {
             const position = AppConfig.getConfig("private.minimodeWindowPosition");

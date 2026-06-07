@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type PointerEvent as ReactPointerEvent, useMemo, useRef, useState } from "react";
 import ThemeSafeRoundButton from "@/renderer/components/ThemeSafeRoundButton";
 import { PlayerState } from "@/common/constant";
 import albumImg from "@/assets/imgs/album-cover.jpg";
@@ -10,8 +10,34 @@ import useAppConfig from "@/hooks/useAppConfig";
 import { appWindowUtil } from "@shared/utils/renderer";
 import messageBus, { useAppStatePartial } from "@shared/message-bus/renderer/extension";
 
+const DRAG_START_THRESHOLD = 3;
+
+interface IDragState {
+    pointerId: number;
+    startScreenX: number;
+    startScreenY: number;
+    startWindowX: number;
+    startWindowY: number;
+    width: number;
+    height: number;
+    moved: boolean;
+}
+
+interface IPendingDragState {
+    pointerId: number;
+    startScreenX: number;
+    startScreenY: number;
+    lastScreenX: number;
+    lastScreenY: number;
+}
+
 export default function MinimodePage() {
     const [hover, setHover] = useState(false);
+    const dragStateRef = useRef<IDragState | null>(null);
+    const pendingDragRef = useRef<IPendingDragState | null>(null);
+    const dragRafRef = useRef(0);
+    const pendingBoundsRef = useRef<Electron.Rectangle | null>(null);
+    const suppressOpenRef = useRef(false);
     const currentMusicItem = useAppStatePartial("musicItem");
     const playerState = useAppStatePartial("playerState");
     const lyricItem = useAppStatePartial("parsedLrc");
@@ -36,6 +62,9 @@ export default function MinimodePage() {
     }, [artist, title]);
 
     function openMainWindow() {
+        if (suppressOpenRef.current) {
+            return;
+        }
         appWindowUtil.showMainWindow();
     }
 
@@ -44,10 +73,152 @@ export default function MinimodePage() {
         appWindowUtil.showMainWindow();
     }
 
+    const updateDragPosition = (
+        dragState: IDragState,
+        screenX: number,
+        screenY: number,
+    ) => {
+        const deltaX = screenX - dragState.startScreenX;
+        const deltaY = screenY - dragState.startScreenY;
+        if (!dragState.moved && Math.hypot(deltaX, deltaY) < DRAG_START_THRESHOLD) {
+            return false;
+        }
+
+        dragState.moved = true;
+        pendingBoundsRef.current = {
+            x: Math.round(dragState.startWindowX + deltaX),
+            y: Math.round(dragState.startWindowY + deltaY),
+            width: dragState.width,
+            height: dragState.height,
+        };
+
+        if (!dragRafRef.current) {
+            dragRafRef.current = requestAnimationFrame(() => {
+                dragRafRef.current = 0;
+                const bounds = pendingBoundsRef.current;
+                if (bounds) {
+                    appWindowUtil.setCurrentWindowBounds(bounds);
+                }
+            });
+        }
+        return true;
+    };
+
+    const suppressNextOpen = () => {
+        suppressOpenRef.current = true;
+        window.setTimeout(() => {
+            suppressOpenRef.current = false;
+        }, 0);
+    };
+
+    const startDrag = async (event: ReactPointerEvent<HTMLDivElement>) => {
+        if (event.button !== 0 || dragStateRef.current || pendingDragRef.current) {
+            return;
+        }
+
+        const target = event.target as HTMLElement | null;
+        if (target?.closest("button, a, input, textarea, select, [data-no-drag='true']")) {
+            return;
+        }
+
+        const pointerId = event.pointerId;
+        const currentTarget = event.currentTarget;
+        currentTarget.setPointerCapture(pointerId);
+
+        const pendingDrag: IPendingDragState = {
+            pointerId,
+            startScreenX: event.screenX,
+            startScreenY: event.screenY,
+            lastScreenX: event.screenX,
+            lastScreenY: event.screenY,
+        };
+        pendingDragRef.current = pendingDrag;
+
+        const bounds = await appWindowUtil.getCurrentWindowBounds();
+        if (!bounds || pendingDragRef.current !== pendingDrag) {
+            return;
+        }
+
+        pendingDragRef.current = null;
+        const dragState: IDragState = {
+            startWindowX: bounds.x,
+            startWindowY: bounds.y,
+            width: bounds.width,
+            height: bounds.height,
+            pointerId: pendingDrag.pointerId,
+            startScreenX: pendingDrag.startScreenX,
+            startScreenY: pendingDrag.startScreenY,
+            moved: false,
+        };
+        dragStateRef.current = dragState;
+        updateDragPosition(dragState, pendingDrag.lastScreenX, pendingDrag.lastScreenY);
+    };
+
+    const dragWindow = (event: ReactPointerEvent<HTMLDivElement>) => {
+        const pendingDrag = pendingDragRef.current;
+        if (pendingDrag?.pointerId === event.pointerId) {
+            pendingDrag.lastScreenX = event.screenX;
+            pendingDrag.lastScreenY = event.screenY;
+            event.preventDefault();
+            return;
+        }
+
+        const dragState = dragStateRef.current;
+        if (!dragState || dragState.pointerId !== event.pointerId) {
+            return;
+        }
+
+        updateDragPosition(dragState, event.screenX, event.screenY);
+        event.preventDefault();
+    };
+
+    const stopDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+        const pendingDrag = pendingDragRef.current;
+        if (pendingDrag?.pointerId === event.pointerId) {
+            pendingDragRef.current = null;
+            if (Math.hypot(
+                pendingDrag.lastScreenX - pendingDrag.startScreenX,
+                pendingDrag.lastScreenY - pendingDrag.startScreenY,
+            ) >= DRAG_START_THRESHOLD) {
+                suppressNextOpen();
+            }
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                event.currentTarget.releasePointerCapture(event.pointerId);
+            }
+            return;
+        }
+
+        const dragState = dragStateRef.current;
+        if (!dragState || dragState.pointerId !== event.pointerId) {
+            return;
+        }
+
+        if (dragRafRef.current) {
+            cancelAnimationFrame(dragRafRef.current);
+            dragRafRef.current = 0;
+        }
+        const bounds = pendingBoundsRef.current;
+        if (bounds) {
+            appWindowUtil.setCurrentWindowBounds(bounds);
+            pendingBoundsRef.current = null;
+        }
+        if (dragState.moved) {
+            suppressNextOpen();
+        }
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+        dragStateRef.current = null;
+    };
+
     return (
         <div
             className="minimode-page-container"
             data-hover={hover}
+            onPointerCancel={stopDrag}
+            onPointerDown={startDrag}
+            onPointerMove={dragWindow}
+            onPointerUp={stopDrag}
             onMouseEnter={() => {
                 setHover(true);
             }}
@@ -66,9 +237,7 @@ export default function MinimodePage() {
             <div className="minimode-page-shell">
                 <div
                     className="minimode-cover-wrap"
-                    role="button"
                     title={fullTitle}
-                    onClick={openMainWindow}
                 >
                     <img
                         draggable="false"
@@ -81,18 +250,14 @@ export default function MinimodePage() {
                 <div className="minimode-content">
                     <div
                         className="minimode-meta"
-                        role="button"
                         title={fullTitle}
-                        onClick={openMainWindow}
                     >
                         <div className="minimode-title">{title}</div>
                         <div className="minimode-artist">{artist}</div>
                     </div>
                     <div
                         className="minimode-lyric-block"
-                        role="button"
                         title={lyricTitle || currentLyric}
-                        onClick={openMainWindow}
                     >
                         {romanization ? (
                             <div className="minimode-romanization">{romanization}</div>
@@ -104,7 +269,13 @@ export default function MinimodePage() {
                     </div>
                 </div>
 
-                <div className="minimode-actions">
+                <div
+                    className="minimode-actions"
+                    data-no-drag="true"
+                    onDoubleClick={(event) => {
+                        event.stopPropagation();
+                    }}
+                >
                     <ThemeSafeRoundButton
                         iconName="x-mark"
                         iconSize={16}

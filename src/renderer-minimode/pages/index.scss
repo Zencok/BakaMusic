@@ -2,25 +2,29 @@
   position: relative;
   width: 100%;
   height: 100%;
-  padding: 6px;
   box-sizing: border-box;
   overflow: hidden;
   user-select: none;
   color: #fff;
+  border-radius: 24px;
+  isolation: isolate;
 
   & .minimode-page-backdrop,
-  & .minimode-page-overlay,
+  & .minimode-page-overlay {
+    position: absolute;
+    inset: -1px;
+  }
+
   & .minimode-page-shell {
     position: absolute;
-    inset: 6px;
-    border-radius: 24px;
+    inset: 0;
   }
 
   & .minimode-page-backdrop {
     background-size: cover;
     background-position: center;
     filter: blur(44px) saturate(150%);
-    transform: scale(1.12);
+    transform: scale(1.18);
     opacity: 0.58;
   }
 
@@ -28,26 +32,19 @@
     background:
       radial-gradient(circle at top left, rgba(255, 255, 255, 0.16), transparent 34%),
       linear-gradient(135deg, rgba(14, 14, 18, 0.28), rgba(7, 7, 10, 0.58));
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
     backdrop-filter: blur(22px) saturate(140%);
   }
 
   & .minimode-page-shell {
     display: grid;
-    grid-template-columns: 56px minmax(0, 1fr) auto;
+    grid-template-columns: 56px minmax(0, 1fr);
     align-items: center;
     gap: 12px;
-    padding: 10px 12px;
+    padding: 16px 18px;
     box-sizing: border-box;
-    -webkit-app-region: drag;
-  }
-
-  & .minimode-cover-wrap,
-  & .minimode-meta,
-  & .minimode-lyric-block,
-  & .minimode-actions {
-    -webkit-app-region: no-drag;
   }
 
   & .minimode-cover-wrap {
@@ -55,7 +52,6 @@
     height: 56px;
     border-radius: 18px;
     overflow: hidden;
-    cursor: pointer;
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
   }
 
@@ -77,7 +73,6 @@
   & .minimode-meta,
   & .minimode-lyric-block {
     min-width: 0;
-    cursor: pointer;
   }
 
   & .minimode-lyric-block {
@@ -130,11 +125,14 @@
   }
 
   & .minimode-actions {
+    position: absolute;
+    top: 50%;
+    right: 18px;
     display: flex;
     align-items: center;
     gap: 8px;
     opacity: 0;
-    transform: translateX(8px);
+    transform: translate(8px, -50%);
     pointer-events: none;
     transition: opacity 180ms ease, transform 180ms ease;
   }
@@ -195,7 +193,7 @@
 
     & .minimode-actions {
       opacity: 1;
-      transform: translateX(0);
+      transform: translate(0, -50%);
       pointer-events: auto;
     }
   }
