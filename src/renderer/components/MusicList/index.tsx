@@ -195,7 +195,7 @@ const columnDef: ColumnDef<IMusic.IMusicItem>[] = [
     }),
 ];
 
-const estimizeItemHeight = 88; // compact card row
+const estimizeItemHeight = 84; // flat list row with cover shadow room
 
 export function showMusicContextMenu(
     musicItems: IMusic.IMusicItem | IMusic.IMusicItem[],
@@ -888,20 +888,6 @@ function _MusicList(props: IMusicListProps) {
                                                 type="button"
                                                 className="music-list-cover"
                                                 title={musicItem.title}
-                                                style={{
-                                                    all: "unset",
-                                                    position: "relative",
-                                                    width: "52px",
-                                                    height: "52px",
-                                                    display: "block",
-                                                    overflow: "hidden",
-                                                    borderRadius: "14px",
-                                                    flexShrink: 0,
-                                                    cursor: "pointer",
-                                                    background: "var(--appImageFallback)",
-                                                    boxShadow:
-                                                        "0 10px 24px rgba(15, 23, 42, 0.14)",
-                                                }}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     playMusicItem(musicItem);

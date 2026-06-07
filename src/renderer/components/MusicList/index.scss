@@ -1,9 +1,9 @@
 ﻿.music-list-container {
   --musicListSurface: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 82%, transparent));
-  --musicListRowBg: color-mix(in srgb, var(--backgroundColor) 68%, transparent);
-  --musicListRowBorder: color-mix(in srgb, var(--textColor) 8%, transparent);
-  --musicListRowHoverBg: color-mix(in srgb, var(--primaryColor) 9%, var(--backgroundColor));
-  --musicListRowActiveBg: color-mix(in srgb, var(--primaryColor) 13%, var(--backgroundColor));
+  --musicListRowBg: transparent;
+  --musicListRowBorder: color-mix(in srgb, var(--textColor) 7%, transparent);
+  --musicListRowHoverBg: color-mix(in srgb, var(--primaryColor) 7%, transparent);
+  --musicListRowActiveBg: color-mix(in srgb, var(--primaryColor) 11%, transparent);
   --musicListTextStrong: color-mix(in srgb, var(--textColor) 94%, black);
   --musicListText: color-mix(in srgb, var(--textColor) 76%, transparent);
   --musicListTextSoft: color-mix(in srgb, var(--textColor) 56%, transparent);
@@ -39,6 +39,14 @@
     & .bottom-loading-state,
     & .components--empty-container {
       margin-top: 12px;
+    }
+
+    & .music-list-virtual-spacer {
+      overflow: hidden;
+      border-radius: 20px;
+      background: color-mix(in srgb, var(--backgroundColor) 64%, transparent);
+      border: 1px solid var(--appSurfaceBorder);
+      box-shadow: var(--appSurfaceInset);
     }
   }
 
@@ -184,6 +192,7 @@
   & .music-list-virtual-spacer {
     position: relative;
     min-height: 1px;
+    overflow: hidden;
   }
 
   & .music-list-virtual-content {
@@ -192,11 +201,21 @@
 
   & .music-list-row-wrapper {
     position: relative;
-    height: 88px;
-    padding: 4px 0;
+    height: 84px;
+    padding: 0 8px;
     box-sizing: border-box;
-
     z-index: 0;
+
+    &::after {
+      content: "";
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 0;
+      height: 1px;
+      background: var(--musicListRowBorder);
+      pointer-events: none;
+    }
 
     &:hover,
     &:focus-within {
@@ -213,13 +232,15 @@
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     height: 100%;
-    padding: 10px 12px;
-    border-radius: 20px;
-    border: 1px solid transparent;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border-radius: 16px;
+    border: none;
     background: var(--musicListRowBg);
-    transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    box-shadow: none;
+    transition: background-color 160ms ease, color 160ms ease;
     overflow: hidden;
     cursor: default;
 
@@ -237,16 +258,14 @@
 
     &:hover {
       background: var(--musicListRowHoverBg);
-      border-color: color-mix(in srgb, var(--primaryColor) 14%, transparent);
-      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+      box-shadow: none;
       z-index: 3;
       transform: none;
     }
 
     &[data-active="true"] {
       background: var(--musicListRowActiveBg);
-      border-color: color-mix(in srgb, var(--primaryColor) 24%, transparent);
-      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.07);
+      box-shadow: none;
       z-index: 2;
 
       &::before {
@@ -255,7 +274,7 @@
     }
 
     &[data-playing="true"] {
-      border-color: color-mix(in srgb, var(--primaryColor) 28%, transparent);
+      background: color-mix(in srgb, var(--primaryColor) 8%, transparent);
       box-shadow: none;
       z-index: 2;
     }
@@ -281,12 +300,13 @@
 
   & .music-list-cover {
     position: relative;
-    width: 52px;
-    height: 52px;
+    width: 56px;
+    height: 56px;
     display: block;
+    margin: 0;
     padding: 0;
     border: none;
-    border-radius: 14px;
+    border-radius: 16px;
     overflow: hidden;
     flex-shrink: 0;
     cursor: pointer;
@@ -295,6 +315,7 @@
     box-sizing: border-box;
     line-height: 0;
     font-size: 0;
+    font: inherit;
     text-indent: 0;
     text-align: initial;
     background: var(--appImageFallback);
@@ -372,7 +393,7 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
   }
 
   & .music-list-title-row {
@@ -386,7 +407,7 @@
     min-width: 0;
     font-size: 0.96rem;
     font-weight: 700;
-    line-height: 1.2;
+    line-height: 1.25;
     color: var(--musicListTextStrong);
     white-space: nowrap;
     overflow: hidden;
@@ -408,7 +429,7 @@
 
   & .music-list-subtitle {
     font-size: 0.86rem;
-    line-height: 1.2;
+    line-height: 1.25;
     color: var(--musicListText);
     white-space: nowrap;
     overflow: hidden;
@@ -418,7 +439,7 @@
   & .music-list-meta-row {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     min-width: 0;
     overflow: hidden;
 
@@ -431,7 +452,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 144px;
+    min-width: 148px;
     flex-shrink: 0;
   }
   & .music-list-duration {
@@ -447,7 +468,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
   }
   & .music-list-action-button {
     width: 40px;
@@ -490,13 +511,15 @@
     }
 
     & .music-list-row-wrapper {
-      height: 88px;
+      height: 84px;
+      padding: 0 6px;
     }
 
     & .music-list-card {
       grid-template-columns: auto minmax(0, 1fr) auto;
       gap: 10px;
-      padding: 9px 10px;
+      padding: 8px 10px;
+      border-radius: 15px;
     }
 
     & .music-list-cover {
@@ -514,10 +537,6 @@
       width: 36px;
       height: 36px;
     }
-}
-
-
-
-
+  }
 }
 
