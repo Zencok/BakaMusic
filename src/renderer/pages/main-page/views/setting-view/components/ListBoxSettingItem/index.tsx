@@ -5,7 +5,8 @@ import Loading from "@/renderer/components/Loading";
 import { isBasicType } from "@/common/normalize-util";
 import useVirtualList from "@/hooks/useVirtualList";
 import { rem } from "@/common/constant";
-import { ReactNode, useRef } from "react";
+import { CSSProperties, ReactNode, RefObject, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import SvgAsset from "@/renderer/components/SvgAsset";
 import { Tooltip } from "react-tooltip";
 import { IAppConfig } from "@/types/app-config";
@@ -37,6 +38,7 @@ export default function ListBoxSettingItem<T extends keyof IAppConfig>(
     } = props;
 
     const value = useAppConfig(keyPath);
+    const buttonRef = useRef<HTMLButtonElement>(null);
 
     return (
         <div className="setting-view--list-box-setting-item-container setting-row">
@@ -61,56 +63,93 @@ export default function ListBoxSettingItem<T extends keyof IAppConfig>(
                     }
                 }
             >
-                <div className={"label-container"}>
-                    {label}
-                    <IfTruthy condition={toolTip}>
-                        <div
-                            className="question-mark-container"
-                            data-tooltip-id={`tt-${keyPath}`}
-                            data-tooltip-content={toolTip}
-                        >
-                            <SvgAsset iconName="question-mark-circle"></SvgAsset>
+                {({ open }) => (
+                    <>
+                        <div className={"label-container"}>
+                            {label}
+                            <IfTruthy condition={toolTip}>
+                                <div
+                                    className="question-mark-container"
+                                    data-tooltip-id={`tt-${keyPath}`}
+                                    data-tooltip-content={toolTip}
+                                >
+                                    <SvgAsset iconName="question-mark-circle"></SvgAsset>
+                                </div>
+                            </IfTruthy>
                         </div>
-                    </IfTruthy>
-                </div>
-                <div className="options-container">
-                    <Listbox.Button
-                        as="div"
-                        className={"listbox-button"}
-                        style={{ width }}
-                    >
-                        <span>
-                            {renderItem
-                                ? renderItem(value)
-                                : isBasicType(value)
-                                    ? (value as string)
-                                    : ""}
-                        </span>
-                    </Listbox.Button>
-                    <Listbox.Options as={"div"}>
-                        <ListBoxOptions
-                            width={width}
-                            options={options}
-                            renderItem={renderItem}
-                        ></ListBoxOptions>
-                    </Listbox.Options>
-                </div>
+                        <div className="options-container">
+                            <Listbox.Button
+                                ref={buttonRef}
+                                as="div"
+                                className={"listbox-button"}
+                                style={{ width }}
+                            >
+                                <span>
+                                    {renderItem
+                                        ? renderItem(value)
+                                        : isBasicType(value)
+                                            ? (value as string)
+                                            : ""}
+                                </span>
+                            </Listbox.Button>
+                            <IfTruthy condition={open}>
+                                <ListBoxOptions
+                                    buttonRef={buttonRef}
+                                    width={width}
+                                    options={options}
+                                    renderItem={renderItem}
+                                ></ListBoxOptions>
+                            </IfTruthy>
+                        </div>
+                    </>
+                )}
             </Listbox>
         </div>
     );
 }
 
 interface IListBoxOptionsProps<T extends keyof IAppConfig> {
+    buttonRef: RefObject<HTMLElement>;
     options: Array<IAppConfig[T]> | null;
     renderItem?: (item: IAppConfig[T]) => ReactNode;
     width?: number | string;
 }
 
+interface IListBoxPanelPosition {
+    top: number;
+    left: number;
+}
+
+const LISTBOX_PANEL_MAX_HEIGHT = 280;
+const LISTBOX_PANEL_GAP = 10;
+const LISTBOX_PANEL_MARGIN = 8;
+
+function computeListBoxPanelPosition(button: HTMLElement): IListBoxPanelPosition {
+    const rect = button.getBoundingClientRect();
+    let top = rect.bottom + LISTBOX_PANEL_GAP;
+
+    if (top + LISTBOX_PANEL_MAX_HEIGHT > window.innerHeight - LISTBOX_PANEL_MARGIN) {
+        const flippedTop = rect.top - LISTBOX_PANEL_MAX_HEIGHT - LISTBOX_PANEL_GAP;
+        top = flippedTop >= LISTBOX_PANEL_MARGIN
+            ? flippedTop
+            : Math.max(LISTBOX_PANEL_MARGIN, window.innerHeight - LISTBOX_PANEL_MAX_HEIGHT - LISTBOX_PANEL_MARGIN);
+    }
+
+    let left = rect.left;
+    if (left + rect.width > window.innerWidth - LISTBOX_PANEL_MARGIN) {
+        left = Math.max(LISTBOX_PANEL_MARGIN, window.innerWidth - rect.width - LISTBOX_PANEL_MARGIN);
+    }
+
+    return { top, left };
+}
+
 function ListBoxOptions<T extends keyof IAppConfig>(
     props: IListBoxOptionsProps<T>,
 ) {
-    const { options, renderItem, width } = props;
-    const containerRef = useRef<HTMLDivElement>();
+    const { buttonRef, options, renderItem, width } = props;
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+    const [panelPosition, setPanelPosition] = useState<IListBoxPanelPosition | null>(null);
 
     const virtualController = useVirtualList({
         data: options ?? [],
@@ -120,11 +159,43 @@ function ListBoxOptions<T extends keyof IAppConfig>(
         fallbackRenderCount: 20,
     });
 
-    return (
-        <div
+    useLayoutEffect(() => {
+        const button = buttonRef.current;
+        const target = (button?.closest(".setting-view--container") as HTMLElement | null) ?? document.body;
+        setPortalTarget(target);
+
+        const updatePosition = () => {
+            const anchor = buttonRef.current;
+            if (!anchor?.isConnected) {
+                return;
+            }
+            setPanelPosition(computeListBoxPanelPosition(anchor));
+        };
+
+        updatePosition();
+        window.addEventListener("scroll", updatePosition, true);
+        window.addEventListener("resize", updatePosition);
+        return () => {
+            window.removeEventListener("scroll", updatePosition, true);
+            window.removeEventListener("resize", updatePosition);
+        };
+    }, [buttonRef]);
+
+    if (!portalTarget) {
+        return null;
+    }
+
+    const panelStyle: CSSProperties = panelPosition
+        ? { width, top: panelPosition.top, left: panelPosition.left }
+        : { width, visibility: "hidden" };
+
+    return createPortal(
+        <Listbox.Options
             ref={containerRef}
-            className={"listbox-options shadow backdrop-color"}
-            style={{ width }}
+            as={"div"}
+            static
+            className={"setting-listbox-options shadow backdrop-color"}
+            style={panelStyle}
         >
             <Condition condition={options !== null} falsy={<Loading></Loading>}>
                 <div
@@ -141,7 +212,7 @@ function ListBoxOptions<T extends keyof IAppConfig>(
                             style={{
                                 position: "absolute",
                                 top: virtualItem.top,
-                                width,
+                                width: "100%",
                             }}
                             as="div"
                         >
@@ -156,6 +227,7 @@ function ListBoxOptions<T extends keyof IAppConfig>(
                     ))}
                 </div>
             </Condition>
-        </div>
+        </Listbox.Options>,
+        portalTarget,
     );
 }

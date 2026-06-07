@@ -75,50 +75,50 @@
       }
     }
 
-    & .listbox-options {
-      position: absolute;
-      padding: 0.45rem;
-      margin-block-start: 0;
-      border-radius: 18px;
-      left: 0;
-      top: calc(100% + 10px);
-      z-index: 10;
-      width: $item-width;
-      max-height: 280px;
-      overflow-x: hidden;
-      overflow-y: auto;
-      list-style: none;
-      color: var(--settingTextPrimary);
-      border: 1px solid var(--settingControlBorder);
-      background: var(--settingCardSurface);
-      box-shadow: 0 22px 40px rgba(15, 23, 42, 0.14);
-      backdrop-filter: var(--appGlassFilter);
+  }
+}
 
-      & .listbox-option {
-        list-style: none;
-        height: 2.5rem;
-        width: $item-width;
-        line-height: 2.5rem;
-        padding: 0 12px;
-        vertical-align: middle;
-        box-sizing: border-box;
-        border-radius: 12px;
+.setting-listbox-options {
+  position: fixed;
+  z-index: 1000;
+  width: 240px;
+  max-height: 280px;
+  padding: 0.45rem;
+  margin-block-start: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  list-style: none;
+  color: var(--settingTextPrimary);
+  border: 1px solid var(--settingControlBorder);
+  border-radius: 18px;
+  background: var(--settingCardSurface);
+  box-shadow: 0 22px 40px rgba(15, 23, 42, 0.14);
+  backdrop-filter: var(--appGlassFilter);
+  box-sizing: border-box;
 
-        &[data-headlessui-state*="active"] {
-          color: color-mix(in srgb, var(--primaryColor) 72%, var(--settingTextPrimary));
-          background: var(--settingControlSurfaceHover);
-        }
+  & .listbox-option {
+    list-style: none;
+    height: 2.5rem;
+    width: 100%;
+    line-height: 2.5rem;
+    padding: 0 12px;
+    vertical-align: middle;
+    box-sizing: border-box;
+    border-radius: 12px;
 
-        & div {
-          overflow-x: hidden;
-          white-space: nowrap;
-          text-overflow: ellipsis;
-        }
-      }
-
-      &:focus {
-        outline: none;
-      }
+    &[data-headlessui-state*="active"] {
+      color: color-mix(in srgb, var(--primaryColor) 72%, var(--settingTextPrimary));
+      background: var(--settingControlSurfaceHover);
     }
+
+    & div {
+      overflow-x: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+  }
+
+  &:focus {
+    outline: none;
   }
 }
