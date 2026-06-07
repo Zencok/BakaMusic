@@ -110,6 +110,7 @@ export default [
             ".webpack/**",
             "out/**",
             "release/**",
+            "src/amll-core/**",
             "**/*.d.ts",
         ],
     },

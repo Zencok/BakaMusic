@@ -15,7 +15,26 @@ on:
   workflow_dispatch:
 
 jobs:
+  validate-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+      - run: npm install
+      - name: Verify AMLL source integration
+        run: |
+          test -f src/amll-core/lyric-player/dom/index.ts
+          test ! -d vendor/applemusic-like-lyrics
+      - name: Type check
+        run: npm exec tsc -- --noEmit
+      - name: Lint
+        run: npm exec eslint -- ./src
+
   build-windows:
+    needs: validate-source
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v5
@@ -61,6 +80,7 @@ jobs:
           if-no-files-found: error
 
   build-macos-x64:
+    needs: validate-source
     runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v5
@@ -96,6 +116,7 @@ jobs:
           if-no-files-found: error
 
   build-macos-arm64:
+    needs: validate-source
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
@@ -131,6 +152,7 @@ jobs:
           if-no-files-found: error
 
   build-linux:
+    needs: validate-source
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

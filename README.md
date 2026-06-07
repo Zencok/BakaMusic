@@ -91,6 +91,7 @@ src/
 │   └── utils/            # 工具函数
 ├── renderer-lrc/         # 桌面歌词窗口
 ├── renderer-minimode/    # 迷你模式窗口
+├── amll-core/            # 内置 Apple Music-like Lyrics 渲染核心
 ├── preload/              # Electron preload 脚本
 ├── shared/               # 跨进程共享模块（配置、插件、消息总线、快捷键、主题、i18n）
 ├── common/               # 公共工具与常量
@@ -154,7 +155,7 @@ native/qmc2/             # QMC2 解密 native 模块 (C++ / node-gyp)
 
 ## 第三方项目说明
 
-- 本项目内置并使用了 [applemusic-like-lyrics](https://github.com/Steve-xmh/applemusic-like-lyrics) 的核心歌词渲染实现，当前源码收录于 `vendor/applemusic-like-lyrics/packages/core/`。
+- 本项目内置并使用了 [applemusic-like-lyrics](https://github.com/Steve-xmh/applemusic-like-lyrics) 的核心歌词渲染实现，当前源码已融入 `src/amll-core/`。
 - 该项目主要用于逐字歌词、翻译歌词、罗马音歌词及相关动画效果的渲染。
 - BakaMusic 在其基础上完成了适配、集成与界面层改造，以满足本项目的歌词显示需求。
 - 上述第三方项目原始协议为 `GPL-3.0`，相关版权与协议归原作者及原项目所有。

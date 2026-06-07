@@ -20,7 +20,7 @@ export const rules: Required<ModuleOptions>["rules"] = [
     },
     {
         test: /\.tsx?$/,
-        include: /applemusic-like-lyrics[\\/].+$/,
+        include: /src[\\/]amll-core[\\/].+$/,
         use: {
             loader: "babel-loader",
             options: {
@@ -33,7 +33,7 @@ export const rules: Required<ModuleOptions>["rules"] = [
     },
     {
         test: /\.tsx?$/,
-        exclude: /(node_modules|\.webpack|applemusic-like-lyrics)/,
+        exclude: /(node_modules|\.webpack|src[\\/]amll-core)/,
         use: {
             loader: "ts-loader",
             options: {

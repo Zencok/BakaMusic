@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, webContents } from "electron";
+import { app, BrowserWindow, globalShortcut } from "electron";
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
@@ -61,104 +61,6 @@ if (process.platform === "win32") {
 }
 
 setAutoFreeze(false);
-
-const MAIN_MEMORY_LOG_INTERVAL = 15000;
-
-function formatBytes(bytes?: number | null) {
-    if (!Number.isFinite(bytes)) {
-        return null;
-    }
-
-    const megaBytes = (bytes || 0) / 1024 / 1024;
-    return `${megaBytes >= 100 ? megaBytes.toFixed(0) : megaBytes.toFixed(1)}MB`;
-}
-
-function formatKilobytes(kilobytes?: number | null) {
-    if (!Number.isFinite(kilobytes)) {
-        return null;
-    }
-
-    return formatBytes((kilobytes || 0) * 1024);
-}
-
-function getProcessLabels() {
-    const labels = new Map<number, string>();
-
-    const mainPid = windowManager.mainWindow?.webContents.getOSProcessId();
-    const lyricPid = windowManager.lyricWindow?.webContents.getOSProcessId();
-    const miniPid = windowManager.miniModeWindow?.webContents.getOSProcessId();
-
-    if (mainPid) {
-        labels.set(mainPid, "main-window");
-    }
-    if (lyricPid) {
-        labels.set(lyricPid, "lyric-window");
-    }
-    if (miniPid) {
-        labels.set(miniPid, "mini-window");
-    }
-
-    // Label webview/webContents child processes for memory diagnostics
-    try {
-        for (const wc of webContents.getAllWebContents()) {
-            const pid = wc.getOSProcessId();
-            if (pid && !labels.has(pid)) {
-                const wcType = wc.getType(); // "window" | "webview" | "backgroundPage" | etc.
-                const wcUrl = wc.getURL();
-                const shortUrl = wcUrl ? wcUrl.slice(0, 80) : "unknown";
-                labels.set(pid, `${wcType}:${shortUrl}`);
-            }
-        }
-    } catch {
-        // ignore
-    }
-
-    return labels;
-}
-
-function startMainMemoryTelemetry() {
-    const logSnapshot = (reason: string) => {
-        const labels = getProcessLabels();
-        const processMemory = process.memoryUsage();
-        const metrics = app.getAppMetrics()
-            .map((metric: any) => ({
-                pid: metric.pid,
-                type: metric.type,
-                label: labels.get(metric.pid) || metric.serviceName || null,
-                workingSet: formatKilobytes(metric.memory?.workingSetSize),
-                privateBytes: formatKilobytes(metric.memory?.privateBytes),
-                sharedBytes: formatKilobytes(metric.memory?.sharedBytes),
-            }))
-            .sort((left, right) => {
-                const leftWorkingSet = left.workingSet ? parseFloat(left.workingSet) : 0;
-                const rightWorkingSet = right.workingSet ? parseFloat(right.workingSet) : 0;
-                return rightWorkingSet - leftWorkingSet;
-            });
-
-        logger.logInfo("[memory][main]", {
-            reason,
-            rss: formatBytes(processMemory.rss),
-            heapUsed: formatBytes(processMemory.heapUsed),
-            heapTotal: formatBytes(processMemory.heapTotal),
-            external: formatBytes(processMemory.external),
-            arrayBuffers: formatBytes(processMemory.arrayBuffers),
-            processes: metrics,
-        });
-    };
-
-    logSnapshot("ready");
-
-    const intervalId = setInterval(() => {
-        logSnapshot("interval");
-    }, MAIN_MEMORY_LOG_INTERVAL);
-
-    intervalId.unref?.();
-
-    app.on("before-quit", () => {
-        clearInterval(intervalId);
-    });
-}
-
 
 if (process.defaultApp) {
     if (process.argv.length >= 2) {
@@ -277,8 +179,6 @@ app.whenReady().then(async () => {
     messageBus.setup(windowManager);
 
     windowManager.showMainWindow();
-    // startMainMemoryTelemetry();
-
     bootstrap();
 
 });

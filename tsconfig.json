@@ -22,5 +22,6 @@
       "@renderer-lrc/*": ["src/renderer-lrc/*"]
     }
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["src/amll-core/**/*"]
 }

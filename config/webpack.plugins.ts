@@ -9,7 +9,7 @@ export const plugins = [
         issue: {
             exclude: [
                 {
-                    file: "**/applemusic-like-lyrics/**",
+                    file: "**/src/amll-core/**",
                 },
             ],
         },

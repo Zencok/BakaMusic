@@ -103,7 +103,8 @@ class Utils {
                     const total = parseInt(response.headers["content-length"] || "0", 10);
                     let downloaded = 0;
 
-                    fileStream = fsSync.createWriteStream(filePath);
+                    const currentStream = fsSync.createWriteStream(filePath);
+                    fileStream = currentStream;
 
                     await new Promise<void>((res, rej) => {
                         response.data.on("data", (chunk: Buffer) => {
@@ -113,9 +114,9 @@ class Utils {
                             }
                         });
                         response.data.on("error", rej);
-                        response.data.pipe(fileStream!);
-                        fileStream!.on("finish", res);
-                        fileStream!.on("error", rej);
+                        response.data.pipe(currentStream);
+                        currentStream.on("finish", res);
+                        currentStream.on("error", rej);
                     });
                     fileStream = null;
 
@@ -128,7 +129,9 @@ class Utils {
                     return filePath;
                 } catch (e) {
                     fileStream?.destroy();
-                    if (filePath) await fs.unlink(filePath).catch(() => {});
+                    if (filePath) {
+                        await fs.unlink(filePath).catch(() => undefined);
+                    }
                     lastError = e;
                     // 尝试下一个镜像
                 }

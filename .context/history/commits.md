@@ -6,3 +6,4 @@
 | Date | Context-Id | Commit | Summary | Decisions | Bugs | Risk |
 |------|-----------|--------|---------|-----------|------|------|
 | 2026-06-07T01:14:12.0424662+08:00 | 1015ba83-fc0d-4cf7-8789-386e2aabbc40 | pending | feat(lyric): keep unplayed desktop lyrics white | Mark AMLL line play state in wrapper | - | Depends on AMLL currentLyricLineObjects internals |
+| 2026-06-07T14:43:26.3746113+08:00 | 3eaa18d6-88ac-4dab-b67c-e325a9f79b8a | pending | refactor(amll): integrate lyric core into source tree | Move AMLL runtime source into src/amll-core; Exclude imported AMLL core from project lint and typecheck initially | ESLint warnings after migration cleanup | Deferred AMLL core normalization |
