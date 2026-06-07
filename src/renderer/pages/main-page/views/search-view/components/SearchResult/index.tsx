@@ -11,6 +11,10 @@ import useSearch from "../../hooks/useSearch";
 import SwitchCase from "@/renderer/components/SwitchCase";
 import { useNavigate } from "react-router-dom";
 import SheetResult from "./SheetResult";
+import SvgAsset from "@/renderer/components/SvgAsset";
+import { useTranslation } from "react-i18next";
+
+type SearchAction = ReturnType<typeof useSearch>;
 
 interface ISearchResultProps {
     type: IMedia.SupportMediaType;
@@ -20,10 +24,20 @@ interface ISearchResultProps {
 
 export default function SearchResult(props: ISearchResultProps) {
     const { type, plugins, query } = props;
+    const { t } = useTranslation();
+    const search = useSearch();
+    const searchResults = searchResultsStore.useValue();
     const [selectedPlugin, setSelectedPlugin] =
     useState<IPlugin.IPluginDelegate | null>(
         history.state?.usr?.plugin ?? null,
     );
+    const currentResult = selectedPlugin?.hash
+        ? searchResults[type][selectedPlugin.hash]
+        : undefined;
+    const isRefreshing =
+        currentResult?.state === RequestStateCode.PENDING_FIRST_PAGE ||
+        currentResult?.state === RequestStateCode.PENDING_REST_PAGE;
+    const canRefresh = Boolean(selectedPlugin?.hash && query && !isRefreshing);
 
     useEffect(() => {
         if (plugins.length && !selectedPlugin) {
@@ -35,35 +49,60 @@ export default function SearchResult(props: ISearchResultProps) {
 
     return (
         <>
-            <div className="search-view--plugins">
-                {plugins?.map?.((plugin) => (
-                    <div
-                        className="plugin-item"
-                        role="button"
-                        key={plugin.hash}
-                        onClick={() => {
-                            setSelectedPlugin(plugin);
-                            const usr = history.state.usr ?? {};
+            <div className="search-view--platform-bar">
+                <div className="search-view--plugins">
+                    {plugins?.map?.((plugin) => (
+                        <div
+                            className="plugin-item"
+                            role="button"
+                            key={plugin.hash}
+                            onClick={() => {
+                                setSelectedPlugin(plugin);
+                                const usr = history.state.usr ?? {};
 
-                            // 获取history
-                            navigate("", {
-                                replace: true,
-                                state: {
-                                    ...usr,
-                                    plugin: plugin,
-                                },
-                            });
-                        }}
-                        data-selected={selectedPlugin?.hash === plugin.hash}
-                    >
-                        {plugin.platform}
-                    </div>
-                ))}
+                                // 获取history
+                                navigate("", {
+                                    replace: true,
+                                    state: {
+                                        ...usr,
+                                        plugin: plugin,
+                                    },
+                                });
+                            }}
+                            data-selected={selectedPlugin?.hash === plugin.hash}
+                        >
+                            {plugin.platform}
+                        </div>
+                    ))}
+                </div>
+                <button
+                    type="button"
+                    className="search-view--refresh-button"
+                    title={t("search_result_page.refresh_current_platform")}
+                    aria-label={t("search_result_page.refresh_current_platform")}
+                    disabled={!canRefresh}
+                    data-loading={isRefreshing}
+                    onClick={() => {
+                        if (!selectedPlugin?.hash || !query) {
+                            return;
+                        }
+
+                        search(query, 1, type, selectedPlugin.hash, {
+                            force: true,
+                        });
+                    }}
+                >
+                    <SvgAsset
+                        iconName="arrow-path"
+                        size={17}
+                    ></SvgAsset>
+                </button>
             </div>
             <SearchResultBody
                 query={query}
                 type={type}
                 pluginHash={selectedPlugin?.hash}
+                search={search}
             ></SearchResultBody>
         </>
     );
@@ -71,16 +110,17 @@ export default function SearchResult(props: ISearchResultProps) {
 
 interface ISearchResultBodyProps {
     type: IMedia.SupportMediaType;
-    pluginHash: string;
+    pluginHash?: string;
     query: string;
+    search: SearchAction;
 }
 function _SearchResultBody(props: ISearchResultBodyProps) {
-    const { type, pluginHash, query } = props;
+    const { type, pluginHash, query, search } = props;
     const searchResults = searchResultsStore.useValue();
-    const currentResult = searchResults[type][pluginHash];
+    const currentResult = pluginHash
+        ? searchResults[type][pluginHash]
+        : undefined;
     const data = currentResult?.data ?? ([] as any[]);
-
-    const search = useSearch();
 
     useEffect(() => {
         if (pluginHash && type && query) {

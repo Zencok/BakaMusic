@@ -4,8 +4,11 @@ import { searchResultsStore } from "../store/search-result";
 import { RequestStateCode } from "@/common/constant";
 import PluginManager from "@shared/plugin-manager/renderer";
 
+interface ISearchOptions {
+    force?: boolean;
+}
+
 export default function useSearch() {
-    const searchResults = searchResultsStore.getValue();
     const setSearchResults = searchResultsStore.setValue;
 
     // 当前正在搜索
@@ -23,6 +26,7 @@ export default function useSearch() {
             queryPage?: number,
             type?: IMedia.SupportMediaType,
             pluginHash?: string,
+            options: ISearchOptions = {},
         ) {
             /** 如果没有指定插件，就用所有插件搜索 */
 
@@ -48,6 +52,7 @@ export default function useSearch() {
                 }
 
                 const searchType = type ?? pluginDelegate.defaultSearchType ?? "music";
+                const searchResults = searchResultsStore.getValue();
 
                 // 上一份搜索结果
                 const prevPluginResult = searchResults[searchType][pluginDelegate.hash];
@@ -61,7 +66,9 @@ export default function useSearch() {
                 }
 
                 // 是否是一次新的搜索
+                const forceSearch = options.force === true;
                 const newSearch =
+                    forceSearch ||
                     (query !== undefined && query !== prevPluginResult?.query) ||
                     prevPluginResult?.page === undefined;
 
@@ -71,11 +78,12 @@ export default function useSearch() {
 
                 /** 搜索的页码 */
                 const page =
-                    queryPage ?? newSearch ? 1 : (prevPluginResult?.page ?? 0) + 1;
+                    queryPage ?? (newSearch ? 1 : (prevPluginResult?.page ?? 0) + 1);
 
                 if (
+                    !forceSearch &&
                     query === prevPluginResult?.query &&
-                    queryPage <= prevPluginResult?.page
+                    page <= prevPluginResult?.page
                 ) {
                     // 重复请求
                     return;
@@ -152,7 +160,7 @@ export default function useSearch() {
                 }
             });
         },
-        [searchResults],
+        [setSearchResults],
     );
 
     return search;

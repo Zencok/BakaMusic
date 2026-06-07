@@ -1,8 +1,16 @@
-﻿.search-view--plugins {
+.search-view--platform-bar {
   display: flex;
-  flex-wrap: wrap;
+  align-items: flex-start;
   margin-top: 0.8rem;
   margin-bottom: 1rem;
+  gap: 10px;
+}
+
+.search-view--plugins {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  min-width: 0;
   gap: 10px;
 
   & .plugin-item {
@@ -32,5 +40,46 @@
       border-color: color-mix(in srgb, var(--primaryColor) 22%, transparent);
       box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08), var(--appSurfaceInset);
     }
+  }
+}
+
+.search-view--refresh-button {
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1px solid var(--appInteractiveBorder);
+  border-radius: 999px;
+  background: var(--appSurfaceMuted);
+  box-shadow: var(--appSurfaceInset);
+  color: var(--appTextSecondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 2.2rem;
+  padding: 0;
+  transition: transform 160ms ease, background-color 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    color: var(--appTextPrimary);
+    background: var(--appInteractiveSurface);
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.52;
+  }
+
+  &[data-loading="true"] svg {
+    animation: search-refresh-rotate 800ms linear infinite;
+  }
+}
+
+@keyframes search-refresh-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
   }
 }

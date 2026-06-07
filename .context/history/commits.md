@@ -13,3 +13,4 @@
 | 2026-06-07T15:57:30.1559431+08:00 | 0b71c249-a07f-4e57-80ad-3d1690967cf6 | pending | fix(settings): prevent listbox overlay clipping | Portal settings listbox panels | Settings dropdowns could be covered by later setting sections | Low |
 | 2026-06-07T16:03:10.9917496+08:00 | de408a25-8057-4b72-aba4-ec73cec2387e | pending | feat(about): add telegram group link | Expose Telegram group in About page | - | Low |
 | 2026-06-07T16:10:37.1098172+08:00 | 8db735a9-4340-457e-9819-e2f3f1ac0e97 | pending | style(header): simplify app logo mark | Replace decorative header logo with a simpler mark | - | Low |
+| 2026-06-07T16:40:11.7103147+08:00 | 9c360bae-fd0c-4c4f-904f-2e7654a0eacc | pending | feat(search): refresh current platform results | Add an explicit forced search path; Expose refresh as a scoped search result action | Repeating the same search on the same platform could not refetch results | Low |

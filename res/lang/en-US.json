@@ -166,7 +166,8 @@
     "delete_local_downloaded_song_success": "Deleted local song [{{songName}}]"
   },
   "search_result_page": {
-    "search_result_title": "Search Results for"
+    "search_result_title": "Search Results for",
+    "refresh_current_platform": "Refresh current platform"
   },
   "side_bar": {
     "toplist": "Top Charts",

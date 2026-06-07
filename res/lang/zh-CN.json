@@ -166,7 +166,8 @@
     "delete_local_downloaded_song_success": "已删除本地歌曲 [{{songName}}]"
   },
   "search_result_page": {
-    "search_result_title": "的搜索结果"
+    "search_result_title": "的搜索结果",
+    "refresh_current_platform": "刷新当前平台"
   },
   "side_bar": {
     "toplist": "排行榜",
