@@ -4,7 +4,7 @@
  * 除了frontend文件夹外，其他任何地方不应该直接调用此处定义的函数
  */
 
-import { localPluginName, musicRefSymbol, sortIndexSymbol, timeStampSymbol } from "@/common/constant";
+import { MusicSheetSortType, localPluginName, musicRefSymbol, sortIndexSymbol, timeStampSymbol } from "@/common/constant";
 import { nanoid } from "nanoid";
 import musicSheetDB from "../../db/music-sheet-db";
 import { produce } from "immer";
@@ -365,20 +365,25 @@ export async function addMusicToSheet(
                     .where("id")
                     .equals(sheetId)
                     .modify((obj) => {
+                        const newMusicRefs = validMusicItems.map((item, index) => ({
+                            platform: item.platform,
+                            id: item.id,
+                            [sortIndexSymbol]: index,
+                            [timeStampSymbol]: timeStamp,
+                            $$addedAt: timeStamp,
+                            $$batchIndex: index,
+                        }));
+                        const currentMusicList = obj.musicList ?? [];
+                        const insertAtTop =
+                            normalizeMusicSheetSortType(obj.sortType) ===
+                            MusicSheetSortType.None;
+
                         obj.artwork =
                             validMusicItems[validMusicItems.length - 1]?.artwork ??
                             obj.artwork;
-                        obj.musicList = [
-                            ...(obj.musicList ?? []),
-                            ...validMusicItems.map((item, index) => ({
-                                platform: item.platform,
-                                id: item.id,
-                                [sortIndexSymbol]: index,
-                                [timeStampSymbol]: timeStamp,
-                                $$addedAt: timeStamp,
-                                $$batchIndex: index,
-                            })),
-                        ];
+                        obj.musicList = insertAtTop
+                            ? [...newMusicRefs, ...currentMusicList]
+                            : [...currentMusicList, ...newMusicRefs];
                         targetSheet.artwork = obj.artwork;
                         targetSheet.musicList = obj.musicList;
                         musicSheets = [...musicSheets];

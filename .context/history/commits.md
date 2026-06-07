@@ -14,3 +14,4 @@
 | 2026-06-07T16:03:10.9917496+08:00 | de408a25-8057-4b72-aba4-ec73cec2387e | pending | feat(about): add telegram group link | Expose Telegram group in About page | - | Low |
 | 2026-06-07T16:10:37.1098172+08:00 | 8db735a9-4340-457e-9819-e2f3f1ac0e97 | pending | style(header): simplify app logo mark | Replace decorative header logo with a simpler mark | - | Low |
 | 2026-06-07T16:40:11.7103147+08:00 | 9c360bae-fd0c-4c4f-904f-2e7654a0eacc | pending | feat(search): refresh current platform results | Add an explicit forced search path; Expose refresh as a scoped search result action | Repeating the same search on the same platform could not refetch results | Low |
+| 2026-06-07T16:48:24.7693092+08:00 | b50f1c53-6513-4a21-96a6-fee84cc60e0c | pending | fix(music-sheet): prepend new custom-order songs | Insert new songs at the top for custom-ordered local sheets | New songs added to a manually custom-sorted playlist always appeared at the bottom | Low |
