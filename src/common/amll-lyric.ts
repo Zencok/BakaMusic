@@ -4,6 +4,12 @@ import type { LyricLine, LyricWord } from "@amll-core/interfaces";
 const DEFAULT_LINE_DURATION_MS = 3000;
 const DEFAULT_FALLBACK_DURATION_MS = 60 * 60 * 1000;
 
+export type AmlLyricLineTiming = "line" | "word";
+
+export interface IBakaAmlLyricLine extends LyricLine {
+    __bakaTiming?: AmlLyricLineTiming;
+}
+
 export interface IAmlLyricClockLike {
     anchorProgress: number;
     sentAt: number;
@@ -97,6 +103,10 @@ function mapWords(
     }];
 }
 
+function hasWordTimeline(line: IAmlLyricLineSource) {
+    return !!line.words?.length && !!line.hasWordTimeline;
+}
+
 function getRomanWordMap(line: IAmlLyricLineSource) {
     if (!line.hasRomanizationWordTimeline || !line.words?.length || !line.romanizationWords?.length) {
         return null;
@@ -137,7 +147,7 @@ export function mapLyricLinesToAml(
         return [] as LyricLine[];
     }
 
-    const mappedLines: LyricLine[] = [];
+    const mappedLines: IBakaAmlLyricLine[] = [];
 
     lines.forEach((line, index) => {
         const text = line.lrc?.trim?.() ?? "";
@@ -153,6 +163,7 @@ export function mapLyricLinesToAml(
         );
 
         mappedLines.push({
+            __bakaTiming: hasWordTimeline(line) ? "word" : "line",
             words,
             translatedLyric: includeTranslation ? (line.translation ?? "") : "",
             romanLyric: includeRomanization && !hasWordLevelRomanization
@@ -174,6 +185,7 @@ export function createFallbackAmlLyricLines(musicItem?: Pick<IMusic.IMusicItem, 
 
     return [
         {
+            __bakaTiming: "line",
             words: [{
                 word: primaryText,
                 startTime: 0,
@@ -187,7 +199,7 @@ export function createFallbackAmlLyricLines(musicItem?: Pick<IMusic.IMusicItem, 
             isBG: false,
             isDuet: false,
         },
-    ] satisfies LyricLine[];
+    ] satisfies IBakaAmlLyricLine[];
 }
 
 export function estimateLyricClockProgressMs(

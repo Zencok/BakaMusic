@@ -16,6 +16,7 @@ const BASE_FONT_SIZE = 24;
 const MIN_DISPLAY_FONT_SIZE = 16;
 const MAX_DISPLAY_FONT_SIZE = 80;
 const HOVER_VISIBLE_MS = 1000;
+const LINE_TIMED_INACTIVE_OPACITY = 0.7;
 
 interface IDragState {
     pointerId: number;
@@ -139,6 +140,7 @@ export default function LyricWindowPage() {
     );
     const lyricFontFamily = fontDataConfig?.family ? String(fontDataConfig.family) : undefined;
     const lineWidthAspect = Math.max(0.86, Math.min(viewportWidth / 900, 1.22));
+    const wordTimedInactiveBrightness = inactiveBrightnessConfig ?? 0.35;
 
     const startDrag = async (event: ReactPointerEvent<HTMLDivElement>) => {
         if (lockLyric || event.button !== 0) {
@@ -238,6 +240,7 @@ export default function LyricWindowPage() {
                 "--desktop-lyric-unplayed-color": "#ffffff",
                 "--desktop-lyric-font-size": `${lyricFontSize}px`,
                 "--desktop-lyric-font-family": lyricFontFamily,
+                "--desktop-lyric-line-inactive-opacity": LINE_TIMED_INACTIVE_OPACITY,
                 fontSize: `${lyricFontSize}px`,
                 fontFamily: lyricFontFamily,
             } as CSSProperties}
@@ -318,8 +321,9 @@ export default function LyricWindowPage() {
                     enableScale={false}
                     enableSpring
                     wordFadeWidth={0.82}
-                    inactiveBrightness={inactiveBrightnessConfig ?? 0.35}
-                    markLinePlayState={!!applyFontColorOnlyToPlayedLines}
+                    inactiveBrightness={wordTimedInactiveBrightness}
+                    // Desktop line-timed lyrics always need row state so non-current rows can dim.
+                    markLinePlayState
                     style={{
                         "--amll-lp-line-width-aspect": lineWidthAspect,
                         "--amll-lp-line-padding-x": "0.08em",

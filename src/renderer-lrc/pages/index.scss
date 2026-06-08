@@ -252,6 +252,15 @@
             line-height: 1.16em;
             text-align: center;
         }
+
+        & .amll-lyric-player [data-lyric-timing="line"][data-lyric-play-state="played"],
+        & .amll-lyric-player [data-lyric-timing="line"][data-lyric-play-state="future"] {
+            opacity: var(--desktop-lyric-line-inactive-opacity, 0.7) !important;
+        }
+
+        & .amll-lyric-player [data-lyric-timing="line"][data-lyric-play-state="current"] {
+            opacity: 1 !important;
+        }
     }
 
     &[data-font-color-scope="played"] {

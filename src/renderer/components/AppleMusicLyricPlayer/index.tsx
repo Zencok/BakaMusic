@@ -1,5 +1,6 @@
 import "./index.scss";
 import { useEffect, useMemo, useRef } from "react";
+import type { AmlLyricLineTiming, IBakaAmlLyricLine } from "@/common/amll-lyric";
 import { DomLyricPlayer } from "@amll-core/lyric-player/dom/index";
 import { MaskObsceneWordsMode } from "@amll-core/lyric-player/index";
 import type { LyricLine } from "@amll-core/interfaces";
@@ -47,6 +48,10 @@ function setPlayerInactiveBrightness(player: DomLyricPlayer, value: number) {
         .setInactiveBrightness?.(value);
 }
 
+function getLyricLineTiming(line: LyricLine): AmlLyricLineTiming {
+    return (line as IBakaAmlLyricLine).__bakaTiming ?? "line";
+}
+
 function syncLyricLinePlayState(
     player: DomLyricPlayer | null,
     currentTimeMs: number,
@@ -72,7 +77,15 @@ function syncLyricLinePlayState(
             playState = "current";
         }
 
-        lineObject.getElement().dataset.lyricPlayState = playState;
+        const element = lineObject.getElement();
+        const timing = getLyricLineTiming(line);
+
+        if (element.dataset.lyricPlayState !== playState) {
+            element.dataset.lyricPlayState = playState;
+        }
+        if (element.dataset.lyricTiming !== timing) {
+            element.dataset.lyricTiming = timing;
+        }
     });
 }
 
