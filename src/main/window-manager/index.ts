@@ -28,6 +28,7 @@ class WindowManager implements IWindowManager {
     private static miniModeWindow: BrowserWindow | null = null;
 
     private ee: EventEmitter = new EventEmitter();
+    private repaintingTransparentWindows = new WeakSet<BrowserWindow>();
 
     getMainWindow(): BrowserWindow {
         return WindowManager.mainWindow;
@@ -239,6 +240,49 @@ class WindowManager implements IWindowManager {
         };
     }
 
+    private repaintTransparentWindow(window: BrowserWindow) {
+        if (process.platform !== "win32" || window.isDestroyed()) {
+            return;
+        }
+
+        const bounds = window.getBounds();
+        const [minWidth] = window.getMinimumSize();
+        const [maxWidth] = window.getMaximumSize();
+        const canGrow = maxWidth === 0 || bounds.width < maxWidth;
+        const canShrink = bounds.width > minWidth;
+        const width = canGrow ? bounds.width + 1 : (canShrink ? bounds.width - 1 : bounds.width);
+
+        if (width === bounds.width) {
+            return;
+        }
+
+        // Windows transparent windows can retain a stale edge until DWM recomposites them.
+        this.repaintingTransparentWindows.add(window);
+        try {
+            window.setBounds({
+                ...bounds,
+                width,
+            }, false);
+            window.setBounds(bounds, false);
+        } finally {
+            setTimeout(() => {
+                this.repaintingTransparentWindows.delete(window);
+            }, 50);
+        }
+    }
+
+    private repaintTransparentWindowAfterShow(window: BrowserWindow) {
+        setTimeout(() => {
+            this.repaintTransparentWindow(window);
+        }, 0);
+    }
+
+    private showTransparentLyricWindow(window: BrowserWindow) {
+        window.setBackgroundColor("#00000000");
+        window.show();
+        this.repaintTransparentWindowAfterShow(window);
+    }
+
 
     private createLyricWindow() {
         const initPosition = AppConfig.getConfig("private.lyricWindowPosition");
@@ -282,10 +326,17 @@ class WindowManager implements IWindowManager {
             minHeight: WindowManager.lyricWindowMinSize.height,
             maxWidth: WindowManager.lyricWindowMaxSize.width,
             maxHeight: WindowManager.lyricWindowMaxSize.height,
+            // Keep custom resize available while removing the Windows DWM non-client
+            // frame/shadow that can appear as a black edge on transparent windows.
             resizable: true,
             frame: false,
+            show: false,
+            paintWhenInitiallyHidden: true,
             skipTaskbar: true,
             alwaysOnTop: true,
+            thickFrame: false,
+            hasShadow: false,
+            roundedCorners: false,
             icon: nativeImage.createFromPath(getResourcePath(ResourceName.LOGO_IMAGE)),
         });
 
@@ -303,6 +354,9 @@ class WindowManager implements IWindowManager {
             if (!lyricWindow || lyricWindow.isDestroyed()) {
                 return;
             }
+            if (this.repaintingTransparentWindows.has(lyricWindow)) {
+                return;
+            }
             const [x, y] = lyricWindow.getPosition();
             AppConfig.setConfig({
                 "private.lyricWindowPosition": {
@@ -317,6 +371,9 @@ class WindowManager implements IWindowManager {
         });
         const saveSizeConfig = () => {
             if (!lyricWindow || lyricWindow.isDestroyed()) {
+                return;
+            }
+            if (this.repaintingTransparentWindows.has(lyricWindow)) {
                 return;
             }
             const [wWidth, wHeight] = lyricWindow.getSize();
@@ -336,13 +393,30 @@ class WindowManager implements IWindowManager {
             leading: false,
             trailing: true,
         });
+        let lyricWindowShown = false;
+        let showFallbackTimer: NodeJS.Timeout | null = null;
+        const clearShowFallbackTimer = () => {
+            if (showFallbackTimer) {
+                clearTimeout(showFallbackTimer);
+                showFallbackTimer = null;
+            }
+        };
+        const showReadyLyricWindow = () => {
+            if (lyricWindowShown || lyricWindow.isDestroyed()) {
+                return;
+            }
+            lyricWindowShown = true;
+            this.showTransparentLyricWindow(lyricWindow);
+        };
         lyricWindow.on("close", () => {
+            clearShowFallbackTimer();
             updatePositionConfig.cancel();
             savePositionConfig();
             updateSizeConfig.cancel();
             saveSizeConfig();
         });
         lyricWindow.on("closed", () => {
+            clearShowFallbackTimer();
             updatePositionConfig.cancel();
             updateSizeConfig.cancel();
             WindowManager.lrcWindow = null;
@@ -361,7 +435,9 @@ class WindowManager implements IWindowManager {
             lyricWindow.on("moved", savePositionConfig);
         }
         // 初始化设置
+        showFallbackTimer = setTimeout(showReadyLyricWindow, 2000);
         lyricWindow.once("ready-to-show", async () => {
+            clearShowFallbackTimer();
             const position = AppConfig.getConfig("private.lyricWindowPosition");
             if (position) {
                 this.normalizeWindowPosition(lyricWindow, position, async (position) => {
@@ -378,12 +454,9 @@ class WindowManager implements IWindowManager {
                     forward: true,
                 });
             }
-        });
 
-        if (process.platform === "darwin") {
-            // @ts-ignore ignore error in windows legacy
-            lyricWindow.invalidateShadow();
-        }
+            showReadyLyricWindow();
+        });
 
         WindowManager.lrcWindow = lyricWindow;
         this.emit("WindowCreated", {
@@ -394,13 +467,19 @@ class WindowManager implements IWindowManager {
 
 
     public showLyricWindow() {
-        if (!WindowManager.lrcWindow || WindowManager.lrcWindow.isDestroyed()) {
+        const needsCreate = !WindowManager.lrcWindow || WindowManager.lrcWindow.isDestroyed();
+        if (needsCreate) {
             this.createLyricWindow();
         }
 
         const lrcWindow = WindowManager.lrcWindow;
+        if (!lrcWindow) {
+            return;
+        }
 
-        lrcWindow.show();
+        if (!needsCreate) {
+            this.showTransparentLyricWindow(lrcWindow);
+        }
         AppConfig.setConfig({
             "lyric.enableDesktopLyric": true,
         });
