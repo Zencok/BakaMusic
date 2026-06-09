@@ -1,14 +1,19 @@
 ﻿import AnimatedDiv from "../AnimatedDiv";
 import "./index.scss";
 import albumImg from "@/assets/imgs/album-cover.jpg";
-import { qualityText } from "@/common/constant";
+import { PlayerState, qualityText } from "@/common/constant";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
+import { useUserPreference } from "@/renderer/utils/user-perference";
 import AppConfig from "@shared/app-config/renderer";
 import { appUtil, appWindowUtil } from "@shared/utils/renderer";
 import SvgAsset, { type SvgAssetIconNames } from "../SvgAsset";
 import Lyric from "./widgets/Lyric";
 import { useTranslation } from "react-i18next";
-import { useCurrentMusic, useQuality } from "@renderer/core/track-player/hooks";
+import {
+    useCurrentMusic,
+    usePlayerState,
+    useQuality,
+} from "@renderer/core/track-player/hooks";
 import { useEffect } from "react";
 import { musicDetailShownStore } from "@renderer/components/MusicDetail/store";
 
@@ -17,8 +22,10 @@ export const useMusicDetailShown = musicDetailShownStore.useValue;
 
 function MusicDetail() {
     const musicItem = useCurrentMusic();
+    const playerState = usePlayerState();
     const quality = useQuality();
     const musicDetailShown = musicDetailShownStore.useValue();
+    const [storedCoverStyle] = useUserPreference("musicDetailCoverStyle");
     const { t } = useTranslation();
 
     useEffect(() => {
@@ -41,6 +48,7 @@ function MusicDetail() {
     const subtitle = [musicItem?.artist || t("media.unknown_artist"), musicItem?.album]
         .filter(Boolean)
         .join(" · ");
+    const coverStyle = storedCoverStyle === "vinyl" ? "vinyl" : "cover";
 
     return (
         <AnimatedDiv
@@ -136,12 +144,33 @@ function MusicDetail() {
 
                 <div className="music-detail-content">
                     <div className="music-detail-primary-column">
-                        <div className="music-detail-primary-stage">
-                            <img
-                                className="music-detail-artwork"
-                                onError={setFallbackAlbum}
-                                src={artwork}
-                            ></img>
+                        <div
+                            className="music-detail-primary-stage"
+                            data-cover-style={coverStyle}
+                        >
+                            {coverStyle === "vinyl" ? (
+                                <div
+                                    className="music-detail-vinyl-cover"
+                                    data-playing={playerState === PlayerState.Playing}
+                                >
+                                    <div className="music-detail-vinyl-record"></div>
+                                    <div className="music-detail-vinyl-label">
+                                        <img
+                                            className="music-detail-vinyl-artwork"
+                                            onError={setFallbackAlbum}
+                                            src={artwork}
+                                        ></img>
+                                        <div className="music-detail-vinyl-label-shine"></div>
+                                    </div>
+                                    <div className="music-detail-vinyl-center-hole"></div>
+                                </div>
+                            ) : (
+                                <img
+                                    className="music-detail-artwork"
+                                    onError={setFallbackAlbum}
+                                    src={artwork}
+                                ></img>
+                            )}
                         </div>
                     </div>
 

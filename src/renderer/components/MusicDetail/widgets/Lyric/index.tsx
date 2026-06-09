@@ -19,6 +19,7 @@ import LyricParser from "@/renderer/utils/lyric-parser";
 import {
     getUserPreference,
     setUserPreference,
+    useUserPreference,
 } from "@/renderer/utils/user-perference";
 import useAppConfig from "@/hooks/useAppConfig";
 import AppConfig from "@shared/app-config/renderer";
@@ -27,6 +28,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import { PlayerState } from "@/common/constant";
+
+type MusicDetailCoverStyle = "cover" | "vinyl";
 
 export default function Lyric() {
     const currentMusic = useCurrentMusic();
@@ -109,17 +112,7 @@ export default function Lyric() {
                     >
                         <SvgAsset iconName="magnifying-glass"></SvgAsset>
                     </div>
-                    <div
-                        className="music-detail-lyric-toolbar-button"
-                        role="button"
-                        title={t("media.media_type_lyric")}
-                        onClick={(event) => {
-                            const rect = (event.currentTarget as HTMLDivElement).getBoundingClientRect();
-                            openContextMenu(rect.left, rect.bottom + 8);
-                        }}
-                    >
-                        <SvgAsset iconName="list-bullet"></SvgAsset>
-                    </div>
+                    <CoverStyleSelector></CoverStyleSelector>
                 </div>
             </div>
 
@@ -168,6 +161,107 @@ export default function Lyric() {
                     </div>
                 )}
             </div>
+        </div>
+    );
+}
+
+function CoverStyleSelector() {
+    const [isOpen, setIsOpen] = useState(false);
+    const [storedCoverStyle, setStoredCoverStyle] = useUserPreference(
+        "musicDetailCoverStyle",
+    );
+    const selectorRef = useRef<HTMLDivElement>(null);
+    const { t } = useTranslation();
+    const coverStyle: MusicDetailCoverStyle = storedCoverStyle === "vinyl"
+        ? "vinyl"
+        : "cover";
+
+    const options = useMemo<Array<{
+        key: MusicDetailCoverStyle;
+        iconName: "album" | "cd";
+        label: string;
+    }>>(() => [
+        {
+            key: "cover",
+            iconName: "album",
+            label: t("music_detail.cover_style_cover"),
+        },
+        {
+            key: "vinyl",
+            iconName: "cd",
+            label: t("music_detail.cover_style_vinyl"),
+        },
+    ], [t]);
+
+    useEffect(() => {
+        if (!isOpen) {
+            return;
+        }
+
+        const handlePointerDown = (event: MouseEvent) => {
+            if (!selectorRef.current?.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.code === "Escape") {
+                event.preventDefault();
+                event.stopPropagation();
+                setIsOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handlePointerDown, true);
+        document.addEventListener("keydown", handleKeyDown, true);
+        return () => {
+            document.removeEventListener("mousedown", handlePointerDown, true);
+            document.removeEventListener("keydown", handleKeyDown, true);
+        };
+    }, [isOpen]);
+
+    return (
+        <div
+            className="music-detail-cover-style-selector"
+            data-open={isOpen}
+            ref={selectorRef}
+        >
+            <div
+                className="music-detail-lyric-toolbar-button"
+                data-active={coverStyle === "vinyl"}
+                role="button"
+                title={t("music_detail.cover_style")}
+                onClick={(event) => {
+                    event.stopPropagation();
+                    setIsOpen((value) => !value);
+                }}
+            >
+                <SvgAsset iconName="cd"></SvgAsset>
+            </div>
+            {isOpen ? (
+                <div
+                    className="music-detail-cover-style-popover"
+                    onClick={(event) => event.stopPropagation()}
+                >
+                    {options.map((option) => (
+                        <div
+                            className="music-detail-cover-style-option"
+                            data-active={coverStyle === option.key}
+                            key={option.key}
+                            role="button"
+                            onClick={() => {
+                                setStoredCoverStyle(option.key);
+                                setIsOpen(false);
+                            }}
+                        >
+                            <div className="music-detail-cover-style-option-icon">
+                                <SvgAsset iconName={option.iconName}></SvgAsset>
+                            </div>
+                            <span>{option.label}</span>
+                            <SvgAsset iconName="check"></SvgAsset>
+                        </div>
+                    ))}
+                </div>
+            ) : null}
         </div>
     );
 }

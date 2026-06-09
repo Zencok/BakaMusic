@@ -42,6 +42,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    overflow: visible;
   }
 
   & .music-detail-lyric-toolbar-button {
@@ -75,6 +76,102 @@
       width: 18px;
       height: 18px;
     }
+  }
+}
+
+.music-detail-cover-style-selector {
+  position: relative;
+  flex-shrink: 0;
+
+  &[data-open="true"] {
+    & .music-detail-lyric-toolbar-button {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.18);
+    }
+  }
+}
+
+.music-detail-cover-style-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 8;
+  width: 176px;
+  padding: 8px;
+  box-sizing: border-box;
+  border-radius: 18px;
+  color: rgba(255, 255, 255, 0.92);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.1)),
+    linear-gradient(180deg, rgba(48, 50, 56, 0.48), rgba(18, 18, 22, 0.42));
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 22px 52px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.36),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(28px) saturate(170%);
+  transform-origin: top right;
+  animation: music-detail-cover-popover-in 140ms ease-out;
+}
+
+.music-detail-cover-style-option {
+  height: 42px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border-radius: 12px;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: background-color 150ms ease, transform 150ms ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &[data-active="true"] {
+    background: rgba(255, 255, 255, 0.18);
+
+    & > svg {
+      opacity: 1;
+    }
+  }
+
+  & span {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 0.86rem;
+    font-weight: 650;
+    line-height: 1;
+  }
+
+  & > svg {
+    width: 16px;
+    height: 16px;
+    opacity: 0;
+  }
+}
+
+.music-detail-cover-style-option-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.12);
+
+  & svg {
+    width: 16px;
+    height: 16px;
   }
 }
 
@@ -198,4 +295,16 @@
   font-size: 1rem;
   height: 14px;
   padding-left: 12px;
+}
+
+@keyframes music-detail-cover-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }

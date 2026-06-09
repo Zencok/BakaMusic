@@ -21,6 +21,7 @@ declare namespace IUserPreference {
     }>;
     skipVersion: string;
     inlineLyricFontSize: string;
+    musicDetailCoverStyle: "cover" | "vinyl";
   }
 
   interface IDBType {

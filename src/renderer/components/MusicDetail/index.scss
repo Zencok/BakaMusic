@@ -198,6 +198,7 @@
 
 .music-detail-primary-stage {
     width: min(100%, clamp(270px, 43vh, 430px));
+    aspect-ratio: 1 / 1;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -207,6 +208,10 @@
     border: none !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
+
+    &[data-cover-style="vinyl"] {
+        width: min(100%, clamp(280px, 45vh, 450px));
+    }
 }
 
 .music-detail-artwork {
@@ -219,6 +224,122 @@
     border: none !important;
     box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
     backdrop-filter: none !important;
+}
+
+.music-detail-vinyl-cover {
+    --music-detail-vinyl-label-size: 61.8%;
+    --music-detail-vinyl-artwork-size: 92%;
+    --music-detail-vinyl-hole-size: 4.6%;
+
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    animation: music-detail-vinyl-spin 24s linear infinite;
+    animation-play-state: paused;
+    filter: drop-shadow(0 22px 46px rgba(0, 0, 0, 0.42));
+    will-change: transform;
+
+    &[data-playing="true"] {
+        animation-play-state: running;
+    }
+}
+
+.music-detail-vinyl-record,
+.music-detail-vinyl-label,
+.music-detail-vinyl-center-hole,
+.music-detail-vinyl-label-shine {
+    position: absolute;
+    border-radius: 50%;
+}
+
+.music-detail-vinyl-record {
+    inset: 0;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.08) 0 2.6%, transparent 2.8%),
+        radial-gradient(circle at 50% 50%, #111 0 22%, #080808 52%, #171717 100%);
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+        inset 0 0 42px rgba(0, 0, 0, 0.72);
+
+    &::before,
+    &::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    &::before {
+        background:
+            repeating-radial-gradient(
+                circle at 50% 50%,
+                rgba(255, 255, 255, 0.035) 0 1px,
+                transparent 1px 7px
+            ),
+            repeating-conic-gradient(
+                from 0deg,
+                transparent 0deg,
+                rgba(255, 255, 255, 0.028) 0.6deg,
+                transparent 1.4deg
+            );
+        opacity: 0.82;
+    }
+
+    &::after {
+        background:
+            linear-gradient(120deg, transparent 5%, rgba(255, 255, 255, 0.13) 18%, transparent 34%),
+            radial-gradient(ellipse at 30% 22%, rgba(255, 255, 255, 0.14), transparent 36%);
+        mix-blend-mode: screen;
+        opacity: 0.72;
+    }
+}
+
+.music-detail-vinyl-label {
+    width: var(--music-detail-vinyl-label-size);
+    height: var(--music-detail-vinyl-label-size);
+    inset: calc((100% - var(--music-detail-vinyl-label-size)) / 2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: radial-gradient(circle, rgba(44, 44, 48, 0.96), rgba(17, 17, 20, 0.98));
+    box-shadow:
+        inset 0 0 18px rgba(0, 0, 0, 0.5),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+        0 0 18px rgba(0, 0, 0, 0.34);
+}
+
+.music-detail-vinyl-artwork {
+    width: var(--music-detail-vinyl-artwork-size);
+    height: var(--music-detail-vinyl-artwork-size);
+    border-radius: 50%;
+    object-fit: cover;
+    filter: brightness(0.9) contrast(1.08) saturate(1.08);
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.music-detail-vinyl-label-shine {
+    inset: 0;
+    background: radial-gradient(ellipse at 24% 18%, rgba(255, 255, 255, 0.16), transparent 44%);
+    pointer-events: none;
+}
+
+.music-detail-vinyl-center-hole {
+    width: var(--music-detail-vinyl-hole-size);
+    height: var(--music-detail-vinyl-hole-size);
+    inset: calc((100% - var(--music-detail-vinyl-hole-size)) / 2);
+    background:
+        radial-gradient(circle at 42% 35%, rgba(255, 255, 255, 0.18), transparent 18%),
+        radial-gradient(circle, rgba(6, 6, 8, 0.98), rgba(18, 18, 22, 0.96));
+    box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.16),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.58),
+        0 0 0 max(3px, 0.9vw) rgba(255, 255, 255, 0.07),
+        0 0 18px rgba(0, 0, 0, 0.34);
 }
 
 .music-detail-lyric-column {
@@ -280,6 +401,22 @@
 
     .music-detail-info-subtitle {
         max-width: min(62vw, 360px);
+    }
+}
+
+@keyframes music-detail-vinyl-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .music-detail-vinyl-cover {
+        animation: none;
     }
 }
 

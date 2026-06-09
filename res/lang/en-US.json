@@ -223,7 +223,10 @@
     "toast_media_lyric_unlinked": "Lyric Unlinked",
     "translation": "Translation",
     "show_translation": "Show Translation",
-    "hide_translation": "Hide Translation"
+    "hide_translation": "Hide Translation",
+    "cover_style": "Cover Style",
+    "cover_style_cover": "Album Cover",
+    "cover_style_vinyl": "Vinyl Cover"
   },
   "bottom_loading_state": {
     "reached_end": "~~~ End ~~~",
