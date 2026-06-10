@@ -9,44 +9,35 @@ export default function Sparkles() {
                 <Base.Header>✨✨✨开发者的话</Base.Header>
                 <div className="modal--body-container">
                     <p>
-                        首先感谢你使用这款软件。
+                        感谢你使用 <strong>BakaMusic</strong>。
                     </p>
 
                     <p>
-                        现在，本项目已全面更名为 <strong>BakaMusic</strong>，并由 <strong>Zencok</strong>
-                        持续维护，作为一个独立项目继续开发与迭代。
+                        这是由 <strong>Zencok</strong> 持续维护的桌面音乐播放器。
+                        我希望它不只是一个能播放音乐的工具，也能在歌词展示、桌面交互、本地管理和视觉体验上，
+                        保持足够顺手、克制且可靠。
                     </p>
 
                     <p>
-                        同时，也感谢原作者 <strong>maotoumao</strong>。
-                        BakaMusic 的继续开发建立在原项目的启发与积累之上，因此在重构、扩展与演进的过程中，
-                        我也会始终保留对原作者与原项目的尊重。
+                        后续的开发会继续围绕 BakaMusic 自己的方向推进：
+                        优化核心体验，整理界面细节，完善桌面端能力，并尽量让每一次更新都真正带来可感知的改进。
                     </p>
 
                     <p>
-                        对我来说，BakaMusic 不再只是原项目的桌面延伸，
-                        而是一次围绕桌面体验、歌词交互、界面风格与整体结构的重新整理。
-                        后续我会按照 BakaMusic 自己的方向继续推进它，让它逐渐形成更完整、更统一的产品形态。
+                        如果你愿意关注这个项目，欢迎在 GitHub 上查看进展、反馈问题，或者提出你的想法。
                     </p>
 
                     <p>
-                        当前仓库：
+                        Github仓库：
                         <A href="https://github.com/Zencok/BakaMusic">
                             BakaMusic
-                        </A>
-                    </p>
-
-                    <p>
-                        原始桌面项目：
-                        <A href="https://github.com/maotoumao/MusicFreeDesktop">
-                            MusicFreeDesktop
                         </A>
                     </p>
 
                     <p className="footer">by: Zencok</p>
 
                     <div className="secret">
-                        希望总有一天，我可以把更多时间投入到真正热爱的事情里，也让 BakaMusic 变成自己真正想做的样子。
+                        希望 BakaMusic 能慢慢变成一个让自己也愿意长期使用、认真打磨的作品。
                     </div>
                 </div>
             </div>

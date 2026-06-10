@@ -30,6 +30,14 @@
     & .content-container,
     & .modal--body-container {
       box-sizing: border-box;
+
+      & a {
+        color: var(--primaryColor);
+
+        &:hover {
+          color: color-mix(in srgb, var(--primaryColor) 72%, white);
+        }
+      }
     }
 
     & .footer-options,
