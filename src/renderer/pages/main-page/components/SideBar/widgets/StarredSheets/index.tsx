@@ -6,6 +6,7 @@ import MusicSheet, { defaultSheet } from "@/renderer/core/music-sheet";
 import { localPluginName } from "@/common/constant";
 import { showContextMenu } from "@/renderer/components/ContextMenu";
 import { useTranslation } from "react-i18next";
+import SvgAsset from "@/renderer/components/SvgAsset";
 
 export default function StarredSheets() {
     const sheetIdMatch = useMatch("/main/musicsheet/:platform/:sheetId");
@@ -21,8 +22,13 @@ export default function StarredSheets() {
     return (
         <div className="side-bar-container--starred-sheets">
             <Disclosure defaultOpen>
-                <Disclosure.Button className="title" as="div" role="button">
-                    <div className="my-sheets">{t("side_bar.starred_sheets")}</div>
+                <Disclosure.Button className="title side-bar-section-title" as="div" role="button">
+                    <div className="side-bar-section-title-main">
+                        <div className="side-bar-section-chevron">
+                            <SvgAsset iconName="chevron-right"></SvgAsset>
+                        </div>
+                        <div className="side-bar-section-text">{t("side_bar.starred_sheets")}</div>
+                    </div>
                 </Disclosure.Button>
                 <Disclosure.Panel>
                     {starredSheets.map((item) => (

@@ -38,6 +38,32 @@
     gap: 0.14rem;
   }
 
+  & .side-bar-section-title {
+    height: 2.18rem;
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem 0 0.44rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: var(--sideBarTextMuted, color-mix(in srgb, var(--textColor) 58%, transparent));
+    user-select: none;
+    transition:
+      border-color 160ms ease,
+      background-color 160ms ease,
+      color 160ms ease;
+
+    &:hover {
+      color: var(--sideBarTextPrimary, var(--appTextPrimary));
+      background: color-mix(in srgb, var(--textColor) 4%, transparent);
+    }
+
+    &[data-headlessui-state="open"] {
+      & .side-bar-section-chevron {
+        transform: rotate(90deg);
+      }
+    }
+  }
+
   &::after {
     content: "";
     position: absolute;
@@ -48,4 +74,57 @@
     opacity: 0.75;
     pointer-events: none;
   }
+}
+
+.side-bar-section-title-main {
+  display: flex;
+  align-items: center;
+  gap: 0.46rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.side-bar-section-chevron {
+  $size: 1.26rem;
+  width: $size;
+  height: $size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--sideBarTextMuted, currentColor);
+  background: color-mix(in srgb, var(--textColor) 5%, transparent);
+  transition:
+    transform 160ms ease,
+    color 160ms ease,
+    background-color 160ms ease;
+
+  & svg {
+    width: 0.78rem;
+    height: 0.78rem;
+  }
+}
+
+.side-bar-section-title:hover .side-bar-section-chevron {
+  color: color-mix(in srgb, var(--primaryColor) 64%, var(--sideBarTextPrimary, var(--appTextPrimary)));
+  background: color-mix(in srgb, var(--primaryColor) 10%, transparent);
+}
+
+.side-bar-section-text {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sideBarTextSecondary, var(--appTextPrimary));
+  font-size: 0.84rem;
+  font-weight: 620;
+  letter-spacing: 0;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.side-bar-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.16rem;
+  margin-left: 0.35rem;
 }

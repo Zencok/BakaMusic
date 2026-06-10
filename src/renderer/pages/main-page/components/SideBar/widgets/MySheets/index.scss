@@ -15,62 +15,16 @@
   }
 
   & .title {
-    height: 2.18rem;
-    display: flex;
-    align-items: center;
-    padding: 0 0.58rem;
-    border-radius: 8px;
-    color: var(--sideBarTextMuted, color-mix(in srgb, var(--textColor) 58%, transparent));
-    user-select: none;
-    transition:
-      background-color 160ms ease,
-      color 160ms ease;
-
-    &:hover {
-      background: color-mix(in srgb, var(--textColor) 4%, transparent);
-      color: var(--sideBarTextSecondary, var(--appTextPrimary));
-    }
-
-    $tag-size: 3.5px;
-
-    & .my-sheets {
-      display: flex;
-      align-items: center;
-      flex: 1;
-      min-width: 0;
-      font-size: 0.75rem;
-      font-weight: 720;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-
-      &::after {
-        content: "";
-        width: 0;
-        height: 0;
-        margin-left: 0.55rem;
-        border: $tag-size solid transparent;
-        border-left-color: currentColor;
-        transform-origin: left center;
-        transition: transform linear 120ms;
-      }
-    }
-
-    &[data-headlessui-state="open"] {
-      & .my-sheets::after {
-        transform: rotate(90deg);
-      }
-    }
-
     & .option-btn {
       $size: 24px;
       width: $size;
       height: $size;
-      margin-left: 0.25rem;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       color: var(--sideBarTextMuted, currentColor);
+      background: transparent;
       transition:
         color 160ms ease,
         background-color 160ms ease;

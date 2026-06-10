@@ -27,44 +27,51 @@ export default function MySheets() {
         <div className="side-bar-container--my-sheets">
             <div className="divider"></div>
             <Disclosure defaultOpen>
-                <Disclosure.Button className="title" as="div" role="button">
-                    <div className="my-sheets">{t("side_bar.my_sheets")}</div>
-                    <div
-                        role="button"
-                        className="option-btn"
-                        title={t("plugin.method_play_by_id")}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            showModal("PlayMusicById", {
-                                plugins: getMusicInfoPlugins,
-                            });
-                        }}
-                    >
-                        <SvgAsset iconName="identification"></SvgAsset>
+                <Disclosure.Button className="title side-bar-section-title" as="div" role="button">
+                    <div className="side-bar-section-title-main">
+                        <div className="side-bar-section-chevron">
+                            <SvgAsset iconName="chevron-right"></SvgAsset>
+                        </div>
+                        <div className="side-bar-section-text">{t("side_bar.my_sheets")}</div>
                     </div>
-                    <div
-                        role="button"
-                        className="option-btn"
-                        title={t("plugin.method_import_music_sheet")}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            showModal("ImportMusicSheet", {
-                                plugins: importablePlugins,
-                            });
-                        }}
-                    >
-                        <SvgAsset iconName="arrow-left-end-on-rectangle"></SvgAsset>
-                    </div>
-                    <div
-                        role="button"
-                        className="option-btn"
-                        title={t("side_bar.create_local_sheet")}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            showModal("AddNewSheet");
-                        }}
-                    >
-                        <SvgAsset iconName="plus"></SvgAsset>
+                    <div className="side-bar-section-actions">
+                        <div
+                            role="button"
+                            className="option-btn"
+                            title={t("plugin.method_play_by_id")}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                showModal("PlayMusicById", {
+                                    plugins: getMusicInfoPlugins,
+                                });
+                            }}
+                        >
+                            <SvgAsset iconName="identification"></SvgAsset>
+                        </div>
+                        <div
+                            role="button"
+                            className="option-btn"
+                            title={t("plugin.method_import_music_sheet")}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                showModal("ImportMusicSheet", {
+                                    plugins: importablePlugins,
+                                });
+                            }}
+                        >
+                            <SvgAsset iconName="arrow-left-end-on-rectangle"></SvgAsset>
+                        </div>
+                        <div
+                            role="button"
+                            className="option-btn"
+                            title={t("side_bar.create_local_sheet")}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                showModal("AddNewSheet");
+                            }}
+                        >
+                            <SvgAsset iconName="plus"></SvgAsset>
+                        </div>
                     </div>
                 </Disclosure.Button>
                 <Disclosure.Panel>
