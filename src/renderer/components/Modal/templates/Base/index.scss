@@ -32,10 +32,10 @@
       box-sizing: border-box;
 
       & a {
-        color: var(--primaryColor);
+        color: #ff9f43 !important;
 
         &:hover {
-          color: color-mix(in srgb, var(--primaryColor) 72%, white);
+          color: #ffbd73 !important;
         }
       }
     }
