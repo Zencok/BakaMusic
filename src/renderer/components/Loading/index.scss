@@ -1,75 +1,128 @@
 .loading-container {
-  width: 100%;
-  height: 100%;
-  min-height: 300px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    align-items: center;
+    justify-content: center;
 
-  & .spinner-container {
-    display: inline-block;
+    & span {
+        color: var(--appTextSecondary, color-mix(in srgb, var(--textColor) 72%, transparent));
+        font-size: 0.95rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        user-select: none;
+
+        &::after {
+            content: "";
+            animation: loading-text-flow 1.6s steps(4, end) infinite;
+        }
+    }
+}
+
+.liquid-glass-loader {
     position: relative;
-    width: 80px;
-    height: 80px;
-  }
-  & .spinner-container div {
-    display: inline-block;
-    position: absolute;
-    left: 8px;
-    width: 16px;
-    background: var(--primaryColor);
-    animation: spinning-animation 1.2s cubic-bezier(0, 0.5, 0.5, 1) infinite;
-  }
-  & .spinner-container div:nth-child(1) {
-    left: 8px;
-    animation-delay: -0.24s;
-  }
-  & .spinner-container div:nth-child(2) {
-    left: 32px;
-    animation-delay: -0.12s;
-  }
-  & .spinner-container div:nth-child(3) {
-    left: 56px;
-    animation-delay: 0;
-  }
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,
+        color-mix(in srgb, var(--backgroundColor) 65%, transparent),
+        color-mix(in srgb, var(--backgroundColor) 45%, transparent));
+    backdrop-filter: blur(20px) saturate(1.8);
+    box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.3),
+        inset 0 -1px 2px color-mix(in srgb, var(--shadowColor, rgba(0, 0, 0, 0.1)) 50%, transparent),
+        0 8px 32px color-mix(in srgb, var(--shadowColor, rgba(0, 0, 0, 0.15)) 60%, transparent);
+    overflow: hidden;
 
-  @keyframes spinning-animation {
-    0% {
-      top: 8px;
-      height: 64px;
+    &::before {
+        content: "";
+        position: absolute;
+        inset: 4px;
+        border-radius: 50%;
+        background: conic-gradient(from 0deg,
+            transparent 0deg,
+            color-mix(in srgb, var(--primaryColor) 60%, transparent) 90deg,
+            transparent 180deg);
+        animation: liquid-ring-spin 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
-    50%,
-    100% {
-      top: 24px;
-      height: 32px;
-    }
-  }
-
-  & span {
-    font-size: 1rem;
-    user-select: none;
 
     &::after {
-      content: "";
-      animation: text-animation 1.2s linear infinite;
+        content: "";
+        position: absolute;
+        inset: 4px;
+        border-radius: 50%;
+        background: conic-gradient(from 180deg,
+            transparent 0deg,
+            rgba(255, 255, 255, 0.4) 90deg,
+            transparent 180deg);
+        animation: liquid-ring-spin 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite reverse;
     }
-  }
+}
 
-  @keyframes text-animation {
-    from {
-      content: " ";
+.liquid-glass-loader__orb {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 28px;
+    height: 28px;
+    margin: -14px 0 0 -14px;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.95), transparent 50%),
+        linear-gradient(135deg,
+            color-mix(in srgb, var(--primaryColor) 75%, white),
+            color-mix(in srgb, var(--primaryColor) 60%, transparent));
+    box-shadow:
+        inset 0 1px 3px rgba(255, 255, 255, 0.6),
+        0 4px 16px color-mix(in srgb, var(--primaryColor) 40%, transparent),
+        0 0 0 1px color-mix(in srgb, var(--primaryColor) 20%, transparent);
+    animation: liquid-orb-pulse 2s ease-in-out infinite;
+}
+
+.liquid-glass-loader__drop {
+    display: none;
+}
+
+@keyframes liquid-ring-spin {
+    to {
+        transform: rotate(360deg);
     }
+}
 
-    25% {
-      content: " ·";
+@keyframes liquid-orb-pulse {
+    0%, 100% {
+        transform: scale(0.92);
+        opacity: 0.85;
     }
-
     50% {
-      content: " ··";
+        transform: scale(1);
+        opacity: 1;
     }
-    75% {
-      content: " ···";
+}
+
+@keyframes loading-text-flow {
+    0% {
+        content: "";
     }
-  }
+    25% {
+        content: " .";
+    }
+    50% {
+        content: " ..";
+    }
+    75%, 100% {
+        content: " ...";
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .liquid-glass-loader::before,
+    .liquid-glass-loader::after,
+    .liquid-glass-loader__orb,
+    .loading-container span::after {
+        animation-duration: 2.4s;
+    }
 }

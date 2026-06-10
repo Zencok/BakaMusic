@@ -1,51 +1,105 @@
 .bottom-loading-state {
-  width: 100%;
-  height: 4rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
+    width: 100%;
+    height: 4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
 }
 
 .bottom-loading-state--reach-end {
-  opacity: 0.8;
+    color: var(--appTextTertiary, color-mix(in srgb, var(--textColor) 56%, transparent));
 }
 
 .bottom-loading-state--loadmore {
-  &:hover {
-    color: var(--primaryColor);
-  }
+    color: var(--appTextSecondary, color-mix(in srgb, var(--textColor) 72%, transparent));
+    cursor: pointer;
+    transition: color 0.18s ease, transform 0.18s ease;
+
+    &:hover {
+        color: var(--primaryColor);
+        transform: translateY(-1px);
+    }
 }
 
 .bottom-loading-state--loading {
-  display: flex;
-  align-items: center;
+    display: inline-flex;
+    gap: 0.6rem;
+    align-items: center;
+    color: var(--appTextSecondary, color-mix(in srgb, var(--textColor) 72%, transparent));
+    font-size: 0.92rem;
+    font-weight: 500;
 }
 
-$loading-size: 20px;
+.bottom-loading-state--liquid {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,
+        color-mix(in srgb, var(--backgroundColor) 60%, transparent),
+        color-mix(in srgb, var(--backgroundColor) 40%, transparent));
+    backdrop-filter: blur(16px) saturate(1.6);
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.25),
+        0 2px 8px color-mix(in srgb, var(--shadowColor, rgba(0, 0, 0, 0.12)) 50%, transparent);
+    overflow: hidden;
 
-.lds-dual-ring {
-  display: inline-block;
-  width: $loading-size;
-  height: $loading-size;
-  margin-right: 0.5rem;
+    &::before {
+        content: "";
+        position: absolute;
+        inset: 2px;
+        border-radius: 50%;
+        background: conic-gradient(from 0deg,
+            transparent,
+            color-mix(in srgb, var(--primaryColor) 55%, transparent) 120deg,
+            transparent 240deg);
+        animation: bottom-liquid-spin 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    & span {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 8px;
+        height: 8px;
+        margin: -4px 0 0 -4px;
+        border-radius: 50%;
+        background:
+            radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.9), transparent 45%),
+            linear-gradient(135deg,
+                color-mix(in srgb, var(--primaryColor) 70%, white),
+                color-mix(in srgb, var(--primaryColor) 55%, transparent));
+        box-shadow: 0 1px 4px color-mix(in srgb, var(--primaryColor) 35%, transparent);
+        animation: bottom-liquid-pulse 1.8s ease-in-out infinite;
+    }
+
+    & span:nth-child(2),
+    & span:nth-child(3) {
+        display: none;
+    }
 }
-.lds-dual-ring:after {
-  content: " ";
-  display: block;
-  width: $loading-size * 0.8;
-  height: $loading-size * 0.8;
-  margin: $loading-size * 0.1;
-  border-radius: 50%;
-  border: $loading-size * 0.1 solid var(--textColor);
-  border-color: var(--textColor) transparent var(--textColor) transparent;
-  animation: lds-dual-ring 1.2s linear infinite;
+
+@keyframes bottom-liquid-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
-@keyframes lds-dual-ring {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+
+@keyframes bottom-liquid-pulse {
+    0%, 100% {
+        transform: scale(0.88);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bottom-loading-state--liquid::before,
+    .bottom-loading-state--liquid span {
+        animation-duration: 2.4s;
+    }
 }

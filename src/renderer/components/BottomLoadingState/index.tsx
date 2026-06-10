@@ -44,9 +44,14 @@ export default function BottomLoadingState(props: IProps) {
     if (state === RequestStateCode.FINISHED) {
         component = <span className="bottom-loading-state--reach-end">{t("bottom_loading_state.reached_end")}</span>;
     } else if (state === RequestStateCode.PENDING_REST_PAGE) {
-        component = <>
-            <div className="lds-dual-ring"></div> {t("bottom_loading_state.loading")}
-        </>;
+        component = <div className="bottom-loading-state--loading">
+            <div className="bottom-loading-state--liquid" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <span>{t("bottom_loading_state.loading")}</span>
+        </div>;
     } else if (state === RequestStateCode.PARTLY_DONE) {
         component = <span className="bottom-loading-state--loadmore" role="button" onClick={onLoadMore}>
             {t("bottom_loading_state.load_more")}
@@ -57,5 +62,5 @@ export default function BottomLoadingState(props: IProps) {
         {component}
     </div>;
 
-  
+
 }
