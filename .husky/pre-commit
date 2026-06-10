@@ -1,4 +1,9 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+if git diff --cached --name-only -- .ccg | grep -q .; then
+    echo "Do not commit .ccg files. Keep CCG tasks local only." >&2
+    exit 1
+fi
+
 npm run lint-staged
