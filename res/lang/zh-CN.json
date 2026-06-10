@@ -226,7 +226,14 @@
     "hide_translation": "隐藏翻译",
     "cover_style": "封面样式",
     "cover_style_cover": "普通封面",
-    "cover_style_vinyl": "唱片封面"
+    "cover_style_vinyl": "唱片封面",
+    "cover_style_tonearm": "唱针",
+    "cover_style_tonearm_none": "无唱针",
+    "cover_style_tonearm_classic": "经典",
+    "cover_style_tonearm_glass": "玻璃",
+    "cover_style_tonearm_reach": "落针",
+    "cover_style_tonearm_reach_outer": "外圈",
+    "cover_style_tonearm_reach_inner": "内圈"
   },
   "bottom_loading_state": {
     "reached_end": "~~~ 到底啦 ~~~",

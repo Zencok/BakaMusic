@@ -226,11 +226,17 @@
     backdrop-filter: none !important;
 }
 
-.music-detail-vinyl-cover {
+.music-detail-vinyl-player {
     --music-detail-vinyl-label-size: 61.8%;
     --music-detail-vinyl-artwork-size: 92%;
     --music-detail-vinyl-hole-size: 4.6%;
 
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+}
+
+.music-detail-vinyl-cover {
     position: relative;
     width: 100%;
     aspect-ratio: 1 / 1;
@@ -240,9 +246,249 @@
     filter: drop-shadow(0 22px 46px rgba(0, 0, 0, 0.42));
     will-change: transform;
 
-    &[data-playing="true"] {
+    .music-detail-vinyl-player[data-playing="true"] & {
         animation-play-state: running;
     }
+}
+
+.music-detail-vinyl-tonearm {
+    // Pivot anchored at (94%, 5%): outside the platter (distance ~63 > radius 50),
+    // in the empty top-right corner of the square stage.
+    --music-detail-tonearm-pivot-x: 94%;
+    --music-detail-tonearm-pivot-y: 5%;
+
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+}
+
+.music-detail-vinyl-tonearm-assembly {
+    position: absolute;
+    left: var(--music-detail-tonearm-pivot-x);
+    top: var(--music-detail-tonearm-pivot-y);
+    // viewBox 300x640, pivot at local (240, 40) = (80%, 6.25%). The S-tube
+    // uses golden-ratio handles (k1 = chord / phi^2, k2 = k1 / phi) and a
+    // stylus reach of 60% of the stage with a built-in 12deg leftward offset:
+    // playing -12deg hangs the arm dead vertical, landing the stylus on the
+    // lead-in groove (~46.5 units from record center, just inside the rim);
+    // rest -20deg hovers it ~4 units off the rim, hugging the platter edge.
+    width: 30%;
+    height: 64%;
+    transform: translate(-80%, -6.25%) rotate(-20deg);
+    transform-origin: 80% 6.25%;
+    transition: transform 720ms cubic-bezier(0.3, 1.2, 0.4, 1);
+
+    .music-detail-vinyl-player[data-playing="true"] & {
+        transform: translate(-80%, -6.25%) rotate(-12deg);
+    }
+}
+
+.music-detail-vinyl-tonearm[data-reach="inner"] {
+    // Extended-arm variant: same SVG scaled 1.108x so the stylus reach grows
+    // from 60% to 66.5% of the stage. Playing +3deg (total sweep 15deg left)
+    // lands the stylus just outside the label (~33 units from record center);
+    // rest -17deg hovers it ~4 units off the rim. Pivot stays at (94%, 5%)
+    // because the translate offsets are proportional to the element size.
+    .music-detail-vinyl-tonearm-assembly {
+        width: 33.25%;
+        height: 70.9%;
+        transform: translate(-80%, -6.25%) rotate(-17deg);
+    }
+
+    .music-detail-vinyl-player[data-playing="true"] & .music-detail-vinyl-tonearm-assembly {
+        transform: translate(-80%, -6.25%) rotate(3deg);
+    }
+}
+
+.music-detail-vinyl-tonearm-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.32));
+}
+
+.music-detail-vinyl-tonearm-tube-border {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.34);
+    stroke-width: 27;
+    stroke-linecap: round;
+}
+
+.music-detail-vinyl-tonearm-tube {
+    fill: none;
+    stroke: url(#musicDetailTonearmTubeGradient);
+    stroke-width: 23;
+    stroke-linecap: round;
+}
+
+.music-detail-vinyl-tonearm-tube-core {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.5);
+    stroke-width: 5;
+    stroke-linecap: round;
+}
+
+.music-detail-vinyl-tonearm-counterweight {
+    fill: url(#musicDetailTonearmShellGradient);
+    stroke: rgba(255, 255, 255, 0.3);
+    stroke-width: 2;
+}
+
+.music-detail-vinyl-tonearm-headshell {
+    fill: url(#musicDetailTonearmShellGradient);
+    stroke: rgba(255, 255, 255, 0.34);
+    stroke-width: 2;
+}
+
+.music-detail-vinyl-tonearm-stylus-glow {
+    fill: rgba(255, 255, 255, 0.22);
+}
+
+.music-detail-vinyl-tonearm-stylus {
+    fill: rgba(255, 255, 255, 0.95);
+}
+
+.music-detail-vinyl-tonearm-base {
+    position: absolute;
+    left: var(--music-detail-tonearm-pivot-x);
+    top: var(--music-detail-tonearm-pivot-y);
+    width: 11.5%;
+    aspect-ratio: 1 / 1;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08));
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    box-shadow:
+        0 14px 30px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.34),
+        inset 0 -6px 12px rgba(0, 0, 0, 0.14);
+    backdrop-filter: blur(16px) saturate(140%);
+}
+
+.music-detail-vinyl-tonearm-base-cap {
+    position: absolute;
+    inset: 32%;
+    border-radius: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.2));
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.5),
+        0 2px 6px rgba(0, 0, 0, 0.22);
+}
+
+.music-detail-vinyl-tonearm-classic {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+}
+
+.music-detail-vinyl-tonearm-classic-assembly {
+    // viewBox 230x410, pivot at (179, 46) = (77.8%, 11.2%). The tube reuses
+    // the glass variant's golden-ratio S-curve scaled 0.625x (same built-in
+    // 12deg leftward offset, stylus reach 60% of stage), so rotation angles
+    // match the glass arm: playing -12deg hangs the arm vertical and lands
+    // the stylus on the lead-in groove (~46.5 units from record center),
+    // rest -20deg hovers it ~4 units off the rim. Pivot sits at (94%, 5%).
+    position: absolute;
+    left: 65.3%;
+    top: -2.4%;
+    width: 36.9%;
+    aspect-ratio: 230 / 410;
+    transform: rotate(-20deg);
+    transform-origin: 77.8% 11.2%;
+    transition: transform 720ms cubic-bezier(0.3, 1.2, 0.4, 1);
+
+    .music-detail-vinyl-player[data-playing="true"] & {
+        transform: rotate(-12deg);
+    }
+}
+
+.music-detail-vinyl-tonearm-classic[data-reach="inner"] {
+    // Extended-arm variant mirroring the glass inner reach: element scaled
+    // 1.108x (width 40.9%), repositioned so the pivot stays at (94%, 5%);
+    // playing +3deg lands the stylus just outside the label (~33 units from
+    // record center), rest -17deg hovers it ~4 units off the rim.
+    .music-detail-vinyl-tonearm-classic-assembly {
+        left: 62.2%;
+        top: -3.2%;
+        width: 40.9%;
+        transform: rotate(-17deg);
+    }
+
+    .music-detail-vinyl-player[data-playing="true"] & .music-detail-vinyl-tonearm-classic-assembly {
+        transform: rotate(3deg);
+    }
+}
+
+.music-detail-vinyl-tonearm-classic-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    filter: drop-shadow(0 9px 15px rgba(0, 0, 0, 0.34));
+}
+
+.music-detail-vinyl-tonearm-classic-arm {
+    fill: none;
+    stroke: #f4f5f7;
+    stroke-width: 16;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.music-detail-vinyl-tonearm-classic-counterweight {
+    fill: #f4f5f7;
+    stroke: rgba(150, 156, 168, 0.3);
+    stroke-width: 1.8;
+}
+
+.music-detail-vinyl-tonearm-classic-arm-shade {
+    fill: none;
+    stroke: rgba(150, 156, 168, 0.3);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+}
+
+.music-detail-vinyl-tonearm-classic-cartridge {
+    fill: #3a3d44;
+}
+
+.music-detail-vinyl-tonearm-classic-head {
+    fill: #f4f5f7;
+}
+
+.music-detail-vinyl-tonearm-classic-groove {
+    stroke: #c4c9d1;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+}
+
+.music-detail-vinyl-tonearm-classic-base {
+    // Static circular mount centered on the pivot (94%, 5%), mirroring the
+    // glass base layout (disc + cap) in opaque white; painted after the
+    // assembly so it hides the arm root while the arm swings beneath it.
+    position: absolute;
+    left: 94%;
+    top: 5%;
+    width: 11.5%;
+    aspect-ratio: 1 / 1;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: linear-gradient(180deg, #ffffff, #e7eaef);
+    box-shadow:
+        0 14px 30px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        inset 0 -6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.music-detail-vinyl-tonearm-classic-base-cap {
+    position: absolute;
+    inset: 32%;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #ffffff, #eef0f4);
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.9),
+        0 2px 6px rgba(0, 0, 0, 0.18);
 }
 
 .music-detail-vinyl-record,
@@ -417,6 +663,14 @@
 @media (prefers-reduced-motion: reduce) {
     .music-detail-vinyl-cover {
         animation: none;
+    }
+
+    .music-detail-vinyl-tonearm-assembly {
+        transition: none;
+    }
+
+    .music-detail-vinyl-tonearm-classic-assembly {
+        transition: none;
     }
 }
 

@@ -30,6 +30,8 @@ import { toast } from "react-toastify";
 import { PlayerState } from "@/common/constant";
 
 type MusicDetailCoverStyle = "cover" | "vinyl";
+type MusicDetailVinylTonearm = "none" | "classic" | "glass";
+type MusicDetailVinylTonearmReach = "outer" | "inner";
 
 export default function Lyric() {
     const currentMusic = useCurrentMusic();
@@ -170,11 +172,23 @@ function CoverStyleSelector() {
     const [storedCoverStyle, setStoredCoverStyle] = useUserPreference(
         "musicDetailCoverStyle",
     );
+    const [storedVinylTonearm, setStoredVinylTonearm] = useUserPreference(
+        "musicDetailVinylTonearm",
+    );
+    const [storedTonearmReach, setStoredTonearmReach] = useUserPreference(
+        "musicDetailVinylTonearmReach",
+    );
     const selectorRef = useRef<HTMLDivElement>(null);
     const { t } = useTranslation();
     const coverStyle: MusicDetailCoverStyle = storedCoverStyle === "vinyl"
         ? "vinyl"
         : "cover";
+    const vinylTonearm: MusicDetailVinylTonearm =
+        storedVinylTonearm === "none" || storedVinylTonearm === "classic"
+            ? storedVinylTonearm
+            : "glass";
+    const tonearmReach: MusicDetailVinylTonearmReach =
+        storedTonearmReach === "inner" ? "inner" : "outer";
 
     const options = useMemo<Array<{
         key: MusicDetailCoverStyle;
@@ -190,6 +204,38 @@ function CoverStyleSelector() {
             key: "vinyl",
             iconName: "cd",
             label: t("music_detail.cover_style_vinyl"),
+        },
+    ], [t]);
+
+    const tonearmOptions = useMemo<Array<{
+        key: MusicDetailVinylTonearm;
+        label: string;
+    }>>(() => [
+        {
+            key: "none",
+            label: t("music_detail.cover_style_tonearm_none"),
+        },
+        {
+            key: "classic",
+            label: t("music_detail.cover_style_tonearm_classic"),
+        },
+        {
+            key: "glass",
+            label: t("music_detail.cover_style_tonearm_glass"),
+        },
+    ], [t]);
+
+    const reachOptions = useMemo<Array<{
+        key: MusicDetailVinylTonearmReach;
+        label: string;
+    }>>(() => [
+        {
+            key: "outer",
+            label: t("music_detail.cover_style_tonearm_reach_outer"),
+        },
+        {
+            key: "inner",
+            label: t("music_detail.cover_style_tonearm_reach_inner"),
         },
     ], [t]);
 
@@ -260,6 +306,50 @@ function CoverStyleSelector() {
                             <SvgAsset iconName="check"></SvgAsset>
                         </div>
                     ))}
+                    {coverStyle === "vinyl" ? (
+                        <div className="music-detail-cover-style-tonearm">
+                            <div className="music-detail-cover-style-tonearm-title">
+                                {t("music_detail.cover_style_tonearm")}
+                            </div>
+                            <div className="music-detail-cover-style-tonearm-tabs">
+                                {tonearmOptions.map((option) => (
+                                    <div
+                                        className="music-detail-cover-style-tonearm-tab"
+                                        data-active={vinylTonearm === option.key}
+                                        key={option.key}
+                                        role="button"
+                                        onClick={() => {
+                                            setStoredVinylTonearm(option.key);
+                                        }}
+                                    >
+                                        {option.label}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : null}
+                    {coverStyle === "vinyl" && vinylTonearm !== "none" ? (
+                        <div className="music-detail-cover-style-tonearm">
+                            <div className="music-detail-cover-style-tonearm-title">
+                                {t("music_detail.cover_style_tonearm_reach")}
+                            </div>
+                            <div className="music-detail-cover-style-tonearm-tabs">
+                                {reachOptions.map((option) => (
+                                    <div
+                                        className="music-detail-cover-style-tonearm-tab"
+                                        data-active={tonearmReach === option.key}
+                                        key={option.key}
+                                        role="button"
+                                        onClick={() => {
+                                            setStoredTonearmReach(option.key);
+                                        }}
+                                    >
+                                        {option.label}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : null}
                 </div>
             ) : null}
         </div>

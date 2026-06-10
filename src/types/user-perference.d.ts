@@ -22,6 +22,8 @@ declare namespace IUserPreference {
     skipVersion: string;
     inlineLyricFontSize: string;
     musicDetailCoverStyle: "cover" | "vinyl";
+    musicDetailVinylTonearm: "none" | "classic" | "glass";
+    musicDetailVinylTonearmReach: "outer" | "inner";
   }
 
   interface IDBType {

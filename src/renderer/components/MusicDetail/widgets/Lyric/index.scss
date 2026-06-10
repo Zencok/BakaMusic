@@ -175,6 +175,58 @@
   }
 }
 
+.music-detail-cover-style-tonearm {
+  margin-top: 6px;
+  padding: 8px 4px 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.music-detail-cover-style-tonearm-title {
+  margin: 0 6px 6px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.music-detail-cover-style-tonearm-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.music-detail-cover-style-tonearm-tab {
+  flex: 1;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 0.74rem;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &[data-active="true"] {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.22);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  }
+}
+
 .music-detail-lyric-stage {
   position: relative;
   flex: 1;

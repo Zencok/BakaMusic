@@ -26,6 +26,8 @@ function MusicDetail() {
     const quality = useQuality();
     const musicDetailShown = musicDetailShownStore.useValue();
     const [storedCoverStyle] = useUserPreference("musicDetailCoverStyle");
+    const [storedVinylTonearm] = useUserPreference("musicDetailVinylTonearm");
+    const [storedTonearmReach] = useUserPreference("musicDetailVinylTonearmReach");
     const { t } = useTranslation();
 
     useEffect(() => {
@@ -49,6 +51,11 @@ function MusicDetail() {
         .filter(Boolean)
         .join(" · ");
     const coverStyle = storedCoverStyle === "vinyl" ? "vinyl" : "cover";
+    const vinylTonearm =
+        storedVinylTonearm === "none" || storedVinylTonearm === "classic"
+            ? storedVinylTonearm
+            : "glass";
+    const tonearmReach = storedTonearmReach === "inner" ? "inner" : "outer";
 
     return (
         <AnimatedDiv
@@ -150,19 +157,27 @@ function MusicDetail() {
                         >
                             {coverStyle === "vinyl" ? (
                                 <div
-                                    className="music-detail-vinyl-cover"
+                                    className="music-detail-vinyl-player"
                                     data-playing={playerState === PlayerState.Playing}
                                 >
-                                    <div className="music-detail-vinyl-record"></div>
-                                    <div className="music-detail-vinyl-label">
-                                        <img
-                                            className="music-detail-vinyl-artwork"
-                                            onError={setFallbackAlbum}
-                                            src={artwork}
-                                        ></img>
-                                        <div className="music-detail-vinyl-label-shine"></div>
+                                    {vinylTonearm === "glass" ? (
+                                        <GlassVinylTonearm reach={tonearmReach}></GlassVinylTonearm>
+                                    ) : null}
+                                    {vinylTonearm === "classic" ? (
+                                        <ClassicVinylTonearm reach={tonearmReach}></ClassicVinylTonearm>
+                                    ) : null}
+                                    <div className="music-detail-vinyl-cover">
+                                        <div className="music-detail-vinyl-record"></div>
+                                        <div className="music-detail-vinyl-label">
+                                            <img
+                                                className="music-detail-vinyl-artwork"
+                                                onError={setFallbackAlbum}
+                                                src={artwork}
+                                            ></img>
+                                            <div className="music-detail-vinyl-label-shine"></div>
+                                        </div>
+                                        <div className="music-detail-vinyl-center-hole"></div>
                                     </div>
-                                    <div className="music-detail-vinyl-center-hole"></div>
                                 </div>
                             ) : (
                                 <img
@@ -198,6 +213,172 @@ function RoundButton({ iconName, onClick, title }: IButtonProps) {
             onClick={onClick}
         >
             <SvgAsset iconName={iconName}></SvgAsset>
+        </div>
+    );
+}
+
+interface ITonearmProps {
+    reach: "outer" | "inner";
+}
+
+function GlassVinylTonearm({ reach }: ITonearmProps) {
+    return (
+        <div
+            className="music-detail-vinyl-tonearm"
+            data-reach={reach}
+            aria-hidden="true"
+        >
+            <div className="music-detail-vinyl-tonearm-assembly">
+                <svg
+                    className="music-detail-vinyl-tonearm-svg"
+                    viewBox="0 0 300 640"
+                    focusable="false"
+                >
+                    <defs>
+                        <linearGradient
+                            id="musicDetailTonearmTubeGradient"
+                            x1="0"
+                            y1="0"
+                            x2="1"
+                            y2="1"
+                        >
+                            <stop offset="0" stopColor="#ffffff" stopOpacity="0.5"></stop>
+                            <stop offset="0.55" stopColor="#ffffff" stopOpacity="0.2"></stop>
+                            <stop offset="1" stopColor="#ffffff" stopOpacity="0.36"></stop>
+                        </linearGradient>
+                        <linearGradient
+                            id="musicDetailTonearmShellGradient"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                        >
+                            <stop offset="0" stopColor="#ffffff" stopOpacity="0.44"></stop>
+                            <stop offset="1" stopColor="#ffffff" stopOpacity="0.16"></stop>
+                        </linearGradient>
+                    </defs>
+                    <rect
+                        className="music-detail-vinyl-tonearm-counterweight"
+                        x="210"
+                        y="-58"
+                        width="60"
+                        height="58"
+                        rx="28"
+                    ></rect>
+                    <path
+                        className="music-detail-vinyl-tonearm-tube-border"
+                        d="M240 40 C258 250 217 476 144 584"
+                    ></path>
+                    <path
+                        className="music-detail-vinyl-tonearm-tube"
+                        d="M240 40 C258 250 217 476 144 584"
+                    ></path>
+                    <path
+                        className="music-detail-vinyl-tonearm-tube-core"
+                        d="M234 46 C251 250 211 470 139 577"
+                    ></path>
+                    <g transform="translate(144 584) rotate(34)">
+                        <rect
+                            className="music-detail-vinyl-tonearm-headshell"
+                            x="-26"
+                            y="-10"
+                            width="52"
+                            height="78"
+                            rx="16"
+                        ></rect>
+                        <circle
+                            className="music-detail-vinyl-tonearm-stylus-glow"
+                            cx="0"
+                            cy="52"
+                            r="20"
+                        ></circle>
+                        <circle
+                            className="music-detail-vinyl-tonearm-stylus"
+                            cx="0"
+                            cy="52"
+                            r="9"
+                        ></circle>
+                    </g>
+                </svg>
+            </div>
+            <div className="music-detail-vinyl-tonearm-base">
+                <div className="music-detail-vinyl-tonearm-base-cap"></div>
+            </div>
+        </div>
+    );
+}
+
+function ClassicVinylTonearm({ reach }: ITonearmProps) {
+    return (
+        <div
+            className="music-detail-vinyl-tonearm-classic"
+            data-reach={reach}
+            aria-hidden="true"
+        >
+            <div className="music-detail-vinyl-tonearm-classic-assembly">
+                <svg
+                    className="music-detail-vinyl-tonearm-classic-svg"
+                    viewBox="0 0 230 410"
+                    focusable="false"
+                >
+                    <path
+                        className="music-detail-vinyl-tonearm-classic-arm"
+                        d="M179 46 L174.3 -3.8"
+                    ></path>
+                    <rect
+                        className="music-detail-vinyl-tonearm-classic-counterweight"
+                        x="162"
+                        y="-10.8"
+                        width="26"
+                        height="30"
+                        rx="9"
+                        transform="rotate(-5.4 175 4.2)"
+                    ></rect>
+                    <path
+                        className="music-detail-vinyl-tonearm-classic-arm"
+                        d="M179 46 C190.3 177.3 164.6 318.5 119 386"
+                    ></path>
+                    <path
+                        className="music-detail-vinyl-tonearm-classic-arm-shade"
+                        d="M182.5 47.4 C193.8 178.7 168.1 319.9 122.5 387.4"
+                    ></path>
+                    <g transform="rotate(34 119 386)">
+                        <rect
+                            className="music-detail-vinyl-tonearm-classic-cartridge"
+                            x="109"
+                            y="379"
+                            width="20"
+                            height="14"
+                            rx="4"
+                        ></rect>
+                        <rect
+                            className="music-detail-vinyl-tonearm-classic-head"
+                            x="106"
+                            y="393"
+                            width="26"
+                            height="30"
+                            rx="5"
+                        ></rect>
+                        <line
+                            className="music-detail-vinyl-tonearm-classic-groove"
+                            x1="114"
+                            y1="413"
+                            x2="114"
+                            y2="420"
+                        ></line>
+                        <line
+                            className="music-detail-vinyl-tonearm-classic-groove"
+                            x1="124"
+                            y1="413"
+                            x2="124"
+                            y2="420"
+                        ></line>
+                    </g>
+                </svg>
+            </div>
+            <div className="music-detail-vinyl-tonearm-classic-base">
+                <div className="music-detail-vinyl-tonearm-classic-base-cap"></div>
+            </div>
         </div>
     );
 }
