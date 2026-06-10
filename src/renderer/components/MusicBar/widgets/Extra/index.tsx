@@ -5,7 +5,6 @@ import trackPlayer from "@renderer/core/track-player";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import Condition from "@/renderer/components/Condition";
 import throttle from "lodash.throttle";
-import { showModal } from "@/renderer/components/Modal";
 import classNames from "@/renderer/utils/classnames";
 import { getCurrentPanel, hidePanel, showPanel } from "@/renderer/components/Panel";
 import { useTranslation } from "react-i18next";
@@ -13,7 +12,8 @@ import { toast } from "react-toastify";
 import { isCN } from "@/shared/i18n/renderer";
 import useAppConfig from "@/hooks/useAppConfig";
 import { RepeatMode } from "@/common/constant";
-import { getQualityDisplayText, resolveMusicQualityChoices } from "@/renderer/utils/music-quality";
+import { getQualityAbbr, getQualityDisplayText, resolveMusicQualityChoices } from "@/renderer/utils/music-quality";
+import { showQualitySelectPopover } from "@/renderer/components/QualitySelectPopover";
 import { useCurrentMusic, useIsMute, useQuality, useRepeatMode, useSpeed, useVolume } from "@renderer/core/track-player/hooks";
 import { appWindowUtil } from "@shared/utils/renderer";
 import { musicDetailShownStore } from "@renderer/components/MusicDetail/store";
@@ -586,21 +586,6 @@ function SpeedBtn() {
     );
 }
 
-const qualityAbbr: Record<IMusic.IQualityKey, string> = {
-    "mgg": "MG",
-    "128k": "LQ",
-    "192k": "MQ",
-    "320k": "HQ",
-    "flac": "SQ",
-    "flac24bit": "HR",
-    "hires": "HR",
-    "vinyl": "VN",
-    "dolby": "DB",
-    "atmos": "AT",
-    "atmos_plus": "A+",
-    "master": "MS",
-};
-
 function QualityBtn() {
     const currentMusic = useCurrentMusic();
     const quality = useQuality();
@@ -612,11 +597,12 @@ function QualityBtn() {
             className="extra-btn quality-btn"
             role="button"
             title={getQualityDisplayText(quality, t)}
-            onClick={async () => {
+            onClick={async (event) => {
                 if (!currentMusic || isLoading) {
                     return;
                 }
 
+                const anchor = event.currentTarget;
                 setIsLoading(true);
                 try {
                     const { choices } = await resolveMusicQualityChoices(currentMusic, t);
@@ -630,13 +616,13 @@ function QualityBtn() {
                         ? quality
                         : choices[0].value;
 
-                    showModal("SelectOne", {
+                    showQualitySelectPopover({
                         title: t("music_bar.choose_music_quality"),
                         defaultValue,
                         choices,
-                        autoOkOnSelect: true,
-                        async onOk(value) {
-                            const success = await trackPlayer.setQuality(value as IMusic.IQualityKey);
+                        anchor,
+                        async onSelect(value) {
+                            const success = await trackPlayer.setQuality(value);
                             if (!success) {
                                 toast.warn(t("music_bar.current_quality_not_available_for_current_music"));
                             }
@@ -647,7 +633,7 @@ function QualityBtn() {
                 }
             }}
         >
-            <span className="quality-abbr-text">{qualityAbbr[quality] || "HQ"}</span>
+            <span className="quality-abbr-text">{getQualityAbbr(quality)}</span>
         </div>
     );
 }

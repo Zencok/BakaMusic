@@ -8,7 +8,6 @@ import PlayMusicById from "./PlayMusicById";
 import PluginSubscription from "./PluginSubscription";
 import Reconfirm from "./Reconfirm";
 import SearchLyric from "./SearchLyric";
-import SelectOne from "./SelectOne";
 import SimpleInputWithState from "./SimpleInputWithState";
 import Sparkles from "./Sparkles";
 import Update from "./Update";
@@ -24,7 +23,6 @@ export default {
     Reconfirm,
     Update,
     WatchLocalDir,
-    SelectOne,
     PluginSubscription,
     SearchLyric,
     ImportMusicSheet,

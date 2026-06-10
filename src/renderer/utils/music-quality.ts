@@ -5,6 +5,37 @@ import PluginManager from "@shared/plugin-manager/renderer";
 export interface IMusicQualityChoice {
     value: IMusic.IQualityKey;
     label: string;
+    qualityLabel: string;
+    sizeText: string;
+}
+
+export const aiUpscaleQualityKeys: IMusic.IQualityKey[] = [
+    "master",
+    "atmos_plus",
+    "atmos",
+];
+
+export const qualityAbbr: Record<IMusic.IQualityKey, string> = {
+    "mgg": "MG",
+    "128k": "LQ",
+    "192k": "MQ",
+    "320k": "HQ",
+    "flac": "SQ",
+    "flac24bit": "HR",
+    "hires": "HR",
+    "vinyl": "VN",
+    "dolby": "DB",
+    "atmos": "AT",
+    "atmos_plus": "A+",
+    "master": "MS",
+};
+
+export function isAiUpscaleQuality(quality: IMusic.IQualityKey) {
+    return aiUpscaleQualityKeys.includes(quality);
+}
+
+export function getQualityAbbr(quality: IMusic.IQualityKey) {
+    return qualityAbbr[quality] || "HQ";
 }
 
 export function getQualityDisplayText(
@@ -56,6 +87,21 @@ export function formatQualitySize(size?: string | number) {
     return `${size}`;
 }
 
+function createMusicQualityChoice(
+    quality: IMusic.IQualityKey,
+    t: (key: string) => string,
+    sizeText = "",
+): IMusicQualityChoice {
+    const qualityLabel = getQualityDisplayText(quality, t);
+
+    return {
+        value: quality,
+        qualityLabel,
+        sizeText,
+        label: sizeText ? `${qualityLabel} (${sizeText})` : qualityLabel,
+    };
+}
+
 export function getAvailableQualityChoices(
     musicItem: IMusic.IMusicItem,
     t: (key: string) => string,
@@ -80,12 +126,7 @@ export function getAvailableQualityChoices(
         })
         .map((quality) => {
             const sizeText = formatQualitySize(getMusicQualitySize(musicItem, quality));
-            return {
-                value: quality,
-                label: sizeText
-                    ? `${getQualityDisplayText(quality, t)} (${sizeText})`
-                    : getQualityDisplayText(quality, t),
-            };
+            return createMusicQualityChoice(quality, t, sizeText);
         });
 }
 
@@ -98,12 +139,7 @@ export function getPreferredQualityChoices(
             ? formatQualitySize(getMusicQualitySize(musicItem, quality))
             : "";
 
-        return {
-            value: quality,
-            label: sizeText
-                ? `${getQualityDisplayText(quality, t)} (${sizeText})`
-                : getQualityDisplayText(quality, t),
-        };
+        return createMusicQualityChoice(quality, t, sizeText);
     });
 }
 

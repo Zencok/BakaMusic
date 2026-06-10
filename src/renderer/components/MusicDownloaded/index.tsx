@@ -43,13 +43,16 @@ function MusicDownloaded(props: IMusicDownloadedProps) {
             title={
                 isDownloadedOrLocal ? t("common.downloaded") : t("common.download")
             }
-            onClick={() => {
+            onClick={(event) => {
+                event.stopPropagation();
                 if (
                     musicItem &&
                     (downloadState === DownloadState.NONE ||
                         downloadState === DownloadState.ERROR)
                 ) {
-                    promptDownloadWithQuality(musicItem);
+                    promptDownloadWithQuality(musicItem, {
+                        anchor: event.currentTarget,
+                    });
                 }
             }}
         >

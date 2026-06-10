@@ -107,9 +107,11 @@ export default function Body(props: IProps) {
                         data-disabled={!musicList?.length}
                         className="download-sheet option-button"
                         title={t("common.download")}
-                        onClick={() => {
+                        onClick={(event) => {
                             if (musicList.length) {
-                                promptDownloadWithQuality(musicList);
+                                promptDownloadWithQuality(musicList, {
+                                    anchor: event.currentTarget,
+                                });
                             }
                         }}
                     >

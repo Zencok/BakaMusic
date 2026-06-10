@@ -3,6 +3,7 @@ import App from "../app";
 import "animate.css";
 import ModalComponent from "../components/Modal";
 import PanelComponent from "../components/Panel";
+import QualitySelectPopover from "../components/QualitySelectPopover";
 import bootstrap from "./bootstrap";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import MainPage from "../pages/main-page";
@@ -46,6 +47,7 @@ function Root() {
                 <ModalComponent></ModalComponent>
             </HashRouter>
             <ContextMenuComponent></ContextMenuComponent>
+            <QualitySelectPopover></QualitySelectPopover>
             <ToastContainer
                 draggable={false}
                 closeOnClick={false}

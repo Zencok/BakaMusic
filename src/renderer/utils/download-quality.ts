@@ -1,5 +1,5 @@
 ﻿import { localPluginName } from "@/common/constant";
-import { showModal } from "@/renderer/components/Modal";
+import { showQualitySelectPopover } from "@/renderer/components/QualitySelectPopover";
 import Downloader from "@/renderer/core/downloader";
 import { i18n } from "@/shared/i18n/renderer";
 import AppConfig from "@shared/app-config/renderer";
@@ -14,6 +14,9 @@ function getDownloadQualityModalTitle() {
 
 export async function promptDownloadWithQuality(
     musicItems: IMusic.IMusicItem | IMusic.IMusicItem[],
+    options?: {
+        anchor?: HTMLElement | DOMRect | null;
+    },
 ) {
     const items = Array.isArray(musicItems) ? musicItems : [musicItems];
     const validItems = items.filter(
@@ -38,15 +41,15 @@ export async function promptDownloadWithQuality(
         }
     }
 
-    showModal("SelectOne", {
+    showQualitySelectPopover({
         title: getDownloadQualityModalTitle(),
         defaultValue,
         choices,
-        autoOkOnSelect: true,
-        onOk(value) {
+        anchor: options?.anchor,
+        onSelect(value) {
             Downloader.startDownload(
                 Array.isArray(musicItems) ? validItems : validItems[0],
-                value as IMusic.IQualityKey,
+                value,
             );
         },
     });
