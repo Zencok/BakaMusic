@@ -61,8 +61,9 @@ export class InterludeDots implements HasElement, Disposable {
 		this.element.classList.add(styles.playing);
 	}
 	update(delta = 0) {
-		if (!this.playing) return;
-		this.currentTime += delta;
+		if (this.playing) {
+			this.currentTime += delta;
+		}
 		let curStyle = "";
 
 		curStyle += `transform:translate(${this.left.toFixed(
