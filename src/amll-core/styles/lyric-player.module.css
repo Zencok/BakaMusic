@@ -166,6 +166,8 @@
 	span.emphasizeWrapper {
 		white-space: pre-wrap;
 		display: inline-block;
+		/* Avoid clipping descenders from the player's tighter global line-height. */
+		line-height: normal;
 		padding: 1em;
 		margin: -1em;
 		will-change: transform;
