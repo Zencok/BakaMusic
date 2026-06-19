@@ -1072,8 +1072,11 @@ export class LyricLineEl extends LyricLineBase {
 		// main.style.opacity = `${opacity *
 		// 	(!this.hasFaded ? 1 : this.lyricPlayer._getIsNonDynamic() ? 1 : 0.3)
 		// 	}`;
-		const subopacity =
-			opacity * (this.lyricPlayer._getIsNonDynamic() ? 0.5 : 0.3);
+		// 逐字模式：当前行（GRADIENT）翻译/音译行用黄金比例 0.618 高亮，其余行维持 0.3 淡出
+		const isActiveLine = mode === LyricLineRenderMode.GRADIENT;
+		const subopacity = this.lyricPlayer._getIsNonDynamic()
+			? opacity * 0.5
+			: opacity * (isActiveLine ? 0.618 : 0.3);
 		main.style.opacity = `${opacity}`;
 		trans.style.opacity = `${subopacity}`;
 		roman.style.opacity = `${subopacity}`;

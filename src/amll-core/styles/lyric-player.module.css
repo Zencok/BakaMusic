@@ -190,7 +190,8 @@
 }
 
 .lyricSubLine {
-	font-size: max(0.5em, 10px);
+	/* 翻译/音译副行字号：主歌词的黄金比例 0.618 */
+	font-size: max(0.618em, 10px);
 	line-height: 1.5em;
 	transition: opacity 0.2s 0.25s;
 	opacity: 0.3;
