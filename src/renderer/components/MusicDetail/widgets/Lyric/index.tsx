@@ -184,9 +184,9 @@ function CoverStyleSelector() {
         ? "vinyl"
         : "cover";
     const vinylTonearm: MusicDetailVinylTonearm =
-        storedVinylTonearm === "none" || storedVinylTonearm === "classic"
+        storedVinylTonearm === "glass" || storedVinylTonearm === "classic"
             ? storedVinylTonearm
-            : "glass";
+            : "none";
     const tonearmReach: MusicDetailVinylTonearmReach =
         storedTonearmReach === "inner" ? "inner" : "outer";
 

@@ -52,9 +52,9 @@ function MusicDetail() {
         .join(" · ");
     const coverStyle = storedCoverStyle === "vinyl" ? "vinyl" : "cover";
     const vinylTonearm =
-        storedVinylTonearm === "none" || storedVinylTonearm === "classic"
+        storedVinylTonearm === "glass" || storedVinylTonearm === "classic"
             ? storedVinylTonearm
-            : "glass";
+            : "none";
     const tonearmReach = storedTonearmReach === "inner" ? "inner" : "outer";
 
     return (
