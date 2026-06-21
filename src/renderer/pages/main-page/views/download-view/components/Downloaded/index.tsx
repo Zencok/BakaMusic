@@ -4,7 +4,7 @@ import { useRef } from "react";
 
 export default function Downloaded() {
     const downloadedList = Downloader.useDownloadedMusicList();
-    const musicListContainerRef = useRef<HTMLDivElement>();
+    const musicListContainerRef = useRef<HTMLDivElement>(null);
 
     return (
         <div ref={musicListContainerRef}>

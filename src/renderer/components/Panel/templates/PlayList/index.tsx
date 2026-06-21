@@ -28,7 +28,7 @@ export default function PlayList(props: IProps) {
     const { coverHeader } = props;
     const musicQueue = useMusicQueue();
     const currentMusic = useCurrentMusic();
-    const scrollElementRef = useRef<HTMLDivElement>();
+    const scrollElementRef = useRef<HTMLDivElement>(null);
     const [activeItems, setActiveItems] = useState<Set<number>>(new Set());
     const lastActiveIndexRef = useRef(0);
 

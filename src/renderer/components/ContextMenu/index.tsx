@@ -66,7 +66,7 @@ const menuContainerMaxHeight = menuItemHeight * 10;
 
 function SingleColumnContextMenuComponent(props: IContextMenuData) {
     const { menuItems, x, y, setSubMenu, onItemClick } = props;
-    const menuContainerRef = useRef<HTMLDivElement>();
+    const menuContainerRef = useRef<HTMLDivElement>(null);
 
     return (
         <div

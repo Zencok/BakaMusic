@@ -15,7 +15,7 @@ interface IProps {
 
 export default function Header(props: IProps) {
     const { musicSheet, hidePlatform } = props;
-    const containerRef = useRef<HTMLDivElement>();
+    const containerRef = useRef<HTMLDivElement>(null);
     const { t } = useTranslation();
 
     return (

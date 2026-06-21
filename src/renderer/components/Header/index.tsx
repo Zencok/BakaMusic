@@ -16,7 +16,7 @@ import { musicDetailShownStore } from "@renderer/components/MusicDetail/store";
 
 export default function AppHeader() {
     const navigate = useNavigate();
-    const inputRef = useRef<HTMLInputElement>();
+    const inputRef = useRef<HTMLInputElement>(null);
     const [showSearchHistory, setShowSearchHistory] = useState(false);
     const isHistoryFocusRef = useRef(false);
 
