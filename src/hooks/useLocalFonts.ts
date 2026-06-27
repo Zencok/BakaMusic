@@ -4,7 +4,7 @@ import { useEffect } from "react";
 const fontsStore = new Store<FontData[] | null>(null);
 let fontsTask: Promise<FontData[] | null> | null = null;
 
-async function initFonts() {
+async function initFonts(): Promise<FontData[] | null> {
     if (fontsStore.getValue()) {
         return fontsStore.getValue();
     }
@@ -21,7 +21,7 @@ async function initFonts() {
         const allFonts = await window.queryLocalFonts();
         fontsStore.setValue(allFonts);
         return allFonts;
-    })().catch(() => null).finally(() => {
+    })().catch((): null => null).finally((): void => {
         fontsTask = null;
     });
 

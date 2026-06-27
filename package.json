@@ -81,7 +81,7 @@
     "style-loader": "^4.0.0",
     "ts-loader": "^9.5.1",
     "ts-node": "^10.9.2",
-    "typescript": "~5.0.4",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.15.0"
   },
   "dependencies": {

@@ -10,6 +10,11 @@ export interface IMusicQualityChoice {
     sizeText: string;
 }
 
+interface IResolvedMusicQualityChoices {
+    detailMusic: IMusic.IMusicItem;
+    choices: IMusicQualityChoice[];
+}
+
 export const aiUpscaleQualityKeys: IMusic.IQualityKey[] = [
     "master",
     "atmos_plus",
@@ -167,7 +172,7 @@ export async function resolveMusicQualityChoices(
     options?: {
         fallbackToPreferred?: boolean;
     },
-) {
+): Promise<IResolvedMusicQualityChoices> {
     let detailMusic = musicItem;
     let choices = getAvailableQualityChoices(detailMusic, t);
 
@@ -176,7 +181,7 @@ export async function resolveMusicQualityChoices(
             { platform: musicItem.platform },
             "getMusicInfo",
             musicItem,
-        ).catch(() => null);
+        ).catch((): null => null);
 
         if (musicInfo && typeof musicInfo === "object") {
             detailMusic = {

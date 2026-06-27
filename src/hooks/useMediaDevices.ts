@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export function useOutputAudioDevices() {
+export function useOutputAudioDevices(): MediaDeviceInfo[] | null {
     const [devices, setDevices] = useState<MediaDeviceInfo[] | null>(null);
 
     useEffect(() => {
@@ -9,7 +9,7 @@ export function useOutputAudioDevices() {
             .then((res) => {
                 setDevices(res.filter((item) => item.kind === "audiooutput"));
             })
-            .catch(() => undefined);
+            .catch((): undefined => undefined);
     }, []);
 
     return devices;

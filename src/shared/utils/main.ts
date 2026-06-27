@@ -106,7 +106,7 @@ class Utils {
                     const currentStream = fsSync.createWriteStream(filePath);
                     fileStream = currentStream;
 
-                    await new Promise<void>((res, rej) => {
+                    await new Promise<void>((res, rej): void => {
                         response.data.on("data", (chunk: Buffer) => {
                             downloaded += chunk.length;
                             if (!evt.sender.isDestroyed()) {
@@ -130,7 +130,7 @@ class Utils {
                 } catch (e) {
                     fileStream?.destroy();
                     if (filePath) {
-                        await fs.unlink(filePath).catch(() => undefined);
+                        await fs.unlink(filePath).catch((): undefined => undefined);
                     }
                     lastError = e;
                     // 尝试下一个镜像

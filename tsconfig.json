@@ -12,6 +12,9 @@
     "outDir": "dist",
     "moduleResolution": "node",
     "resolveJsonModule": true,
+    "ignoreDeprecations": "6.0",
+    "strict": false,
+    "noUncheckedSideEffectImports": false,
     "paths": {
       "*": ["node_modules/*"],
       "@/*": ["src/*"],

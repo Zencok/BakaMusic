@@ -296,8 +296,8 @@ function setupCommandAndEvents() {
 }
 
 async function setupDeviceChange() {
-    const getAudioDevices = async () =>
-        await navigator.mediaDevices.enumerateDevices().catch(() => []);
+    const getAudioDevices = async (): Promise<MediaDeviceInfo[]> =>
+        await navigator.mediaDevices.enumerateDevices().catch((): [] => []);
     let devices = (await getAudioDevices()) || [];
 
     navigator.mediaDevices.ondevicechange = async () => {

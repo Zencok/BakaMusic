@@ -46,14 +46,14 @@ async function selectThemeByHash(hash: string) {
 }
 
 let themePacksLoaded = false;
-async function setupThemePacks() {
+async function setupThemePacks(): Promise<void> {
     try {
         const currentTheme = await mod.initCurrentTheme();
         await selectTheme(currentTheme);
 
         requestIdleCallback(() => {
             if (!themePacksLoaded) {
-                loadThemePacks().catch(() => undefined);
+                loadThemePacks().catch((): undefined => undefined);
             }
         });
     } catch {
@@ -61,7 +61,7 @@ async function setupThemePacks() {
     }
 }
 
-async function loadThemePacks() {
+async function loadThemePacks(): Promise<void> {
     themePacksLoaded = true;
 
     const themePacks = await mod.loadThemePacks();
@@ -80,7 +80,10 @@ async function installThemePack(themePackPath: string) {
     return themePackConfig;
 }
 
-async function installRemoteThemePack(remoteUrl: string, id?: string) {
+async function installRemoteThemePack(
+    remoteUrl: string,
+    id?: string,
+): Promise<ICommon.IThemePack> {
     const themePackConfig = await mod.installRemoteThemePack(remoteUrl);
     if (!themePackConfig) {
         throw new Error("Not Valid Theme Pack");
@@ -128,7 +131,7 @@ function useLocalThemePacks() {
 
     useEffect(() => {
         if (!themePacksLoaded) {
-            loadThemePacks().catch(() => undefined);
+            loadThemePacks().catch((): undefined => undefined);
         }
     }, []);
 
