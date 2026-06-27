@@ -158,7 +158,7 @@ native/qmc2/             # QMC2 解密 native 模块 (C++ / node-gyp)
 |------|------|
 | Electron 43 | 桌面框架 |
 | React 19 | UI 框架 |
-| TypeScript 5 | 类型系统 |
+| TypeScript 6 | 类型系统 |
 | Webpack (Electron Forge) | 构建打包 |
 | SCSS | 样式 |
 | i18next | 国际化 |
