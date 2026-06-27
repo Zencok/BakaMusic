@@ -223,6 +223,33 @@ async function changeWatchPath(_logs: Map<string, "add" | "delete">) {
     localMusicListStore.setValue(nextLocalMusic);
 }
 
+async function scanLocalMusicChanges() {
+    await changeWatchPath(new Map());
+}
+
+async function clearAndRescanLocalMusic() {
+    const selectedDirs =
+        (await getUserPreferenceIDB("localWatchDirChecked")) ?? [];
+
+    await musicSheetDB.localMusicStore.clear();
+    localMusicListStore.setValue([]);
+
+    const worker = await getLocalFileWatcherWorker();
+    if (!worker || !selectedDirs.length) {
+        return;
+    }
+
+    const scanResult = await worker.scanDirectories(selectedDirs, []);
+    const optimizedScanResult = await optimizeLocalArtworkItems(scanResult.musicItems);
+
+    if (optimizedScanResult.optimizedMusicItems.length) {
+        await musicSheetDB.localMusicStore.bulkPut(
+            optimizedScanResult.optimizedMusicItems,
+        );
+    }
+    localMusicListStore.setValue(optimizedScanResult.optimizedMusicItems);
+}
+
 // async function syncLocalMusic() {
 //   ipcRendererSend("sync-local-music");
 // }
@@ -232,4 +259,6 @@ export default {
     releaseLocalMusic,
     // syncLocalMusic,
     changeWatchPath,
+    scanLocalMusicChanges,
+    clearAndRescanLocalMusic,
 };

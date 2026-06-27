@@ -13,6 +13,7 @@ import Checkbox from "@/renderer/components/Checkbox";
 import localMusic from "@/renderer/core/local-music";
 import { useTranslation } from "react-i18next";
 import { dialogUtil } from "@shared/utils/renderer";
+import { toast } from "react-toastify";
 
 
 export default function WatchLocalDir() {
@@ -21,6 +22,7 @@ export default function WatchLocalDir() {
     // 选中的文件夹
     const [checkedDirs, setCheckedDirs] = useState(new Set<string>());
     const changeLogRef = useRef(new Map<string, "add" | "delete">()); // key: path; value: op
+    const [isRescanning, setIsRescanning] = useState(false);
     const { t } = useTranslation();
 
     useEffect(() => {
@@ -150,8 +152,36 @@ export default function WatchLocalDir() {
                 <div className="footer-options">
                     <div
                         role="button"
-                        data-type="primaryButton"
+                        data-type="normalButton"
+                        data-disabled={isRescanning}
                         onClick={async () => {
+                            if (isRescanning) {
+                                return;
+                            }
+                            setIsRescanning(true);
+                            try {
+                                await setUserPreferenceIDB("localWatchDir", localDirs);
+                                await setUserPreferenceIDB("localWatchDirChecked", [...checkedDirs]);
+                                await localMusic.clearAndRescanLocalMusic();
+                                changeLogRef.current.clear();
+                                toast.success(t("modal.clear_and_rescan_local_music_success"));
+                            } finally {
+                                setIsRescanning(false);
+                            }
+                        }}
+                    >
+                        {isRescanning
+                            ? t("common.loading")
+                            : t("modal.clear_and_rescan_local_music")}
+                    </div>
+                    <div
+                        role="button"
+                        data-type="primaryButton"
+                        data-disabled={isRescanning}
+                        onClick={async () => {
+                            if (isRescanning) {
+                                return;
+                            }
                             setUserPreferenceIDB("localWatchDir", localDirs);
                             setUserPreferenceIDB("localWatchDirChecked", [...checkedDirs]);
                             await localMusic.changeWatchPath(changeLogRef.current);

@@ -81,5 +81,13 @@
   & .footer-options {
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     padding-top: 14px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+
+    & [data-disabled="true"] {
+      opacity: 0.56;
+      pointer-events: none;
+    }
   }
 }

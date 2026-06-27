@@ -147,7 +147,8 @@
   },
   "local_music_page": {
     "local_music": "本地音樂",
-    "auto_scan": "手動掃描",
+    "auto_scan": "掃描",
+    "scan_config": "配置",
     "search_local_music": "搜尋本地音樂",
     "list_view": "列表視圖",
     "artist_view": "藝術家視圖",
@@ -263,7 +264,9 @@
     "skip_this_version": "跳過此版本",
     "scan_local_music": "掃描本地音樂",
     "scan_local_music_hint": "將手動掃描勾選的資料夾",
-    "add_folder": "添加文件夾"
+    "add_folder": "添加文件夾",
+    "clear_and_rescan_local_music": "清空並重新掃描",
+    "clear_and_rescan_local_music_success": "已清空並重新掃描本地音樂"
   },
   "panel": {
     "play_list_song_num": "播放清單（{{number}} 首歌曲）",

@@ -147,7 +147,8 @@
   },
   "local_music_page": {
     "local_music": "Local Music",
-    "auto_scan": "Manual Scan",
+    "auto_scan": "Scan",
+    "scan_config": "Configure",
     "search_local_music": "Search Local Music",
     "list_view": "List View",
     "artist_view": "Artist View",
@@ -263,7 +264,9 @@
     "skip_this_version": "Skip This Version",
     "scan_local_music": "Scan Local Music",
     "scan_local_music_hint": "Manually scan selected folders",
-    "add_folder": "Add Folder"
+    "add_folder": "Add Folder",
+    "clear_and_rescan_local_music": "Clear and Rescan",
+    "clear_and_rescan_local_music_success": "Local music has been cleared and rescanned"
   },
   "panel": {
     "play_list_song_num": "Playlist ({{number}} songs)",

@@ -23,6 +23,7 @@ enum DisplayView {
 export default function LocalMusicView() {
     const { t } = useTranslation();
     const [displayView, setDisplayView] = useState(DisplayView.LIST);
+    const [isScanning, setIsScanning] = useState(false);
 
     const localMusicList = localMusicListStore.useValue();
     const [inputSearch, setInputSearch] = useState("");
@@ -82,17 +83,41 @@ export default function LocalMusicView() {
         >
             <div className="header">{t("local_music_page.local_music")}</div>
             <div className="operations">
-                <div
-                    className="manual-scan-button"
-                    data-type="normalButton"
-                    role="button"
-                    title={t("local_music_page.auto_scan")}
-                    onClick={() => {
-                        showModal("WatchLocalDir");
-                    }}
-                >
-                    <SvgAsset iconName="arrow-path"></SvgAsset>
-                    <span>{t("local_music_page.auto_scan")}</span>
+                <div className="local-music-scan-actions">
+                    <div
+                        className="manual-scan-button"
+                        data-type="normalButton"
+                        data-scanning={isScanning}
+                        role="button"
+                        title={t("local_music_page.auto_scan")}
+                        onClick={async () => {
+                            if (isScanning) {
+                                return;
+                            }
+
+                            setIsScanning(true);
+                            try {
+                                await localMusic.scanLocalMusicChanges();
+                            } finally {
+                                setIsScanning(false);
+                            }
+                        }}
+                    >
+                        <SvgAsset iconName="arrow-path"></SvgAsset>
+                        <span>{isScanning ? t("common.loading") : t("local_music_page.auto_scan")}</span>
+                    </div>
+                    <div
+                        className="scan-config-button"
+                        data-type="normalButton"
+                        role="button"
+                        title={t("local_music_page.scan_config")}
+                        onClick={() => {
+                            showModal("WatchLocalDir");
+                        }}
+                    >
+                        <SvgAsset iconName="cog-8-tooth"></SvgAsset>
+                        <span>{t("local_music_page.scan_config")}</span>
+                    </div>
                 </div>
                 <div className="operations-layout">
                     <input
