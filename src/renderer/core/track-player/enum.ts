@@ -10,7 +10,7 @@ export enum ErrorReason {
 
 export interface ICurrentLyric {
     parser?: LyricParser;
-    currentLrc?: IParsedLrcItem;
+    currentLrc?: IParsedLrcItem | null;
     /** 当前活跃词 */
     currentWord?: ILyric.IWordData | null;
     /** 行内进度 0~1 */

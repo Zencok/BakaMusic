@@ -14,6 +14,7 @@ import { internalDataKey, musicRefSymbol } from "@/common/constant";
 import { useEffect, useState } from "react";
 import { DownloadEvts, ee } from "./ee";
 import { fsUtil } from "@shared/utils/renderer";
+import { toError } from "@/common/error-util";
 
 const downloadedMusicListStore = new Store<IMusic.IMusicItem[]>([]);
 const downloadedSet = new Set<string>();
@@ -36,7 +37,7 @@ async function getDownloadedDetails(mediaBases: IMedia.IMediaBase[]) {
                 mediaBases.map((item) => [item.platform, item.id]),
             );
 
-            return musicDetailList;
+            return musicDetailList.filter((item): item is IMusic.IMusicItem & { [musicRefSymbol]: number } => Boolean(item));
         },
     );
 }
@@ -65,26 +66,31 @@ export async function addDownloadedMusicToList(
             const allMusic = await musicSheetDB.musicStore.bulkGet(
                 validMusicItems.map((item) => [item.platform, item.id]),
             );
-            allMusic.forEach((mi, index) => {
+            const normalizedMusic = allMusic.map((mi, index) => {
+                const validMusicItem = validMusicItems[index];
+                if (!validMusicItem) {
+                    return null;
+                }
                 if (mi) {
                     mi[musicRefSymbol] += 1;
                     mi[internalDataKey] = {
                         ...(mi[internalDataKey] ?? {}),
-                        ...(validMusicItems[index][internalDataKey] ?? {}),
+                        ...(validMusicItem[internalDataKey] ?? {}),
                     };
+                    return mi;
                 } else {
-                    allMusic[index] = {
-                        ...validMusicItems[index],
+                    return {
+                        ...validMusicItem,
                         [musicRefSymbol]: 1,
                     };
                 }
-            });
-            await musicSheetDB.musicStore.bulkPut(allMusic);
-            downloadedMusicListStore.setValue((prev) => [...prev, ...allMusic]);
-            allMusic.forEach((it) => {
+            }).filter((item): item is IMusic.IMusicItem & { [musicRefSymbol]: number } => Boolean(item));
+            await musicSheetDB.musicStore.bulkPut(normalizedMusic);
+            downloadedMusicListStore.setValue((prev) => [...prev, ...normalizedMusic]);
+            normalizedMusic.forEach((it) => {
                 downloadedSet.add(getMediaPrimaryKey(it));
             });
-            ee.emit(DownloadEvts.Downloaded, allMusic);
+            ee.emit(DownloadEvts.Downloaded, normalizedMusic);
             setUserPreferenceIDB(
                 "downloadedList",
                 downloadedMusicListStore.getValue().map(primaryKeyMap),
@@ -121,13 +127,19 @@ export async function removeDownloadedMusic(
             removeResults = await Promise.all(
                 toBeRemovedMusicDetail.map((it) => {
                     try {
+                        if (!it) {
+                            return false;
+                        }
+                        const downloadData = getInternalData<IMusic.IMusicItemInternalData>(it, "downloadData");
+                        if (!downloadData?.path) {
+                            return false;
+                        }
                         return fsUtil.rimraf(
-                            getInternalData<IMusic.IMusicItemInternalData>(it, "downloadData")
-                                ?.path,
+                            downloadData.path,
                         );
                     } catch (e) {
                         // 删除失败
-                        message = "部分歌曲删除失败 " + (e?.message ?? "");
+                        message = "部分歌曲删除失败 " + toError(e).message;
                         return false;
                     }
                 }),
@@ -180,7 +192,7 @@ export async function removeDownloadedMusic(
             );
         });
     } catch (e) {
-        message = "删除失败 " + (e?.message ?? "");
+        message = "删除失败 " + toError(e).message;
     }
     if (message) {
         return [

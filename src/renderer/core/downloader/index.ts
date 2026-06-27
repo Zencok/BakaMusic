@@ -26,6 +26,7 @@ import logger from "@shared/logger/renderer";
 import getUrlExt from "@/renderer/utils/get-url-ext";
 import { IDownloadPostprocessPayload } from "@/common/download-postprocess";
 import { buildDownloadPostprocessPayload } from "./postprocess";
+import { toError } from "@/common/error-util";
 
 
 export interface IDownloadStatus {
@@ -69,7 +70,7 @@ function setupDownloaderWorker() {
         const worker = new Worker(downloaderWorkerPath);
         downloaderWorker = Comlink.wrap(worker);
     }
-    setDownloadingConcurrency(AppConfig.getConfig("download.concurrency"));
+    setDownloadingConcurrency(AppConfig.getConfig("download.concurrency") ?? 5);
 }
 
 const concurrencyLimit = 20;
@@ -111,7 +112,11 @@ async function startDownload(
                 return;
             }
 
-            downloadingProgress.get(pk).state = DownloadState.DOWNLOADING;
+            const progress = downloadingProgress.get(pk);
+            if (!progress) {
+                return;
+            }
+            progress.state = DownloadState.DOWNLOADING;
             const fileName = `${it.title}-${it.artist}`.replace(/[/|\\?*"<>:]/g, "_");
             await new Promise<void>((resolve) => {
                 downloadMusicImpl(it, fileName, preferredQuality, (stateData) => {
@@ -142,8 +147,8 @@ async function downloadMusicImpl(
     onStateChange: IOnStateChangeFunc,
 ) {
     const [defaultQuality, whenQualityMissing] = [
-        preferredQuality ?? AppConfig.getConfig("download.defaultQuality"),
-        AppConfig.getConfig("download.whenQualityMissing"),
+        preferredQuality ?? AppConfig.getConfig("download.defaultQuality") ?? "128k",
+        AppConfig.getConfig("download.whenQualityMissing") ?? "lower",
     ];
     const qualityOrder = filterQualityOrderByDeclaredQualities(
         musicItem,
@@ -202,7 +207,7 @@ async function downloadMusicImpl(
     } catch (e) {
         onStateChange({
             state: DownloadState.ERROR,
-            msg: e?.message,
+            msg: toError(e).message,
         });
     }
 }
@@ -291,4 +296,3 @@ const Downloader = {
     useDownloadState,
 };
 export default Downloader;
-

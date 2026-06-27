@@ -11,7 +11,7 @@ export async function addSearchHistory(searchItem: string) {
     const newSearchHistory = [
         searchItem,
         ...oldSearchHistory.filter((item) => item !== searchItem),
-    ].slice(0, maxHistoryLen);
+    ].slice(0, maxHistoryLen ?? undefined);
     await setUserPreferenceIDB("searchHistory", newSearchHistory);
 }
 

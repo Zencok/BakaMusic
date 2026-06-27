@@ -83,7 +83,7 @@ export default function useSearch() {
                 if (
                     !forceSearch &&
                     query === prevPluginResult?.query &&
-                    page <= prevPluginResult?.page
+                    page <= (prevPluginResult?.page ?? 0)
                 ) {
                     // 重复请求
                     return;

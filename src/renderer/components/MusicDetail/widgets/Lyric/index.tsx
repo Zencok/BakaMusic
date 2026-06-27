@@ -63,7 +63,7 @@ export default function Lyric() {
     const openSearchLyric = useCallback(() => {
         showModal("SearchLyric", {
             defaultTitle: currentMusic?.title,
-            musicItem: currentMusic,
+            musicItem: currentMusic ?? undefined,
         });
     }, [currentMusic]);
 
@@ -366,7 +366,7 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
         getUserPreference("inlineLyricFontSize") ?? "13",
     );
     const showTranslation = useAppConfig("lyric.showTranslation");
-    const [linkedLyricInfo, setLinkedLyricInfo] = useState<IMedia.IUnique>(null);
+    const [linkedLyricInfo, setLinkedLyricInfo] = useState<IMedia.IUnique | null>(null);
     const { t } = useTranslation();
 
     const currentMusicRef = useRef<IMusic.IMusicItem>(
@@ -444,7 +444,7 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
                     onClick={() => {
                         if (fontSize) {
                             setFontSize((previousValue) => {
-                                const nextValue = Math.max(8, +previousValue - 1);
+                                const nextValue = Math.max(8, +(previousValue ?? "13") - 1);
                                 handleFontSize(nextValue);
                                 return `${nextValue}`;
                             });
@@ -457,7 +457,7 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
                     type="number"
                     max={32}
                     min={8}
-                    value={fontSize}
+                    value={fontSize ?? ""}
                     onChange={(event) => {
                         const value = event.target.value.trim();
                         setFontSize(value);
@@ -470,7 +470,7 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
                     onClick={() => {
                         if (fontSize) {
                             setFontSize((previousValue) => {
-                                const nextValue = Math.min(32, +previousValue + 1);
+                                const nextValue = Math.min(32, +(previousValue ?? "13") + 1);
                                 handleFontSize(nextValue);
                                 return `${nextValue}`;
                             });

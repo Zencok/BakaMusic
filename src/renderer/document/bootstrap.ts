@@ -71,7 +71,12 @@ function dropHandler() {
         event.stopPropagation();
 
         const validMusicList: IMusic.IMusicItem[] = [];
-        for (const f of event.dataTransfer.files) {
+        const fileList = event.dataTransfer?.files;
+        if (!fileList) {
+            return;
+        }
+
+        for (const f of fileList) {
             const filePath = getDroppedFilePath(f);
 
             if (!filePath) {
@@ -79,27 +84,31 @@ function dropHandler() {
             }
 
             if (f.type === "" && (await fsUtil.isFolder(filePath))) {
-                validMusicList.push(
-                    ...(await PluginManager.callPluginDelegateMethod(
-                        {
-                            hash: localPluginHash,
-                        },
-                        "importMusicSheet",
-                        filePath,
-                    )),
+                const importedMusicList = await PluginManager.callPluginDelegateMethod(
+                    {
+                        hash: localPluginHash,
+                    },
+                    "importMusicSheet",
+                    filePath,
                 );
+                if (importedMusicList) {
+                    validMusicList.push(
+                        ...importedMusicList,
+                    );
+                }
             } else if (
                 supportLocalMediaType.some((postfix) => filePath.endsWith(postfix))
             ) {
-                validMusicList.push(
-                    await PluginManager.callPluginDelegateMethod(
-                        {
-                            hash: localPluginHash,
-                        },
-                        "importMusicItem",
-                        filePath,
-                    ),
+                const importedMusicItem = await PluginManager.callPluginDelegateMethod(
+                    {
+                        hash: localPluginHash,
+                    },
+                    "importMusicItem",
+                    filePath,
                 );
+                if (importedMusicItem) {
+                    validMusicList.push(importedMusicItem);
+                }
             } else if (filePath.endsWith(".mftheme")) {
                 // 主题包
                 const themeConfig = await ThemePack.installThemePack(filePath);
@@ -178,6 +187,10 @@ function setupCommandAndEvents() {
 
     messageBus.onCommand("ToggleFavorite", async (item) => {
         const realItem = item || trackPlayer.currentMusic;
+        if (!realItem) {
+            return;
+        }
+
         if (MusicSheet.frontend.isFavoriteMusic(realItem)) {
             MusicSheet.frontend.removeMusicFromFavorite(realItem);
         } else {
@@ -283,6 +296,18 @@ function setupCommandAndEvents() {
 
     // 最近播放
     trackPlayer.on(PlayerEvents.MusicChanged, (musicItem) => {
+        if (!musicItem) {
+            messageBus.syncAppState({
+                musicItem: null,
+                lyricText: null,
+                fullLyric: [],
+                parsedLrc: null,
+                progress: 0,
+                duration: 0,
+            });
+            return;
+        }
+
         messageBus.syncAppState({
             musicItem,
             lyricText: null,

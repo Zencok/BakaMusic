@@ -60,7 +60,7 @@ export default function MusicInfo() {
     const musicDetailShown = useMusicDetailShown();
     const { t } = useTranslation();
     const canShowComments = PluginManager.isSupportFeatureMethod(
-        musicItem?.platform,
+        musicItem?.platform ?? "",
         "getMusicComments",
     );
 

@@ -9,9 +9,9 @@ async function resume(data: string | Record<string, any>, overwrite?: boolean) {
     const dataObj = typeof data === "string" ? JSON.parse(data) : data;
 
     const currentSheets = MusicSheet.frontend.getAllSheets();
-    const allSheets: IMusic.IMusicSheetItem[] = dataObj.musicSheets;
+    const allSheets: IMusic.IMusicSheetItem[] = dataObj.musicSheets ?? [];
 
-    let importedDefaultSheet;
+    let importedDefaultSheet: IMusic.IMusicSheetItem | undefined;
     for (const sheet of allSheets) {
         if (overwrite && sheet.id === MusicSheet.defaultSheet.id) {
             importedDefaultSheet = sheet;
@@ -20,7 +20,9 @@ async function resume(data: string | Record<string, any>, overwrite?: boolean) {
         const newSheet = await MusicSheet.frontend.addSheet(sheet.title, {
             sortType: sheet.sortType,
         });
-        await MusicSheet.frontend.addMusicToSheet(sheet.musicList, newSheet.id);
+        if (newSheet) {
+            await MusicSheet.frontend.addMusicToSheet(sheet.musicList ?? [], newSheet.id);
+        }
     }
     if (overwrite) {
         for (const sheet of currentSheets) {
@@ -28,7 +30,7 @@ async function resume(data: string | Record<string, any>, overwrite?: boolean) {
                 if (importedDefaultSheet) {
                     await MusicSheet.frontend.clearSheet(MusicSheet.defaultSheet.id);
                     await MusicSheet.frontend.addMusicToFavorite(
-                        importedDefaultSheet.musicList,
+                        importedDefaultSheet.musicList ?? [],
                     );
                 }
             }

@@ -17,7 +17,7 @@ import Promise = Dexie.Promise;
 
 class AudioController extends ControllerBase implements IAudioController {
     private audio: HTMLAudioElement;
-    private hls: Hls;
+    private hls: Hls | null = null;
     private _playerState: PlayerState = PlayerState.None;
     get playerState() {
         return this._playerState;
@@ -97,7 +97,7 @@ class AudioController extends ControllerBase implements IAudioController {
             this.hls = new Hls(config);
             this.hls.attachMedia(this.audio);
             this.hls.on(HlsEvents.ERROR, (evt, error) => {
-                this.onError(ErrorReason.EmptyResource, error);
+                this.onError?.(ErrorReason.EmptyResource, error);
             });
         }
     }
@@ -212,6 +212,10 @@ class AudioController extends ControllerBase implements IAudioController {
     }
 
     setTrackSource(trackSource: IMusic.IMusicSource, musicItem: IMusic.IMusicItem): void {
+        if (!trackSource.url) {
+            this.onError?.(ErrorReason.EmptyResource, new Error("mediaSource.url is empty"));
+            return;
+        }
         this.musicItem = { ...musicItem };
 
         // 1. update metadata
@@ -229,7 +233,7 @@ class AudioController extends ControllerBase implements IAudioController {
 
         // 2. convert url and headers
         let url = trackSource.url;
-        const urlObj = new URL(trackSource.url);
+        const urlObj = new URL(url);
         let headers: Record<string, any> | null = null;
 
         // 2.1 convert user agent
@@ -262,12 +266,12 @@ class AudioController extends ControllerBase implements IAudioController {
             if (Hls.isSupported()) {
                 this.initHls();
                 try {
-                    this.hls.loadSource(this.resolvePlayableUrl(url, headers));
+                    this.hls?.loadSource(this.resolvePlayableUrl(url, headers));
                 } catch (error) {
                     this.onError?.(ErrorReason.EmptyResource, error);
                 }
             } else {
-                this.onError(ErrorReason.UnsupportedResource);
+                this.onError?.(ErrorReason.UnsupportedResource);
                 return;
             }
         } else {

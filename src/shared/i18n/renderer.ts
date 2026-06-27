@@ -13,6 +13,9 @@ const mod = window["@shared/i18n" as any] as unknown as IMod;
 
 export async function setupI18n() {
     const { allLangs = [], content, lang } = (await mod.setupLang()) || {};
+    if (!lang) {
+        return;
+    }
     langListStore.setValue(allLangs);
     await i18n.init({
         resources: {

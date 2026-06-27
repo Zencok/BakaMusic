@@ -142,28 +142,28 @@ function _SearchResultBody(props: ISearchResultBodyProps) {
                         <MusicResult
                             data={data}
                             state={currentResult?.state ?? RequestStateCode.IDLE}
-                            pluginHash={pluginHash}
+                            pluginHash={pluginHash ?? ""}
                         ></MusicResult>
                     </SwitchCase.Case>
                     <SwitchCase.Case case="album">
                         <AlbumResult
                             data={data}
                             state={currentResult?.state ?? RequestStateCode.IDLE}
-                            pluginHash={pluginHash}
+                            pluginHash={pluginHash ?? ""}
                         ></AlbumResult>
                     </SwitchCase.Case>
                     <SwitchCase.Case case="artist">
                         <ArtistResult
                             data={data}
                             state={currentResult?.state ?? RequestStateCode.IDLE}
-                            pluginHash={pluginHash}
+                            pluginHash={pluginHash ?? ""}
                         ></ArtistResult>
                     </SwitchCase.Case>
                     <SwitchCase.Case case="sheet">
                         <SheetResult
                             data={data}
                             state={currentResult?.state ?? RequestStateCode.IDLE}
-                            pluginHash={pluginHash}
+                            pluginHash={pluginHash ?? ""}
                         ></SheetResult>
                     </SwitchCase.Case>
                 </SwitchCase.Switch>

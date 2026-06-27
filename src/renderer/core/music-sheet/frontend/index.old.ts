@@ -82,6 +82,9 @@ export async function updateSheetMusicOrder(
         const targetSheet = musicSheetsStore
             .getValue()
             .find((it) => it.id === sheetId);
+        if (!targetSheet) {
+            return;
+        }
         updateSheetDetail({
             ...targetSheet,
             sortType: MusicSheetSortType.None,

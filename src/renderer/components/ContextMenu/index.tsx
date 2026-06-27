@@ -1,7 +1,7 @@
 import Store from "@/common/store";
 import SvgAsset, { SvgAssetIconNames } from "../SvgAsset";
 import "./index.scss";
-import Condition, { If, IfTruthy } from "../Condition";
+import { If, IfTruthy } from "../Condition";
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 export interface IContextMenuItem {
@@ -65,7 +65,7 @@ const menuItemHeight = 32;
 const menuContainerMaxHeight = menuItemHeight * 10;
 
 function SingleColumnContextMenuComponent(props: IContextMenuData) {
-    const { menuItems, x, y, setSubMenu, onItemClick } = props;
+    const { menuItems = [], x, y, setSubMenu, onItemClick } = props;
     const menuContainerRef = useRef<HTMLDivElement>(null);
 
     return (
@@ -98,14 +98,19 @@ function SingleColumnContextMenuComponent(props: IContextMenuData) {
                                 onMouseEnter={(e) => {
                                     const subMenu = item.subMenu;
                                     if (!subMenu) {
-                                        setSubMenu?.(null, item);
+                                        setSubMenu?.(undefined, item);
+                                        return;
+                                    }
+
+                                    const menuContainer = menuContainerRef.current;
+                                    if (!menuContainer) {
                                         return;
                                     }
 
                                     const realPos =
                     y +
                     (e.target as HTMLDivElement).offsetTop -
-                    menuContainerRef.current.scrollTop;
+                    menuContainer.scrollTop;
                                     const realHeight = Math.min(
                                         subMenu.length * menuItemHeight,
                                         menuContainerMaxHeight,
@@ -138,7 +143,9 @@ function SingleColumnContextMenuComponent(props: IContextMenuData) {
                             >
                                 <IfTruthy condition={item.icon}>
                                     <div className="menu-item-icon">
-                                        <SvgAsset iconName={item.icon}></SvgAsset>
+                                        {item.icon ? (
+                                            <SvgAsset iconName={item.icon}></SvgAsset>
+                                        ) : null}
                                     </div>
                                 </IfTruthy>
                                 <span>{item.title}</span>
@@ -163,15 +170,16 @@ export function ContextMenuComponent() {
 
     const [actualX, actualY] = useMemo(() => {
         if (x === undefined || y === undefined) {
-            return [-1000, -1000];
+            return [-1000, -1000] as [number, number];
         }
         const isLeft = x < window.innerWidth / 2 ? 0 : 1;
         const isTop = y < window.innerHeight / 2 ? 0 : 2;
+        const visibleMenuItems = menuItems ?? [];
     
         const containerHeight = Math.min(
             component
-                ? height
-                : menuItems.reduce(
+                ? height ?? menuItemHeight
+                : visibleMenuItems.reduce(
                     (prev, curr) =>
                         prev +
               (curr.show !== false ? (curr.divider ? 1 : menuItemHeight) : 0),
@@ -192,7 +200,9 @@ export function ContextMenuComponent() {
             case 3: // 右下角
                 return [x - containerWidth - offset, y - offset - containerHeight];
         }
-    }, [x, y]);
+
+        return [x + offset, y + offset] as [number, number];
+    }, [component, height, menuItems, width, x, y]);
 
     useEffect(() => {
         const contextClickListener = () => {
@@ -215,31 +225,33 @@ export function ContextMenuComponent() {
     return (
         <If condition={contextMenuData !== null && !component}>
             <If.Truthy>
-                <SingleColumnContextMenuComponent
-                    menuItems={menuItems}
-                    x={actualX}
-                    y={actualY}
-                    setSubMenu={(data, menuItem) => {
-                        setSubMenuData(
-                            data
-                                ? {
-                                    ...data,
-                                    onItemClick(value) {
-                                        menuItem?.onClick?.(value);
-                                    },
-                                }
-                                : data,
-                        );
-                    }}
-                ></SingleColumnContextMenuComponent>
-                <Condition condition={subMenuData}>
+                {contextMenuData ? (
                     <SingleColumnContextMenuComponent
-                        menuItems={subMenuData?.menuItems}
-                        x={subMenuData?.x}
-                        y={subMenuData?.y}
-                        onItemClick={subMenuData?.onItemClick}
+                        menuItems={menuItems ?? []}
+                        x={actualX}
+                        y={actualY}
+                        setSubMenu={(data, menuItem) => {
+                            setSubMenuData(
+                                data
+                                    ? {
+                                        ...data,
+                                        onItemClick(value) {
+                                            menuItem?.onClick?.(value);
+                                        },
+                                    }
+                                    : null,
+                            );
+                        }}
                     ></SingleColumnContextMenuComponent>
-                </Condition>
+                ) : null}
+                {subMenuData ? (
+                    <SingleColumnContextMenuComponent
+                        menuItems={subMenuData.menuItems ?? []}
+                        x={subMenuData.x}
+                        y={subMenuData.y}
+                        onItemClick={subMenuData.onItemClick}
+                    ></SingleColumnContextMenuComponent>
+                ) : null}
             </If.Truthy>
             <If.Falsy>
                 <div

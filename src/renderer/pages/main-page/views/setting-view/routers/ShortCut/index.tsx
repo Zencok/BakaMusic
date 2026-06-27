@@ -29,7 +29,7 @@ export default function ShortCut() {
     );
 }
 
-type IShortCutKeys = keyof IAppConfig["shortCut.shortcuts"];
+type IShortCutKeys = Extract<keyof IAppConfig["shortCut.shortcuts"], string>;
 
 
 function ShortCutTable() {
@@ -38,6 +38,7 @@ function ShortCutTable() {
     const enableLocalShortCut = useAppConfig("shortCut.enableLocal");
     const enableGlobalShortCut = useAppConfig("shortCut.enableGlobal");
     const shortCuts = useAppConfig("shortCut.shortcuts");
+    const shortcutKeys = shortCutKeys as IShortCutKeys[];
 
 
     return (
@@ -49,7 +50,7 @@ function ShortCutTable() {
                     <div>{t("settings.short_cut.global_short_cut")}</div>
                 </div>
             </div>
-            {shortCutKeys.map((it: string) => (
+            {shortcutKeys.map((it) => (
                 <div className="setting-view--short-cut-table-row" key={it}>
                     <div className="short-cut-ability">{t(`settings.short_cut.${it}`)}</div>
                     <div className="short-cut-bindings">
@@ -58,14 +59,16 @@ function ShortCutTable() {
                                 {t("settings.short_cut.local_short_cut")}
                             </div>
                             <ShortCutItem
-                                enabled={enableLocalShortCut}
+                                enabled={!!enableLocalShortCut}
                                 value={shortCuts?.[it]?.local}
                                 onChange={(val) => {
-                                    shortCut.registerLocalShortCut(it as IShortCutKeys, val);
+                                    if (val) {
+                                        shortCut.registerLocalShortCut(it, val);
+                                    }
                                 }}
                                 showClearButton
                                 onClear={() => {
-                                    shortCut.unregisterLocalShortCut(it as IShortCutKeys);
+                                    shortCut.unregisterLocalShortCut(it);
                                 }}
                             ></ShortCutItem>
                         </div>
@@ -74,14 +77,16 @@ function ShortCutTable() {
                                 {t("settings.short_cut.global_short_cut")}
                             </div>
                             <ShortCutItem
-                                enabled={enableGlobalShortCut}
+                                enabled={!!enableGlobalShortCut}
                                 value={shortCuts?.[it]?.global}
                                 onChange={(val) => {
-                                    shortCut.registerGlobalShortCut(it as IShortCutKeys, val);
+                                    if (val) {
+                                        shortCut.registerGlobalShortCut(it, val);
+                                    }
                                 }}
                                 showClearButton
                                 onClear={() => {
-                                    shortCut.unregisterGlobalShortCut(it as IShortCutKeys);
+                                    shortCut.unregisterGlobalShortCut(it);
                                 }}
                             ></ShortCutItem>
                         </div>
@@ -162,7 +167,7 @@ function ShortCutItem(props: IShortCutItemProps) {
                     isRecordingRef.current = false;
                     // 开始结算
                     const recordedSet = recordedKeysRef.current;
-                    const _recordShortCutKey = [];
+                    const _recordShortCutKey: string[] = [];
 
                     let statusCode = 0;
                     if (recordedSet.has("ctrl") || recordedSet.has("control")) {
@@ -195,7 +200,7 @@ function ShortCutItem(props: IShortCutItemProps) {
 
                     if (recordedSet.size === 1 && (isGlobal ? statusCode : true)) {
                         _recordShortCutKey.push(
-                            keyCodeMap([...recordedSet.values()][0]).replace(
+                            keyCodeMap([...recordedSet.values()][0] ?? "").replace(
                                 /^(.)/,
                                 (_, $1: string) => $1.toUpperCase(),
                             ),

@@ -74,6 +74,9 @@ export default function Normal() {
                 width={"240px"}
                 onChange={async (evt, lang) => {
                     evt.preventDefault();
+                    if (!lang) {
+                        return;
+                    }
                     const success = await changeLang(lang);
                     if (!success) {
                         toast.warning(t("settings.normal.toast_switch_language_fail"));

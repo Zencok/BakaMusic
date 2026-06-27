@@ -23,6 +23,9 @@ async function handleBakaMusicScheme(url: URL) {
         try {
             const pluginUrlStr =
                 url.pathname.slice(1) || url.searchParams.get("plugin");
+            if (!pluginUrlStr) {
+                return;
+            }
             const pluginUrls = pluginUrlStr.split(",").map(decodeURIComponent);
             await Promise.all(
                 pluginUrls.map((it) => PluginManager.installPluginFromRemoteUrl(it).catch(voidCallback)),

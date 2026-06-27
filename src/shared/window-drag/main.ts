@@ -108,8 +108,14 @@ class WindowDrag {
     setup(): void {
         ipcMain.on("set-window-draggable", (_evt, position) => {
             const window = BrowserWindow.fromWebContents(_evt.sender);
+            if (!window) {
+                return;
+            }
             if (this.registeredWindows.has(window)) {
                 const metadata = this.registeredWindows.get(window);
+                if (!metadata) {
+                    return;
+                }
                 let width = metadata.width;
                 let height = metadata.height;
                 if (metadata.getWindowSize) {

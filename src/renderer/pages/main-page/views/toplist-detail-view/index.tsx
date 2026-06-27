@@ -6,13 +6,19 @@ export default function TopListDetailView() {
     const params = useParams();
     const [topListDetail, state, loadMore] = useTopListDetail(
         history.state?.usr?.toplist,
-        params?.platform,
+        params?.platform ?? "",
     );
+    const musicSheet = topListDetail ?? {
+        platform: params?.platform ?? "",
+        id: "",
+        title: "",
+        musicList: [],
+    };
 
     return (
         <div id="page-container" className="page-container">
             <MusicSheetlikeView
-                musicSheet={topListDetail}
+                musicSheet={musicSheet}
                 musicList={topListDetail?.musicList ?? []}
                 state={state}
                 onLoadMore={loadMore}

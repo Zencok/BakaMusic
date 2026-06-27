@@ -7,12 +7,13 @@ import { IAppConfig } from "@/types/app-config";
 import { IWindowManager } from "@/types/main/window-manager";
 import logger from "@shared/logger/main";
 import _defaultAppConfig from "@shared/app-config/default-app-config";
+import { toError } from "@/common/error-util";
 
 
 class AppConfig {
-    private _configPath: string;
-    private windowManager: IWindowManager;
-    private config: IAppConfig;
+    private _configPath = "";
+    private windowManager!: IWindowManager;
+    private config: IAppConfig = {};
 
     private onAppConfigUpdatedCallbacks = new Set<(patch: IAppConfig, config: IAppConfig, from: "main" | "renderer") => void>();
 
@@ -85,7 +86,7 @@ class AppConfig {
     }
 
     async migrateOldVersionConfig() {
-        if (this.config["$schema-version"] >= 0) {
+        if ((this.config["$schema-version"] ?? -1) >= 0) {
             return;
         }
         // 1. 升级到v1
@@ -160,7 +161,7 @@ class AppConfig {
             const rawConfig = JSON.stringify(newConfig, undefined, 4);
             originalFs.writeFileSync(this.configPath, rawConfig, "utf-8");
         } catch (e) {
-            logger.logError("迁移旧版配置失败", e);
+            logger.logError("迁移旧版配置失败", toError(e));
         }
     }
 
@@ -179,11 +180,12 @@ class AppConfig {
                 };
             }
         } catch (e) {
-            if (e.message === "Unexpected end of JSON input" || e.code === "EISDIR") {
+            const error = toError(e) as NodeJS.ErrnoException;
+            if (error.message === "Unexpected end of JSON input" || error.code === "EISDIR") {
                 // JSON 解析异常 / 非文件
                 await rimraf(this.configPath);
                 await this.checkPath();
-            } else if (e.code === "ENOENT") {
+            } else if (error.code === "ENOENT") {
                 // 文件不存在
                 await this.checkPath();
             }
@@ -224,7 +226,7 @@ class AppConfig {
                         const serializedData = JSON.parse(JSON.stringify(data));
                         window.webContents.send("@shared/app-config/update-app-config", serializedData);
                     } catch (e) {
-                        logger.logError("发送配置更新失败", e);
+                        logger.logError("发送配置更新失败", toError(e));
                     }
                 }
             });
@@ -234,7 +236,7 @@ class AppConfig {
             });
 
         } catch (e) {
-            logger.logError("设置配置失败", e);
+            logger.logError("设置配置失败", toError(e));
         }
     }
 

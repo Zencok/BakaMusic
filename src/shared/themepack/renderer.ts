@@ -91,7 +91,7 @@ async function installRemoteThemePack(
 
     let oldThemeConfig: ICommon.IThemePack | null = null;
     if (id) {
-        oldThemeConfig = localThemePacksStore.getValue().find((it) => it?.id === id);
+        oldThemeConfig = localThemePacksStore.getValue().find((it) => it?.id === id) ?? null;
         if (oldThemeConfig) {
             mod.uninstallThemePack(oldThemeConfig);
         }

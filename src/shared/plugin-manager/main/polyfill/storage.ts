@@ -73,7 +73,7 @@ async function setItem(key: string, value: unknown) {
     }
     const newStorage = {
         ...storage,
-        [key]: typeof value === "string" ? value : value?.toString?.(),
+        [key]: typeof value === "string" ? value : String(value),
     };
     await saveStorage(newStorage);
 }

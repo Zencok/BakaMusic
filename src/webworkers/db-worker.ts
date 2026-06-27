@@ -19,6 +19,11 @@ function getSheetItem(sheetId: string): IMusic.IMusicSheetItem | null {
                 "SELECT * from \"main\".\"localMusicSheets\" where id = ?",
             )
             .get(sheetId);
+
+        if (!sheetItem) {
+            return null;
+        }
+
         return {
             platform: sheetItem.platform,
             id: sheetItem.id,

@@ -242,7 +242,7 @@ function InlineVerticalSlider(props: IInlineVerticalSliderProps) {
 }
 
 interface IFloatingBubbleProps {
-    anchorRef: RefObject<HTMLDivElement>;
+    anchorRef: RefObject<HTMLDivElement | null>;
     visible: boolean;
     onMouseEnter: () => void;
     onMouseLeave: () => void;
@@ -645,7 +645,7 @@ function LyricBtn() {
         <div
             className={classNames({
                 "extra-btn": true,
-                highlight: enableDesktopLyric,
+                highlight: !!enableDesktopLyric,
             })}
             role="button"
             onClick={async () => {

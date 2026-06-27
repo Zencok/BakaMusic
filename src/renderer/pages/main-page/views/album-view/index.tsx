@@ -11,18 +11,20 @@ export default function AlbumView() {
 
         return {
             ...sheetInState,
-            platform: params?.platform,
-            id: params?.id,
+            platform: params?.platform ?? "",
+            id: params?.id ?? "",
+            title: sheetInState.title ?? "",
         } as IAlbum.IAlbumItem;
     }, [params?.platform, params?.id]);
 
     const [requestState, albumItem, musicList, getAlbumDetail] =
     useAlbumDetail(originalAlbumItem);
+    const displayAlbumItem = albumItem ?? originalAlbumItem;
 
     return (
         <div id="page-container" className="page-container">
             <MusicSheetlikeView
-                musicSheet={albumItem}
+                musicSheet={displayAlbumItem}
                 musicList={musicList}
                 onLoadMore={getAlbumDetail}
                 state={requestState}

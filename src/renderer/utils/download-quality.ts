@@ -32,7 +32,11 @@ export async function promptDownloadWithQuality(
 
     let choices = getPreferredQualityChoices(t);
     if (validItems.length === 1) {
-        const result = await resolveMusicQualityChoices(validItems[0], t);
+        const validItem = validItems[0];
+        if (!validItem) {
+            return;
+        }
+        const result = await resolveMusicQualityChoices(validItem, t);
         choices = result.choices;
 
         if (!choices.length) {
@@ -43,12 +47,17 @@ export async function promptDownloadWithQuality(
 
     showQualitySelectPopover({
         title: getDownloadQualityModalTitle(),
-        defaultValue,
+        defaultValue: defaultValue ?? undefined,
         choices,
         anchor: options?.anchor,
         onSelect(value) {
+            const downloadItems = Array.isArray(musicItems) ? validItems : validItems[0];
+            if (!downloadItems) {
+                return;
+            }
+
             Downloader.startDownload(
-                Array.isArray(musicItems) ? validItems : validItems[0],
+                downloadItems,
                 value,
             );
         },

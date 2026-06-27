@@ -31,9 +31,8 @@ export function normalizeNumber(number: number, en?: boolean): string {
     const _n = +number;
     if (isNaN(_n) || !isFinite(_n)) {
         return "-";
-    } else if (isFinite(_n)) {
-        return en ? normalizeNumberEN(_n) : normalizeNumberCN(_n);
     }
+    return en ? normalizeNumberEN(_n) : normalizeNumberCN(_n);
 }
 
 export function addRandomHash(url: string) {

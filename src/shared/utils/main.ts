@@ -8,7 +8,7 @@ import axios from "axios";
 import { compare } from "compare-versions";
 
 class Utils {
-    private windowManager: IWindowManager;
+    private windowManager!: IWindowManager;
 
     public setup(windowManager: IWindowManager) {
         this.windowManager = windowManager;
@@ -245,6 +245,10 @@ class Utils {
 
         ipcMain.on("@shared/utils/toggle-main-window-visible", () => {
             const mainWindow = this.windowManager.mainWindow;
+            if (!mainWindow) {
+                this.windowManager.showMainWindow();
+                return;
+            }
 
             if (mainWindow.isMinimized() || !mainWindow.isVisible()) {
                 mainWindow.show();

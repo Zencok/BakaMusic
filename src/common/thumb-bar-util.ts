@@ -11,6 +11,7 @@ import fs from "fs/promises";
 import logger from "@shared/logger/main";
 import axios from "axios";
 import messageBus from "@shared/message-bus/main";
+import { toError } from "@/common/error-util";
 
 /**
  * 设置缩略图按钮
@@ -101,7 +102,7 @@ async function setThumbImage(window: BrowserWindow, src: string) {
                 buffer = await getDefaultAlbumCoverImage();
             }
         } else if (src.startsWith("data:image")) {
-            buffer = Buffer.from(src.split(";base64,").pop(), "base64");
+            buffer = Buffer.from(src.split(";base64,").pop() ?? "", "base64");
         } else {
             buffer = await getDefaultAlbumCoverImage();
         }
@@ -129,7 +130,7 @@ async function setThumbImage(window: BrowserWindow, src: string) {
             result.data,
         );
     } catch (ex) {
-        logger.logError("Fail to setThumbImage", ex);
+        logger.logError("Fail to setThumbImage", toError(ex));
     }
 
 

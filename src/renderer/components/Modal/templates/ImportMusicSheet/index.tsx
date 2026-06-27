@@ -32,12 +32,12 @@ export default function ImportMusicSheet(props: IProps) {
                                         title: t("plugin.method_import_music_sheet"),
                                         withLoading: true,
                                         loadingText: t("plugin_management_page.importing_media"),
-                                        placeholder: t(
+                                        placeholder: String(t(
                                             "plugin_management_page.placeholder_import_music_sheet",
                                             {
                                                 plugin: it.platform,
                                             },
-                                        ),
+                                        )),
                                         maxLength: 1000,
                                         onOk(text) {
                                             return PluginManager.callPluginDelegateMethod(
@@ -55,7 +55,7 @@ export default function ImportMusicSheet(props: IProps) {
                                         onPromiseRejected() {
                                             toast.error(t("plugin_management_page.import_failed"));
                                         },
-                                        hints: it.hints?.importMusicSheet,
+                                        hints: it.hints?.importMusicSheet ?? undefined,
                                     });
                                 }}
                             >

@@ -13,8 +13,8 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "ignoreDeprecations": "6.0",
-    "strict": false,
-    "noUncheckedSideEffectImports": false,
+    "strict": true,
+    "noUncheckedSideEffectImports": true,
     "paths": {
       "*": ["node_modules/*"],
       "@/*": ["src/*"],

@@ -24,7 +24,12 @@ import trackPlayer from "../core/track-player";
 logger.logPerf("Create Bundle");
 bootstrap().then(() => {
     logger.logPerf("Bundle Bootstrap Ready");
-    ReactDOM.createRoot(document.getElementById("root")).render(<ErrorBoundary
+    const rootElement = document.getElementById("root");
+    if (!rootElement) {
+        throw new Error("Root element not found");
+    }
+
+    ReactDOM.createRoot(rootElement).render(<ErrorBoundary
         FallbackComponent={Fallback} onReset={() => {
             // 删除软件配置
             AppConfig.reset();

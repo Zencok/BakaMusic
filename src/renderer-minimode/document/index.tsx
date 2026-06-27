@@ -10,7 +10,12 @@ import "react-toastify/dist/ReactToastify.css";
 import "./styles/index.scss"; // 全局样式
 
 bootstrap().then(() => {
-    ReactDOM.createRoot(document.getElementById("root")).render(<Root></Root>);
+    const rootElement = document.getElementById("root");
+    if (!rootElement) {
+        throw new Error("Root element not found");
+    }
+
+    ReactDOM.createRoot(rootElement).render(<Root></Root>);
 });
 
 function Root() {

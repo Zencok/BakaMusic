@@ -8,6 +8,7 @@ import {
 import "./index.scss";
 import albumImg from "@/assets/imgs/album-cover.jpg";
 import { localPluginName, qualityKeys, RequestStateCode, sortIndexSymbol, timeStampSymbol } from "@/common/constant";
+import { toError } from "@/common/error-util";
 import { getInternalData, getMediaPrimaryKey, isSameMedia } from "@/common/media-util";
 import { normalizeFileSize } from "@/common/normalize-util";
 import { secondsToDuration } from "@/common/time-util";
@@ -115,7 +116,7 @@ function ArtworkContent(props: {
 }
 
 const columnHelper = createColumnHelper<IMusic.IMusicItem>();
-const columnDef: ColumnDef<IMusic.IMusicItem>[] = [
+const columnDef: ColumnDef<IMusic.IMusicItem, any>[] = [
     columnHelper.display({
         id: "like",
         size: 42,
@@ -180,7 +181,7 @@ const columnDef: ColumnDef<IMusic.IMusicItem>[] = [
         maxSize: 150,
         minSize: 48,
         cell: (info) =>
-            info.getValue() ? secondsToDuration(info.getValue()) : "--:--",
+            info.getValue() ? secondsToDuration(info.getValue() ?? 0) : "--:--",
         // @ts-ignore
         fr: 1,
     }),
@@ -251,7 +252,9 @@ export function showMusicContextMenu(
             icon: "trash",
             show: !!sheetType && sheetType !== "play-list",
             onClick() {
-                MusicSheet.frontend.removeMusicFromSheet(musicItems, sheetType);
+                if (sheetType) {
+                    MusicSheet.frontend.removeMusicFromSheet(musicItems, sheetType);
+                }
             },
         },
         {
@@ -327,16 +330,24 @@ export function showMusicContextMenu(
                     if (!isArray) {
                         let realTimeMusicItem = musicItems;
                         if (musicItems.platform !== localPluginName) {
-                            realTimeMusicItem = await musicSheetDB.musicStore.get([
+                            const storedMusicItem = await musicSheetDB.musicStore.get([
                                 musicItems.platform,
                                 musicItems.id,
                             ]);
+                            if (!storedMusicItem) {
+                                throw new Error("Music item not found");
+                            }
+                            realTimeMusicItem = storedMusicItem;
                         }
 
                         const downloadPath = getInternalData<IMusic.IMusicItemInternalData>(
                             realTimeMusicItem,
                             "downloadData",
                         )?.path;
+
+                        if (!downloadPath) {
+                            throw new Error("Download path not found");
+                        }
 
                         const result = await shellUtil.showItemInFolder(downloadPath);
                         if (!result) {
@@ -347,7 +358,7 @@ export function showMusicContextMenu(
                     toast.error(
                         `${i18n.t(
                             "music_list_context_menu.reveal_local_music_in_file_explorer_fail",
-                        )} ${e?.message ?? ""}`,
+                        )} ${toError(e).message}`,
                     );
                 }
             },
@@ -616,12 +627,12 @@ function _MusicList(props: IMusicListProps) {
 
     const musicListRef = useRef(musicList);
     const columnShownRef = useRef(
-        AppConfig.getConfig("normal.musicListColumnsShown").reduce(
+        (AppConfig.getConfig("normal.musicListColumnsShown") ?? []).reduce(
             (prev, curr) => ({
                 ...prev,
                 [curr]: false,
             }),
-            {},
+            {} as Record<string, boolean>,
         ),
     );
 
@@ -681,13 +692,17 @@ function _MusicList(props: IMusicListProps) {
             if (!onDragEnd || fromIndex === toIndex) {
                 return;
             }
+            const draggedMusicItem = musicList[fromIndex];
+            if (!draggedMusicItem) {
+                return;
+            }
             const newData = musicList
                 .slice(0, fromIndex)
                 .concat(musicList.slice(fromIndex + 1));
             newData.splice(
                 fromIndex > toIndex ? toIndex : toIndex - 1,
                 0,
-                musicList[fromIndex],
+                draggedMusicItem,
             );
             onDragEnd?.(newData);
         },
@@ -699,7 +714,7 @@ function _MusicList(props: IMusicListProps) {
         return Array.from(selected)
             .sort((a, b) => a - b)
             .map((index) => rows[index]?.original)
-            .filter(Boolean);
+            .filter((item): item is IMusic.IMusicItem => !!item);
     }, [table]);
 
     const playMusicItem = useCallback((musicItem: IMusic.IMusicItem) => {
@@ -1062,14 +1077,16 @@ function _MusicList(props: IMusicListProps) {
 export default memo(
     _MusicList,
     (prev, curr) =>
-        prev.state === curr.state &&
-        prev.enableDrag === curr.enableDrag &&
-        prev.musicList === curr.musicList &&
-        prev.onPageChange === curr.onPageChange &&
-        prev.onDragEnd === curr.onDragEnd &&
-        prev.sortStorageKey === curr.sortStorageKey &&
-        prev.useSearchDefaultSort === curr.useSearchDefaultSort &&
-        prev.musicSheet &&
-        curr.musicSheet &&
-        isSameMedia(prev.musicSheet, curr.musicSheet),
+        !!(
+            prev.state === curr.state &&
+            prev.enableDrag === curr.enableDrag &&
+            prev.musicList === curr.musicList &&
+            prev.onPageChange === curr.onPageChange &&
+            prev.onDragEnd === curr.onDragEnd &&
+            prev.sortStorageKey === curr.sortStorageKey &&
+            prev.useSearchDefaultSort === curr.useSearchDefaultSort &&
+            prev.musicSheet &&
+            curr.musicSheet &&
+            isSameMedia(prev.musicSheet, curr.musicSheet)
+        ),
 );

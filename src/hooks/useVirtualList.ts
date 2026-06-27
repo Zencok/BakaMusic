@@ -111,7 +111,9 @@ export default function useVirtualList<T>(props: IVirtualListProps<T>) {
         if (!scrollElementRef.current) {
             scrollElementRef.current = getScrollElement
                 ? getScrollElement()
-                : document.querySelector(scrollElementQuery);
+                : scrollElementQuery
+                    ? document.querySelector(scrollElementQuery)
+                    : null;
         }
         if (scrollElementRef.current) {
             scrollElementRef.current.addEventListener("scroll", scrollHandler);

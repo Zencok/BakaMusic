@@ -3,14 +3,14 @@ import Dexie, { Table } from "dexie";
 
 class MusicSheetDB extends Dexie {
     // 歌单信息，其中musiclist只存有platform和id
-    sheets: Table<IMusic.IDBMusicSheetItem>;
+    sheets!: Table<IMusic.IDBMusicSheetItem>;
     // musicstore 存有歌单内保存所有的音乐信息
-    musicStore: Table<
+    musicStore!: Table<
     IMusic.IMusicItem & {
         [musicRefSymbol]: number; // 某个歌曲在歌单中被引用几次，数字
     }
     >;
-    localMusicStore: Table<IMusic.IMusicItem & {
+    localMusicStore!: Table<IMusic.IMusicItem & {
         $$localPath: string; // 本地地址
     }>;
 

@@ -48,7 +48,7 @@ function MusicSheetlikeItem(props: IMusicSheetlikeItemProps) {
                         <div className="play-count">
                             <Condition condition={mediaItem?.playCount}>
                                 <SvgAsset iconName={"headphone"} size={14}></SvgAsset>
-                                {normalizeNumber(mediaItem?.playCount, !isCN())}
+                                {normalizeNumber(mediaItem?.playCount ?? 0, !isCN())}
                             </Condition>
                         </div>
                     </div>

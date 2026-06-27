@@ -115,7 +115,7 @@ export async function parseLocalMusicItem(
             }
         }
 
-        if (specialEncoding.includes(encoding)) {
+        if (encoding && specialEncoding.includes(encoding)) {
             const iconv = await import("iconv-lite");
 
             if (common.title) {
@@ -130,7 +130,7 @@ export async function parseLocalMusicItem(
                     encoding,
                 );
             }
-            if (common.artist) {
+            if (common.album) {
                 common.album = iconv.decode(
                     common.album as unknown as Buffer,
                     encoding,

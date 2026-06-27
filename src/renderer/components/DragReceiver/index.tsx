@@ -69,5 +69,5 @@ export function startDrag(
     tag?: string,
 ) {
     e.dataTransfer.setData("itemIndex", `${itemIndex}`);
-    e.dataTransfer.setData("itemTag", tag ?? null);
+    e.dataTransfer.setData("itemTag", tag ?? "");
 }

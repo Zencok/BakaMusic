@@ -59,6 +59,10 @@ export function useUserPreference<K extends keyof IUserPreference.IType>(
     const [state, _setState] = useState(getUserPreference(key));
 
     function setState(newState: IUserPreference.IType[K] | null) {
+        if (newState === null) {
+            removeUserPreference(key);
+            return;
+        }
         setUserPreference(key, newState);
     }
 
@@ -72,6 +76,10 @@ export function useUserPreference<K extends keyof IUserPreference.IType>(
         const updateFnStorage = (e: StorageEvent) => {
             if (e.key === key) {
                 try {
+                    if (e.newValue === null) {
+                        _setState(null);
+                        return;
+                    }
                     _setState(JSON.parse(e.newValue));
                 } catch {
                     _setState(e.newValue as any);
@@ -95,7 +103,7 @@ export function useUserPreference<K extends keyof IUserPreference.IType>(
 
 class UserPreferenceDB extends Dexie {
     // 歌单信息，其中musiclist只存有platform和id
-    perference: Table<Record<string, any>>;
+    perference!: Table<Record<string, any>>;
 
     constructor() {
         super("userPerferenceDB");

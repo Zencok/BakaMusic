@@ -42,6 +42,7 @@ import utils from "@shared/utils/main";
 import messageBus from "@shared/message-bus/main";
 import shortCut from "@shared/short-cut/main";
 import voidCallback from "@/common/void-callback";
+import { toError } from "@/common/error-util";
 
 // portable
 if (process.platform === "win32") {
@@ -65,7 +66,7 @@ setAutoFreeze(false);
 if (process.defaultApp) {
     if (process.argv.length >= 2) {
         app.setAsDefaultProtocolClient("bakamusic", process.execPath, [
-            path.resolve(process.argv[1]),
+            path.resolve(process.argv[1] ?? ""),
         ]);
     }
 } else {
@@ -99,7 +100,7 @@ app.on("second-instance", (_evt, commandLine) => {
     }
 
     if (process.platform !== "darwin") {
-        handleDeepLink(commandLine.pop());
+        handleDeepLink(commandLine[commandLine.length - 1] ?? "");
     }
 });
 
@@ -120,15 +121,17 @@ app.whenReady().then(async () => {
 
     await setupI18n({
         getDefaultLang() {
-            return AppConfig.getConfig("normal.language");
+            return AppConfig.getConfig("normal.language") ?? null;
         },
         onLanguageChanged(lang) {
             AppConfig.setConfig({
                 "normal.language": lang,
             });
             if (process.platform === "win32") {
-
-                ThumbBarUtil.setThumbBarButtons(windowManager.mainWindow, messageBus.getAppState().playerState === PlayerState.Playing);
+                const mainWindow = windowManager.mainWindow;
+                if (mainWindow) {
+                    ThumbBarUtil.setThumbBarButtons(mainWindow, messageBus.getAppState().playerState === PlayerState.Playing);
+                }
             }
         },
     });
@@ -148,7 +151,7 @@ app.whenReady().then(async () => {
             if (mainWindow) {
                 const thumbStyle = AppConfig.getConfig("normal.taskbarThumb");
                 if (process.platform === "win32" && thumbStyle === "artwork") {
-                    ThumbBarUtil.setThumbImage(mainWindow, musicItem?.artwork);
+                    ThumbBarUtil.setThumbImage(mainWindow, musicItem?.artwork ?? "");
                 }
                 if (musicItem) {
                     mainWindow.setTitle(
@@ -163,13 +166,16 @@ app.whenReady().then(async () => {
             const playerState = patch.playerState;
 
             if (process.platform === "win32") {
-                ThumbBarUtil.setThumbBarButtons(windowManager.mainWindow, playerState === PlayerState.Playing);
+                const mainWindow = windowManager.mainWindow;
+                if (mainWindow) {
+                    ThumbBarUtil.setThumbBarButtons(mainWindow, playerState === PlayerState.Playing);
+                }
             }
         } else if ("repeatMode" in patch) {
             TrayManager.buildTrayMenu();
         } else if ("lyricText" in patch && process.platform === "darwin") {
             if (AppConfig.getConfig("lyric.enableStatusBarLyric")) {
-                TrayManager.setTitle(patch.lyricText);
+                TrayManager.setTitle(patch.lyricText ?? "");
             } else {
                 TrayManager.setTitle("");
             }
@@ -263,7 +269,7 @@ async function bootstrap() {
     });
 
     handleProxy(
-        AppConfig.getConfig("network.proxy.enabled"),
+        AppConfig.getConfig("network.proxy.enabled") === true,
         AppConfig.getConfig("network.proxy.host"),
         AppConfig.getConfig("network.proxy.port"),
         AppConfig.getConfig("network.proxy.username"),
@@ -281,9 +287,9 @@ function handleProxy(enabled: boolean, host?: string | null, port?: string | nul
             axios.defaults.httpsAgent = undefined;
         } else if (host) {
             const proxyUrl = new URL(host);
-            proxyUrl.port = port;
-            proxyUrl.username = username;
-            proxyUrl.password = password;
+            proxyUrl.port = port ?? "";
+            proxyUrl.username = username ?? "";
+            proxyUrl.password = password ?? "";
             const agent = new HttpsProxyAgent(proxyUrl);
 
             axios.defaults.httpAgent = agent;
@@ -291,7 +297,8 @@ function handleProxy(enabled: boolean, host?: string | null, port?: string | nul
         } else {
             throw new Error("Unknown Host");
         }
-    } catch {
+    } catch (error) {
+        logger.logError("Fail to update proxy config", toError(error));
         axios.defaults.httpAgent = undefined;
         axios.defaults.httpsAgent = undefined;
     }

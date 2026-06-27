@@ -49,7 +49,7 @@ function loadImage(src: string) {
     });
 }
 
-export function shouldOptimizeArtworkDataUrl(src?: string | null) {
+export function shouldOptimizeArtworkDataUrl(src?: string | null): src is string {
     return !!src &&
         src.startsWith("data:image/") &&
         !src.startsWith("data:image/svg+xml") &&

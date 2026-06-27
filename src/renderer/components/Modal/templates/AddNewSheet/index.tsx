@@ -17,6 +17,9 @@ export default function AddNewSheet(props: IProps) {
         debounce(async (newSheetName) => {
             try {
                 const newSheet = await MusicSheet.frontend.addSheet(newSheetName);
+                if (!newSheet) {
+                    return;
+                }
                 if (props?.initMusicItems) {
                     await MusicSheet.frontend.addMusicToSheet(props.initMusicItems, newSheet.id);
                 }

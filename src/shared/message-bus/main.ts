@@ -10,7 +10,7 @@ import EventEmitter from "eventemitter3";
  */
 class MessageBus {
 
-    private windowManager: IWindowManager;
+    private windowManager!: IWindowManager;
     private extensionWindowIds = new Set<number>();
     private appState: IAppState = {
         musicItem: null,

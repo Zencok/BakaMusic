@@ -11,10 +11,11 @@ export default function usePluginSheetMusicList(
     const [requestState, setRequestState] = useState<RequestStateCode>(
         RequestStateCode.IDLE,
     );
-    const [sheetItem, setSheetItem] = useState<IMusic.IMusicSheetItem | null>({
-        ...originalSheetItem,
+    const [sheetItem, setSheetItem] = useState<IMusic.IMusicSheetItem>({
+        ...(originalSheetItem ?? {}),
         platform,
         id,
+        title: originalSheetItem?.title ?? "",
     });
     const [musicList, setMusicList] = useState<IMusic.IMusicItem[]>(
         originalSheetItem?.musicList ?? [],
@@ -26,13 +27,18 @@ export default function usePluginSheetMusicList(
     const currentPageRef = useRef(1);
 
     const getSheetDetail = async () => {
+        if (!platform || !id) {
+            return;
+        }
+
         if (!isSameMedia(currentSheetItemRef.current, originalSheetItem)) {
             // 1.1 如果是切换了新的歌单
             // 恢复初始状态 并设置当前的歌曲项
             currentSheetItemRef.current = {
-                ...originalSheetItem,
+                ...(originalSheetItem ?? {}),
                 platform,
                 id,
+                title: originalSheetItem?.title ?? "",
             };
             setSheetItem(currentSheetItemRef.current);
             setMusicList(originalSheetItem?.musicList ?? []);
@@ -51,6 +57,9 @@ export default function usePluginSheetMusicList(
             );
             // 3. 调用获取音乐详情接口
             const sheetItem = currentSheetItemRef.current;
+            if (!sheetItem) {
+                return;
+            }
             const result = await PluginManager.callPluginDelegateMethod(
                 sheetItem,
                 "getMusicSheetInfo",
@@ -70,7 +79,8 @@ export default function usePluginSheetMusicList(
                 setSheetItem((prev) => ({
                     ...(prev ?? {}),
                     ...(result.sheetItem as IMusic.IMusicSheetItem),
-                    platform: originalSheetItem.platform,
+                    platform,
+                    id,
                 }));
             }
             // 4. 如果返回了音乐列表

@@ -15,6 +15,7 @@ import AppConfig from "@shared/app-config/main";
 import { compare } from "compare-versions";
 import { nanoid } from "nanoid";
 import logger from "@shared/logger/main";
+import { toError } from "@/common/error-util";
 
 const axios = _axios.create({
     httpsAgent: new https.Agent({
@@ -62,10 +63,10 @@ class PluginManager {
         });
     }
 
-    private windowManager: IWindowManager;
+    private windowManager!: IWindowManager;
 
     // 插件存储路径
-    private _pluginBasePath: string;
+    private _pluginBasePath = "";
 
     private get pluginBasePath() {
         if (this._pluginBasePath) {
@@ -156,7 +157,7 @@ class PluginManager {
         args,
     }: ICallPluginMethodParams<keyof IPlugin.IPluginInstanceMethods>,
     ) {
-        let plugin: Plugin;
+        let plugin: Plugin | undefined;
         if (hash === localPluginHash || platform === localPluginName) {
             plugin = localPlugin;
         } else if (hash) {
@@ -167,7 +168,11 @@ class PluginManager {
         if (!plugin) {
             return null;
         }
-        return plugin.methods[method]?.apply?.({ plugin }, args);
+        const pluginMethod = plugin.methods[method];
+        if (!pluginMethod) {
+            return null;
+        }
+        return (pluginMethod as (...methodArgs: unknown[]) => unknown).call(plugin.methods, ...args);
     }
 
     private syncPlugins() {
@@ -251,7 +256,7 @@ class PluginManager {
                     }
                 }
             } catch (e) {
-                logger.logError("插件加载失败", e);
+                logger.logError("插件加载失败", toError(e));
             }
         }
         this.plugins = plugins;

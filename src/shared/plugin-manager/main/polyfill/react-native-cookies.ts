@@ -41,7 +41,7 @@ async function get(url: string): Promise<Cookies> {
         }
         return resultMap;
     } catch {
-        return null;
+        return {};
     }
 }
 

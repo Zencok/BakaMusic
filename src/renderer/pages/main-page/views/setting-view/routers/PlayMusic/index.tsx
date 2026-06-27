@@ -101,11 +101,14 @@ export default function PlayMusic() {
                 label={t("settings.play_music.audio_output_device")}
                 keyPath="playMusic.audioOutputDevice"
                 renderItem={(item) => {
-                    return item ? item.label : t("common.default");
+                    return item?.label ?? t("common.default");
                 }}
                 width={"320px"}
                 onChange={async (evt, item) => {
                     evt.preventDefault();
+                    if (!item) {
+                        return;
+                    }
                     await trackPlayer.setAudioOutputDevice(item.deviceId);
                     AppConfig.setConfig({
                         "playMusic.audioOutputDevice": item.toJSON(),

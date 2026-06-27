@@ -15,7 +15,7 @@ export default function Downloaded() {
                     getScrollElement() {
                         return document.querySelector("#page-container");
                     },
-                    offsetHeight: () => musicListContainerRef.current.offsetTop,
+                    offsetHeight: () => musicListContainerRef.current?.offsetTop ?? 0,
                 }}
             ></MusicList>
         </div>

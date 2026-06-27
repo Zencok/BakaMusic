@@ -10,6 +10,7 @@ import {
     formatLyricsByTimestamp,
     IDownloadPostprocessPayload,
 } from "@/common/download-postprocess";
+import { toError } from "@/common/error-util";
 import {
     File as TagLibFile,
     Id3v2Settings,
@@ -219,13 +220,18 @@ const responseToReadable = (
         onError?: (e: Error) => void;
     },
 ) => {
+    if (!response.body) {
+        throw new Error("Response body is empty");
+    }
     const reader = response.body.getReader();
     const rs = new Readable();
     let size = 0;
-    const tOnRead = throttle(options?.onRead, 64, {
-        leading: true,
-        trailing: true,
-    });
+    const tOnRead = options?.onRead
+        ? throttle(options.onRead, 64, {
+            leading: true,
+            trailing: true,
+        })
+        : undefined;
     rs._read = async () => {
         const result = await reader.read();
         if (!result.done) {
@@ -238,7 +244,9 @@ const responseToReadable = (
             return;
         }
     };
-    rs.on("error", options?.onError);
+    if (options?.onError) {
+        rs.on("error", options.onError);
+    }
     return rs;
 };
 
@@ -278,10 +286,15 @@ async function downloadFile(
     }
     const _headers: Record<string, string> = {
         ...(mediaSource.headers ?? {}),
-        "user-agent": mediaSource.userAgent,
     };
+    if (mediaSource.userAgent) {
+        _headers["user-agent"] = mediaSource.userAgent;
+    }
 
     try {
+        if (!mediaSource.url) {
+            throw new Error("mediaSource.url is empty");
+        }
         const urlObj = new URL(mediaSource.url);
         let res: Response;
         if (urlObj.username && urlObj.password) {
@@ -299,7 +312,7 @@ async function downloadFile(
             res = await fetch(encodeUrlHeaders(mediaSource.url, _headers));
         }
 
-        const totalSize = +res.headers.get("content-length");
+        const totalSize = +(res.headers.get("content-length") ?? 0);
         onStateChange({
             state,
             downloaded: 0,
@@ -341,7 +354,7 @@ async function downloadFile(
         state = DownloadState.ERROR;
         onStateChange({
             state,
-            msg: e?.message,
+            msg: toError(e).message,
         });
         cleanFile(filePath);
     }
@@ -374,10 +387,15 @@ async function downloadFileNew(
 
     const headers: Record<string, string> = {
         ...(mediaSource.headers ?? {}),
-        "user-agent": mediaSource.userAgent,
     };
+    if (mediaSource.userAgent) {
+        headers["user-agent"] = mediaSource.userAgent;
+    }
 
     try {
+        if (!mediaSource.url) {
+            throw new Error("mediaSource.url is empty");
+        }
         const urlObj = new URL(mediaSource.url);
         let res: Response;
         if (urlObj.username && urlObj.password) {
@@ -395,7 +413,7 @@ async function downloadFileNew(
             res = await fetch(encodeUrlHeaders(mediaSource.url, headers));
         }
 
-        const totalSize = +res.headers.get("content-length");
+        const totalSize = +(res.headers.get("content-length") ?? 0);
         onProgressCallback?.({
             currentSize: 0,
             totalSize: totalSize,
@@ -416,7 +434,7 @@ async function downloadFileNew(
             onError: (e) => {
                 if (!hasError) {
                     hasError = true;
-                    onErrorCallback?.(e);
+                    onErrorCallback?.(toError(e));
                 }
             },
         }).pipe(fs.createWriteStream(filePath));
@@ -428,7 +446,7 @@ async function downloadFileNew(
         stm.on("error", (e) => {
             if (!hasError) {
                 hasError = true;
-                onErrorCallback?.(e);
+                onErrorCallback?.(toError(e));
             }
             // 清理文件
             cleanFile(filePath);
@@ -436,7 +454,7 @@ async function downloadFileNew(
     } catch (e) {
         if (!hasError) {
             hasError = true;
-            onErrorCallback?.(e);
+            onErrorCallback?.(toError(e));
         }
         cleanFile(filePath);
     }

@@ -114,14 +114,16 @@ export async function queryAllSheets() {
             const dbDefaultSheet = allSheets.find(
                 (item) => item.id === defaultSheet.id,
             );
-            dbDefaultSheet.musicList.forEach((mi) => {
+            (dbDefaultSheet?.musicList ?? []).forEach((mi) => {
                 favoriteMusicListIds.add(getMediaPrimaryKey(mi));
             });
             musicSheets = allSheets;
 
             if (defaultSheetIndex !== 0) {
                 allSheets.splice(defaultSheetIndex, 1);
-                allSheets.unshift(dbDefaultSheet);
+                if (dbDefaultSheet) {
+                    allSheets.unshift(dbDefaultSheet);
+                }
             }
         }
 
@@ -242,9 +244,12 @@ export async function removeSheet(sheetId: string) {
             musicSheetDB.musicStore,
             async () => {
                 const targetSheet = musicSheets.find((item) => item.id === sheetId);
+                if (!targetSheet) {
+                    return;
+                }
 
                 await removeMusicFromSheet(
-                    targetSheet.musicList ?? ([] as any),
+                    (targetSheet.musicList ?? []) as IMusic.IMusicItem[],
                     sheetId,
                 );
                 musicSheetDB.sheets.delete(sheetId);
@@ -270,8 +275,11 @@ export async function clearSheet(sheetId: string) {
             musicSheetDB.musicStore,
             async () => {
                 const targetSheet = musicSheets.find((item) => item.id === sheetId);
+                if (!targetSheet) {
+                    return;
+                }
                 await removeMusicFromSheet(
-                    targetSheet.musicList ?? ([] as any),
+                    (targetSheet.musicList ?? []) as IMusic.IMusicItem[],
                     sheetId,
                 );
                 targetSheet.musicList = [];
@@ -334,7 +342,7 @@ export async function addMusicToSheet(
             return;
         }
         // 筛选出不在列表中的项目
-        const targetMusicList = targetSheet.musicList;
+        const targetMusicList = targetSheet.musicList ?? [];
         // 要添加到音乐列表中的项目
         const validMusicItems = _musicItems.filter(
             (item) => -1 === targetMusicList.findIndex((mi) => isSameMedia(mi, item)),
@@ -349,17 +357,22 @@ export async function addMusicToSheet(
                 const allMusic = await musicSheetDB.musicStore.bulkGet(
                     validMusicItems.map((item) => [item.platform, item.id]),
                 );
-                allMusic.forEach((mi, index) => {
+                const normalizedMusic = allMusic.map((mi, index) => {
+                    const validMusicItem = validMusicItems[index];
+                    if (!validMusicItem) {
+                        return null;
+                    }
                     if (mi) {
                         mi[musicRefSymbol] += 1;
+                        return mi;
                     } else {
-                        allMusic[index] = {
-                            ...validMusicItems[index],
+                        return {
+                            ...validMusicItem,
                             [musicRefSymbol]: 1,
                         };
                     }
-                });
-                await musicSheetDB.musicStore.bulkPut(allMusic);
+                }).filter((item): item is IMusic.IMusicItem & { [musicRefSymbol]: number } => Boolean(item));
+                await musicSheetDB.musicStore.bulkPut(normalizedMusic);
                 const timeStamp = Date.now();
                 await musicSheetDB.sheets
                     .where("id")
@@ -463,14 +476,14 @@ export async function removeMusicFromSheet(
             // 当前的最后一首歌
             const lastMusic = restMusic[restMusic.length - 1];
             // 更新当前歌单的封面
-            let newArtwork: string;
+            let newArtwork = "";
             if (lastMusic) {
                 newArtwork = (
                     await musicSheetDB.musicStore.get([
                         lastMusic.platform,
                         lastMusic.id,
                     ])
-                ).artwork;
+                )?.artwork ?? "";
             }
 
             await musicSheetDB.sheets
@@ -551,7 +564,7 @@ export async function getSheetItemDetail(
     }
 
     const optimizedTargetSheet = await optimizeLocalArtworkItem(targetSheet);
-    if (optimizedTargetSheet.changed) {
+    if (optimizedTargetSheet.changed && optimizedTargetSheet.item) {
         await musicSheetDB.sheets.update(sheetId, {
             artwork: optimizedTargetSheet.item.artwork,
         });
@@ -559,7 +572,7 @@ export async function getSheetItemDetail(
     }
 
     return {
-        ...optimizedTargetSheet.item,
+        ...(optimizedTargetSheet.item ?? targetSheet),
         musicList: sortMusicSheetMusicList(
             tmpResult as IMusic.IMusicItem[],
             targetSheet.sortType,

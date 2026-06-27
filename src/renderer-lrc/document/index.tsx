@@ -8,7 +8,12 @@ import "react-toastify/dist/ReactToastify.css";
 import "./styles/index.scss"; // Global styles
 
 bootstrap().then(() => {
-    ReactDOM.createRoot(document.getElementById("root")).render(<Root></Root>);
+    const rootElement = document.getElementById("root");
+    if (!rootElement) {
+        throw new Error("Root element not found");
+    }
+
+    ReactDOM.createRoot(rootElement).render(<Root></Root>);
 });
 
 function Root() {

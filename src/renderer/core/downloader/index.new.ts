@@ -47,9 +47,9 @@ interface ITaskStatus {
 }
 
 class Downloader extends EventEmitter<IDownloaderEvent> {
-    private worker: IDownloaderWorker;
+    private worker!: IDownloaderWorker;
     private static ConcurrencyLimit = 20;
-    private downloadTaskQueue: PQueue;
+    private downloadTaskQueue!: PQueue;
     private currentTaskStatus: Map<string, Map<string, ITaskStatus>> = new Map();
 
     public isReady = false;
@@ -162,8 +162,8 @@ class Downloader extends EventEmitter<IDownloaderEvent> {
     private async downloadMusicImpl(musicItem: IMusic.IMusicItem, fileName: string, options: IDownloadFileOptions) {
         // 1. config
         const [defaultQuality, whenQualityMissing] = [
-            AppConfig.getConfig("download.defaultQuality"),
-            AppConfig.getConfig("download.whenQualityMissing"),
+            AppConfig.getConfig("download.defaultQuality") ?? "128k",
+            AppConfig.getConfig("download.whenQualityMissing") ?? "lower",
         ];
         const downloadBasePath =
             AppConfig.getConfig("download.path") ??
@@ -204,10 +204,10 @@ class Downloader extends EventEmitter<IDownloaderEvent> {
                 mediaSource,
                 downloadPath,
                 Comlink.proxy({
-                    onError(reason) {
-                        options?.onError(reason);
+                    onError(reason: Error) {
+                        options?.onError?.(reason);
                     },
-                    onProgress(progress) {
+                    onProgress(progress: ICommon.IDownloadFileSize) {
                         options?.onProgress?.(progress);
                     },
                     onEnded() {

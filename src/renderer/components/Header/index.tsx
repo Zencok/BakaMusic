@@ -29,8 +29,9 @@ export default function AppHeader() {
     }
 
     function onSearchSubmit() {
-        if (inputRef.current.value) {
-            search(inputRef.current.value);
+        const keyword = inputRef.current?.value;
+        if (keyword) {
+            search(keyword);
         }
     }
 
@@ -80,7 +81,9 @@ export default function AppHeader() {
                         <SearchHistory
                             onHistoryClick={(item) => {
                                 search(item);
-                                inputRef.current.value = item;
+                                if (inputRef.current) {
+                                    inputRef.current.value = item;
+                                }
                             }}
                             onHistoryPanelBlur={() => {
                                 isHistoryFocusRef.current = false;

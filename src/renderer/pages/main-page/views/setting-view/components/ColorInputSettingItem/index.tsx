@@ -262,7 +262,7 @@ function normalizeColor(value: string) {
 }
 
 interface IColorPanelContentProps {
-    buttonRef: React.RefObject<HTMLButtonElement>;
+    buttonRef: React.RefObject<HTMLButtonElement | null>;
     close: () => void;
     draftColor: string;
     format: ColorFormat;

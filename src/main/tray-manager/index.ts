@@ -59,7 +59,7 @@ if (process.platform === "darwin") {
 
 class TrayManager {
     private static trayInstance: Tray | null = null;
-    private windowManager: IWindowManager;
+    private windowManager!: IWindowManager;
 
     private observedKey: Array<keyof IAppConfig> = [
         "lyric.lockLyric",

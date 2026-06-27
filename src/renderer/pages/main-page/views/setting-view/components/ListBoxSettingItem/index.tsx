@@ -109,7 +109,7 @@ export default function ListBoxSettingItem<T extends keyof IAppConfig>(
 }
 
 interface IListBoxOptionsProps<T extends keyof IAppConfig> {
-    buttonRef: RefObject<HTMLElement>;
+    buttonRef: RefObject<HTMLElement | null>;
     options: Array<IAppConfig[T]> | null;
     renderItem?: (item: IAppConfig[T]) => ReactNode;
     width?: number | string;

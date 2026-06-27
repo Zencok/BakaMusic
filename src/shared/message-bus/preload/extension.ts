@@ -3,7 +3,7 @@ import { IAppState, ICommand, IPortMessage } from "@shared/message-bus/type";
 import EventEmitter from "eventemitter3";
 import exposeInMainWorld from "@/preload/expose-in-main-world";
 
-let extPort: MessagePort = null;
+let extPort: MessagePort | null = null;
 let appState: IAppState = {};
 const ee = new EventEmitter<{
     stateChanged: [IAppState, IAppState];
@@ -17,9 +17,12 @@ const cachedMessages: IPortMessage[] = [];
 
 ipcRenderer.on("port", (e) => {
     extPort = e.ports[0];
+    if (!extPort) {
+        return;
+    }
     pingTimer = setInterval(() => {
         // 向主进程发送 ping
-        extPort.postMessage({
+        extPort?.postMessage({
             type: "ping",
             timestamp: Date.now(),
         });
@@ -35,11 +38,13 @@ ipcRenderer.on("port", (e) => {
             ee.emit("stateChanged", appState, data.payload || {});
         } else if (data.type === "ping") {
             connected = true;
-            clearInterval(pingTimer);
+            if (pingTimer) {
+                clearInterval(pingTimer);
+            }
             pingTimer = null;
             if (cachedMessages.length) {
                 cachedMessages.forEach((message) => {
-                    extPort.postMessage(message);
+                    extPort?.postMessage(message);
                 });
                 cachedMessages.length = 0;
             }

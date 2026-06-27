@@ -124,7 +124,7 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
 
     /** 获取真实源 */
     async getMediaSource(
-        musicItem: IMedia.IMediaBase,
+        musicItem: IMusic.IMusicItemPartial,
         quality: IMusic.IQualityKey = "128k",
         retryCount = 1,
         _notUpdateCache = false,
@@ -230,7 +230,7 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
 
     /** 获取歌词 */
     async getLyric(
-        musicItem: IMusic.IMusicItem,
+        musicItem: IMusic.IMusicItemPartial,
     ): Promise<ILyric.ILyricSource | null> {
         const mergeLyricText = (
             currentValue?: string,
@@ -265,7 +265,7 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
         let romanization: string | undefined;
 
         const localPath =
-            getInternalData<IMusic.IMusicItemInternalData>(musicItem, "downloadData")
+            getInternalData<IMusic.IMusicItemInternalData>(musicItem as IMedia.IMediaBase, "downloadData")
                 ?.path || musicItem.$$localPath;
         if (localPath) {
             const fileName = path.parse(localPath).name;
@@ -285,8 +285,11 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
         }
 
         try {
+            if (!musicItem.platform || !musicItem.id) {
+                return null;
+            }
             const lrcSource = await this.plugin.instance?.getLyric?.(
-                resetMediaItem(musicItem, undefined, true),
+                resetMediaItem(musicItem as IMedia.IMediaBase, undefined, true),
             );
 
             rawLrc = mergeLyricText(rawLrc, lrcSource?.rawLrc);

@@ -44,6 +44,9 @@ export default function LocalThemes() {
                                         const themePackConfig = await ThemePack.installThemePack(
                                             themePackPath,
                                         );
+                                        if (!themePackConfig) {
+                                            continue;
+                                        }
                                         toast.success(
                                             t("theme.install_theme_success", {
                                                 name: themePackConfig.name
@@ -74,7 +77,7 @@ export default function LocalThemes() {
                     </div>
                 </div>
 
-                {localThemePacks.map((it) => (
+                {localThemePacks.filter((it): it is ICommon.IThemePack => !!it).map((it) => (
                     <ThemeItem
                         config={it}
                         hash={it.hash}

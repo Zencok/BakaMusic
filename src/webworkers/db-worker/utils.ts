@@ -19,7 +19,7 @@ export function isTableExist(database: Database, tableName: string) {
         .prepare<string, { cnt: number }>(
             "SELECT COUNT(*) AS cnt FROM sqlite_master WHERE type='table' AND name=?",
         )
-        .get(tableName).cnt;
+        .get(tableName)?.cnt;
 }
 
 export function createMusicListTable(database: Database, tableName: string) {

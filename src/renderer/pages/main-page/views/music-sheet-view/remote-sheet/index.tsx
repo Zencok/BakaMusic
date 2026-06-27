@@ -12,8 +12,8 @@ export default function RemoteSheet() {
     const { platform, id } = useParams() ?? {};
 
     const [state, sheetItem, musicList, getSheetDetail] = usePluginSheetMusicList(
-        platform,
-        id,
+        platform ?? "",
+        id ?? "",
         history.state?.usr?.sheetItem,
     );
     return (
@@ -24,7 +24,7 @@ export default function RemoteSheet() {
             onLoadMore={() => {
                 getSheetDetail();
             }}
-            options={<RemoteSheetOptions sheetItem={sheetItem}></RemoteSheetOptions>}
+            options={sheetItem ? <RemoteSheetOptions sheetItem={sheetItem}></RemoteSheetOptions> : null}
         />
     );
 }

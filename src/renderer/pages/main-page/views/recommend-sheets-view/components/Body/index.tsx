@@ -58,7 +58,7 @@ export default function Body(props: IBodyProps) {
             <div className="tags-container">
                 <TagPanel
                     show={showPanel}
-                    tagsGroups={tags?.data}
+                    tagsGroups={tags?.data ?? []}
                     onTagClick={(tag) => {
                         setSelectedTag(tag);
                         setFirstTag(tag);
@@ -122,7 +122,7 @@ export default function Body(props: IBodyProps) {
                     falsy={<Loading></Loading>}
                 >
                     <MusicSheetlikeList
-                        data={sheets}
+                        data={sheets ?? []}
                         state={status}
                         onLoadMore={() => {
                             query();

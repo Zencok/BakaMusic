@@ -47,6 +47,9 @@ const themePackBasePath: string =
 /** 选择某个主题 */
 async function selectTheme(themePack: ICommon.IThemePack | null) {
     const themeNode = document.querySelector(`#${themeNodeId}`);
+    if (!themeNode) {
+        return;
+    }
     if (themePack === null) {
     // 移除
         themeNode.innerHTML = "";
@@ -68,8 +71,9 @@ async function selectTheme(themePack: ICommon.IThemePack | null) {
         );
 
         if (themePack.iframe) {
+            const iframeConfig = themePack.iframe;
             validIframeMap.forEach(async (value, key) => {
-                const themePackIframeSource = themePack.iframe[key];
+                const themePackIframeSource = iframeConfig[key];
                 if (themePackIframeSource) {
                     // 如果有，且当前也有
                     let iframeNode = null;
@@ -91,11 +95,13 @@ async function selectTheme(themePack: ICommon.IThemePack | null) {
                             replaceAlias(themePackIframeSource, themePack.path, false),
                             "utf-8",
                         );
-                        iframeNode.contentWindow.document.open();
-                        iframeNode.contentWindow.document.write(
-                            replaceAlias(rawHtml, themePack.path),
-                        );
-                        iframeNode.contentWindow.document.close();
+                        if (iframeNode.contentWindow) {
+                            iframeNode.contentWindow.document.open();
+                            iframeNode.contentWindow.document.write(
+                                replaceAlias(rawHtml, themePack.path),
+                            );
+                            iframeNode.contentWindow.document.close();
+                        }
                     }
                 } else if (value) {
                     value.remove();
@@ -320,6 +326,9 @@ async function initCurrentTheme() {
     try {
         await checkPath();
         const currentThemePath = localStorage.getItem(themePathKey);
+        if (!currentThemePath) {
+            return null;
+        }
         const currentTheme: ICommon.IThemePack | null = await parseThemePack(
             currentThemePath,
         );

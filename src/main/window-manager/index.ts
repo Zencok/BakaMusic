@@ -31,6 +31,12 @@ class WindowManager implements IWindowManager {
     private repaintingTransparentWindows = new WeakSet<BrowserWindow>();
 
     getMainWindow(): BrowserWindow {
+        if (!WindowManager.mainWindow || WindowManager.mainWindow.isDestroyed()) {
+            this.createMainWindow();
+        }
+        if (!WindowManager.mainWindow) {
+            throw new Error("Main window is not available");
+        }
         return WindowManager.mainWindow;
     }
 
@@ -197,6 +203,9 @@ class WindowManager implements IWindowManager {
         }
 
         const mainWindow = WindowManager.mainWindow;
+        if (!mainWindow) {
+            return;
+        }
 
         if (mainWindow.isMinimized()) {
             mainWindow.restore();
@@ -215,7 +224,7 @@ class WindowManager implements IWindowManager {
     }
 
     public closeMainWindow() {
-        WindowManager.mainWindow.close();
+        WindowManager.mainWindow?.close();
         WindowManager.mainWindow = null;
     }
 
@@ -600,6 +609,9 @@ class WindowManager implements IWindowManager {
         }
 
         const miniWindow = WindowManager.miniModeWindow;
+        if (!miniWindow) {
+            return;
+        }
 
         if (miniWindow.isMinimized()) {
             miniWindow.restore();

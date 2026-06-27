@@ -34,7 +34,7 @@ export default function AlbumResult(props: IBodyProps) {
             >
                 <MusicSheetlikeList
                     data={queryResult.data ?? []}
-                    state={queryResult.state}
+                    state={queryResult.state ?? RequestStateCode.IDLE}
                     onClick={(mediaItem) => {
                         navigate(`/main/album/${encodeURIComponent(mediaItem.platform)}/${encodeURIComponent(mediaItem.id)}`, {
                             state: {

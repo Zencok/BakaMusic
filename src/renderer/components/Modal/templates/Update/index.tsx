@@ -182,7 +182,9 @@ export default function Update(props: IUpdateProps) {
                                 role="button"
                                 data-type="normalButton"
                                 onClick={() => {
-                                    setUserPreference("skipVersion", update?.version);
+                                    if (update?.version) {
+                                        setUserPreference("skipVersion", update.version);
+                                    }
                                     hideModal();
                                 }}
                             >

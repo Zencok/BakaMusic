@@ -60,6 +60,9 @@ function handleMessage(data: IPortMessage, from: number | null) {
 
     if (type === "ping") {
     // 渲染进程发来的建连消息
+        if (from === null) {
+            return;
+        }
         const expPort = extPorts.get(from);
         // 返回一个相同的ping
         if (expPort) {
@@ -125,6 +128,9 @@ function syncAppStateTo(appState: IAppState, processId: "main" | number) {
     const data: IAppState = {};
     if (processId === "main") {
         const mainSubscribedKeys = subscribedAppStates.get(processId);
+        if (!mainSubscribedKeys) {
+            return;
+        }
         let cnt = 0;
         mainSubscribedKeys.forEach((key) => {
             if (appState[key] !== undefined) {

@@ -118,12 +118,12 @@ function renderActions(row: IPlugin.IPluginDelegate) {
                             title: t("plugin.method_import_music_item"),
                             withLoading: true,
                             loadingText: t("plugin_management_page.importing_media"),
-                            placeholder: t(
+                            placeholder: String(t(
                                 "plugin_management_page.placeholder_import_music_item",
                                 {
                                     plugin: row.platform,
                                 },
-                            ),
+                            )),
                             maxLength: 1000,
                             onOk(text) {
                                 return PluginManager.callPluginDelegateMethod(
@@ -160,12 +160,12 @@ function renderActions(row: IPlugin.IPluginDelegate) {
                             title: t("plugin.method_import_music_sheet"),
                             withLoading: true,
                             loadingText: t("plugin_management_page.importing_media"),
-                            placeholder: t(
+                            placeholder: String(t(
                                 "plugin_management_page.placeholder_import_music_sheet",
                                 {
                                     plugin: row.platform,
                                 },
-                            ),
+                            )),
                             maxLength: 1000,
                             onOk(text) {
                                 return PluginManager.callPluginDelegateMethod(

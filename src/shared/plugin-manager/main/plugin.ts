@@ -87,7 +87,7 @@ export class Plugin {
     ) {
         let _instance: IPlugin.IPluginInstance;
         const _module: any = { exports: {}, loaded: false };
-        let loadResolveCallback: () => void = null;
+        let loadResolveCallback: (() => void) | null = null;
         const ensurePluginInitialized = new Promise<void>((resolve) => {
             loadResolveCallback = resolve;
         });
@@ -136,7 +136,10 @@ export class Plugin {
                 } else {
                     _instance = _module.exports as IPlugin.IPluginInstance;
                 }
-                loadResolveCallback?.();
+                const resolveLoad = loadResolveCallback as (() => void) | null;
+                if (resolveLoad) {
+                    resolveLoad();
+                }
 
 
             } else {

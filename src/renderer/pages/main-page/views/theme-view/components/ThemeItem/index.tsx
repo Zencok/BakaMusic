@@ -5,15 +5,16 @@ import { useState } from "react";
 import Themepack from "@/shared/themepack/renderer";
 import { toast } from "react-toastify";
 import Loading from "@/renderer/components/Loading";
+import { toError } from "@/common/error-util";
 
 interface IProps {
     config: ICommon.IThemePack;
     hash?: string;
     type: "remote" | "local";
     selected?: boolean;
-    /**[Remote Only] 主题的最新版是否已经在本地安�?*/
+    /**[Remote Only] 主题的最新版是否已经在本地安�?*/
     latestInstalled?: boolean;
-    /**[Remote Only] 主题是否已经在本地安�?*/
+    /**[Remote Only] 主题是否已经在本地安�?*/
     installed?: boolean;
 }
 
@@ -31,21 +32,23 @@ export default function ThemeItem(props: IProps) {
             if (type === "local") {
                 await Themepack.selectTheme(config);
             } else {
-                if (latestInstalled) {
+                if (latestInstalled && hash) {
                     await Themepack.selectThemeByHash(hash);
-                } else {
+                } else if (config.srcUrl && config.id) {
                     setIsLoading(true);
                     const themePack = await Themepack.installRemoteThemePack(
                         config.srcUrl,
                         config.id,
                     );
                     await Themepack.selectTheme(themePack);
+                } else {
+                    throw new Error("Invalid remote theme config");
                 }
             }
         } catch (e) {
             toast.error(
                 t("theme.invalid_theme", {
-                    reason: e?.message ?? "",
+                    reason: toError(e).message,
                 }),
             );
         }

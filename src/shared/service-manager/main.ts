@@ -8,12 +8,12 @@ import logger from "@shared/logger/main";
 
 
 class ServiceInstance {
-    public serviceProcess: ChildProcess = null;
+    public serviceProcess: ChildProcess | null = null;
     private retryTimeOut = 6000;
     private started = false;
     private subprocessName: string;
 
-    private hostChangeCallback: (host: string | null) => void;
+    private hostChangeCallback: (host: string | null) => void = () => undefined;
 
     public serviceName: string;
 
@@ -119,7 +119,7 @@ interface IServiceData {
 }
 
 class ServiceManager {
-    private windowManager: IWindowManager;
+    private windowManager!: IWindowManager;
     private serviceMap = new Map<ServiceName, IServiceData>();
 
 
@@ -131,7 +131,10 @@ class ServiceManager {
             if (mainWindow) {
                 mainWindow.webContents.send("@shared/service-manager/host-changed", serviceName, host);
             }
-            this.serviceMap.get(serviceName).host = host;
+            const serviceData = this.serviceMap.get(serviceName);
+            if (serviceData) {
+                serviceData.host = host;
+            }
         });
 
         return instance;

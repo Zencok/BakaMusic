@@ -5,16 +5,22 @@ import { useTranslation } from "react-i18next";
 
 export default function LocalSheet() {
     const { id } = useParams() ?? {};
-    const [musicSheet, loading] = MusicSheet.frontend.useMusicSheet(id);
+    const [musicSheet, loading] = MusicSheet.frontend.useMusicSheet(id ?? "");
     const { t } = useTranslation();
 
-    const _musicSheet =
+    const _musicSheet: IMusic.IMusicSheetItem =
     id === defaultSheet.id
         ? {
             ...musicSheet,
+            id,
+            platform: defaultSheet.platform,
             title: t("media.default_favorite_sheet_name"),
         }
-        : musicSheet;
+        : musicSheet ?? {
+            id: id ?? "",
+            platform: defaultSheet.platform,
+            title: "",
+        };
 
     return (
         <MusicSheetlikeView

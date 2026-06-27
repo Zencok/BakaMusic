@@ -71,7 +71,10 @@ class ShortCut {
         const shortCuts = AppConfig.getConfig("shortCut.shortcuts");
         const prevShortCut = shortCuts?.[key]?.local;
         if (prevShortCut?.length) {
-            hotkeys.unbind(prevShortCut.join("+"), "all", this.localShortCutCallbackMap.get(key as string));
+            const callback = this.localShortCutCallbackMap.get(key as string);
+            if (callback) {
+                hotkeys.unbind(prevShortCut.join("+"), "all", callback);
+            }
             this.localShortCutCallbackMap.delete(key as string);
 
             AppConfig.setConfig({

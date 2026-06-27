@@ -16,14 +16,15 @@ export default function useQueryArtist() {
             type: IArtist.ArtistMediaType = "music",
         ) => {
             const prevResult = queryResults[type];
+            const nextPage = page ?? (prevResult?.page ?? 0) + 1;
             if (
-                prevResult?.state & RequestStateCode.PENDING_FIRST_PAGE ||
+                (prevResult?.state ?? RequestStateCode.IDLE) & RequestStateCode.PENDING_FIRST_PAGE ||
         prevResult?.state === RequestStateCode.FINISHED ||
-        page <= prevResult.page
+        nextPage <= (prevResult?.page ?? 0)
             ) {
                 return;
             }
-            page = page ?? (prevResult.page ?? 0) + 1;
+            page = nextPage;
             try {
                 setQueryResults(
                     produce((draft) => {

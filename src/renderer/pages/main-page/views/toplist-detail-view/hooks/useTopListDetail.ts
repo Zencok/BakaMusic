@@ -12,7 +12,7 @@ export default function useTopListDetail(
     const [requestState, setRequestState] = useState(RequestStateCode.IDLE);
 
     async function loadMore(){
-        if (!topListItem) {
+        if (!topListItem || !platform) {
             return;
         }
         try {
@@ -27,9 +27,9 @@ export default function useTopListDetail(
             }
             const currentPage = pageRef.current;
             setMergedTopListItem((prev) => ({
-                ...prev,
+                ...(prev ?? topListItem),
                 ...(result.topListItem),
-                musicList: currentPage === 1 ? (result.musicList ?? []): [...prev.musicList, ...result.musicList],
+                musicList: currentPage === 1 ? (result.musicList ?? []): [...(prev?.musicList ?? []), ...(result.musicList ?? [])],
             }));
 
             if (!result.isEnd) {

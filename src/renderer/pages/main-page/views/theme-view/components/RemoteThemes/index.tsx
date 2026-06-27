@@ -12,6 +12,7 @@ export default function RemoteThemes() {
     const [themes, loadingState] = useRemoteThemes();
     const currentTheme = ThemePack.useCurrentThemePack();
     const localThemes = ThemePack.useLocalThemePacks();
+    const validLocalThemes = localThemes.filter((theme): theme is ICommon.IThemePack => !!theme);
     const { t } = useTranslation();
 
     return (
@@ -38,14 +39,14 @@ export default function RemoteThemes() {
                                 hash={it.hash}
                                 key={it.publishName}
                                 type="remote"
-                                selected={it.hash && it.hash === currentTheme?.hash}
+                                selected={!!it.hash && it.hash === currentTheme?.hash}
                                 latestInstalled={
-                                    it.hash &&
-                  localThemes.some((localTheme) => it.hash === localTheme.hash)
+                                    !!it.hash &&
+                  validLocalThemes.some((localTheme) => it.hash === localTheme.hash)
                                 }
                                 installed={
-                                    it.id &&
-                  localThemes.some((localTheme) => it.id === localTheme.id)
+                                    !!it.id &&
+                  validLocalThemes.some((localTheme) => it.id === localTheme.id)
                                 }
                             ></ThemeItem>
                         ))}

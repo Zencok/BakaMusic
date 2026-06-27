@@ -10,6 +10,11 @@ declare module "*.css" {
   export default classes;
 }
 
+declare module "*.scss" {
+  const classes: Styles;
+  export default classes;
+}
+
 declare module "*.svg" {
   export const ReactComponent: React.FC<React.SVGProps<SVGSVGElement>>;
 

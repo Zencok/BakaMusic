@@ -150,7 +150,7 @@ export function formatLyricsByTimestamp(
             const value = stringifyMetaValue(key, meta[key]);
             return value ? `[${key}:${value}]` : null;
         })
-        .filter(Boolean);
+        .filter((line): line is string => Boolean(line));
 
     const resultLines: string[] = [];
     if (metaLines.length) {
@@ -206,4 +206,3 @@ export function formatLyricsByTimestamp(
 
     return resultLines.join("\n").trim();
 }
-

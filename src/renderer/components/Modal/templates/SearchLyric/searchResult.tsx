@@ -13,6 +13,7 @@ import { toast } from "react-toastify";
 import { hideModal } from "../..";
 import { useTranslation } from "react-i18next";
 import trackPlayer from "@renderer/core/track-player";
+import { toError } from "@/common/error-util";
 
 interface ISearchResultProps {
     data: ISearchLyricResult;
@@ -54,7 +55,7 @@ function SearchResult(props: ISearchResultProps) {
                                                         toast.success(t("modal.media_lyric_linked"));
                                                         hideModal();
                                                     } catch (e) {
-                                                        toast.error(`${t("modal.media_lyric_link_failed")} ${e?.message ?? e}`);
+                                                        toast.error(`${t("modal.media_lyric_link_failed")} ${toError(e).message}`);
                                                     }
                                                 }
                                             }}
