@@ -1,4 +1,4 @@
-﻿import {
+import {
     ColumnDef,
     createColumnHelper,
     getCoreRowModel,
@@ -422,6 +422,10 @@ function getBestQualityInfo(musicItem: IMusic.IMusicItem) {
         musicItem?.source && typeof musicItem.source === "object"
             ? musicItem.source as Partial<Record<IMusic.IQualityKey, { size?: string | number; url?: string }>>
             : undefined;
+    const downloadedData = getInternalData<IMusic.IMusicItemInternalData>(
+        musicItem,
+        "downloadData",
+    );
 
     const quality = [...qualityKeys].reverse().find((item) => {
         if (qualities?.[item] !== undefined) {
@@ -429,7 +433,7 @@ function getBestQualityInfo(musicItem: IMusic.IMusicItem) {
         }
 
         const sourceItem = source?.[item];
-        return !!sourceItem && (
+        return downloadedData?.quality === item || !!sourceItem && (
             sourceItem.url !== undefined ||
             sourceItem.size !== undefined
         );
@@ -440,7 +444,7 @@ function getBestQualityInfo(musicItem: IMusic.IMusicItem) {
     }
 
     const sizeText = formatSizeText(
-        qualities?.[quality]?.size ?? source?.[quality]?.size,
+        qualities?.[quality]?.size ?? source?.[quality]?.size ?? (musicItem as { size?: string | number }).size,
     );
 
     return {
@@ -462,11 +466,17 @@ function getSortValue(musicItem: IMusic.IMusicItem, field: SortField): string | 
             const source = musicItem?.source && typeof musicItem.source === "object"
                 ? musicItem.source as Partial<Record<IMusic.IQualityKey, { size?: string | number }>>
                 : undefined;
+            const downloadedData = getInternalData<IMusic.IMusicItemInternalData>(
+                musicItem,
+                "downloadData",
+            );
             const quality = [...qualityKeys].reverse().find(q =>
-                qualities?.[q] !== undefined || source?.[q]?.size !== undefined,
+                qualities?.[q] !== undefined ||
+                source?.[q]?.size !== undefined ||
+                downloadedData?.quality === q,
             );
             if (!quality) return 0;
-            const sz = qualities?.[quality]?.size ?? source?.[quality]?.size;
+            const sz = qualities?.[quality]?.size ?? source?.[quality]?.size ?? (musicItem as { size?: string | number }).size;
             if (typeof sz === "number") return sz;
             const n = parseFloat(String(sz));
             return isNaN(n) ? 0 : n;

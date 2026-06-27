@@ -4,7 +4,6 @@ import path from "path";
 import { supportLocalMediaType } from "@/common/constant";
 import debounce from "lodash.debounce";
 import { parseLocalMusicItem } from "@/common/file-util";
-import { setInternalData } from "@/common/media-util";
 
 let watcher: chokidar.FSWatcher;
 
@@ -40,14 +39,6 @@ function getCurrentWatchedLocalMusicFiles() {
 function createParsedLocalMusicItem(filePath: string) {
     return parseLocalMusicItem(filePath).then((musicItem) => {
         musicItem.$$localPath = filePath;
-        setInternalData<IMusic.IMusicItemInternalData>(
-            musicItem,
-            "downloadData",
-            {
-                path: filePath,
-                quality: "320k",
-            },
-        );
         return musicItem;
     });
 }

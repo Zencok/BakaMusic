@@ -1,4 +1,5 @@
-﻿import { qualityKeys, qualityText } from "@/common/constant";
+import { localPluginName, qualityKeys, qualityText } from "@/common/constant";
+import { getInternalData } from "@/common/media-util";
 import { normalizeFileSize } from "@/common/normalize-util";
 import PluginManager from "@shared/plugin-manager/renderer";
 
@@ -67,6 +68,14 @@ export function getMusicQualitySize(
         return source[quality]?.size;
     }
 
+    const downloadedData = getInternalData<IMusic.IMusicItemInternalData>(
+        musicItem,
+        "downloadData",
+    );
+    if (downloadedData?.quality === quality) {
+        return (musicItem as { size?: string | number })?.size;
+    }
+
     return undefined;
 }
 
@@ -106,6 +115,15 @@ export function getAvailableQualityChoices(
     musicItem: IMusic.IMusicItem,
     t: (key: string) => string,
 ): IMusicQualityChoice[] {
+    const downloadedData = getInternalData<IMusic.IMusicItemInternalData>(
+        musicItem,
+        "downloadData",
+    );
+    if (musicItem?.platform === localPluginName && downloadedData?.path && downloadedData.quality) {
+        const sizeText = formatQualitySize(getMusicQualitySize(musicItem, downloadedData.quality));
+        return [createMusicQualityChoice(downloadedData.quality, t, sizeText)];
+    }
+
     const qualities = musicItem?.qualities as IMusic.IQuality | undefined;
     const source =
         musicItem?.source && typeof musicItem.source === "object"

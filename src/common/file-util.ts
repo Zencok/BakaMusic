@@ -5,6 +5,7 @@ import CryptoJS from "crypto-js";
 import fs from "fs/promises";
 import url from "url";
 import type { BigIntStats, PathLike, StatOptions, Stats } from "original-fs";
+import { setInternalData } from "./media-util";
 
 function getB64Picture(picture: IPicture) {
     return `data:${picture.format};base64,${picture.data.toString("base64")}`;
@@ -12,10 +13,74 @@ function getB64Picture(picture: IPicture) {
 
 const specialEncoding = ["GB2312"];
 
+function getLocalAudioQuality(format?: {
+    bitrate?: number;
+    bitsPerSample?: number;
+    sampleRate?: number;
+    lossless?: boolean;
+    codec?: string;
+    container?: string;
+}): IMusic.IQualityKey {
+    const bitrateKbps = typeof format?.bitrate === "number"
+        ? format.bitrate / 1000
+        : 0;
+    const bitsPerSample = format?.bitsPerSample ?? 0;
+    const sampleRate = format?.sampleRate ?? 0;
+    const codecText = `${format?.codec ?? ""} ${format?.container ?? ""}`.toLowerCase();
+    const isLossless =
+        format?.lossless === true ||
+        /\b(flac|alac|ape|wav|wave|pcm|dsd|dsf|aiff?)\b/.test(codecText);
+
+    if (isLossless) {
+        if (bitsPerSample > 16 || sampleRate > 48000) {
+            return "hires";
+        }
+        return "flac";
+    }
+
+    if (bitrateKbps >= 256) {
+        return "320k";
+    }
+    if (bitrateKbps >= 160) {
+        return "192k";
+    }
+    return "128k";
+}
+
+async function getLocalFileSize(filePath: string) {
+    const stat = await safeStat(filePath);
+    return stat?.isFile() ? Number(stat.size) : undefined;
+}
+
+function applyLocalQualityInfo(
+    musicItem: IMusic.IMusicItem,
+    filePath: string,
+    quality: IMusic.IQualityKey,
+    size?: number,
+) {
+    musicItem.qualities = {
+        ...(musicItem.qualities ?? {}),
+        [quality]: {
+            url: addFileScheme(filePath),
+            ...(size !== undefined ? { size } : {}),
+        },
+    };
+    setInternalData<IMusic.IMusicItemInternalData>(
+        musicItem,
+        "downloadData",
+        {
+            path: filePath,
+            quality,
+        },
+    );
+    return musicItem;
+}
+
 export async function parseLocalMusicItem(
     filePath: string,
 ): Promise<IMusic.IMusicItem> {
     const hash = CryptoJS.MD5(filePath).toString();
+    const size = await getLocalFileSize(filePath);
     try {
         const {
             common = {} as ICommonTagsResult,
@@ -78,7 +143,8 @@ export async function parseLocalMusicItem(
             }
         }
 
-        return {
+        const quality = getLocalAudioQuality(format);
+        return applyLocalQualityInfo({
             title: common.title ?? path.parse(filePath).name,
             duration,
             artist: common.artist ?? "未知作者",
@@ -91,9 +157,9 @@ export async function parseLocalMusicItem(
             platform: localPluginName,
             id: hash,
             rawLrc: common.lyrics?.join(""),
-        };
+        }, filePath, quality, size);
     } catch {
-        return {
+        return applyLocalQualityInfo({
             title: path.parse(filePath).name || filePath,
             id: hash,
             platform: localPluginName,
@@ -101,7 +167,7 @@ export async function parseLocalMusicItem(
             url: addFileScheme(filePath),
             artist: "未知作者",
             album: "未知专辑",
-        };
+        }, filePath, "320k", size);
     }
 }
 
