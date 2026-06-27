@@ -29,8 +29,13 @@ function localPluginDefine(): IPlugin.IPluginInstance {
         platform: localPluginName,
         _path: "",
         async getMediaSource(musicItem) {
+            const localFilePath = getLocalMusicFilePath(musicItem);
+            if (!localFilePath) {
+                return null;
+            }
+
             return {
-                url: addFileScheme(musicItem.url),
+                url: addFileScheme(localFilePath),
             };
         },
         async getLyric(musicItem) {

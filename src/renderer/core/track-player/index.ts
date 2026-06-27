@@ -711,14 +711,28 @@ class TrackPlayer {
         }
 
         try {
-            const mediaSource = await PluginManager.callPluginDelegateMethod(
-                {
-                    platform: currentMusic.platform,
-                },
-                "getMediaSource",
+            let mediaSource: IPlugin.IMediaSourceResult | null = null;
+            let realQuality = quality;
+
+            const downloadedData = getInternalData<IMusic.IMusicItemInternalData>(
                 currentMusic,
-                quality,
+                "downloadData",
             );
+            if (downloadedData && await fsUtil.isFile(downloadedData.path)) {
+                realQuality = downloadedData.quality;
+                mediaSource = {
+                    url: fsUtil.addFileScheme(downloadedData.path),
+                };
+            } else {
+                mediaSource = await PluginManager.callPluginDelegateMethod(
+                    {
+                        platform: currentMusic.platform,
+                    },
+                    "getMediaSource",
+                    currentMusic,
+                    quality,
+                );
+            }
 
             if (!this.isCurrentMusic(currentMusic)) {
                 return false;
@@ -740,7 +754,7 @@ class TrackPlayer {
                 seekTo: this.progress.currentTime ?? 0,
                 autoPlay: this.playerState === PlayerState.Playing,
             });
-            this.setCurrentQuality(quality);
+            this.setCurrentQuality(realQuality);
             return true;
         } catch (e) {
             logger.logError("set quality failed", e);
