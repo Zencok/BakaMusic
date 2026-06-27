@@ -18,12 +18,12 @@ jobs:
   validate-source:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           package-manager-cache: false
-      - run: npm install
+      - run: npm ci
       - name: Verify AMLL source integration
         run: |
           test -f src/amll-core/lyric-player/dom/index.ts
@@ -37,8 +37,8 @@ jobs:
     needs: validate-source
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           package-manager-cache: false
@@ -54,7 +54,7 @@ jobs:
         if: env.SYNC_PACKAGE_VERSION == 'true'
         run: |
           node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\n'); }"
-      - run: npm install
+      - run: npm ci
       - name: Clean build output
         run: Remove-Item -Recurse -Force -ErrorAction SilentlyContinue ".webpack", "out"
       - run: npm run package
@@ -68,12 +68,12 @@ jobs:
         run: New-Item -ItemType Directory -Force -Path "./out/BakaMusic-win32-x64/portable"
       - name: Build Portable Zip
         run: Compress-Archive -Path "./out/BakaMusic-win32-x64" -DestinationPath "BakaMusic-${{ env.VERSION }}-win32-x64-portable.zip" -Force
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: BakaMusic-${{ env.VERSION }}-win32-x64-setup
           path: ./out/BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe
           if-no-files-found: error
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: BakaMusic-${{ env.VERSION }}-win32-x64-portable
           path: BakaMusic-${{ env.VERSION }}-win32-x64-portable.zip
@@ -83,11 +83,11 @@ jobs:
     needs: validate-source
     runs-on: macos-15-intel
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.10"
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           package-manager-cache: false
@@ -103,13 +103,13 @@ jobs:
         if: env.SYNC_PACKAGE_VERSION == 'true'
         run: |
           node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\n'); }"
-      - run: npm install
+      - run: npm ci
       - name: Clean build output
         run: rm -rf .webpack out
       - run: npm run make -- --arch="x64"
       - name: Rename DMG
         run: mv "./out/make/BakaMusic-${{ env.VERSION }}-x64.dmg" "./out/make/BakaMusic-${{ env.VERSION }}-darwin-x64.dmg"
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: BakaMusic-${{ env.VERSION }}-darwin-x64
           path: ./out/make/BakaMusic-${{ env.VERSION }}-darwin-x64.dmg
@@ -119,11 +119,11 @@ jobs:
     needs: validate-source
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.10"
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           package-manager-cache: false
@@ -139,13 +139,13 @@ jobs:
         if: env.SYNC_PACKAGE_VERSION == 'true'
         run: |
           node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\n'); }"
-      - run: npm install
+      - run: npm ci
       - name: Clean build output
         run: rm -rf .webpack out
       - run: npm run make -- --arch="arm64"
       - name: Rename DMG
         run: mv "./out/make/BakaMusic-${{ env.VERSION }}-arm64.dmg" "./out/make/BakaMusic-${{ env.VERSION }}-darwin-arm64.dmg"
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: BakaMusic-${{ env.VERSION }}-darwin-arm64
           path: ./out/make/BakaMusic-${{ env.VERSION }}-darwin-arm64.dmg
@@ -155,8 +155,8 @@ jobs:
     needs: validate-source
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           package-manager-cache: false
@@ -172,7 +172,7 @@ jobs:
         if: env.SYNC_PACKAGE_VERSION == 'true'
         run: |
           node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\n'); }"
-      - run: npm install
+      - run: npm ci
       - name: Clean build output
         run: rm -rf .webpack out
       - run: npm run make
@@ -182,7 +182,7 @@ jobs:
           if [ -n "$DEB_FILE" ]; then
             mv "$DEB_FILE" "./out/make/deb/x64/BakaMusic-${{ env.VERSION }}-linux-amd64.deb"
           fi
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: BakaMusic-${{ env.VERSION }}-linux-amd64
           path: ./out/make/deb/x64/BakaMusic-${{ env.VERSION }}-linux-amd64.deb
@@ -198,7 +198,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: ./release-assets
           merge-multiple: true
