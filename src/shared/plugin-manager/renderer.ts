@@ -71,6 +71,30 @@ if (!bridge) {
 
 const delegatePluginsStore = new Store<IPlugin.IPluginDelegate[]>([]);
 
+function sortPluginsByMeta(
+    plugins: IPlugin.IPluginDelegate[],
+    meta: Record<string, IPlugin.IPluginMeta | undefined>,
+) {
+    return plugins
+        .map((plugin, index) => ({ plugin, index }))
+        .sort((a, b) => {
+            const aOrder = meta[a.plugin.platform]?.order;
+            const bOrder = meta[b.plugin.platform]?.order;
+
+            if (aOrder !== undefined && bOrder !== undefined && aOrder !== bOrder) {
+                return aOrder - bOrder;
+            }
+            if (aOrder !== undefined && bOrder === undefined) {
+                return -1;
+            }
+            if (aOrder === undefined && bOrder !== undefined) {
+                return 1;
+            }
+            return a.index - b.index;
+        })
+        .map(({ plugin }) => plugin);
+}
+
 mod.onPluginUpdated((plugins) => {
     delegatePluginsStore.setValue(plugins);
 });
@@ -87,16 +111,12 @@ function getSortedSupportedPlugin(
     featureMethod: keyof IPlugin.IPluginInstanceMethods,
 ) {
     const meta = AppConfig.getConfig("private.pluginMeta") ?? {};
-    return delegatePluginsStore
-        .getValue()
-        .filter((_) => _.supportedMethod.includes(featureMethod))
-        .sort((a, b) => {
-            return (meta[a.platform]?.order ?? Infinity) -
-            (meta[b?.platform]?.order ?? Infinity) <
-            0
-                ? -1
-                : 1;
-        });
+    return sortPluginsByMeta(
+        delegatePluginsStore
+            .getValue()
+            .filter((_) => _.supportedMethod.includes(featureMethod)),
+        meta,
+    );
 }
 
 function getSearchablePlugins(
@@ -181,16 +201,12 @@ export function useSortedSupportedPlugin(
     featureMethod: keyof IPlugin.IPluginInstanceMethods,
 ) {
     const meta = AppConfig.getConfig("private.pluginMeta") ?? {};
-    return delegatePluginsStore
-        .useValue()
-        .filter((_) => _.supportedMethod.includes(featureMethod))
-        .sort((a, b) => {
-            return (meta[a.platform]?.order ?? Infinity) -
-            (meta[b?.platform]?.order ?? Infinity) <
-            0
-                ? -1
-                : 1;
-        });
+    return sortPluginsByMeta(
+        delegatePluginsStore
+            .useValue()
+            .filter((_) => _.supportedMethod.includes(featureMethod)),
+        meta,
+    );
 }
 
 export function useSortedPlugins() {
@@ -198,13 +214,7 @@ export function useSortedPlugins() {
     const meta = useAppConfig("private.pluginMeta") ?? {};
 
     return useMemo(() => {
-        return [...plugins].sort((a, b) => {
-            return (meta[a.platform]?.order ?? Infinity) -
-            (meta[b?.platform]?.order ?? Infinity) <
-            0
-                ? -1
-                : 1;
-        });
+        return sortPluginsByMeta(plugins, meta);
     }, [plugins, meta]);
 }
 

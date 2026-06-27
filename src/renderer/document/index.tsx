@@ -8,7 +8,7 @@ import bootstrap from "./bootstrap";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import MainPage from "../pages/main-page";
 import { ContextMenuComponent } from "../components/ContextMenu";
-import { ToastContainer } from "react-toastify";
+import { Bounce, ToastContainer } from "react-toastify";
 
 import "rc-slider/assets/index.css";
 import "react-toastify/dist/ReactToastify.css";
@@ -61,6 +61,7 @@ function Root() {
                 hideProgressBar
                 autoClose={toastDuration.short}
                 newestOnTop
+                transition={Bounce}
             ></ToastContainer>
         </>
     );

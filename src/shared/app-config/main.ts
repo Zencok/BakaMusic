@@ -13,7 +13,7 @@ import { toError } from "@/common/error-util";
 class AppConfig {
     private _configPath = "";
     private windowManager!: IWindowManager;
-    private config: IAppConfig = {};
+    private config: IAppConfig | null = null;
 
     private onAppConfigUpdatedCallbacks = new Set<(patch: IAppConfig, config: IAppConfig, from: "main" | "renderer") => void>();
 
@@ -86,7 +86,7 @@ class AppConfig {
     }
 
     async migrateOldVersionConfig() {
-        if ((this.config["$schema-version"] ?? -1) >= 0) {
+        if ((this.config?.["$schema-version"] ?? -1) >= 0) {
             return;
         }
         // 1. 升级到v1
@@ -167,18 +167,16 @@ class AppConfig {
 
     async loadConfig() {
         try {
-            if (this.config) {
-                return { ..._defaultAppConfig, ...this.config };
-            } else {
+            if (!this.config) {
                 const rawConfig = await fs.readFile(this.configPath, "utf8");
                 this.config = JSON.parse(rawConfig);
                 // 升级旧版设置
                 await this.migrateOldVersionConfig();
-                this.config = {
-                    ..._defaultAppConfig,
-                    ...this.config,
-                };
             }
+            this.config = {
+                ..._defaultAppConfig,
+                ...this.config,
+            };
         } catch (e) {
             const error = toError(e) as NodeJS.ErrnoException;
             if (error.message === "Unexpected end of JSON input" || error.code === "EISDIR") {
@@ -195,16 +193,16 @@ class AppConfig {
     }
 
     public getAllConfig() {
-        return this.config;
+        return this.config ?? {};
     }
 
     public reset() {
-        this.config = {};
+        this.config = null;
         this.setConfig({});
     }
 
     public getConfig<T extends keyof IAppConfig>(key: T): IAppConfig[T] {
-        return this.config[key];
+        return this.config?.[key];
     }
 
     public setConfig(data: IAppConfig) {
@@ -214,7 +212,8 @@ class AppConfig {
     private _setConfig(data: IAppConfig, from: "main" | "renderer") {
         try {
             // 1. Merge old one
-            this.config = { ..._defaultAppConfig, ...this.config, ...data };
+            const nextConfig = { ..._defaultAppConfig, ...this.config, ...data };
+            this.config = nextConfig;
             // 2. Save to file
             const rawConfig = JSON.stringify(this.config, undefined, 4);
             originalFs.writeFileSync(this.configPath, rawConfig, "utf-8");
@@ -232,7 +231,7 @@ class AppConfig {
             });
 
             this.onAppConfigUpdatedCallbacks.forEach((callback) => {
-                callback(data, this.config, from);
+                callback(data, nextConfig, from);
             });
 
         } catch (e) {
