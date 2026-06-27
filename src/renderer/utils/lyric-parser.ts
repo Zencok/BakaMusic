@@ -59,6 +59,121 @@ const WORD_LRC_REG = /\[\d{2}:\d{2}(?:\.\d{2,3})?\][^[\r\n]+\[\d{2}:\d{2}(?:\.\d
 const WORD_LRC_ENTRY_REG = /\[(\d{2}:\d{2}(?:\.\d{2,3})?)\]([^[\r\n]*)/g;
 const LRC_TIME_REG = /\[\d{2}:\d{2}(?:\.\d{2,3})?\]/;
 const META_REG = /\[([a-zA-Z]+):([^\]]+)\]/g;
+const PARALLEL_LINE_EPSILON = 0.03;
+const HAN_REG = /[\u3400-\u9fff\uf900-\ufaff]/;
+const KANA_REG = /[\u3040-\u30ff\u31f0-\u31ff]/;
+const HANGUL_REG = /[\uac00-\ud7af]/;
+const LATIN_REG = /[A-Za-z\u00c0-\u024f]/;
+const ROMANIZATION_HINT_REG = /(?:shi|chi|tsu|kyo|kyu|kya|ryo|ryu|rya|sho|shu|sha|cho|chu|cha|jyo|jyu|jya|dzu|desu|boku|kimi|kono|sono|ano|yume|sora|kokoro|namida|hikari|kaze|hana|machi|sekai|mirai|hoshi|koe|uta|sarang|hae)/i;
+const COMMON_ENGLISH_WORDS = new Set([
+    "a",
+    "an",
+    "and",
+    "are",
+    "be",
+    "but",
+    "for",
+    "from",
+    "hello",
+    "i",
+    "in",
+    "is",
+    "it",
+    "love",
+    "me",
+    "my",
+    "of",
+    "on",
+    "that",
+    "the",
+    "this",
+    "to",
+    "we",
+    "with",
+    "world",
+    "you",
+    "your",
+]);
+const PINYIN_INITIAL_REG = /^(?:b|p|m|f|d|t|n|l|g|k|h|j|q|x|zh|ch|sh|r|z|c|s)?/;
+const PINYIN_FINALS = new Set([
+    "a",
+    "o",
+    "e",
+    "ai",
+    "ei",
+    "ao",
+    "ou",
+    "an",
+    "en",
+    "ang",
+    "eng",
+    "ong",
+    "i",
+    "ia",
+    "ie",
+    "iao",
+    "iu",
+    "ian",
+    "in",
+    "iang",
+    "ing",
+    "iong",
+    "u",
+    "ua",
+    "uo",
+    "uai",
+    "ui",
+    "uan",
+    "un",
+    "uang",
+    "ue",
+    "ve",
+    "er",
+]);
+const PINYIN_SPECIAL_SYLLABLES = new Set([
+    "zhi",
+    "chi",
+    "shi",
+    "ri",
+    "zi",
+    "ci",
+    "si",
+    "yi",
+    "yin",
+    "ying",
+    "wu",
+    "yu",
+    "yue",
+    "yuan",
+    "yun",
+    "ye",
+    "yao",
+    "you",
+    "yang",
+    "yong",
+    "wa",
+    "wai",
+    "wan",
+    "wang",
+    "wei",
+    "wen",
+    "weng",
+    "wo",
+]);
+
+interface ITextScriptStats {
+    han: number;
+    kana: number;
+    hangul: number;
+    latin: number;
+    script: number;
+}
+
+interface ICollapseParallelResult {
+    items: IParsedLrcItem[];
+    hasTranslation: boolean;
+    hasRomanization: boolean;
+}
 
 function isMetaLine(line: string) {
     return /^\[[a-zA-Z]+:/.test(line.trim());
@@ -444,14 +559,215 @@ function parseLyricItemsByFormat(raw: string): IParsedLrcItem[] {
         case "qrc":
             return parseQrcLyric(raw);
         case "angle":
-            return parseAngleLyric(raw);
         case "word-lrc":
-            return parseWordLrcLyric(raw);
+            return parseMixedTimestampLyric(raw);
         case "lrc":
             return parseLrcLyric(raw);
         default:
             return parsePlainTextLyric(raw);
     }
+}
+
+function parseMixedTimestampLyric(raw: string): IParsedLrcItem[] {
+    const items: IParsedLrcItem[] = [];
+
+    for (const line of raw.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed || isMetaLine(trimmed)) {
+            continue;
+        }
+
+        let lineItems: IParsedLrcItem[] = [];
+        if (ANGLE_REG.test(trimmed)) {
+            lineItems = parseAngleLyric(trimmed);
+        } else if (WORD_LRC_REG.test(trimmed)) {
+            lineItems = parseWordLrcLyric(trimmed);
+        } else if (LRC_TIME_REG.test(trimmed)) {
+            lineItems = parseLrcLyric(trimmed);
+        }
+
+        items.push(...lineItems);
+    }
+
+    return items.sort((a, b) => a.time - b.time);
+}
+
+function getTextScriptStats(text: string): ITextScriptStats {
+    const stats: ITextScriptStats = {
+        han: 0,
+        kana: 0,
+        hangul: 0,
+        latin: 0,
+        script: 0,
+    };
+
+    for (const char of Array.from(text)) {
+        if (HAN_REG.test(char)) {
+            stats.han++;
+            stats.script++;
+        } else if (KANA_REG.test(char)) {
+            stats.kana++;
+            stats.script++;
+        } else if (HANGUL_REG.test(char)) {
+            stats.hangul++;
+            stats.script++;
+        } else if (LATIN_REG.test(char)) {
+            stats.latin++;
+            stats.script++;
+        }
+    }
+
+    return stats;
+}
+
+function hasEastAsianScript(stats: ITextScriptStats) {
+    return stats.han > 0 || stats.kana > 0 || stats.hangul > 0;
+}
+
+function isMostlyLatin(stats: ITextScriptStats) {
+    return stats.latin > 0 && stats.latin / Math.max(1, stats.script) >= 0.65;
+}
+
+function getLatinWords(text: string) {
+    return text
+        .toLowerCase()
+        .match(/[a-z\u00c0-\u024f]+/g) ?? [];
+}
+
+function isPinyinSyllable(word: string) {
+    if (PINYIN_SPECIAL_SYLLABLES.has(word)) {
+        return true;
+    }
+
+    const match = word.match(PINYIN_INITIAL_REG);
+    const rest = word.slice(match?.[0].length ?? 0);
+    return !!rest && PINYIN_FINALS.has(rest);
+}
+
+function looksLikeRomanizationText(text: string) {
+    const words = getLatinWords(text);
+    if (!words.length) {
+        return false;
+    }
+
+    const englishWords = words.filter((word) => COMMON_ENGLISH_WORDS.has(word)).length;
+    if (englishWords >= Math.max(1, Math.ceil(words.length * 0.35))) {
+        return false;
+    }
+
+    const pinyinWords = words.filter(isPinyinSyllable).length;
+    if (pinyinWords / words.length >= 0.75) {
+        return true;
+    }
+
+    return ROMANIZATION_HINT_REG.test(text);
+}
+
+function chooseParallelMainIndex(group: IParsedLrcItem[]) {
+    if (
+        group.length >= 3
+        && looksLikeRomanizationText(group[0].lrc)
+        && hasEastAsianScript(getTextScriptStats(group[1].lrc))
+    ) {
+        return 1;
+    }
+
+    return 0;
+}
+
+function appendLyricField(
+    item: IParsedLrcItem,
+    field: "translation" | "romanization",
+    text: string,
+) {
+    const normalized = text.trim();
+    if (!normalized) {
+        return;
+    }
+
+    if (!item[field]?.trim()) {
+        item[field] = normalized;
+        return;
+    }
+
+    if (item[field] !== normalized) {
+        item[field] = `${item[field]}\n${normalized}`;
+    }
+}
+
+function assignParallelSecondaryLine(
+    base: IParsedLrcItem,
+    source: IParsedLrcItem,
+) {
+    const baseStats = getTextScriptStats(base.lrc);
+    const sourceStats = getTextScriptStats(source.lrc);
+    const sourceIsRomanization = hasEastAsianScript(baseStats)
+        && isMostlyLatin(sourceStats)
+        && (source.hasWordTimeline || looksLikeRomanizationText(source.lrc));
+
+    if (!sourceIsRomanization) {
+        appendLyricField(base, "translation", source.lrc);
+        return;
+    }
+
+    appendLyricField(base, "romanization", source.lrc);
+    if (source.words?.length) {
+        base.romanizationWords = source.words;
+        base.hasRomanizationWordTimeline = source.hasWordTimeline;
+        base.romanizationDuration = source.duration;
+    }
+}
+
+function collapseParallelLyricItems(items: IParsedLrcItem[]): ICollapseParallelResult {
+    const collapsedItems: IParsedLrcItem[] = [];
+    let hasTranslation = false;
+    let hasRomanization = false;
+
+    for (let index = 0; index < items.length;) {
+        const group = [items[index]];
+        let nextIndex = index + 1;
+        while (
+            nextIndex < items.length
+            && Math.abs(items[nextIndex].time - group[0].time) <= PARALLEL_LINE_EPSILON
+        ) {
+            group.push(items[nextIndex]);
+            nextIndex++;
+        }
+
+        if (group.length === 1) {
+            collapsedItems.push(group[0]);
+            index = nextIndex;
+            continue;
+        }
+
+        const mainIndex = chooseParallelMainIndex(group);
+        const main = group[mainIndex];
+        const collapsed: IParsedLrcItem = {
+            ...main,
+            words: main.words ? [...main.words] : undefined,
+        };
+
+        group.forEach((item, groupIndex) => {
+            if (groupIndex === mainIndex) {
+                return;
+            }
+            assignParallelSecondaryLine(
+                collapsed,
+                item,
+            );
+        });
+
+        hasTranslation = hasTranslation || !!collapsed.translation?.trim();
+        hasRomanization = hasRomanization || !!collapsed.romanization?.trim();
+        collapsedItems.push(collapsed);
+        index = nextIndex;
+    }
+
+    return {
+        items: collapsedItems,
+        hasTranslation,
+        hasRomanization,
+    };
 }
 
 // ============ 翻译/罗马音合并（容差） ============
@@ -558,15 +874,24 @@ export default class LyricParser {
             }
         }
 
-        const { lrcItems, meta } = this.parseAll(raw || "");
+        const {
+            lrcItems,
+            meta,
+            hasTranslation,
+            hasRomanization,
+        } = this.parseAll(raw || "");
         this.meta = meta;
         this.lrcItems = lrcItems;
+        this.hasTranslation = hasTranslation;
+        this.hasRomanization = hasRomanization;
 
         if (translation) {
-            this.hasTranslation = mergeLyricField(this.lrcItems, translation, "translation");
+            this.hasTranslation = mergeLyricField(this.lrcItems, translation, "translation")
+                || this.hasTranslation;
         }
         if (romanization) {
-            this.hasRomanization = mergeLyricField(this.lrcItems, romanization, "romanization");
+            this.hasRomanization = mergeLyricField(this.lrcItems, romanization, "romanization")
+                || this.hasRomanization;
         }
     }
 
@@ -574,14 +899,28 @@ export default class LyricParser {
     private parseAll(raw: string): {
         lrcItems: IParsedLrcItem[];
         meta: LyricMeta;
+        hasTranslation: boolean;
+        hasRomanization: boolean;
     } {
         raw = raw.trim();
-        if (!raw) return { lrcItems: [], meta: {} };
+        if (!raw) {
+            return {
+                lrcItems: [],
+                meta: {},
+                hasTranslation: false,
+                hasRomanization: false,
+            };
+        }
 
         const metaPrefix = extractMetaPrefix(raw);
         const meta = parseMeta(metaPrefix);
 
-        const items = parseLyricItemsByFormat(raw);
+        const parsedItems = parseLyricItemsByFormat(raw);
+        const {
+            items,
+            hasTranslation,
+            hasRomanization,
+        } = collapseParallelLyricItems(parsedItems);
 
         // 补全 endTime
         fillEndTimes(items);
@@ -599,7 +938,12 @@ export default class LyricParser {
             item.index = i;
         });
 
-        return { lrcItems: items, meta };
+        return {
+            lrcItems: items,
+            meta,
+            hasTranslation,
+            hasRomanization,
+        };
     }
 
     /** 获取当前行（兼容旧接口） */
