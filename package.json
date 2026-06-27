@@ -85,7 +85,7 @@
     "typescript-eslint": "^8.15.0"
   },
   "dependencies": {
-    "@headlessui/react": "^1.7.15",
+    "@headlessui/react": "^2.2.10",
     "@liquid-dom/core": "^0.1.1",
     "@liquid-dom/react": "^0.1.1",
     "@tanstack/react-table": "^8.17.3",

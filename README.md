@@ -11,7 +11,7 @@
 
 **无广告。无内置音源。完全由你掌控。**
 
-BakaMusic 是一款基于插件的跨平台桌面音乐播放器，构建于 Electron 40 + React 18 + TypeScript 之上，支持 Windows、macOS 和 Linux。应用本身不绑定任何平台——通过插件，互联网上的任意音源均可接入。
+BakaMusic 是一款基于插件的跨平台桌面音乐播放器，构建于 Electron 43 + React 19 + TypeScript 之上，支持 Windows、macOS 和 Linux。应用本身不绑定任何平台——通过插件，互联网上的任意音源均可接入。
 
 ## 特性
 
@@ -35,7 +35,6 @@ BakaMusic 是一款基于插件的跨平台桌面音乐播放器，构建于 Ele
 | 平台 | 格式 |
 |------|------|
 | Windows x64 | Setup 安装包 / Portable 免安装 |
-| Windows x64 Legacy | 兼容旧系统 (Electron 22) |
 | macOS x64 | DMG |
 | macOS arm64 (Apple Silicon) | DMG |
 | Linux amd64 | DEB |
@@ -68,7 +67,7 @@ npm run make
 
 ```bash
 npm run package
-MSYS_NO_PATHCONV=1 iscc /DMyAppVersion=1.0.0 /DMyAppId=BakaMusic "release/build-windows.iss"
+MSYS_NO_PATHCONV=1 iscc /DMyAppVersion=1.2.6 /DMyAppId=BakaMusic "release/build-windows.iss"
 ```
 
 ## 插件
@@ -157,8 +156,8 @@ native/qmc2/             # QMC2 解密 native 模块 (C++ / node-gyp)
 
 | 技术 | 用途 |
 |------|------|
-| Electron 40 | 桌面框架 |
-| React 18 | UI 框架 |
+| Electron 43 | 桌面框架 |
+| React 19 | UI 框架 |
 | TypeScript 5 | 类型系统 |
 | Webpack (Electron Forge) | 构建打包 |
 | SCSS | 样式 |
