@@ -180,6 +180,24 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
                 }
             }
 
+            // Intercept cek: register with luna-proxy for CENC streaming decryption
+            if (result?.cek && url) {
+                try {
+                    const localUrl = await ServiceManager.registerLunaStream(url, result.cek, headers);
+                    if (localUrl) {
+                        return {
+                            url: `${localUrl}.m4a`,
+                        } as IPlugin.IMediaSourceResult;
+                    }
+                } catch {
+                    return {
+                        url,
+                        headers,
+                        userAgent: headers?.["user-agent"],
+                    } as IPlugin.IMediaSourceResult;
+                }
+            }
+
             const mediaResult = {
                 url,
                 headers,

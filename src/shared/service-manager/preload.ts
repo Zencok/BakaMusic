@@ -30,10 +30,15 @@ async function registerMflacStream(src: string, ekey: string, headers?: Record<s
     return ipcRenderer.invoke("@shared/service-manager/mflac-proxy/register-stream", src, ekey, headers);
 }
 
+async function registerLunaStream(src: string, cek: string, headers?: Record<string, string>): Promise<string | null> {
+    return ipcRenderer.invoke("@shared/service-manager/luna-proxy/register-stream", src, cek, headers);
+}
+
 const mod = {
     setup,
     getServiceHost,
     registerMflacStream,
+    registerLunaStream,
 };
 
 exposeInMainWorld("@shared/service-manager", mod);

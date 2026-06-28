@@ -14,7 +14,7 @@
     "lint-staged": "lint-staged",
     "prepare": "husky install",
     "postinstall": "node scripts/patch-node-gyp.js",
-    "build:native": "cd native/qmc2 && npx node-gyp rebuild && mkdir -p ../../res/.service/native && cp build/Release/qmc2.node ../../res/.service/native/qmc2.node"
+    "build:native": "node scripts/build-native.js"
   },
   "keywords": [],
   "author": {

@@ -121,6 +121,7 @@ interface IServiceData {
 class ServiceManager {
     private windowManager!: IWindowManager;
     private serviceMap = new Map<ServiceName, IServiceData>();
+    private serviceRequestId = 0;
 
 
     private addService(serviceName: ServiceName) {
@@ -185,6 +186,47 @@ class ServiceManager {
         });
     }
 
+    /** Register a stream with the luna-proxy service (CENC streaming decrypt) */
+    registerLunaStream(src: string, cek: string, headers?: Record<string, string>): Promise<string | null> {
+        const serviceData = this.serviceMap.get(ServiceName.LunaProxy);
+        if (!serviceData?.instance) {
+            logger.logInfo("[luna-proxy] Service not found");
+            return Promise.resolve(null);
+        }
+        const cp = serviceData.instance.serviceProcess;
+        if (!cp || cp.killed) {
+            logger.logInfo("[luna-proxy] Service process not running");
+            return Promise.resolve(null);
+        }
+        const requestId = `luna-${++this.serviceRequestId}`;
+        return new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+                logger.logInfo("[luna-proxy] Registration timed out");
+                cp.removeListener("message", handler);
+                resolve(null);
+            }, 20000);
+
+            const handler = (msg: any) => {
+                if (msg?.requestId !== requestId) {
+                    return;
+                }
+                if (msg?.type === "registered") {
+                    clearTimeout(timeout);
+                    cp.removeListener("message", handler);
+                    logger.logInfo("[luna-proxy] Registered stream", msg.localUrl);
+                    resolve(msg.localUrl);
+                } else if (msg?.type === "error") {
+                    clearTimeout(timeout);
+                    cp.removeListener("message", handler);
+                    logger.logInfo("[luna-proxy] Registration error", msg.error);
+                    resolve(null);
+                }
+            };
+            cp.on("message", handler);
+            cp.send({ type: "register", requestId, src, cek, headers });
+        });
+    }
+
     setup(windowManager: IWindowManager) {
         this.windowManager = windowManager;
 
@@ -199,10 +241,15 @@ class ServiceManager {
         // put services here
         this.addService(ServiceName.RequestForwarder).start();
         this.addService(ServiceName.MflacProxy).start();
+        this.addService(ServiceName.LunaProxy).start();
 
 
         ipcMain.handle("@shared/service-manager/mflac-proxy/register-stream", async (_, src, ekey, headers) => {
             return this.registerMflacStream(src, ekey, headers);
+        });
+
+        ipcMain.handle("@shared/service-manager/luna-proxy/register-stream", async (_, src, cek, headers) => {
+            return this.registerLunaStream(src, cek, headers);
         });
 
         ipcMain.handle("@shared/service-manager/get-service-hosts", () => {

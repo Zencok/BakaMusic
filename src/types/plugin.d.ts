@@ -9,6 +9,8 @@ declare namespace IPlugin {
     quality?: IMusic.IQualityKey;
     /** QMC2 encryption key for mflac/mgg/mmp4 */
     ekey?: string;
+    /** CENC content key (32-hex) - triggers local streaming decryption via luna-proxy */
+    cek?: string;
   }
 
   export interface ISearchResult<T extends IMedia.SupportMediaType> {

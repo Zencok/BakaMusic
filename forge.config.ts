@@ -8,6 +8,30 @@ import { mainConfig } from "./config/webpack.main.config";
 import { rendererConfig } from "./config/webpack.renderer.config";
 import path from "path";
 
+const nativeSourceIgnorePlugin = {
+    __isElectronForgePlugin: true,
+    name: "ignore-native-source",
+    init() {
+        return undefined;
+    },
+    getHooks() {
+        return {
+            resolveForgeConfig: async (forgeConfig) => {
+                forgeConfig.packagerConfig = forgeConfig.packagerConfig ?? {};
+                const existingIgnore = forgeConfig.packagerConfig.ignore;
+
+                forgeConfig.packagerConfig.ignore = (file: string) => {
+                    if (/^[/\\]native($|[/\\])/.test(file)) {
+                        return true;
+                    }
+                    return typeof existingIgnore === "function" ? existingIgnore(file) : false;
+                };
+                return forgeConfig;
+            },
+        };
+    },
+} as NonNullable<ForgeConfig["plugins"]>[number];
+
 const config: ForgeConfig = {
     packagerConfig: {
         appBundleId: "com.zencok.bakamusic",
@@ -110,6 +134,7 @@ const config: ForgeConfig = {
                 ],
             },
         }),
+        nativeSourceIgnorePlugin,
         {
             name: "@timfish/forge-externals-plugin",
             config: {

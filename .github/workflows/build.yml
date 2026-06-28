@@ -38,6 +38,9 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -57,6 +60,15 @@ jobs:
       - run: npm ci
       - name: Clean build output
         run: Remove-Item -Recurse -Force -ErrorAction SilentlyContinue ".webpack", "out"
+      - name: Checkout native sources (private repo)
+        uses: actions/checkout@v7
+        with:
+          repository: Zencok/baka-native
+          ssh-key: ${{ secrets.NATIVE_REPO_DEPLOY_KEY }}
+          path: native
+          persist-credentials: false
+      - name: Build native modules
+        run: npm run build:native
       - run: npm run package
       - name: Install Inno Setup
         run: choco install innosetup -y
@@ -106,6 +118,15 @@ jobs:
       - run: npm ci
       - name: Clean build output
         run: rm -rf .webpack out
+      - name: Checkout native sources (private repo)
+        uses: actions/checkout@v7
+        with:
+          repository: Zencok/baka-native
+          ssh-key: ${{ secrets.NATIVE_REPO_DEPLOY_KEY }}
+          path: native
+          persist-credentials: false
+      - name: Build native modules
+        run: npm run build:native
       - run: npm run make -- --arch="x64"
       - name: Rename DMG
         run: mv "./out/make/BakaMusic-${{ env.VERSION }}-x64.dmg" "./out/make/BakaMusic-${{ env.VERSION }}-darwin-x64.dmg"
@@ -142,6 +163,15 @@ jobs:
       - run: npm ci
       - name: Clean build output
         run: rm -rf .webpack out
+      - name: Checkout native sources (private repo)
+        uses: actions/checkout@v7
+        with:
+          repository: Zencok/baka-native
+          ssh-key: ${{ secrets.NATIVE_REPO_DEPLOY_KEY }}
+          path: native
+          persist-credentials: false
+      - name: Build native modules
+        run: npm run build:native
       - run: npm run make -- --arch="arm64"
       - name: Rename DMG
         run: mv "./out/make/BakaMusic-${{ env.VERSION }}-arm64.dmg" "./out/make/BakaMusic-${{ env.VERSION }}-darwin-arm64.dmg"
@@ -156,6 +186,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -175,6 +208,15 @@ jobs:
       - run: npm ci
       - name: Clean build output
         run: rm -rf .webpack out
+      - name: Checkout native sources (private repo)
+        uses: actions/checkout@v7
+        with:
+          repository: Zencok/baka-native
+          ssh-key: ${{ secrets.NATIVE_REPO_DEPLOY_KEY }}
+          path: native
+          persist-credentials: false
+      - name: Build native modules
+        run: npm run build:native
       - run: npm run make
       - name: Rename DEB
         run: |
