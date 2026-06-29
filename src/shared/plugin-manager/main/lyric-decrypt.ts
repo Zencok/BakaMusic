@@ -4,11 +4,9 @@
  *
  * Supports:
  * - QRC (QQ Music): Custom Triple-DES + Zlib decompression
- * - Kuwo: Base64 + Zlib + optional XOR decryption
  */
 
 import pako from "pako";
-import iconv from "iconv-lite";
 
 // ============ QRC Custom DES Implementation ============
 // Ported from MusicFree mobile src/utils/customDES.ts
@@ -311,17 +309,6 @@ function safeInflate(data: Uint8Array): Uint8Array {
     return result;
 }
 
-function safeInflateRaw(data: Uint8Array): Uint8Array {
-    if (data.length > MAX_INPUT_LENGTH) {
-        throw new Error("Input too large for decompression");
-    }
-    const result = pako.inflateRaw(data);
-    if (result.length > MAX_DECOMPRESSED_LENGTH) {
-        throw new Error("Decompressed output exceeds safety limit");
-    }
-    return result;
-}
-
 // ============ QRC Public API ============
 
 export function isQRCEncrypted(lyrics: string): boolean {
@@ -411,63 +398,6 @@ export function convertQrcXmlToRichQrc(xml: string): string {
     return lines.join("\n");
 }
 
-// ============ Kuwo Decryption ============
-
-export function isKuwoEncrypted(lyrics: string): boolean {
-    if (!lyrics) return false;
-    const trimmed = lyrics.trim();
-    if (trimmed.length < 50) return false;
-    if (/\[\d{2}:\d{2}[.:]\d{2,3}\]/.test(trimmed)) return false;
-
-    const isValidBase64 = /^[A-Za-z0-9+/=]+$/.test(trimmed);
-    const notPureHex = !/^[0-9A-Fa-f]+$/.test(trimmed);
-    if (!isValidBase64 || !notPureHex) return false;
-
-    try {
-        const decoded = Buffer.from(trimmed, "base64").toString("utf8", 0, 20);
-        return decoded.startsWith("tp=");
-    } catch {
-        return false;
-    }
-}
-
-export function decryptKuwoLyric(lrcBase64: string, isGetLyricx = false): string {
-    const raw = Buffer.from(lrcBase64.trim(), "base64");
-
-    let headerEnd = -1;
-    for (let i = 0; i < raw.length - 3; i++) {
-        if (raw[i] === 0x0d && raw[i + 1] === 0x0a && raw[i + 2] === 0x0d && raw[i + 3] === 0x0a) {
-            headerEnd = i + 4;
-            break;
-        }
-    }
-    if (headerEnd === -1) {
-        throw new Error("Invalid Kuwo lyric format: no header end found");
-    }
-
-    const body = raw.subarray(headerEnd);
-
-    let decompressed: Uint8Array;
-    try {
-        decompressed = safeInflate(body);
-    } catch {
-        decompressed = safeInflateRaw(body);
-    }
-
-    if (isGetLyricx) {
-        const key = "yeelion";
-        for (let i = 0; i < decompressed.length; i++) {
-            decompressed[i] ^= key.charCodeAt(i % key.length);
-        }
-    }
-
-    try {
-        return iconv.decode(Buffer.from(decompressed), "gb18030");
-    } catch {
-        return new TextDecoder("utf-8").decode(decompressed);
-    }
-}
-
 // ============ Auto Decrypt ============
 
 export function autoDecryptLyric(lyrics: string): string {
@@ -480,25 +410,6 @@ export function autoDecryptLyric(lyrics: string): string {
                 return convertQrcXmlToRichQrc(decrypted);
             }
             return decrypted;
-        } catch {
-            return lyrics;
-        }
-    }
-
-    if (isKuwoEncrypted(lyrics)) {
-        try {
-            // 先尝试逐字格式（lyricx），失败或乱码则回退普通格式
-            try {
-                const richLyric = decryptKuwoLyric(lyrics, true);
-                if (richLyric && richLyric.trim()) {
-                    // 校验是否为有效歌词格式（含时间标签）
-                    const hasTimeTag = /\[\d{2}:\d{2}[.:]\d{2,3}\]/.test(richLyric) ||
-                        /\[\d+,\d+\]/.test(richLyric) ||
-                        /<\d{2}:\d{2}/.test(richLyric);
-                    if (hasTimeTag) return richLyric;
-                }
-            } catch { /* fallback */ }
-            return decryptKuwoLyric(lyrics, false);
         } catch {
             return lyrics;
         }
