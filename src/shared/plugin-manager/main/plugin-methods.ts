@@ -88,6 +88,46 @@ function getSourceAudioExt(url?: string, visited = new Set<string>()): string | 
     return null;
 }
 
+function normalizeLyricText(text: string) {
+    return text
+        .replace(/\r/g, "")
+        .replace(/\\r\\n|\\n|\\r/g, "\n");
+}
+
+async function decodeTextFile(filePath: string) {
+    const buffer = await fs.readFile(filePath);
+
+    if (buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
+        return normalizeLyricText(buffer.subarray(3).toString("utf8"));
+    }
+    if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
+        return normalizeLyricText(buffer.subarray(2).toString("utf16le"));
+    }
+    if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
+        const iconv = await import("iconv-lite");
+        return normalizeLyricText(iconv.decode(buffer.subarray(2), "utf16-be"));
+    }
+
+    const jschardet = await import("jschardet");
+    const detected = jschardet.detect(buffer, {
+        minimumThreshold: 0.4,
+    });
+    const encoding = detected.encoding?.toLowerCase();
+
+    if (
+        encoding
+        && detected.confidence >= 0.5
+        && !["ascii", "utf-8", "utf8"].includes(encoding)
+    ) {
+        const iconv = await import("iconv-lite");
+        if (iconv.encodingExists(encoding)) {
+            return normalizeLyricText(iconv.decode(buffer, encoding));
+        }
+    }
+
+    return normalizeLyricText(buffer.toString("utf8"));
+}
+
 export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
     private plugin;
     constructor(plugin: Plugin) {
@@ -270,7 +310,7 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
                 for (const ext of exts) {
                     const filePath = basePath + ext;
                     if ((await safeStat(filePath))?.isFile()) {
-                        return fs.readFile(filePath, "utf8");
+                        return decodeTextFile(filePath);
                     }
                 }
             }

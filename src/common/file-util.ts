@@ -13,6 +13,21 @@ function getB64Picture(picture: IPicture) {
 
 const specialEncoding = ["GB2312"];
 
+function normalizeLocalLyricText(lyrics?: string[] | null) {
+    const normalizedLyrics = lyrics
+        ?.map((lyric) => lyric?.trim?.() ?? "")
+        .filter(Boolean);
+
+    if (!normalizedLyrics?.length) {
+        return undefined;
+    }
+
+    return normalizedLyrics
+        .join("\n")
+        .replace(/\r/g, "")
+        .replace(/\\r\\n|\\n|\\r/g, "\n");
+}
+
 function getLocalAudioQuality(format?: {
     bitrate?: number;
     bitsPerSample?: number;
@@ -156,7 +171,7 @@ export async function parseLocalMusicItem(
             localPath: filePath,
             platform: localPluginName,
             id: hash,
-            rawLrc: common.lyrics?.join(""),
+            rawLrc: normalizeLocalLyricText(common.lyrics),
         }, filePath, quality, size);
     } catch {
         return applyLocalQualityInfo({

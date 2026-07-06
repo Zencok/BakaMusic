@@ -1,28 +1,99 @@
-# Commit Decision History
+# Commit Context History
 
-> 此文件是 `commits.jsonl` 的人类可读视图，可由工具重生成。
-> Canonical store: `commits.jsonl` (JSONL, append-only)
+## 2026-06-08T21:48:53.3159247+08:00 — fix(lyric): dim inactive line-timed desktop lyrics
+`pending`
+- **Decision**: Mark desktop lyric line state independently from the unplayed-color setting
+- **Decision**: Carry explicit line-vs-word timing metadata through AMLL lines
+- **Decision**: Use separate brightness behavior for line-timed and word-timed lyrics
+- **Files**:   - src/common/amll-lyric.ts
+  - src/renderer/components/AppleMusicLyricPlayer/index.tsx
+  - src/renderer-lrc/pages/index.tsx
+  - src/renderer-lrc/pages/index.scss
 
-| Date | Context-Id | Commit | Summary | Decisions | Bugs | Risk |
-|------|-----------|--------|---------|-----------|------|------|
-| 2026-06-07T01:14:12.0424662+08:00 | 1015ba83-fc0d-4cf7-8789-386e2aabbc40 | pending | feat(lyric): keep unplayed desktop lyrics white | Mark AMLL line play state in wrapper | - | Depends on AMLL currentLyricLineObjects internals |
-| 2026-06-07T14:43:26.3746113+08:00 | 3eaa18d6-88ac-4dab-b67c-e325a9f79b8a | pending | refactor(amll): integrate lyric core into source tree | Move AMLL runtime source into src/amll-core; Exclude imported AMLL core from project lint and typecheck initially | ESLint warnings after migration cleanup | Deferred AMLL core normalization |
-| 2026-06-07T15:02:48.8291546+08:00 | e0d8da6c-de67-452f-9b4f-213a4566ca8f | pending | fix(plugin): repair subscription update flow | Show a loading modal for subscription updates; Read latest saved subscriptions before updating | Subscription update had no visible progress; Automatic plugin update IPC did not reach main reliably | Reuses a generic loading modal for no-input async flows |
-| 2026-06-07T15:14:44.1761652+08:00 | 7cc705a3-9f1e-40f0-8eec-d0eaf6054ca2 | pending | fix(ui): expand remaining music action hit areas | Apply full-container hit areas to remaining circular music actions; Keep the MusicBar comment action on the shell | Some circular favorite/download actions only responded when clicking the icon center | Keeps visual icon sizes unchanged while expanding click targets |
-| 2026-06-07T15:42:27.5439366+08:00 | a740b5e2-480f-4e13-8bec-05975a46ac34 | pending | fix(about): simplify attribution and add QQ group | Simplify About page attribution links | - | Low |
-| 2026-06-07T15:57:30.1559431+08:00 | 0b71c249-a07f-4e57-80ad-3d1690967cf6 | pending | fix(settings): prevent listbox overlay clipping | Portal settings listbox panels | Settings dropdowns could be covered by later setting sections | Low |
-| 2026-06-07T16:03:10.9917496+08:00 | de408a25-8057-4b72-aba4-ec73cec2387e | pending | feat(about): add telegram group link | Expose Telegram group in About page | - | Low |
-| 2026-06-07T16:10:37.1098172+08:00 | 8db735a9-4340-457e-9819-e2f3f1ac0e97 | pending | style(header): simplify app logo mark | Replace decorative header logo with a simpler mark | - | Low |
-| 2026-06-07T16:40:11.7103147+08:00 | 9c360bae-fd0c-4c4f-904f-2e7654a0eacc | pending | feat(search): refresh current platform results | Add an explicit forced search path; Expose refresh as a scoped search result action | Repeating the same search on the same platform could not refetch results | Low |
-| 2026-06-07T16:48:24.7693092+08:00 | b50f1c53-6513-4a21-96a6-fee84cc60e0c | pending | fix(music-sheet): prepend new custom-order songs | Insert new songs at the top for custom-ordered local sheets | New songs added to a manually custom-sorted playlist always appeared at the bottom | Low |
-| 2026-06-07T17:10:02.7828668+08:00 | 583124e9-769b-4df7-8e78-07843702423d | pending | fix(music-list): flatten row presentation | Use a flat list row instead of stacked item cards; Synchronize virtual row height with actual row box sizing | Song list and local music rows visually overlapped | Low |
-| 2026-06-08T16:56:12.1000104+08:00 | be84bd20-3686-484c-aef5-89eab7ca62fb | 049dba3 | refactor(sheet): remove legacy card variant | Remove the legacy MusicSheetlike card variant; Refresh README showcase assets with current UI states | - | Low |
-| 2026-06-08T20:37:26.7185206+08:00 | db3b725e-fe92-4a96-bbc5-3808ed03948c | pending | fix(lyric): prevent desktop lyric border artifacts | Show desktop lyric windows only after first renderer paint; Disable the native Windows thick frame while keeping resize; Force a Windows transparent-window recomposition after showing; Remove root-level rounded clipping from the lyric renderer document | Desktop lyrics briefly showed a container edge on startup, and for some users the edge stayed visible; after the first fix, a persistent black thin line still remained; disabling resize regressed window-size adjustment | Medium |
-| 2026-06-08T21:48:53.3159247+08:00 | 84f6fc22-5def-41c0-9f33-181397cdba0c | pending | fix(lyric): dim inactive line-timed desktop lyrics | Mark desktop lyric line state independently from the unplayed-color setting; Carry explicit line-vs-word timing metadata through AMLL lines; Use separate brightness behavior for line-timed and word-timed lyrics | Line-timed desktop lyrics kept every visible lyric line bright, so the current line lacked visual distinction | Medium |
-| 2026-06-09T23:31:03.5120279+08:00 | 56326b24-882c-4080-b37e-764cca834a7c | pending | feat(music-detail): add vinyl cover style | Persist the music detail cover style as renderer-local preference; Reuse the lyric toolbar menu placeholder for the cover style selector; Use golden-ratio vinyl proportions for the album-art label | - | Low |
-| 2026-06-10T05:33:00.282Z | 1a7f66f4-5b9a-4a7d-8267-b428d8628928 | pending | feat(music-detail): add selectable vinyl tonearm styles | Offer none/classic/glass tonearm variants as renderer-local preferences; Add an outer/inner drop-point option for the tonearm reach; Extract tonearm rendering into dedicated components | - | Low |
-| 2026-06-19T21:05:16.4643844+08:00 | 893c6e27-07be-4fdb-b0a7-71224d60be2f | pending | fix(amll): avoid clipping lyric descenders | Fix descender clipping at the lyric word-wrapper level | Letters with descenders were clipped in playback lyrics | Low |
-| 2026-06-19T21:51:21.523380+08:00 | c0c15a06-91c8-4c93-8303-aebd434ea821 | pending | fix(amll): keep interlude dots tracking layout while paused | Fix inside InterludeDots.update() rather than lyric scroll logic | Paused interlude dots froze at fixed screen coords | Low |
-| 2026-06-19T22:08:16.474424+08:00 | 4b01b77f-8588-4aeb-9465-6c20da37dd37 | pending | feat(music-detail): default vinyl tonearm to none | Flip the tonearm fallback so the default is no tonearm | - | Low |
-| 2026-06-19T22:37:16.766695+08:00 | 7ae1c177-cb8d-4661-a83d-fb85ce4c45d2 | pending | fix(amll): enlarge translation lines and highlight current line | Enlarge sub-lines to golden ratio 0.618; Highlight current line translation via renderMode | Current-line translation never brightened in dynamic mode | Low |
-| 2026-06-28T11:30:00+08:00 | c1e2f188-d9b6-42ad-8fe5-1d0a85c9c097 | pending | feat(native): add luna CENC proxy and private native CI | Keep native sources in a private repository; Use a read-only deploy key; Wrap Forge ignore instead of replacing it; Route CENC cek media through luna-proxy | Forge packaging failed after direct ignore replacement; Concurrent luna-proxy registrations could receive the wrong IPC response | Release builds depend on private repo and deploy key |
+## 2026-06-09T23:31:03.5120279+08:00 — feat(music-detail): add vinyl cover style
+`pending`
+- **Decision**: Persist the music detail cover style as renderer-local preference
+- **Decision**: Reuse the lyric toolbar menu placeholder for the cover style selector
+- **Decision**: Use golden-ratio vinyl proportions for the album-art label
+- **Files**:   - res/lang/en-US.json
+  - res/lang/zh-CN.json
+  - res/lang/zh-TW.json
+  - src/renderer/components/MusicDetail/index.scss
+  - src/renderer/components/MusicDetail/index.tsx
+  - src/renderer/components/MusicDetail/widgets/Lyric/index.scss
+  - src/renderer/components/MusicDetail/widgets/Lyric/index.tsx
+  - src/types/user-perference.d.ts
+
+## 2026-06-10T05:33:00.282Z — feat(music-detail): add selectable vinyl tonearm styles
+`pending`
+- **Decision**: Offer none/classic/glass tonearm variants as renderer-local preferences
+- **Decision**: Add an outer/inner drop-point option for the tonearm reach
+- **Decision**: Extract tonearm rendering into dedicated components
+- **Files**:   - res/lang/en-US.json
+  - res/lang/zh-CN.json
+  - res/lang/zh-TW.json
+  - src/renderer/components/MusicDetail/index.scss
+  - src/renderer/components/MusicDetail/index.tsx
+  - src/renderer/components/MusicDetail/widgets/Lyric/index.scss
+  - src/renderer/components/MusicDetail/widgets/Lyric/index.tsx
+  - src/types/user-perference.d.ts
+
+## 2026-06-19T21:05:16.4643844+08:00 — fix(amll): avoid clipping lyric descenders
+`pending`
+- **Decision**: Fix descender clipping at the lyric word-wrapper level
+- **Files**:   - src/amll-core/styles/lyric-player.module.css
+
+## 2026-06-19T21:51:21.523380+08:00 — fix(amll): keep interlude dots tracking layout while paused
+`pending`
+- **Decision**: Fix inside InterludeDots.update() rather than the lyric scroll logic
+- **Files**:   - src/amll-core/lyric-player/dom/interlude-dots.ts
+
+## 2026-06-19T22:08:16.474424+08:00 — feat(music-detail): default vinyl tonearm to none
+`pending`
+- **Decision**: Flip the tonearm fallback so the default is no tonearm
+- **Files**:   - src/renderer/components/MusicDetail/index.tsx
+  - src/renderer/components/MusicDetail/widgets/Lyric/index.tsx
+
+## 2026-06-19T22:37:16.766695+08:00 — fix(amll): enlarge translation lines and highlight current line
+`pending`
+- **Decision**: Enlarge translation/roman sub-lines to the golden ratio
+- **Decision**: Highlight the current line's translation via renderMode rather than word-progress tracking
+- **Files**:   - src/amll-core/lyric-player/dom/lyric-line.ts
+  - src/amll-core/styles/lyric-player.module.css
+
+## N/A — chore(deps): upgrade to React 19 and Electron 43 beta
+`pending`
+- **Decision**: 升级 React 生态到 v19 以利用最新特性和性能改进
+- **Decision**: 升级 Electron 到 v43 beta 以获取最新平台能力
+- **Decision**: 引入 @liquid-dom 依赖为流体玻璃效果做准备
+- **Decision**: 添加 @webgpu/types 为 WebGPU 渲染支持做类型基础
+- **Decision**: 统一 forge.config.ts 缩进为 4 空格以符合项目规范
+- **Decision**: 配置 dev server overlay 仅显示错误，减少开发干扰
+- **Files**:   - forge.config.ts
+  - package-lock.json
+  - package.json
+
+## 2026-06-28T11:30:00+08:00 — feat(native): add luna CENC proxy and private native CI
+`pending`
+- **Decision**: Keep native sources in a private repository
+- **Decision**: Use a read-only deploy key for private native checkout
+- **Decision**: Wrap Forge ignore instead of replacing it
+- **Decision**: Route CENC cek media through luna-proxy
+- **Files**:   - .github/workflows/build.yml
+  - forge.config.ts
+  - package.json
+  - res/.service/luna-proxy.cjs
+  - res/.service/native/ence.node
+  - res/.service/native/qmc2.node
+  - scripts/build-native.js
+  - src/shared/plugin-manager/main/plugin-methods.ts
+  - src/shared/service-manager/common.ts
+  - src/shared/service-manager/main.ts
+  - src/shared/service-manager/preload.ts
+  - src/shared/service-manager/renderer.ts
+  - src/types/plugin.d.ts
+
+## 2026-06-29T16:30:00+08:00 — refactor(lyric): remove client-side Kuwo decryption, plugin handles it now
+`c202faa0`
+- **Decision**: Remove client-side Kuwo lyric decryption entirely
+- **Files**:   - src/shared/plugin-manager/main/lyric-decrypt.ts

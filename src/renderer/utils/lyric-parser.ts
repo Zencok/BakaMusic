@@ -4,7 +4,7 @@
  */
 
 type LyricMeta = Record<string, any>;
-type LyricFormat = "qrc" | "angle" | "word-lrc" | "lrc" | "plain";
+type LyricFormat = "qrc" | "angle" | "word-lrc" | "inline-word-lrc" | "lrc" | "plain";
 
 interface IOptions {
     musicItem?: IMusic.IMusicItem;
@@ -53,10 +53,11 @@ export interface IActiveLyricState {
 // ============ 格式检测 ============
 
 const QRC_LINE_REG = /\[\d+,\d+\]/;
-const QRC_WORD_REG = /\(\d+,\d+\)/;
+const QRC_WORD_REG = /\(\d+,\d+(?:,\d+)?\)/;
 const ANGLE_REG = /\[\d{2}:\d{2}(?:\.\d{2,3})?\]\s*<\d{2}:\d{2}/;
 const WORD_LRC_REG = /\[\d{2}:\d{2}(?:\.\d{2,3})?\][^[\r\n]+\[\d{2}:\d{2}(?:\.\d{2,3})?\]/;
 const WORD_LRC_ENTRY_REG = /\[(\d{2}:\d{2}(?:\.\d{2,3})?)\]([^[\r\n]*)/g;
+const INLINE_WORD_TIME_REG = /\[[\d:.]+\][^\r\n]*\(\d+,\d+(?:,\d+)?\)/;
 const LRC_TIME_REG = /\[\d{2}:\d{2}(?:\.\d{2,3})?\]/;
 const META_REG = /\[([a-zA-Z]+):([^\]]+)\]/g;
 const PARALLEL_LINE_EPSILON = 0.03;
@@ -208,10 +209,17 @@ function sanitizeLyricRaw(raw: string) {
         .join("\n");
 }
 
+function normalizeRawLyricText(raw: string) {
+    return raw
+        .replace(/\r/g, "")
+        .replace(/\\r\\n|\\n|\\r/g, "\n");
+}
+
 function detectLyricFormat(raw: string): LyricFormat {
     if (QRC_LINE_REG.test(raw) && QRC_WORD_REG.test(raw)) return "qrc";
     if (ANGLE_REG.test(raw)) return "angle";
     if (containsWordLrc(raw)) return "word-lrc";
+    if (INLINE_WORD_TIME_REG.test(raw)) return "inline-word-lrc";
     if (LRC_TIME_REG.test(raw)) return "lrc";
     return "plain";
 }
@@ -275,13 +283,97 @@ function extractMetaPrefix(raw: string): string {
     return metaLines.join("\n");
 }
 
+function createTimedWord(
+    text: string,
+    startMs: number,
+    durationMs: number,
+    index: number,
+): ILyric.IWordData {
+    const startTime = startMs / 1000;
+    const duration = Math.max(0, durationMs / 1000);
+
+    return {
+        text,
+        startTime,
+        duration,
+        endTime: startTime + duration,
+        index,
+        space: !text.trim(),
+    };
+}
+
+function parsePrefixedTimedWords(body: string): ILyric.IWordData[] {
+    const words: ILyric.IWordData[] = [];
+    const wordRegex = /([^()]*)\((\d+),(\d+)(?:,\d+)?\)/g;
+    let wordMatch: RegExpExecArray | null;
+
+    while ((wordMatch = wordRegex.exec(body)) !== null) {
+        const text = wordMatch[1];
+        if (!text) {
+            continue;
+        }
+
+        words.push(createTimedWord(
+            text,
+            parseInt(wordMatch[2]),
+            parseInt(wordMatch[3]),
+            words.length,
+        ));
+    }
+
+    return words;
+}
+
+function parsePostfixedTimedWords(body: string): ILyric.IWordData[] {
+    const words: ILyric.IWordData[] = [];
+    const wordRegex = /\((\d+),(\d+)(?:,\d+)?\)([^()]*)/g;
+    let wordMatch: RegExpExecArray | null;
+
+    while ((wordMatch = wordRegex.exec(body)) !== null) {
+        const text = wordMatch[3];
+        if (!text) {
+            continue;
+        }
+
+        words.push(createTimedWord(
+            text,
+            parseInt(wordMatch[1]),
+            parseInt(wordMatch[2]),
+            words.length,
+        ));
+    }
+
+    return words;
+}
+
+function joinWordText(words: ILyric.IWordData[]) {
+    return words.map((word) => word.text).join("");
+}
+
+function shouldUseRelativeAngleWordTime(
+    lineStart: number,
+    wordEntries: Array<{ time: number; text: string }>,
+) {
+    if (lineStart <= 0 || !wordEntries.length) {
+        return false;
+    }
+
+    const firstWordTime = wordEntries[0].time;
+    const lastWordTime = wordEntries[wordEntries.length - 1].time;
+
+    return firstWordTime <= 0.01
+        || (
+            firstWordTime < lineStart - 0.5
+            && lastWordTime < lineStart + 0.5
+        );
+}
+
 // ============ QRC 格式解析 ============
-// 格式: [lineStartMs,lineDurMs]text(wordStartMs,wordDurMs)text(wordStartMs,wordDurMs)...
+// 格式: [lineStartMs,lineDurMs]text(wordStartMs,wordDurMs)... 或 [lineStartMs,lineDurMs](wordStartMs,wordDurMs,0)text...
 
 function parseQrcLyric(raw: string): IParsedLrcItem[] {
     const items: IParsedLrcItem[] = [];
     const lineRegex = /\[(\d+),(\d+)\]([\s\S]*?)(?=\[\d+,\d+\]|$)/g;
-    const wordRegex = /([^()]*)\((\d+),(\d+)\)/g;
     let lineMatch: RegExpExecArray | null;
     let idx = 0;
 
@@ -290,31 +382,10 @@ function parseQrcLyric(raw: string): IParsedLrcItem[] {
         const lineDurMs = parseInt(lineMatch[2]);
         const body = lineMatch[3] || "";
 
-        const words: ILyric.IWordData[] = [];
-        let wordMatch: RegExpExecArray | null;
-        let fullText = "";
-        let wIdx = 0;
-
-        // Reset wordRegex lastIndex
-        wordRegex.lastIndex = 0;
-        while ((wordMatch = wordRegex.exec(body)) !== null) {
-            const text = wordMatch[1];
-            const wStartMs = parseInt(wordMatch[2]);
-            const wDurMs = parseInt(wordMatch[3]);
-
-            if (text) {
-                const startTime = wStartMs / 1000;
-                const duration = wDurMs / 1000;
-                words.push({
-                    text,
-                    startTime,
-                    duration,
-                    endTime: startTime + duration,
-                    index: wIdx++,
-                });
-                fullText += text;
-            }
-        }
+        const words = body.trim().startsWith("(")
+            ? parsePostfixedTimedWords(body)
+            : parsePrefixedTimedWords(body);
+        const fullText = joinWordText(words);
 
         if (!fullText.trim()) continue;
 
@@ -369,11 +440,21 @@ function parseAngleLyric(raw: string): IParsedLrcItem[] {
             wordEntries.push({ time, text });
         }
 
+        const useRelativeWordTime = shouldUseRelativeAngleWordTime(lineStart, wordEntries);
+        if (useRelativeWordTime) {
+            wordEntries.forEach((entry) => {
+                entry.time += lineStart;
+            });
+        }
+
         // 最后一个尖括号可能是结束时间（无文本）
         const trailingTimeMatch = afterLineTag.match(/<(\d{2}:\d{2}(?:\.\d{2,3})?)>\s*$/);
-        const lineEndTime = trailingTimeMatch
+        let lineEndTime = trailingTimeMatch
             ? parseTimeTag(`<${trailingTimeMatch[1]}>`)
             : undefined;
+        if (lineEndTime !== undefined && useRelativeWordTime) {
+            lineEndTime += lineStart;
+        }
 
         for (let i = 0; i < wordEntries.length; i++) {
             const entry = wordEntries[i];
@@ -410,6 +491,60 @@ function parseAngleLyric(raw: string): IParsedLrcItem[] {
     }
 
     return items;
+}
+
+// ============ 行内逐字 LRC 格式解析 ============
+// 格式: [mm:ss.xxx]字(offsetMs,durationMs)字(offsetMs,durationMs)...
+
+function parseInlineWordTimeLrcLyric(raw: string): IParsedLrcItem[] {
+    const items: IParsedLrcItem[] = [];
+    const lines = raw.split("\n");
+    let idx = 0;
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || isMetaLine(trimmed)) {
+            continue;
+        }
+
+        const lineTimeMatch = trimmed.match(/^\[(\d{2}:\d{2}(?:\.\d{2,3})?)\]/);
+        if (!lineTimeMatch) {
+            continue;
+        }
+
+        const lineStart = parseTimeTag(`[${lineTimeMatch[1]}]`);
+        const lineStartMs = Math.round(lineStart * 1000);
+        const body = trimmed.slice(lineTimeMatch[0].length);
+        const words = parsePrefixedTimedWords(body).map((word, index) => {
+            const startTime = word.startTime + lineStart;
+            return {
+                ...word,
+                startTime,
+                endTime: startTime + word.duration,
+                index,
+            };
+        });
+        const fullText = joinWordText(words);
+
+        if (!fullText.trim()) {
+            continue;
+        }
+
+        const lastWord = words[words.length - 1];
+        const endTime = lastWord?.endTime ?? (lineStartMs + 3000) / 1000;
+
+        items.push({
+            time: lineStart,
+            endTime,
+            duration: endTime - lineStart,
+            lrc: fullText,
+            index: idx++,
+            words,
+            hasWordTimeline: words.length > 0,
+        });
+    }
+
+    return items.sort((a, b) => a.time - b.time);
 }
 
 // ============ 逐字 LRC 格式解析 ============
@@ -562,7 +697,7 @@ function parsePlainTextLyric(raw: string): IParsedLrcItem[] {
 }
 
 function parseLyricItemsByFormat(raw: string): IParsedLrcItem[] {
-    raw = sanitizeLyricRaw(raw);
+    raw = sanitizeLyricRaw(normalizeRawLyricText(raw));
     const format = detectLyricFormat(raw);
 
     switch (format) {
@@ -570,6 +705,7 @@ function parseLyricItemsByFormat(raw: string): IParsedLrcItem[] {
             return parseQrcLyric(raw);
         case "angle":
         case "word-lrc":
+        case "inline-word-lrc":
             return parseMixedTimestampLyric(raw);
         case "lrc":
             return parseLrcLyric(raw);
@@ -590,6 +726,8 @@ function parseMixedTimestampLyric(raw: string): IParsedLrcItem[] {
         let lineItems: IParsedLrcItem[] = [];
         if (ANGLE_REG.test(trimmed)) {
             lineItems = parseAngleLyric(trimmed);
+        } else if (INLINE_WORD_TIME_REG.test(trimmed)) {
+            lineItems = parseInlineWordTimeLrcLyric(trimmed);
         } else if (WORD_LRC_REG.test(trimmed)) {
             lineItems = parseWordLrcLyric(trimmed);
         } else if (LRC_TIME_REG.test(trimmed)) {
@@ -644,6 +782,17 @@ function hasKanaOrHangul(stats: ITextScriptStats) {
 
 function isLyricCreditLine(text: string) {
     return CREDIT_LINE_REG.test(text.trim());
+}
+
+function isCreditRomanizationLine(text: string) {
+    const trimmed = text.trim();
+    if (!/[:：]/.test(trimmed) || isLyricCreditLine(trimmed)) {
+        return false;
+    }
+
+    const prefix = trimmed.split(/[:：]/)[0];
+    const prefixStats = getTextScriptStats(prefix);
+    return isMostlyLatin(prefixStats) && looksLikeRomanizationText(prefix);
 }
 
 function canReceiveLyricField(item: IParsedLrcItem) {
@@ -712,6 +861,20 @@ function cloneParsedLrcItem(item: IParsedLrcItem): IParsedLrcItem {
         ...item,
         words: item.words ? [...item.words] : undefined,
     };
+}
+
+function cloneCreditItemWithRomanization(
+    creditItem: IParsedLrcItem,
+    romanizationItem: IParsedLrcItem,
+) {
+    const cloned = cloneParsedLrcItem(creditItem);
+    appendLyricField(cloned, "romanization", romanizationItem.lrc);
+    if (romanizationItem.words?.length) {
+        cloned.romanizationWords = romanizationItem.words;
+        cloned.hasRomanizationWordTimeline = romanizationItem.hasWordTimeline;
+        cloned.romanizationDuration = romanizationItem.duration;
+    }
+    return cloned;
 }
 
 function appendLyricField(
@@ -794,17 +957,74 @@ function collapseParallelContentGroup(group: IParsedLrcItem[]): ICollapseParalle
 }
 
 function collapseParallelGroup(group: IParsedLrcItem[]): ICollapseParallelResult {
-    const lyricItems = group.filter((item) => !isLyricCreditLine(item.lrc));
+    const lyricItems: IParsedLrcItem[] = [];
+    const sequence: Array<{
+        type: "item" | "lyric";
+        item: IParsedLrcItem;
+    }> = [];
+
+    for (let index = 0; index < group.length; index++) {
+        const item = group[index];
+        const next = group[index + 1];
+
+        if (
+            next
+            && isCreditRomanizationLine(item.lrc)
+            && isLyricCreditLine(next.lrc)
+        ) {
+            sequence.push({
+                type: "item",
+                item: cloneCreditItemWithRomanization(next, item),
+            });
+            index++;
+            continue;
+        }
+
+        if (
+            next
+            && isLyricCreditLine(item.lrc)
+            && isCreditRomanizationLine(next.lrc)
+        ) {
+            sequence.push({
+                type: "item",
+                item: cloneCreditItemWithRomanization(item, next),
+            });
+            index++;
+            continue;
+        }
+
+        if (isLyricCreditLine(item.lrc)) {
+            sequence.push({
+                type: "item",
+                item,
+            });
+            continue;
+        }
+
+        lyricItems.push(item);
+        sequence.push({
+            type: "lyric",
+            item,
+        });
+    }
 
     if (lyricItems.length === group.length) {
         return collapseParallelContentGroup(group);
     }
 
-    if (lyricItems.length <= 1) {
+    if (!lyricItems.length) {
         return {
-            items: group,
+            items: sequence.map((entry) => entry.item),
             hasTranslation: false,
-            hasRomanization: false,
+            hasRomanization: sequence.some((entry) => !!entry.item.romanization?.trim()),
+        };
+    }
+
+    if (lyricItems.length === 1) {
+        return {
+            items: sequence.map((entry) => entry.item),
+            hasTranslation: false,
+            hasRomanization: sequence.some((entry) => !!entry.item.romanization?.trim()),
         };
     }
 
@@ -813,13 +1033,13 @@ function collapseParallelGroup(group: IParsedLrcItem[]): ICollapseParallelResult
     const mergedItems: IParsedLrcItem[] = [];
     let insertedMergedLyric = false;
 
-    group.forEach((item) => {
-        if (isLyricCreditLine(item.lrc)) {
-            mergedItems.push(item);
+    sequence.forEach((entry) => {
+        if (entry.type === "item") {
+            mergedItems.push(entry.item);
             return;
         }
 
-        if (item === mainLyricItem && !insertedMergedLyric) {
+        if (entry.item === mainLyricItem && !insertedMergedLyric) {
             mergedItems.push(collapsed.items[0]);
             insertedMergedLyric = true;
         }
@@ -832,7 +1052,8 @@ function collapseParallelGroup(group: IParsedLrcItem[]): ICollapseParallelResult
     return {
         items: mergedItems,
         hasTranslation: collapsed.hasTranslation,
-        hasRomanization: collapsed.hasRomanization,
+        hasRomanization: collapsed.hasRomanization
+            || sequence.some((entry) => !!entry.item.romanization?.trim()),
     };
 }
 
@@ -1173,7 +1394,7 @@ export default class LyricParser {
         hasTranslation: boolean;
         hasRomanization: boolean;
     } {
-        raw = raw.trim();
+        raw = normalizeRawLyricText(raw).trim();
         if (!raw) {
             return {
                 lrcItems: [],
