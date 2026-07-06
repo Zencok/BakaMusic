@@ -60,10 +60,15 @@ const WORD_LRC_ENTRY_REG = /\[(\d{2}:\d{2}(?:\.\d{2,3})?)\]([^[\r\n]*)/g;
 const LRC_TIME_REG = /\[\d{2}:\d{2}(?:\.\d{2,3})?\]/;
 const META_REG = /\[([a-zA-Z]+):([^\]]+)\]/g;
 const PARALLEL_LINE_EPSILON = 0.03;
+const LYRIC_FIELD_DIRECT_EPSILON = 0.3;
+const LYRIC_FIELD_ANCHOR_EPSILON = 1;
+const LYRIC_FIELD_ANCHOR_DURATION_RATIO = 0.4;
+const LYRIC_FIELD_ANCHOR_SCAN_LIMIT = 5;
 const HAN_REG = /[\u3400-\u9fff\uf900-\ufaff]/;
 const KANA_REG = /[\u3040-\u30ff\u31f0-\u31ff]/;
 const HANGUL_REG = /[\uac00-\ud7af]/;
 const LATIN_REG = /[A-Za-z\u00c0-\u024f]/;
+const CREDIT_LINE_REG = /^(?:(?:作)?词|(?:作)?詞|曲|作曲|编曲|編曲|词曲|詞曲|原唱|演唱|歌手|vocal|lyrics?|lyricist|composer|music|arrange(?:r|ment)?)\s*[:：]/i;
 const ROMANIZATION_HINT_REG = /(?:shi|chi|tsu|kyo|kyu|kya|ryo|ryu|rya|sho|shu|sha|cho|chu|cha|jyo|jyu|jya|dzu|desu|boku|kimi|kono|sono|ano|yume|sora|kokoro|namida|hikari|kaze|hana|machi|sekai|mirai|hoshi|koe|uta|sarang|hae)/i;
 const COMMON_ENGLISH_WORDS = new Set([
     "a",
@@ -173,6 +178,11 @@ interface ICollapseParallelResult {
     items: IParsedLrcItem[];
     hasTranslation: boolean;
     hasRomanization: boolean;
+}
+
+interface ILyricFieldAnchor {
+    baseIndex: number;
+    sourceIndex: number;
 }
 
 function isMetaLine(line: string) {
@@ -628,6 +638,18 @@ function isMostlyLatin(stats: ITextScriptStats) {
     return stats.latin > 0 && stats.latin / Math.max(1, stats.script) >= 0.65;
 }
 
+function hasKanaOrHangul(stats: ITextScriptStats) {
+    return stats.kana > 0 || stats.hangul > 0;
+}
+
+function isLyricCreditLine(text: string) {
+    return CREDIT_LINE_REG.test(text.trim());
+}
+
+function canReceiveLyricField(item: IParsedLrcItem) {
+    return !!item.lrc?.trim() && !isLyricCreditLine(item.lrc);
+}
+
 function getLatinWords(text: string) {
     return text
         .toLowerCase()
@@ -664,6 +686,16 @@ function looksLikeRomanizationText(text: string) {
 }
 
 function chooseParallelMainIndex(group: IParsedLrcItem[]) {
+    if (group.length >= 3 && looksLikeRomanizationText(group[0].lrc)) {
+        const kanaOrHangulIndex = group.findIndex((item, index) =>
+            index > 0 && hasKanaOrHangul(getTextScriptStats(item.lrc)),
+        );
+
+        if (kanaOrHangulIndex > 0) {
+            return kanaOrHangulIndex;
+        }
+    }
+
     if (
         group.length >= 3
         && looksLikeRomanizationText(group[0].lrc)
@@ -673,6 +705,13 @@ function chooseParallelMainIndex(group: IParsedLrcItem[]) {
     }
 
     return 0;
+}
+
+function cloneParsedLrcItem(item: IParsedLrcItem): IParsedLrcItem {
+    return {
+        ...item,
+        words: item.words ? [...item.words] : undefined,
+    };
 }
 
 function appendLyricField(
@@ -718,6 +757,85 @@ function assignParallelSecondaryLine(
     }
 }
 
+function collapseParallelContentGroup(group: IParsedLrcItem[]): ICollapseParallelResult {
+    if (group.length === 1) {
+        return {
+            items: [group[0]],
+            hasTranslation: false,
+            hasRomanization: false,
+        };
+    }
+
+    const mainIndex = chooseParallelMainIndex(group);
+    const main = group[mainIndex];
+    const collapsed = cloneParsedLrcItem(main);
+    let hasTranslation = false;
+    let hasRomanization = false;
+
+    group.forEach((item, groupIndex) => {
+        if (groupIndex === mainIndex) {
+            return;
+        }
+
+        assignParallelSecondaryLine(
+            collapsed,
+            item,
+        );
+    });
+
+    hasTranslation = !!collapsed.translation?.trim();
+    hasRomanization = !!collapsed.romanization?.trim();
+
+    return {
+        items: [collapsed],
+        hasTranslation,
+        hasRomanization,
+    };
+}
+
+function collapseParallelGroup(group: IParsedLrcItem[]): ICollapseParallelResult {
+    const lyricItems = group.filter((item) => !isLyricCreditLine(item.lrc));
+
+    if (lyricItems.length === group.length) {
+        return collapseParallelContentGroup(group);
+    }
+
+    if (lyricItems.length <= 1) {
+        return {
+            items: group,
+            hasTranslation: false,
+            hasRomanization: false,
+        };
+    }
+
+    const mainLyricItem = lyricItems[chooseParallelMainIndex(lyricItems)];
+    const collapsed = collapseParallelContentGroup(lyricItems);
+    const mergedItems: IParsedLrcItem[] = [];
+    let insertedMergedLyric = false;
+
+    group.forEach((item) => {
+        if (isLyricCreditLine(item.lrc)) {
+            mergedItems.push(item);
+            return;
+        }
+
+        if (item === mainLyricItem && !insertedMergedLyric) {
+            mergedItems.push(collapsed.items[0]);
+            insertedMergedLyric = true;
+        }
+    });
+
+    if (!insertedMergedLyric) {
+        mergedItems.push(collapsed.items[0]);
+    }
+
+    return {
+        items: mergedItems,
+        hasTranslation: collapsed.hasTranslation,
+        hasRomanization: collapsed.hasRomanization,
+    };
+}
+
 function collapseParallelLyricItems(items: IParsedLrcItem[]): ICollapseParallelResult {
     const collapsedItems: IParsedLrcItem[] = [];
     let hasTranslation = false;
@@ -734,32 +852,10 @@ function collapseParallelLyricItems(items: IParsedLrcItem[]): ICollapseParallelR
             nextIndex++;
         }
 
-        if (group.length === 1) {
-            collapsedItems.push(group[0]);
-            index = nextIndex;
-            continue;
-        }
-
-        const mainIndex = chooseParallelMainIndex(group);
-        const main = group[mainIndex];
-        const collapsed: IParsedLrcItem = {
-            ...main,
-            words: main.words ? [...main.words] : undefined,
-        };
-
-        group.forEach((item, groupIndex) => {
-            if (groupIndex === mainIndex) {
-                return;
-            }
-            assignParallelSecondaryLine(
-                collapsed,
-                item,
-            );
-        });
-
-        hasTranslation = hasTranslation || !!collapsed.translation?.trim();
-        hasRomanization = hasRomanization || !!collapsed.romanization?.trim();
-        collapsedItems.push(collapsed);
+        const collapsed = collapseParallelGroup(group);
+        hasTranslation = hasTranslation || collapsed.hasTranslation;
+        hasRomanization = hasRomanization || collapsed.hasRomanization;
+        collapsedItems.push(...collapsed.items);
         index = nextIndex;
     }
 
@@ -770,42 +866,217 @@ function collapseParallelLyricItems(items: IParsedLrcItem[]): ICollapseParallelR
     };
 }
 
-// ============ 翻译/罗马音合并（容差） ============
+// ============ 翻译/罗马音合并（容差 + 顺序兜底） ============
+
+function isMeaningfulSecondaryLine(item: IParsedLrcItem) {
+    const text = item.lrc?.trim();
+    return !!text && text !== "//";
+}
+
+function getLyricFieldAnchorTolerance(item: IParsedLrcItem, epsilon: number) {
+    const duration = item.duration
+        ?? (item.endTime !== undefined ? item.endTime - item.time : undefined)
+        ?? 0;
+    const durationTolerance = duration > 0
+        ? duration * LYRIC_FIELD_ANCHOR_DURATION_RATIO
+        : LYRIC_FIELD_ANCHOR_EPSILON;
+
+    return Math.max(
+        epsilon,
+        Math.min(LYRIC_FIELD_ANCHOR_EPSILON, durationTolerance),
+    );
+}
+
+function applyLyricField(
+    baseItem: IParsedLrcItem,
+    sourceItem: IParsedLrcItem,
+    field: "translation" | "romanization",
+    overwrite = true,
+) {
+    if (!overwrite && baseItem[field]?.trim()) {
+        return false;
+    }
+
+    baseItem[field] = sourceItem.lrc;
+    if (field === "romanization") {
+        baseItem.romanizationWords = sourceItem.words;
+        baseItem.hasRomanizationWordTimeline = sourceItem.hasWordTimeline;
+        baseItem.romanizationDuration = sourceItem.duration;
+    }
+    return true;
+}
+
+function mergeLyricFieldByTime(
+    base: IParsedLrcItem[],
+    sourceItems: IParsedLrcItem[],
+    field: "translation" | "romanization",
+    epsilon: number,
+) {
+    const matchedBase = new Set<number>();
+    const matchedSource = new Set<number>();
+    const anchors: ILyricFieldAnchor[] = [];
+    let baseIndex = 0;
+    let sourceIndex = 0;
+
+    while (baseIndex < base.length && sourceIndex < sourceItems.length) {
+        if (!canReceiveLyricField(base[baseIndex])) {
+            baseIndex++;
+            continue;
+        }
+
+        const diff = sourceItems[sourceIndex].time - base[baseIndex].time;
+        if (Math.abs(diff) <= epsilon) {
+            if (applyLyricField(base[baseIndex], sourceItems[sourceIndex], field)) {
+                matchedBase.add(baseIndex);
+                matchedSource.add(sourceIndex);
+                anchors.push({
+                    baseIndex,
+                    sourceIndex,
+                });
+            }
+            baseIndex++;
+            sourceIndex++;
+        } else if (diff < 0) {
+            sourceIndex++;
+        } else {
+            baseIndex++;
+        }
+    }
+
+    return {
+        anchors,
+        matchedBase,
+        matchedSource,
+    };
+}
+
+function findLyricFieldAnchor(
+    base: IParsedLrcItem[],
+    sourceItems: IParsedLrcItem[],
+    matchedAnchors: ILyricFieldAnchor[],
+    epsilon: number,
+): ILyricFieldAnchor | null {
+    if (matchedAnchors.length) {
+        return matchedAnchors[0];
+    }
+
+    let bestAnchor: ILyricFieldAnchor | null = null;
+    let bestDiff = Number.POSITIVE_INFINITY;
+    const baseScanLimit = Math.min(base.length, LYRIC_FIELD_ANCHOR_SCAN_LIMIT);
+    const sourceScanLimit = Math.min(sourceItems.length, LYRIC_FIELD_ANCHOR_SCAN_LIMIT);
+
+    for (let baseIndex = 0; baseIndex < baseScanLimit; baseIndex++) {
+        if (!canReceiveLyricField(base[baseIndex])) {
+            continue;
+        }
+
+        const tolerance = getLyricFieldAnchorTolerance(base[baseIndex], epsilon);
+        for (let sourceIndex = 0; sourceIndex < sourceScanLimit; sourceIndex++) {
+            const diff = Math.abs(sourceItems[sourceIndex].time - base[baseIndex].time);
+            if (diff <= tolerance && diff < bestDiff) {
+                bestAnchor = {
+                    baseIndex,
+                    sourceIndex,
+                };
+                bestDiff = diff;
+            }
+        }
+    }
+
+    return bestAnchor;
+}
+
+function mergeLyricFieldSequential(
+    base: IParsedLrcItem[],
+    sourceItems: IParsedLrcItem[],
+    field: "translation" | "romanization",
+    anchor: ILyricFieldAnchor,
+    matchedBase: Set<number>,
+    matchedSource: Set<number>,
+) {
+    let assignedCount = 0;
+
+    const assign = (baseIndex: number, sourceIndex: number) => {
+        if (
+            matchedBase.has(baseIndex)
+            || matchedSource.has(sourceIndex)
+            || !canReceiveLyricField(base[baseIndex])
+            || !applyLyricField(base[baseIndex], sourceItems[sourceIndex], field, false)
+        ) {
+            return false;
+        }
+
+        matchedBase.add(baseIndex);
+        matchedSource.add(sourceIndex);
+        assignedCount++;
+        return true;
+    };
+
+    let baseIndex = anchor.baseIndex - 1;
+    let sourceIndex = anchor.sourceIndex - 1;
+
+    while (baseIndex >= 0 && sourceIndex >= 0) {
+        if (!canReceiveLyricField(base[baseIndex])) {
+            baseIndex--;
+            continue;
+        }
+
+        assign(baseIndex, sourceIndex);
+        baseIndex--;
+        sourceIndex--;
+    }
+
+    baseIndex = anchor.baseIndex;
+    sourceIndex = anchor.sourceIndex;
+
+    while (baseIndex < base.length && sourceIndex < sourceItems.length) {
+        if (!canReceiveLyricField(base[baseIndex])) {
+            baseIndex++;
+            continue;
+        }
+
+        assign(baseIndex, sourceIndex);
+        baseIndex++;
+        sourceIndex++;
+    }
+
+    return assignedCount;
+}
 
 function mergeLyricField(
     base: IParsedLrcItem[],
     raw: string,
     field: "translation" | "romanization",
-    epsilon = 0.15,
+    epsilon = LYRIC_FIELD_DIRECT_EPSILON,
 ): boolean {
-    const sourceItems = parseLyricItemsByFormat(raw);
+    const sourceItems = parseLyricItemsByFormat(raw)
+        .filter(isMeaningfulSecondaryLine);
 
     if (sourceItems.length === 0) {
         return false;
     }
 
-    let i = 0;
-    let j = 0;
-    while (i < base.length && j < sourceItems.length) {
-        const d = sourceItems[j].time - base[i].time;
-        if (Math.abs(d) <= epsilon) {
-            base[i][field] = sourceItems[j].lrc;
-            if (field === "romanization") {
-                base[i].romanizationWords = sourceItems[j].words;
-                base[i].hasRomanizationWordTimeline =
-                    sourceItems[j].hasWordTimeline;
-                base[i].romanizationDuration = sourceItems[j].duration;
-            }
-            i++;
-            j++;
-        } else if (d < 0) {
-            j++;
-        } else {
-            i++;
-        }
+    const {
+        anchors,
+        matchedBase,
+        matchedSource,
+    } = mergeLyricFieldByTime(base, sourceItems, field, epsilon);
+    const directAssignedCount = matchedBase.size;
+    const anchor = findLyricFieldAnchor(base, sourceItems, anchors, epsilon);
+    let sequentialAssignedCount = 0;
+
+    if (anchor) {
+        sequentialAssignedCount = mergeLyricFieldSequential(
+            base,
+            sourceItems,
+            field,
+            anchor,
+            matchedBase,
+            matchedSource,
+        );
     }
 
-    return true;
+    return directAssignedCount + sequentialAssignedCount > 0;
 }
 
 // ============ 伪逐字生成 ============
