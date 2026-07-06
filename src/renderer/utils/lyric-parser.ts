@@ -71,6 +71,26 @@ const HANGUL_REG = /[\uac00-\ud7af]/;
 const LATIN_REG = /[A-Za-z\u00c0-\u024f]/;
 const CREDIT_LINE_REG = /^(?:(?:作)?词|(?:作)?詞|曲|作曲|编曲|編曲|词曲|詞曲|原唱|演唱|歌手|vocal|lyrics?|lyricist|composer|music|arrange(?:r|ment)?)\s*[:：]/i;
 const ROMANIZATION_HINT_REG = /(?:shi|chi|tsu|kyo|kyu|kya|ryo|ryu|rya|sho|shu|sha|cho|chu|cha|jyo|jyu|jya|dzu|desu|boku|kimi|kono|sono|ano|yume|sora|kokoro|namida|hikari|kaze|hana|machi|sekai|mirai|hoshi|koe|uta|sarang|hae)/i;
+const CREDIT_ROMANIZATION_PREFIXES = new Set([
+    "shi",
+    "ci",
+    "zuo ci",
+    "saku shi",
+    "sakushi",
+    "kyo ku",
+    "kyoku",
+    "qu",
+    "zuo qu",
+    "sa kyo ku",
+    "sa k kyo ku",
+    "sa kkyoku",
+    "sakkyoku",
+    "he n kyo ku",
+    "he n kyoku",
+    "hen kyo ku",
+    "henkyoku",
+    "bian qu",
+]);
 const COMMON_ENGLISH_WORDS = new Set([
     "a",
     "an",
@@ -784,6 +804,11 @@ function isLyricCreditLine(text: string) {
     return CREDIT_LINE_REG.test(text.trim());
 }
 
+function normalizeCreditRomanizationPrefix(text: string) {
+    const words = getLatinWords(text);
+    return words.join(" ");
+}
+
 function isCreditRomanizationLine(text: string) {
     const trimmed = text.trim();
     if (!/[:：]/.test(trimmed) || isLyricCreditLine(trimmed)) {
@@ -791,12 +816,15 @@ function isCreditRomanizationLine(text: string) {
     }
 
     const prefix = trimmed.split(/[:：]/)[0];
-    const prefixStats = getTextScriptStats(prefix);
-    return isMostlyLatin(prefixStats) && looksLikeRomanizationText(prefix);
+    return CREDIT_ROMANIZATION_PREFIXES.has(normalizeCreditRomanizationPrefix(prefix));
+}
+
+function isCreditSideLine(text: string) {
+    return isLyricCreditLine(text) || isCreditRomanizationLine(text);
 }
 
 function canReceiveLyricField(item: IParsedLrcItem) {
-    return !!item.lrc?.trim() && !isLyricCreditLine(item.lrc);
+    return !!item.lrc?.trim() && !isCreditSideLine(item.lrc);
 }
 
 function getLatinWords(text: string) {
@@ -908,6 +936,7 @@ function assignParallelSecondaryLine(
         && (source.hasWordTimeline || looksLikeRomanizationText(source.lrc));
 
     if (!sourceIsRomanization) {
+        stripDuplicatedTranslationSuffix(base, source.lrc);
         appendLyricField(base, "translation", source.lrc);
         return;
     }
@@ -993,7 +1022,7 @@ function collapseParallelGroup(group: IParsedLrcItem[]): ICollapseParallelResult
             continue;
         }
 
-        if (isLyricCreditLine(item.lrc)) {
+        if (isCreditSideLine(item.lrc)) {
             sequence.push({
                 type: "item",
                 item,
@@ -1094,6 +1123,37 @@ function isMeaningfulSecondaryLine(item: IParsedLrcItem) {
     return !!text && text !== "//";
 }
 
+function isMergeableSecondaryLine(item: IParsedLrcItem) {
+    return isMeaningfulSecondaryLine(item) && !isCreditSideLine(item.lrc);
+}
+
+function stripDuplicatedTranslationSuffix(
+    baseItem: IParsedLrcItem,
+    translationText: string,
+) {
+    const baseText = baseItem.lrc?.trim();
+    const normalizedTranslation = translationText.trim();
+    if (
+        !baseText
+        || !normalizedTranslation
+        || baseText.length <= normalizedTranslation.length
+        || !baseText.endsWith(normalizedTranslation)
+    ) {
+        return;
+    }
+
+    const possibleMainText = baseText.slice(0, -normalizedTranslation.length).trim();
+    if (!possibleMainText) {
+        return;
+    }
+
+    const mainStats = getTextScriptStats(possibleMainText);
+    const translationStats = getTextScriptStats(normalizedTranslation);
+    if (hasKanaOrHangul(mainStats) && translationStats.han > 0) {
+        baseItem.lrc = possibleMainText;
+    }
+}
+
 function getLyricFieldAnchorTolerance(item: IParsedLrcItem, epsilon: number) {
     const duration = item.duration
         ?? (item.endTime !== undefined ? item.endTime - item.time : undefined)
@@ -1116,6 +1176,10 @@ function applyLyricField(
 ) {
     if (!overwrite && baseItem[field]?.trim()) {
         return false;
+    }
+
+    if (field === "translation") {
+        stripDuplicatedTranslationSuffix(baseItem, sourceItem.lrc);
     }
 
     baseItem[field] = sourceItem.lrc;
@@ -1271,7 +1335,7 @@ function mergeLyricField(
     epsilon = LYRIC_FIELD_DIRECT_EPSILON,
 ): boolean {
     const sourceItems = parseLyricItemsByFormat(raw)
-        .filter(isMeaningfulSecondaryLine);
+        .filter(isMergeableSecondaryLine);
 
     if (sourceItems.length === 0) {
         return false;
