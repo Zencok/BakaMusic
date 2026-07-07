@@ -206,8 +206,44 @@ interface ILyricFieldAnchor {
     sourceIndex: number;
 }
 
+interface INeteaseJsonLyricItem {
+    time: number;
+    lrc: string;
+}
+
 function isMetaLine(line: string) {
     return /^\[[a-zA-Z]+:/.test(line.trim());
+}
+
+function parseNeteaseJsonLyricLine(line: string): INeteaseJsonLyricItem | null {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
+        return null;
+    }
+
+    try {
+        const data = JSON.parse(trimmed);
+        const time = typeof data?.t === "number"
+            ? data.t / 1000
+            : Number.NaN;
+        if (!Number.isFinite(time) || !Array.isArray(data?.c)) {
+            return null;
+        }
+
+        const lrc = data.c
+            .map((word: { tx?: unknown }) => (
+                typeof word?.tx === "string" ? word.tx : ""
+            ))
+            .join("")
+            .trim();
+        if (!lrc) {
+            return null;
+        }
+
+        return { time, lrc };
+    } catch {
+        return null;
+    }
 }
 
 function containsWordLrc(raw: string) {
@@ -662,39 +698,37 @@ function parseWordLrcLyric(raw: string): IParsedLrcItem[] {
 function parseLrcLyric(raw: string): IParsedLrcItem[] {
     const timeReg = /\[[\d:.]+\]/g;
     const items: IParsedLrcItem[] = [];
-    const rawLrcs = raw.split(timeReg) ?? [];
-    const rawTimes = raw.match(timeReg) ?? [];
-    const len = rawTimes.length;
-
-    rawLrcs.shift(); // 移除第一个空/元数据段
-
-    let counter = 0;
-    let j: number, lrc: string;
     let idx = 0;
 
-    for (let i = 0; i < len; ++i) {
-        counter = 0;
-        while (rawLrcs[0] === "") {
-            ++counter;
-            rawLrcs.shift();
+    for (const line of raw.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed || isMetaLine(trimmed) || isCommentLyricLine(trimmed)) {
+            continue;
         }
-        lrc = rawLrcs[0]?.trim?.() ?? "";
-        for (j = i; j < i + counter; ++j) {
+
+        const jsonLyricItem = parseNeteaseJsonLyricLine(trimmed);
+        if (jsonLyricItem) {
             items.push({
-                time: parseTimeTag(rawTimes[j]),
+                time: jsonLyricItem.time,
+                lrc: jsonLyricItem.lrc,
+                index: idx++,
+            });
+            continue;
+        }
+
+        const rawTimes = trimmed.match(timeReg) ?? [];
+        if (!rawTimes.length) {
+            continue;
+        }
+
+        const lrc = trimmed.replace(timeReg, "").trim();
+        for (const rawTime of rawTimes) {
+            items.push({
+                time: parseTimeTag(rawTime),
                 lrc,
                 index: idx++,
             });
         }
-        i += counter;
-        if (i < len) {
-            items.push({
-                time: parseTimeTag(rawTimes[i]),
-                lrc,
-                index: idx++,
-            });
-        }
-        rawLrcs.shift();
     }
 
     return items.sort((a, b) => a.time - b.time);
@@ -744,7 +778,14 @@ function parseMixedTimestampLyric(raw: string): IParsedLrcItem[] {
         }
 
         let lineItems: IParsedLrcItem[] = [];
-        if (ANGLE_REG.test(trimmed)) {
+        const jsonLyricItem = parseNeteaseJsonLyricLine(trimmed);
+        if (jsonLyricItem) {
+            lineItems = [{
+                time: jsonLyricItem.time,
+                lrc: jsonLyricItem.lrc,
+                index: 0,
+            }];
+        } else if (ANGLE_REG.test(trimmed)) {
             lineItems = parseAngleLyric(trimmed);
         } else if (INLINE_WORD_TIME_REG.test(trimmed)) {
             lineItems = parseInlineWordTimeLrcLyric(trimmed);
