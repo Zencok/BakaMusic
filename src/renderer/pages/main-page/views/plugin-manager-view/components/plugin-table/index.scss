@@ -60,11 +60,10 @@
   & .plugin-card-list {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    padding-bottom: 2px;
+    gap: 6px;
+    padding-bottom: 4px;
 
     &[data-dragging="true"] {
-      cursor: grabbing;
       user-select: none;
     }
 
@@ -79,35 +78,80 @@
   }
 
   & .plugin-card {
+    position: relative;
     width: 100%;
     padding: 7px 10px;
-    border: 1px solid var(--appSurfaceBorder);
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--appSurfaceBorder) 86%, transparent);
     border-radius: 14px;
-    background: var(--appSurfaceMuted);
-    box-shadow: var(--appSurfaceInset);
-    cursor: grab;
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--appSurfaceMuted) 92%, white 8%),
+        color-mix(in srgb, var(--appSurfaceMuted) 88%, var(--backgroundColor))
+      );
+    box-shadow:
+      var(--appSurfaceInset),
+      0 8px 22px color-mix(in srgb, black 5%, transparent);
     transform-origin: center;
-    transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease, opacity 160ms ease;
+    transition:
+      transform 160ms ease,
+      border-color 160ms ease,
+      background-color 160ms ease,
+      box-shadow 160ms ease,
+      opacity 160ms ease;
     box-sizing: border-box;
 
-    &:hover {
-      border-color: color-mix(in srgb, var(--primaryColor) 16%, var(--appSurfaceBorder));
-      background: color-mix(in srgb, var(--appSurfaceMuted) 86%, var(--appInteractiveSurface));
+    &::before {
+      content: "";
+      position: absolute;
+      top: 8px;
+      bottom: 8px;
+      left: 0;
+      width: 3px;
+      border-radius: 0 999px 999px 0;
+      background: linear-gradient(180deg, var(--primaryColor), color-mix(in srgb, var(--primaryColor) 38%, transparent));
+      opacity: 0.44;
+      transition: opacity 160ms ease, background 160ms ease;
     }
 
-    &:active {
-      cursor: grabbing;
+    &:hover {
+      border-color: color-mix(in srgb, var(--primaryColor) 28%, var(--appSurfaceBorder));
+      background:
+        linear-gradient(
+          135deg,
+          color-mix(in srgb, var(--appSurfaceMuted) 84%, var(--appInteractiveSurface)),
+          color-mix(in srgb, var(--appSurfaceMuted) 90%, var(--backgroundColor))
+        );
+      box-shadow:
+        var(--appSurfaceInset),
+        0 10px 26px color-mix(in srgb, black 7%, transparent);
+
+      &::before {
+        opacity: 0.72;
+      }
     }
 
     &[data-disabled="true"] {
-      opacity: 0.5;
+      opacity: 0.72;
+
+      &::before {
+        background: var(--appTextTertiary);
+        opacity: 0.28;
+      }
     }
 
     &[data-dragging="true"] {
       border-color: var(--primaryColor);
       background: color-mix(in srgb, var(--primaryColor) 8%, var(--appSurfaceMuted));
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--primaryColor) 30%, transparent);
+      box-shadow:
+        0 0 0 2px color-mix(in srgb, var(--primaryColor) 30%, transparent),
+        0 14px 28px color-mix(in srgb, var(--primaryColor) 16%, transparent);
       opacity: 0.82;
+
+      &::before {
+        opacity: 1;
+      }
     }
   }
 
@@ -120,21 +164,46 @@
   }
 
   & .plugin-card-order {
-    width: 30px;
+    width: 44px;
     height: 30px;
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 3px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--backgroundColor) 86%, transparent);
-    border: 1px solid var(--appInteractiveBorder);
-    color: var(--appTextSecondary);
+    border-radius: 10px;
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--primaryColor) 13%, var(--backgroundColor)),
+        color-mix(in srgb, var(--backgroundColor) 88%, transparent)
+      );
+    border: 1px solid color-mix(in srgb, var(--primaryColor) 16%, var(--appInteractiveBorder));
+    color: color-mix(in srgb, var(--primaryColor) 70%, var(--appTextSecondary));
     font-size: 0.72rem;
     font-weight: 700;
     line-height: 1;
     user-select: none;
+    cursor: grab;
+    transition:
+      transform 160ms ease,
+      border-color 160ms ease,
+      color 160ms ease,
+      background-color 160ms ease;
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    &:hover {
+      transform: translateY(-1px);
+      border-color: color-mix(in srgb, var(--primaryColor) 34%, var(--appInteractiveBorder));
+      color: var(--primaryColor);
+    }
+  }
+
+  & .plugin-card[data-dragging="true"] .plugin-card-order {
+    cursor: grabbing;
   }
 
   & .plugin-card-main {
@@ -177,10 +246,38 @@
 
   & .plugin-card-version {
     flex-shrink: 0;
+    height: 18px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--backgroundColor) 72%, transparent);
+    border: 1px solid color-mix(in srgb, var(--appInteractiveBorder) 72%, transparent);
     color: var(--appTextSecondary);
     font-size: 0.72rem;
     font-weight: 600;
     white-space: nowrap;
+  }
+
+  & .plugin-card-source {
+    height: 18px;
+    padding: 0 6px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    color: color-mix(in srgb, var(--primaryColor) 80%, var(--appTextSecondary));
+    background: color-mix(in srgb, var(--primaryColor) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primaryColor) 16%, transparent);
+    font-size: 0.7rem;
+    font-weight: 650;
+    white-space: nowrap;
+
+    &[data-source="local"] {
+      color: var(--appTextTertiary);
+      background: color-mix(in srgb, var(--appTextTertiary) 8%, transparent);
+      border-color: color-mix(in srgb, var(--appTextTertiary) 16%, transparent);
+    }
   }
 
   /* Toggle switch */
@@ -193,7 +290,7 @@
     padding-left: 4px;
     border-left: 1px solid var(--appSurfaceBorder);
     border-radius: 999px;
-    border: 1.5px solid var(--appInteractiveBorder);
+    border: 1px solid var(--appInteractiveBorder);
     background: color-mix(in srgb, var(--appTextTertiary) 20%, var(--backgroundColor));
     cursor: pointer;
     position: relative;
@@ -201,7 +298,7 @@
     padding: 0;
 
     &[data-enabled="true"] {
-      background: var(--primaryColor);
+      background: linear-gradient(90deg, var(--primaryColor), color-mix(in srgb, var(--primaryColor) 72%, white));
       border-color: var(--primaryColor);
     }
 
@@ -213,7 +310,7 @@
       height: 12px;
       border-radius: 50%;
       background: #fff;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.26);
       transition: transform 200ms ease;
     }
 
@@ -254,7 +351,12 @@
     gap: 4px;
     border: 1px solid var(--appInteractiveBorder);
     border-radius: 999px;
-    background: color-mix(in srgb, var(--backgroundColor) 84%, transparent);
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--backgroundColor) 90%, white 6%),
+        color-mix(in srgb, var(--backgroundColor) 84%, transparent)
+      );
     box-shadow: var(--appSurfaceInset);
     color: var(--appTextPrimary);
     font-size: 0.74rem;
@@ -271,7 +373,8 @@
 
     &:hover {
       transform: translateY(-1px);
-      background: var(--appInteractiveSurface);
+      border-color: color-mix(in srgb, currentColor 28%, var(--appInteractiveBorder));
+      background: color-mix(in srgb, var(--appInteractiveSurface) 84%, var(--backgroundColor));
     }
 
     &[data-action="uninstall"] {

@@ -58,6 +58,7 @@ function ActionButton({ children, action, iconName, onClick, variant = "normal" 
 
 function PluginToggle({ plugin, meta }: { plugin: IPlugin.IPluginDelegate; meta: Record<string, IPlugin.IPluginMeta> }) {
     const disabled = meta[plugin.platform]?.disabled ?? false;
+
     function toggle(e: React.MouseEvent) {
         e.stopPropagation();
         AppConfig.setConfig({
@@ -486,19 +487,30 @@ export default function PluginTable({ plugins }: IPluginTableProps) {
                                 className="plugin-card"
                                 data-disabled={String(disabled)}
                                 data-dragging={String(isDragging)}
-                                draggable
-                                onDragStart={(e) => onDragStart(e, index, plugin.hash)}
-                                onDragEnd={onDragEnd}
                             >
                                 <div className="plugin-card-head">
-                                    <div className="plugin-card-order">
-                                        <SvgAsset iconName="list-bullet" size={14}></SvgAsset>
+                                    <div
+                                        className="plugin-card-order"
+                                        title={t("plugin_management_page.drag_sort_hint")}
+                                        draggable
+                                        onDragStart={(e) => onDragStart(e, index, plugin.hash)}
+                                        onDragEnd={onDragEnd}
+                                    >
+                                        <SvgAsset iconName="grip-vertical" size={14}></SvgAsset>
                                         <span>{String(index + 1).padStart(2, "0")}</span>
                                     </div>
                                     <div className="plugin-card-main">
                                         <div className="plugin-card-title" title={plugin.platform}>{plugin.platform}</div>
                                         <div className="plugin-card-meta">
                                             <span className="plugin-card-version">{plugin.version ? `v${plugin.version}` : "v-"}</span>
+                                            <span
+                                                className="plugin-card-source"
+                                                data-source={plugin.srcUrl ? "subscription" : "local"}
+                                            >
+                                                {plugin.srcUrl
+                                                    ? t("plugin_management_page.subscription_plugin")
+                                                    : t("plugin_management_page.local_plugin")}
+                                            </span>
                                             <span className="plugin-card-author" title={plugin.author ?? t("media.unknown_artist")}>
                                                 {plugin.author ?? t("media.unknown_artist")}
                                             </span>
