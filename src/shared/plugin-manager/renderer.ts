@@ -99,12 +99,17 @@ mod.onPluginUpdated((plugins) => {
     delegatePluginsStore.setValue(plugins);
 });
 
+function isPluginEnabled(platform: string, meta: Record<string, IPlugin.IPluginMeta | undefined>) {
+    return !(meta[platform]?.disabled ?? false);
+}
+
 function getSupportedPlugin(
     featureMethod: keyof IPlugin.IPluginInstanceMethods,
 ) {
+    const meta = AppConfig.getConfig("private.pluginMeta") ?? {};
     return delegatePluginsStore
         .getValue()
-        .filter((_) => _.supportedMethod.includes(featureMethod));
+        .filter((_) => _.supportedMethod.includes(featureMethod) && isPluginEnabled(_.platform, meta));
 }
 
 function getSortedSupportedPlugin(
@@ -114,7 +119,7 @@ function getSortedSupportedPlugin(
     return sortPluginsByMeta(
         delegatePluginsStore
             .getValue()
-            .filter((_) => _.supportedMethod.includes(featureMethod)),
+            .filter((_) => _.supportedMethod.includes(featureMethod) && isPluginEnabled(_.platform, meta)),
         meta,
     );
 }

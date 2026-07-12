@@ -157,6 +157,7 @@ declare namespace IPlugin {
   /** 插件其他属性 */
   export type IPluginMeta = {
     order?: number;
+    disabled?: boolean;
     userVariables?: Record<string, string>;
   };
 

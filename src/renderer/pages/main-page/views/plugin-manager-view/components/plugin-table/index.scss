@@ -62,6 +62,15 @@
     flex-direction: column;
     gap: 2px;
     padding-bottom: 2px;
+
+    &[data-dragging="true"] {
+      cursor: grabbing;
+      user-select: none;
+    }
+
+    &[data-dragging="true"] .plugin-card {
+      will-change: transform;
+    }
   }
 
   & .plugin-card-row {
@@ -71,13 +80,14 @@
 
   & .plugin-card {
     width: 100%;
-    padding: 10px 12px;
+    padding: 7px 10px;
     border: 1px solid var(--appSurfaceBorder);
-    border-radius: 18px;
+    border-radius: 14px;
     background: var(--appSurfaceMuted);
     box-shadow: var(--appSurfaceInset);
     cursor: grab;
-    transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
+    transform-origin: center;
+    transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease, opacity 160ms ease;
     box-sizing: border-box;
 
     &:hover {
@@ -88,18 +98,30 @@
     &:active {
       cursor: grabbing;
     }
+
+    &[data-disabled="true"] {
+      opacity: 0.5;
+    }
+
+    &[data-dragging="true"] {
+      border-color: var(--primaryColor);
+      background: color-mix(in srgb, var(--primaryColor) 8%, var(--appSurfaceMuted));
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--primaryColor) 30%, transparent);
+      opacity: 0.82;
+    }
   }
 
   & .plugin-card-head {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     min-width: 0;
+    flex-wrap: nowrap;
   }
 
   & .plugin-card-order {
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
@@ -125,7 +147,7 @@
 
   & .plugin-card-title {
     min-width: 0;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 700;
     line-height: 1.15;
     letter-spacing: -0.01em;
@@ -147,7 +169,7 @@
     min-width: 0;
     flex: 1;
     color: var(--appTextTertiary);
-    font-size: 0.8rem;
+    font-size: 0.76rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -156,14 +178,64 @@
   & .plugin-card-version {
     flex-shrink: 0;
     color: var(--appTextSecondary);
-    font-size: 0.76rem;
+    font-size: 0.72rem;
     font-weight: 600;
     white-space: nowrap;
   }
 
+  /* Toggle switch */
+  & .plugin-card-toggle {
+    flex-shrink: 0;
+    order: 3;
+    width: 34px;
+    height: 20px;
+    margin-left: 4px;
+    padding-left: 4px;
+    border-left: 1px solid var(--appSurfaceBorder);
+    border-radius: 999px;
+    border: 1.5px solid var(--appInteractiveBorder);
+    background: color-mix(in srgb, var(--appTextTertiary) 20%, var(--backgroundColor));
+    cursor: pointer;
+    position: relative;
+    transition: background 200ms ease, border-color 200ms ease;
+    padding: 0;
+
+    &[data-enabled="true"] {
+      background: var(--primaryColor);
+      border-color: var(--primaryColor);
+    }
+
+    & .plugin-card-toggle-thumb {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+      transition: transform 200ms ease;
+    }
+
+    &[data-enabled="true"] .plugin-card-toggle-thumb {
+      transform: translateX(14px);
+    }
+  }
+
   & .plugin-card-actions {
-    display: flex;
-    flex-wrap: wrap;
+    --plugin-card-action-uninstall-width: 64px;
+    --plugin-card-action-update-width: 64px;
+    --plugin-card-action-import-item-width: 92px;
+    --plugin-card-action-import-sheet-width: 92px;
+    --plugin-card-action-vars-width: 96px;
+
+    display: grid;
+    grid-template-columns:
+      var(--plugin-card-action-uninstall-width)
+      var(--plugin-card-action-update-width)
+      var(--plugin-card-action-import-item-width)
+      var(--plugin-card-action-import-sheet-width)
+      var(--plugin-card-action-vars-width);
     gap: 6px;
     align-items: center;
     justify-content: flex-end;
@@ -172,25 +244,54 @@
   }
 
   & .plugin-card-action-button {
-    min-height: 30px;
-    padding: 0 10px;
+    width: 100%;
+    min-width: 0;
+    min-height: 28px;
+    padding: 0 6px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 4px;
     border: 1px solid var(--appInteractiveBorder);
     border-radius: 999px;
     background: color-mix(in srgb, var(--backgroundColor) 84%, transparent);
     box-shadow: var(--appSurfaceInset);
     color: var(--appTextPrimary);
-    font-size: 0.78rem;
+    font-size: 0.74rem;
     font-weight: 600;
     cursor: pointer;
     transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+    white-space: nowrap;
+
+    & span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
     &:hover {
       transform: translateY(-1px);
       background: var(--appInteractiveSurface);
+    }
+
+    &[data-action="uninstall"] {
+      grid-column: 1;
+    }
+
+    &[data-action="update"] {
+      grid-column: 2;
+    }
+
+    &[data-action="importMusicItem"] {
+      grid-column: 3;
+    }
+
+    &[data-action="importMusicSheet"] {
+      grid-column: 4;
+    }
+
+    &[data-action="userVariables"] {
+      grid-column: 5;
     }
 
     &[data-variant="success"] {
@@ -213,7 +314,7 @@
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 720px) {
   .plugin-table--container {
     & .plugin-table--toolbar {
       flex-direction: column;
@@ -225,34 +326,24 @@
       justify-content: center;
     }
 
-    & .plugin-card {
-      padding: 10px 12px;
-    }
-
     & .plugin-card-head {
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
-    & .plugin-card-order {
-      width: 34px;
-      height: 34px;
+      gap: 6px;
     }
 
     & .plugin-card-actions {
-      width: 100%;
-      margin-left: 0;
-      padding-left: 46px;
-      justify-content: flex-start;
+      --plugin-card-action-uninstall-width: 30px;
+      --plugin-card-action-update-width: 30px;
+      --plugin-card-action-import-item-width: 30px;
+      --plugin-card-action-import-sheet-width: 30px;
+      --plugin-card-action-vars-width: 30px;
     }
-  }
-}
 
-@media (max-width: 560px) {
-  .plugin-table--container {
     & .plugin-card-action-button {
-      flex: 1 1 calc(50% - 3px);
-      min-width: 110px;
+      min-width: 0;
+    }
+
+    & .plugin-card-action-button span {
+      display: none;
     }
   }
 }
