@@ -17,7 +17,7 @@ export default function MusicResult(props: IBodyProps) {
 
     useEffect(() => {
         queryArtist(artistItem, 1, "music");
-    }, []);
+    }, [artistItem.platform, artistItem.id, queryArtist]);
 
     return (
         <Condition

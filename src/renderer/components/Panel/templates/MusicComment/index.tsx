@@ -45,6 +45,10 @@ export default function MusicComment(props: IProps) {
             <div className="music-comment-panel--body-container">
                 {comments.length === 0 && (reqState & RequestStateCode.LOADING) ? (
                     <div className="music-comment-panel--loading"><Loading></Loading></div>
+                ) : comments.length === 0 && reqState === RequestStateCode.ERROR ? (
+                    <div className="music-comment-panel--loading">
+                        <BottomLoadingState state={reqState} onLoadMore={loadMore}></BottomLoadingState>
+                    </div>
                 ) : (
                     <>
                         {comments.map((comment, index) => (

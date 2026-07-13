@@ -56,7 +56,7 @@ export function showCustomContextMenu(
     contextMenuDataStore.setValue(contextMenuData);
 }
 
-function hideContextMenu() {
+export function hideContextMenu() {
     contextMenuDataStore.setValue(null);
 }
 
@@ -220,6 +220,24 @@ export function ContextMenuComponent() {
             window.removeEventListener("click", contextClickListener);
         };
     }, []);
+
+    useEffect(() => {
+        if (!contextMenuData) {
+            return;
+        }
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.code !== "Escape") {
+                return;
+            }
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            hideContextMenu();
+        };
+        window.addEventListener("keydown", onKeyDown, true);
+        return () => {
+            window.removeEventListener("keydown", onKeyDown, true);
+        };
+    }, [contextMenuData]);
 
     useEffect(() => {
         setSubMenuData(null);

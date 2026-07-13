@@ -166,6 +166,7 @@ function releaseLocalMusic() {
 }
 
 async function changeWatchPath(_logs: Map<string, "add" | "delete">) {
+    const setupToken = localMusicSetupToken;
     const selectedDirs =
         (await getUserPreferenceIDB("localWatchDirChecked")) ?? [];
     const cachedLocalMusic = localMusicListStore.getValue();
@@ -188,6 +189,10 @@ async function changeWatchPath(_logs: Map<string, "add" | "delete">) {
             removedFilePaths: retainedLocalMusic.map((item) => item.$$localPath),
         };
     const optimizedScanResult = await optimizeLocalArtworkItems(scanResult.musicItems);
+
+    if (setupToken !== localMusicSetupToken) {
+        return;
+    }
 
     const removedFilePaths = new Set(scanResult.removedFilePaths);
     const deletedPrimaryKeys = [
@@ -213,6 +218,10 @@ async function changeWatchPath(_logs: Map<string, "add" | "delete">) {
         },
     );
 
+    if (setupToken !== localMusicSetupToken) {
+        return;
+    }
+
     const nextLocalMusic = mergeLocalMusicItems(
         retainedLocalMusic.filter(
             (item) => !removedFilePaths.has(item.$$localPath),
@@ -228,10 +237,14 @@ async function scanLocalMusicChanges() {
 }
 
 async function clearAndRescanLocalMusic() {
+    const setupToken = localMusicSetupToken;
     const selectedDirs =
         (await getUserPreferenceIDB("localWatchDirChecked")) ?? [];
 
     await musicSheetDB.localMusicStore.clear();
+    if (setupToken !== localMusicSetupToken) {
+        return;
+    }
     localMusicListStore.setValue([]);
 
     const worker = await getLocalFileWatcherWorker();
@@ -242,10 +255,17 @@ async function clearAndRescanLocalMusic() {
     const scanResult = await worker.scanDirectories(selectedDirs, []);
     const optimizedScanResult = await optimizeLocalArtworkItems(scanResult.musicItems);
 
+    if (setupToken !== localMusicSetupToken) {
+        return;
+    }
+
     if (optimizedScanResult.optimizedMusicItems.length) {
         await musicSheetDB.localMusicStore.bulkPut(
             optimizedScanResult.optimizedMusicItems,
         );
+    }
+    if (setupToken !== localMusicSetupToken) {
+        return;
     }
     localMusicListStore.setValue(optimizedScanResult.optimizedMusicItems);
 }

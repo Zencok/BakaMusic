@@ -123,7 +123,9 @@ export default function () {
                 }
             })
             .catch(() => {
-                setLoadingState(RequestStateCode.ERROR);
+                if (isMounted.current) {
+                    setLoadingState(RequestStateCode.ERROR);
+                }
             });
     }, []);
 

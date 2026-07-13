@@ -81,6 +81,7 @@ export default function () {
             try {
                 searchResultStore.setValue(
                     produce(draft => {
+                        draft.query = currentQueryRef.current;
                         const prevMediaResult = draft.data;
                         prevMediaResult[_hash] = {
                             state: newSearch

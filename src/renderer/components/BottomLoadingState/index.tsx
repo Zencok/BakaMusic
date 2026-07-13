@@ -17,6 +17,7 @@ export default function BottomLoadingState(props: IProps) {
     onLoadMoreRef.current = onLoadMore;
 
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const isIntersectingRef = useRef(false);
 
     const { t } = useTranslation();
 
@@ -27,10 +28,12 @@ export default function BottomLoadingState(props: IProps) {
         }
 
         const intersectionObserver = new IntersectionObserver((entries) => {
+            const intersecting = (entries[0]?.intersectionRatio ?? 0) > 0;
+            isIntersectingRef.current = intersecting;
             if (
-                AppConfig.getConfig("normal.autoLoadMore")
+                intersecting
+                && AppConfig.getConfig("normal.autoLoadMore")
                 && stateRef.current === RequestStateCode.PARTLY_DONE
-                && entries[0]?.intersectionRatio > 0
             ) {
                 onLoadMoreRef.current?.();
             }
@@ -39,16 +42,27 @@ export default function BottomLoadingState(props: IProps) {
         intersectionObserver.observe(node);
 
         return () => {
-            // Prefer disconnect — containerRef.current is often null during unmount cleanup
             intersectionObserver.disconnect();
         };
     }, []);
+
+    // Re-trigger when list returns to PARTLY_DONE while footer is still on screen
+    // (IntersectionObserver only fires on intersection *changes*)
+    useEffect(() => {
+        if (
+            state === RequestStateCode.PARTLY_DONE
+            && isIntersectingRef.current
+            && AppConfig.getConfig("normal.autoLoadMore")
+        ) {
+            onLoadMoreRef.current?.();
+        }
+    }, [state]);
 
     let component = null;
 
     if (state === RequestStateCode.FINISHED) {
         component = <span className="bottom-loading-state--reach-end">{t("bottom_loading_state.reached_end")}</span>;
-    } else if (state === RequestStateCode.PENDING_REST_PAGE) {
+    } else if (state === RequestStateCode.PENDING_REST_PAGE || state === RequestStateCode.PENDING_FIRST_PAGE) {
         component = <div className="bottom-loading-state--loading">
             <div className="bottom-loading-state--liquid" aria-hidden="true">
                 <span></span>
@@ -58,6 +72,10 @@ export default function BottomLoadingState(props: IProps) {
             <span>{t("bottom_loading_state.loading")}</span>
         </div>;
     } else if (state === RequestStateCode.PARTLY_DONE) {
+        component = <span className="bottom-loading-state--loadmore" role="button" onClick={onLoadMore}>
+            {t("bottom_loading_state.load_more")}
+        </span>;
+    } else if (state === RequestStateCode.ERROR) {
         component = <span className="bottom-loading-state--loadmore" role="button" onClick={onLoadMore}>
             {t("bottom_loading_state.load_more")}
         </span>;

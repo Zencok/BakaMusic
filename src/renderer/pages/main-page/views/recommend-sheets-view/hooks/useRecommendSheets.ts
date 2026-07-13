@@ -46,12 +46,15 @@ export default function (plugin: IPlugin.IPluginDelegate, tag: IMedia.IUnique | 
             ) ?? { isEnd: true, data: [] as IMusic.IMusicSheetItem[] };
             const nextSheets = Array.isArray(res.data) ? res.data : [];
 
-            if (tagId === currentTagRef.current) {
-                setSheets((prev) => [
-                    ...prev,
-                    ...nextSheets.map((item) => resetMediaItem(item, plugin.platform)),
-                ]);
+            // Drop stale responses after tag switch
+            if (tagId !== currentTagRef.current) {
+                return;
             }
+
+            setSheets((prev) => [
+                ...prev,
+                ...nextSheets.map((item) => resetMediaItem(item, plugin.platform)),
+            ]);
 
             if (res.isEnd) {
                 setStatus(RequestStateCode.FINISHED);
@@ -59,7 +62,9 @@ export default function (plugin: IPlugin.IPluginDelegate, tag: IMedia.IUnique | 
                 setStatus(RequestStateCode.PARTLY_DONE);
             }
         } catch {
-            setStatus(RequestStateCode.ERROR);
+            if (tagId === currentTagRef.current) {
+                setStatus(RequestStateCode.ERROR);
+            }
         }
     }, [plugin.hash, plugin.platform, status, tag]);
 

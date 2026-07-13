@@ -1,7 +1,10 @@
-﻿import { ReactNode, useRef } from "react";
+﻿import { ReactNode, useEffect, useRef } from "react";
 import "./index.scss";
 import SvgAsset from "@/renderer/components/SvgAsset";
 import { hidePanel } from "../..";
+import { isModalOpen } from "@/renderer/components/Modal";
+import { isQualitySelectPopoverOpen } from "@/renderer/components/QualitySelectPopover";
+import { isContextMenuOpen } from "@/renderer/components/ContextMenu";
 
 interface IBaseModalProps {
     onDefaultClick?: () => void;
@@ -30,6 +33,33 @@ function Base(props: IBaseModalProps) {
     } = props;
 
     const trapCloseRef = useRef(false);
+
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.code !== "Escape") {
+                return;
+            }
+            // Popover / modal / context menu own Escape first
+            if (
+                isQualitySelectPopoverOpen()
+                || isModalOpen()
+                || isContextMenuOpen()
+            ) {
+                return;
+            }
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            if (defaultClose) {
+                hidePanel();
+            } else {
+                onDefaultClick?.();
+            }
+        };
+        window.addEventListener("keydown", onKeyDown, true);
+        return () => {
+            window.removeEventListener("keydown", onKeyDown, true);
+        };
+    }, [defaultClose, onDefaultClick]);
 
     return (
         <div

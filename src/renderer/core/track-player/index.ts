@@ -471,13 +471,16 @@ class TrackPlayer {
                 { id, platform } as IMedia.IMediaBase,
             );
             if (musicInfo && typeof musicInfo === "object") {
+                // Keep id/platform last so plugin payload cannot overwrite identity
                 return this.playMusic(
-                    { id, platform, title: "", artist: "", ...musicInfo } as IMusic.IMusicItem,
+                    { title: "", artist: "", ...musicInfo, id, platform } as IMusic.IMusicItem,
                     { quality },
                 );
             }
+            throw new Error("music info not found");
         } catch (e) {
             logger.logError("playMusicById failed", toError(e));
+            throw e instanceof Error ? e : new Error(String(e));
         }
     }
 
@@ -850,7 +853,10 @@ class TrackPlayer {
             });
         } catch (e) {
             logger.logError("歌词解析失败", toError(e));
-            this.setCurrentLyric({});
+            // Do not clear lyrics of a newer track if this request is stale
+            if (this.isCurrentMusic(currentMusic)) {
+                this.setCurrentLyric({});
+            }
         }
 
 

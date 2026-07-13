@@ -176,7 +176,8 @@ export default function MusicInfo() {
 
                         showPanel("MusicComment", {
                             musicItem,
-                            coverHeader: true,
+                            // Match playlist: only cover chrome while detail is open
+                            coverHeader: musicDetailShown,
                         });
                     }}
                 >

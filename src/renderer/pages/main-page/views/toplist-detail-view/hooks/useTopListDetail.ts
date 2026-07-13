@@ -1,53 +1,103 @@
 import { RequestStateCode } from "@/common/constant";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import PluginManager from "@shared/plugin-manager/renderer";
+
+function topListKey(item: IMusic.IMusicSheetItem | null, platform: string) {
+    if (!item) {
+        return "";
+    }
+    return `${platform}::${item.id}`;
+}
 
 export default function useTopListDetail(
     topListItem: IMusic.IMusicSheetItem | null,
     platform: string,
 ) {
     const [mergedTopListItem, setMergedTopListItem] =
-    useState<ICommon.WithMusicList<IMusic.IMusicSheetItem> | null>(topListItem);
+        useState<ICommon.WithMusicList<IMusic.IMusicSheetItem> | null>(topListItem);
     const pageRef = useRef(1);
+    const requestIdRef = useRef(0);
+    const identityRef = useRef(topListKey(topListItem, platform));
+    const loadingRef = useRef(false);
     const [requestState, setRequestState] = useState(RequestStateCode.IDLE);
 
-    async function loadMore(){
-        if (!topListItem || !platform) {
+    const loadMore = useCallback(async () => {
+        if (!topListItem || !platform || loadingRef.current) {
             return;
         }
+
+        const requestId = requestIdRef.current;
+        const key = topListKey(topListItem, platform);
+        const page = pageRef.current;
+
+        loadingRef.current = true;
         try {
-            if (pageRef.current === 1) {
-                setRequestState(RequestStateCode.PENDING_FIRST_PAGE);
-            } else {
-                setRequestState(RequestStateCode.PENDING_REST_PAGE);
+            setRequestState(
+                page === 1
+                    ? RequestStateCode.PENDING_FIRST_PAGE
+                    : RequestStateCode.PENDING_REST_PAGE,
+            );
+            const result = await PluginManager.callPluginDelegateMethod(
+                { platform },
+                "getTopListDetail",
+                topListItem,
+                page,
+            );
+
+            if (
+                requestId !== requestIdRef.current
+                || identityRef.current !== key
+            ) {
+                return;
             }
-            const result = await PluginManager.callPluginDelegateMethod({ platform }, "getTopListDetail", topListItem, pageRef.current);
+
             if (!result) {
                 throw new Error();
             }
-            const currentPage = pageRef.current;
+
             setMergedTopListItem((prev) => ({
                 ...(prev ?? topListItem),
                 ...(result.topListItem),
-                musicList: currentPage === 1 ? (result.musicList ?? []): [...(prev?.musicList ?? []), ...(result.musicList ?? [])],
+                musicList: page === 1
+                    ? (result.musicList ?? [])
+                    : [...(prev?.musicList ?? []), ...(result.musicList ?? [])],
             }));
 
-            if (!result.isEnd) {
-                setRequestState(RequestStateCode.PARTLY_DONE);
-            } else {
+            setRequestState(
+                result.isEnd
+                    ? RequestStateCode.FINISHED
+                    : RequestStateCode.PARTLY_DONE,
+            );
+            pageRef.current = page + 1;
+        } catch {
+            if (
+                requestId === requestIdRef.current
+                && identityRef.current === key
+            ) {
                 setRequestState(RequestStateCode.FINISHED);
             }
-            pageRef.current++;
-        } catch {
-            setRequestState(RequestStateCode.FINISHED);
+        } finally {
+            if (requestId === requestIdRef.current) {
+                loadingRef.current = false;
+            }
         }
-    }
+    }, [topListItem, platform]);
 
     useEffect(() => {
-        if (topListItem === null) {
+        const key = topListKey(topListItem, platform);
+        identityRef.current = key;
+        requestIdRef.current += 1;
+        pageRef.current = 1;
+        loadingRef.current = false;
+        setMergedTopListItem(topListItem);
+        setRequestState(RequestStateCode.IDLE);
+
+        if (topListItem === null || !platform) {
             return;
         }
-        loadMore();
-    }, []);
+
+        void loadMore();
+    }, [topListItem?.id, platform]);
+
     return [mergedTopListItem, requestState, loadMore] as const;
 }

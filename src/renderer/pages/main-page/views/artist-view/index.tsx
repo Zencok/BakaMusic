@@ -18,11 +18,13 @@ export default function ArtistView() {
         } as IArtist.IArtistItem;
     }, [params?.platform, params?.id]);
 
+    // Reset store only when leaving the page or switching artist — not every re-render
     useEffect(() => {
+        queryResultStore.setValue(initQueryResult);
         return () => {
             queryResultStore.setValue(initQueryResult);
         };
-    });
+    }, [artistItem.platform, artistItem.id]);
 
     return (
         <div id="page-container" className="page-container artist-view--container">

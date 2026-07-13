@@ -40,7 +40,14 @@ export default function SearchResult(props: ISearchResultProps) {
     const canRefresh = Boolean(selectedPlugin?.hash && query && !isRefreshing);
 
     useEffect(() => {
-        if (plugins.length && !selectedPlugin) {
+        if (!plugins.length) {
+            setSelectedPlugin(null);
+            return;
+        }
+        // Re-select when history plugin is missing from type-filtered list
+        const stillValid = selectedPlugin
+            && plugins.some((plugin) => plugin.hash === selectedPlugin.hash);
+        if (!stillValid) {
             setSelectedPlugin(plugins[0]);
         }
     }, [plugins, selectedPlugin]);

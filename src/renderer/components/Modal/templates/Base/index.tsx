@@ -1,7 +1,9 @@
-﻿import { ReactNode, useRef } from "react";
+﻿import { ReactNode, useEffect, useRef } from "react";
 import { hideModal } from "../..";
 import "./index.scss";
 import SvgAsset from "@/renderer/components/SvgAsset";
+import { isQualitySelectPopoverOpen } from "@/renderer/components/QualitySelectPopover";
+import { isContextMenuOpen } from "@/renderer/components/ContextMenu";
 
 interface IBaseModalProps {
     onDefaultClick?: () => void;
@@ -21,6 +23,27 @@ function Base(props: IBaseModalProps) {
     } = props;
 
     const trapCloseRef = useRef(false);
+
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.code !== "Escape") {
+                return;
+            }
+            // Higher layers first
+            if (isQualitySelectPopoverOpen() || isContextMenuOpen()) {
+                return;
+            }
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            // Escape always dismisses the top modal (matches user expectation)
+            hideModal();
+            onDefaultClick?.();
+        };
+        window.addEventListener("keydown", onKeyDown, true);
+        return () => {
+            window.removeEventListener("keydown", onKeyDown, true);
+        };
+    }, [onDefaultClick]);
 
     return (
         <div
