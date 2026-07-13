@@ -96,6 +96,10 @@ export function hideQualitySelectPopover() {
     popoverStore.setValue(null);
 }
 
+export function isQualitySelectPopoverOpen() {
+    return popoverStore.getValue() != null;
+}
+
 export default function QualitySelectPopover() {
     const popoverState = popoverStore.useValue();
     const popoverRef = useRef<HTMLDivElement>(null);
@@ -175,6 +179,8 @@ export default function QualitySelectPopover() {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.code === "Escape") {
                 event.preventDefault();
+                // Stop other Escape handlers (e.g. MusicDetail) from also running
+                event.stopImmediatePropagation();
                 hideQualitySelectPopover();
             }
         };

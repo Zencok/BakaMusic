@@ -45,3 +45,7 @@ export function hideModal() {
         payload: null,
     });
 }
+
+export function isModalOpen() {
+    return modalStore.getValue().type != null;
+}

@@ -14,8 +14,12 @@ import {
     usePlayerState,
     useQuality,
 } from "@renderer/core/track-player/hooks";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { musicDetailShownStore } from "@renderer/components/MusicDetail/store";
+import { isModalOpen } from "@/renderer/components/Modal";
+import { isContextMenuOpen } from "@/renderer/components/ContextMenu";
+import { isQualitySelectPopoverOpen } from "@/renderer/components/QualitySelectPopover";
+import { getCurrentPanel } from "@/renderer/components/Panel";
 
 export const isMusicDetailShown = musicDetailShownStore.getValue;
 export const useMusicDetailShown = musicDetailShownStore.useValue;
@@ -29,18 +33,45 @@ function MusicDetail() {
     const [storedVinylTonearm] = useUserPreference("musicDetailVinylTonearm");
     const [storedTonearmReach] = useUserPreference("musicDetailVinylTonearmReach");
     const { t } = useTranslation();
+    const reflowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
+        // Only listen while detail is open so Escape doesn't fight other app layers
+        if (!musicDetailShown) {
+            return;
+        }
+
         const escHandler = (event: KeyboardEvent) => {
-            if (event.code === "Escape") {
-                event.preventDefault();
-                musicDetailShownStore.setValue(false);
+            if (event.code !== "Escape") {
+                return;
             }
+
+            // Higher layers own Escape first
+            if (
+                isQualitySelectPopoverOpen()
+                || isModalOpen()
+                || isContextMenuOpen()
+                || getCurrentPanel()?.type
+            ) {
+                return;
+            }
+
+            event.preventDefault();
+            musicDetailShownStore.setValue(false);
         };
 
         window.addEventListener("keydown", escHandler);
         return () => {
             window.removeEventListener("keydown", escHandler);
+        };
+    }, [musicDetailShown]);
+
+    useEffect(() => {
+        return () => {
+            if (reflowTimerRef.current !== null) {
+                clearTimeout(reflowTimerRef.current);
+                reflowTimerRef.current = null;
+            }
         };
     }, []);
 
@@ -64,7 +95,11 @@ function MusicDetail() {
             mountClassName="animate__fadeInUp"
             unmountClassName="animate__fadeOutDown"
             onAnimationEnd={() => {
-                setTimeout(() => {
+                if (reflowTimerRef.current !== null) {
+                    clearTimeout(reflowTimerRef.current);
+                }
+                reflowTimerRef.current = setTimeout(() => {
+                    reflowTimerRef.current = null;
                     document.body.style.width = "0";
                     document.body.getBoundingClientRect();
                     document.body.style.width = "";

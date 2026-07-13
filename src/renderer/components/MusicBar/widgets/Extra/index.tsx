@@ -627,18 +627,25 @@ function QualityBtn() {
                     return;
                 }
 
+                const musicAtClick = currentMusic;
                 const anchor = event.currentTarget;
                 setIsLoading(true);
                 try {
-                    const { choices } = await resolveMusicQualityChoices(currentMusic, t);
+                    const { choices } = await resolveMusicQualityChoices(musicAtClick, t);
+
+                    // Track may have changed while resolving qualities
+                    if (!trackPlayer.isCurrentMusic(musicAtClick)) {
+                        return;
+                    }
 
                     if (!choices.length) {
                         toast.warn(t("music_bar.no_music_quality_available"));
                         return;
                     }
 
-                    const defaultValue = choices.some((choice) => choice.value === quality)
-                        ? quality
+                    const currentQuality = trackPlayer.currentQuality;
+                    const defaultValue = choices.some((choice) => choice.value === currentQuality)
+                        ? currentQuality
                         : choices[0].value;
 
                     showQualitySelectPopover({
@@ -647,12 +654,18 @@ function QualityBtn() {
                         choices,
                         anchor,
                         async onSelect(value) {
+                            if (!trackPlayer.isCurrentMusic(musicAtClick)) {
+                                toast.warn(t("music_bar.current_quality_not_available_for_current_music"));
+                                return;
+                            }
                             const success = await trackPlayer.setQuality(value);
                             if (!success) {
                                 toast.warn(t("music_bar.current_quality_not_available_for_current_music"));
                             }
                         },
                     });
+                } catch {
+                    toast.warn(t("music_bar.no_music_quality_available"));
                 } finally {
                     setIsLoading(false);
                 }

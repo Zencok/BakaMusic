@@ -77,7 +77,7 @@ export default function () {
 
             /** 搜索的页码 */
             const page =
-                queryPage ?? newSearch ? 1 : (prevPluginResult?.page ?? 0) + 1;
+                queryPage ?? (newSearch ? 1 : (prevPluginResult?.page ?? 0) + 1);
             try {
                 searchResultStore.setValue(
                     produce(draft => {

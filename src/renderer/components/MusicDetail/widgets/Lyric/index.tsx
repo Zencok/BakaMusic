@@ -374,13 +374,19 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
     );
 
     useEffect(() => {
+        let cancelled = false;
+
         if (currentMusicRef.current?.platform) {
-            getLinkedLyric(currentMusicRef.current).then((linked) => {
-                if (linked) {
+            void getLinkedLyric(currentMusicRef.current).then((linked) => {
+                if (!cancelled && linked) {
                     setLinkedLyricInfo(linked);
                 }
             });
         }
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     function handleFontSize(val: string | number) {
@@ -418,12 +424,13 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
                 }],
             });
 
-            if (!result.canceled && result.filePath) {
-                await fsUtil.writeFile(result.filePath, rawLyric, "utf-8");
-                toast.success(t("music_detail.lyric_ctx_download_success"));
-            } else {
-                throw new Error("cancelled");
+            // User cancelled the save dialog — not a failure
+            if (result.canceled || !result.filePath) {
+                return;
             }
+
+            await fsUtil.writeFile(result.filePath, rawLyric, "utf-8");
+            toast.success(t("music_detail.lyric_ctx_download_success"));
         } catch {
             toast.error(t("music_detail.lyric_ctx_download_fail"));
         }
@@ -442,13 +449,14 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
                     role="button"
                     className="font-size-button"
                     onClick={() => {
-                        if (fontSize) {
-                            setFontSize((previousValue) => {
-                                const nextValue = Math.max(8, +(previousValue ?? "13") - 1);
-                                handleFontSize(nextValue);
-                                return `${nextValue}`;
-                            });
+                        if (!fontSize) {
+                            return;
                         }
+                        // Do not call parent setState inside setState updater — React forbids
+                        // updating Lyric while rendering LyricContextMenu.
+                        const nextValue = Math.max(8, +(fontSize ?? "13") - 1);
+                        setFontSize(`${nextValue}`);
+                        handleFontSize(nextValue);
                     }}
                 >
                     <SvgAsset iconName="font-size-smaller"></SvgAsset>
@@ -468,13 +476,12 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
                     role="button"
                     className="font-size-button"
                     onClick={() => {
-                        if (fontSize) {
-                            setFontSize((previousValue) => {
-                                const nextValue = Math.min(32, +(previousValue ?? "13") + 1);
-                                handleFontSize(nextValue);
-                                return `${nextValue}`;
-                            });
+                        if (!fontSize) {
+                            return;
                         }
+                        const nextValue = Math.min(32, +(fontSize ?? "13") + 1);
+                        setFontSize(`${nextValue}`);
+                        handleFontSize(nextValue);
                     }}
                 >
                     <SvgAsset iconName="font-size-larger"></SvgAsset>

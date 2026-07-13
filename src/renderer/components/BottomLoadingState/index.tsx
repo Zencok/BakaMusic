@@ -13,31 +13,36 @@ export default function BottomLoadingState(props: IProps) {
     const { state, onLoadMore } = props;
     const stateRef = useRef<RequestStateCode>(state);
     stateRef.current = state;
+    const onLoadMoreRef = useRef(onLoadMore);
+    onLoadMoreRef.current = onLoadMore;
 
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     const { t } = useTranslation();
 
     useEffect(() => {
+        const node = containerRef.current;
+        if (!node) {
+            return;
+        }
+
         const intersectionObserver = new IntersectionObserver((entries) => {
-            if(AppConfig.getConfig("normal.autoLoadMore") && stateRef.current === RequestStateCode.PARTLY_DONE && entries[0].intersectionRatio > 0) {
-                if (onLoadMore) {
-                    onLoadMore();
-                }
+            if (
+                AppConfig.getConfig("normal.autoLoadMore")
+                && stateRef.current === RequestStateCode.PARTLY_DONE
+                && entries[0]?.intersectionRatio > 0
+            ) {
+                onLoadMoreRef.current?.();
             }
         });
 
-        if (containerRef.current) {
-            intersectionObserver.observe(containerRef.current);
-        }
+        intersectionObserver.observe(node);
 
         return () => {
-            if (containerRef.current) {
-                intersectionObserver.unobserve(containerRef.current);
-            }
+            // Prefer disconnect — containerRef.current is often null during unmount cleanup
+            intersectionObserver.disconnect();
         };
-    }, [onLoadMore]);
-
+    }, []);
 
     let component = null;
 
@@ -61,6 +66,4 @@ export default function BottomLoadingState(props: IProps) {
     return <div className="bottom-loading-state" ref={containerRef}>
         {component}
     </div>;
-
-
 }

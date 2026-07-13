@@ -60,6 +60,10 @@ function hideContextMenu() {
     contextMenuDataStore.setValue(null);
 }
 
+export function isContextMenuOpen() {
+    return contextMenuDataStore.getValue() != null;
+}
+
 const menuItemWidth = 240;
 const menuItemHeight = 32;
 const menuContainerMaxHeight = menuItemHeight * 10;
