@@ -819,9 +819,17 @@
         box-shadow: none;
         backdrop-filter: none;
 
+        // Local music etc. use header-only: shell must stay transparent so
+        // toolbar + list cards are not double-wrapped in an outer card.
         &[data-surface-mode="header-only"] {
+            padding: 0 !important;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+
             .music-list-toolbar {
-                border-radius: 12px;
+                border-radius: var(--cardRadius);
                 background: var(--appSurfaceStrong);
                 border: 1px solid var(--appSurfaceBorder);
                 box-shadow: none;
@@ -829,7 +837,7 @@
             }
 
             .music-list-virtual-spacer {
-                border-radius: 12px;
+                border-radius: var(--cardRadius);
                 background: var(--appSurfaceStrong);
                 border: 1px solid var(--appSurfaceBorder);
                 box-shadow: none;
@@ -1772,7 +1780,8 @@
     }
 
     // Cards / panels / lists
-    .music-list-container,
+    // header-only lists keep transparent shell (radius 0) — do not force card radius
+    .music-list-container:not([data-surface-mode="header-only"]),
     .search-view-container .search-header,
     .local-music-view--container .header,
     .local-music-view--container .operations,
@@ -1786,6 +1795,14 @@
     .components--modal-base > [class^="modal--"],
     .components--modal-base > [class*=" modal--"] {
         border-radius: var(--cardRadius) !important;
+    }
+
+    .music-list-container[data-surface-mode="header-only"] {
+        border-radius: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
     }
 
     // Isolate quality-select from any leftover flat surface rules
