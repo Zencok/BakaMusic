@@ -19,34 +19,35 @@
   }
 
   & .components--panel-base-content {
-    width: 44vw;
+    width: 42vw;
     max-width: calc(100vw - 28px);
+    min-width: min(360px, 100%);
     height: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    color: var(--panelContentColor, #fff);
-    border-radius: var(--panelRadius, 34px);
+    color: var(--panelContentColor, var(--textColor));
+    border-radius: var(--panelRadius, 22px);
     background: var(--appPanelSurface);
-    border: 1px solid var(--panelBorder, rgba(255, 255, 255, 0.08));
-    box-shadow: 0 28px 72px rgba(0, 0, 0, 0.26), inset 0 1px 0 color-mix(in srgb, var(--panelTextOnSurface, #fff) 12%, transparent);
-    backdrop-filter: var(--panelFilter, blur(28px) saturate(148%));
-    --textColor: var(--panelTextOnSurface, rgba(255, 255, 255, 0.9));
-    --dividerColor: color-mix(in srgb, var(--panelTextOnSurface, #fff) 10%, transparent);
-    --listActiveColor: color-mix(in srgb, var(--panelTextOnSurface, #fff) 16%, transparent);
-    --listHoverColor: color-mix(in srgb, var(--panelTextOnSurface, #fff) 10%, transparent);
-    --placeholderColor: color-mix(in srgb, var(--panelTextOnSurface, #fff) 8%, transparent);
+    border: 1px solid var(--panelBorder, color-mix(in srgb, var(--textColor) 12%, transparent));
+    box-shadow: var(--panelShadow, 0 24px 64px rgba(15, 23, 42, 0.16));
+    backdrop-filter: var(--panelFilter, blur(28px) saturate(150%));
+    --textColor: var(--panelTextOnSurface, var(--textColor));
+    --dividerColor: color-mix(in srgb, var(--textColor) 10%, transparent);
+    --listActiveColor: color-mix(in srgb, var(--primaryColor) 12%, transparent);
+    --listHoverColor: var(--panelRowSurfaceHover, color-mix(in srgb, var(--textColor) 6%, transparent));
+    --placeholderColor: color-mix(in srgb, var(--textColor) 6%, transparent);
 
     & .components--panel-base-header {
       width: 100%;
-      min-height: 68px;
+      min-height: 60px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      padding: 0 24px;
+      gap: 14px;
+      padding: 12px 18px 12px 22px;
       box-sizing: border-box;
-      border-bottom: 1px solid color-mix(in srgb, var(--textColor) 10%, transparent);
+      border-bottom: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
       flex-shrink: 0;
       color: var(--textColor);
     }
@@ -55,44 +56,44 @@
     & .components--panel-base-header-right {
       display: flex;
       align-items: center;
-      min-height: 68px;
+      min-height: 44px;
     }
 
     & .components--panel-base-header-main {
       min-width: 0;
       flex: 1;
-      font-size: 1.08rem;
-      font-weight: 700;
+      font-size: 1.05rem;
+      font-weight: 720;
       letter-spacing: -0.02em;
       color: var(--textColor);
     }
 
     & .components--panel-base-header-right {
-      gap: 10px;
+      gap: 8px;
       flex-shrink: 0;
     }
 
     & .components--panel-base-header-close {
-      width: 34px;
-      height: 34px;
+      width: 32px;
+      height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 50%;
-      color: color-mix(in srgb, var(--textColor) 88%, transparent);
-      background: color-mix(in srgb, var(--textColor) 9%, transparent);
-      border: 1px solid color-mix(in srgb, var(--textColor) 12%, transparent);
-      box-shadow: inset 0 1px 0 color-mix(in srgb, var(--textColor) 10%, transparent);
-      transition: transform 160ms ease, background-color 160ms ease;
+      border-radius: var(--iconButtonRadius, 50%);
+      color: var(--panelMutedText, color-mix(in srgb, var(--textColor) 62%, transparent));
+      background: var(--panelRowSurface, color-mix(in srgb, var(--textColor) 5%, transparent));
+      border: 1px solid var(--panelRowBorder, color-mix(in srgb, var(--textColor) 9%, transparent));
+      box-shadow: none;
+      transition: background-color 140ms ease, color 140ms ease;
 
       &:hover {
-        transform: translateY(-1px);
-        background: color-mix(in srgb, var(--textColor) 16%, transparent);
+        color: var(--textColor);
+        background: var(--panelRowSurfaceHover, color-mix(in srgb, var(--textColor) 9%, transparent));
       }
 
       & svg {
-        width: 16px;
-        height: 16px;
+        width: 15px;
+        height: 15px;
       }
     }
   }

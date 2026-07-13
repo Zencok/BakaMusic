@@ -43,15 +43,16 @@
     --appInteractiveBorder: color-mix(in srgb, var(--textColor) 16%, transparent);
     --appImageFallback: color-mix(in srgb, var(--backgroundColor) 84%, var(--textColor) 16%);
 
-    --appOverlayMask:
-        linear-gradient(180deg, rgba(7, 9, 14, 0.16), rgba(7, 9, 14, 0.3)),
-        radial-gradient(circle at center, rgba(255, 255, 255, 0.05), transparent 52%);
-    --appPanelMask:
-        linear-gradient(180deg, rgba(7, 9, 14, 0.14), rgba(7, 9, 14, 0.24)),
-        linear-gradient(90deg, rgba(7, 9, 14, 0.04), rgba(7, 9, 14, 0.28));
+    // Soft scrim — not a heavy blackout
+    --appOverlayMask: color-mix(in srgb, var(--textColor) 22%, transparent);
+    --appPanelMask: color-mix(in srgb, var(--textColor) 10%, transparent);
+    // Theme-native floating sheet (replaces pure dark glass slab)
     --appPanelSurface:
-        radial-gradient(circle at top left, rgba(255, 255, 255, 0.16), transparent 30%),
-        linear-gradient(180deg, rgba(18, 18, 24, 0.86), rgba(10, 10, 16, 0.76));
+        linear-gradient(
+            165deg,
+            color-mix(in srgb, var(--backgroundColor) 86%, white 14%) 0%,
+            color-mix(in srgb, var(--backgroundColor) 92%, var(--primaryColor) 4%) 100%
+        );
 
     --appBodyBg:
         radial-gradient(
@@ -120,12 +121,19 @@
     --listRowRadius: 14px;
     --cardRadius: 22px;
 
-    --panelRadius: 34px;
-    --modalRadius: var(--appRadiusXl);
-    --panelFilter: blur(28px) saturate(148%);
-    --panelContentColor: #fff;
-    --panelBorder: rgba(255, 255, 255, 0.1);
-    --panelTextOnSurface: rgba(255, 255, 255, 0.92);
+    --panelRadius: 22px;
+    --modalRadius: 20px;
+    --panelFilter: blur(28px) saturate(150%);
+    --panelContentColor: var(--textColor);
+    --panelBorder: color-mix(in srgb, var(--textColor) 12%, transparent);
+    --panelTextOnSurface: var(--textColor);
+    --panelMutedText: color-mix(in srgb, var(--textColor) 58%, transparent);
+    --panelRowSurface: color-mix(in srgb, var(--textColor) 5%, transparent);
+    --panelRowSurfaceHover: color-mix(in srgb, var(--primaryColor) 10%, var(--backgroundColor));
+    --panelRowBorder: color-mix(in srgb, var(--textColor) 9%, transparent);
+    --panelInputBg: color-mix(in srgb, var(--backgroundColor) 72%, transparent);
+    --panelShadow: 0 24px 64px color-mix(in srgb, var(--textColor) 14%, transparent),
+        0 2px 0 color-mix(in srgb, white 40%, transparent) inset;
 }
 
 // ---------------------------------------------------------------------------
@@ -227,12 +235,18 @@
     --coverRadius: 4px;
     --tagRadius: 4px;
 
-    --panelRadius: 8px;
-    --modalRadius: 8px;
+    --panelRadius: 10px;
+    --modalRadius: 10px;
     --panelFilter: none;
     --panelContentColor: var(--textColor);
     --panelBorder: color-mix(in srgb, var(--textColor) 10%, transparent);
     --panelTextOnSurface: var(--textColor);
+    --panelMutedText: color-mix(in srgb, var(--textColor) 56%, transparent);
+    --panelRowSurface: color-mix(in srgb, var(--textColor) 4%, transparent);
+    --panelRowSurfaceHover: color-mix(in srgb, var(--textColor) 7%, transparent);
+    --panelRowBorder: color-mix(in srgb, var(--textColor) 8%, transparent);
+    --panelInputBg: color-mix(in srgb, var(--textColor) 3.5%, var(--backgroundColor));
+    --panelShadow: 0 16px 48px rgba(15, 23, 42, 0.14);
 
     // Flat-mode scrollbar: thinner, quieter
     --scrollbarWidth: 8px;

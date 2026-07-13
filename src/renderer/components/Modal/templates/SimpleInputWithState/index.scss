@@ -1,18 +1,34 @@
 .modal--simple-input-with-state {
-  width: 460px;
+  width: min(460px, calc(100vw - 40px));
   display: flex;
   flex-direction: column;
   min-height: 188px;
-  max-height: 420px;
+  max-height: min(440px, calc(100vh - 40px));
 
   & .input-area {
-    margin: 18px 18px 12px;
+    margin: 16px 20px 12px;
     box-sizing: border-box;
 
     & input {
       width: 100%;
-      min-height: 46px;
-      border-radius: var(--controlRadiusLg, 16px);
+      min-height: 44px;
+      padding: 0 14px;
+      border-radius: var(--controlRadiusLg, 12px);
+      border: 1px solid var(--panelRowBorder, color-mix(in srgb, var(--textColor) 10%, transparent));
+      background: var(--panelInputBg, color-mix(in srgb, var(--backgroundColor) 80%, transparent));
+      color: var(--textColor);
+      outline: none;
+      box-shadow: none;
+      transition: border-color 140ms ease, background-color 140ms ease;
+
+      &::placeholder {
+        color: var(--panelMutedText, color-mix(in srgb, var(--textColor) 48%, transparent));
+      }
+
+      &:focus {
+        border-color: color-mix(in srgb, var(--primaryColor) 45%, transparent);
+        background: color-mix(in srgb, var(--backgroundColor) 94%, white 6%);
+      }
     }
   }
 
@@ -20,23 +36,23 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 12px;
-    padding: 0 18px 18px;
-    font-size: 1rem;
+    gap: 10px;
+    padding: 0 20px 18px;
+    font-size: 0.95rem;
   }
 
   & .hint-area {
-    margin: 0 18px 18px;
+    margin: 0 20px 18px;
     padding: 12px 14px;
-    border-radius: var(--controlRadiusLg, 18px);
+    border-radius: var(--controlRadiusLg, 12px);
     flex: 1;
     overflow-y: auto;
-    color: rgba(255, 255, 255, 0.72);
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--panelMutedText, color-mix(in srgb, var(--textColor) 58%, transparent));
+    background: var(--panelRowSurface, color-mix(in srgb, var(--textColor) 4%, transparent));
+    border: 1px solid var(--panelRowBorder, color-mix(in srgb, var(--textColor) 8%, transparent));
 
     & li {
-      line-height: 1.8;
+      line-height: 1.7;
       white-space: normal;
       word-wrap: break-word;
       word-break: break-all;

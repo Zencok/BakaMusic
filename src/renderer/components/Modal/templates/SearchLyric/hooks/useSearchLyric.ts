@@ -29,7 +29,7 @@ export default function () {
                 plugins = [tgtPlugin];
             }
         } else {
-            plugins = PluginManager.getSearchablePlugins("lyric");
+            plugins = PluginManager.getSortedSearchablePlugins("lyric");
         }
         if (plugins.length === 0) {
             searchResultStore.setValue(

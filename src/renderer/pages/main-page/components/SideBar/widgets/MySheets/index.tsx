@@ -8,7 +8,7 @@ import { hideModal, showModal } from "@/renderer/components/Modal";
 import { localPluginName } from "@/common/constant";
 import { showContextMenu } from "@/renderer/components/ContextMenu";
 import { useTranslation } from "react-i18next";
-import { useSupportedPlugin } from "@shared/plugin-manager/renderer";
+import { useSortedSupportedPlugin } from "@shared/plugin-manager/renderer";
 
 
 export default function MySheets() {
@@ -20,8 +20,9 @@ export default function MySheets() {
     const navigate = useNavigate();
     const { t } = useTranslation();
 
-    const importablePlugins = useSupportedPlugin("importMusicSheet");
-    const getMusicInfoPlugins = useSupportedPlugin("getMusicInfo");
+    // Follow plugin-manager order (private.pluginMeta.order)
+    const importablePlugins = useSortedSupportedPlugin("importMusicSheet");
+    const getMusicInfoPlugins = useSortedSupportedPlugin("getMusicInfo");
 
     return (
         <div className="side-bar-container--my-sheets">

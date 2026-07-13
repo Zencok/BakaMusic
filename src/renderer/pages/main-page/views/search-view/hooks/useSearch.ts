@@ -38,7 +38,7 @@ export default function useSearch() {
                     pluginDelegates = [tgtPlugin];
                 }
             } else {
-                pluginDelegates = PluginManager.getSupportedPlugin("search");
+                pluginDelegates = PluginManager.getSortedSupportedPlugin("search");
             }
 
             // 使用选中插件搜素

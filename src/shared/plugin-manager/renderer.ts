@@ -197,21 +197,30 @@ export default PluginManager;
 export function useSupportedPlugin(
     featureMethod: keyof IPlugin.IPluginInstanceMethods,
 ) {
-    return delegatePluginsStore
-        .useValue()
-        .filter((_) => _.supportedMethod.includes(featureMethod));
+    const plugins = delegatePluginsStore.useValue();
+    const meta = useAppConfig("private.pluginMeta") ?? {};
+
+    return useMemo(() => {
+        return plugins.filter(
+            (_) => _.supportedMethod.includes(featureMethod) && isPluginEnabled(_.platform, meta),
+        );
+    }, [plugins, meta, featureMethod]);
 }
 
 export function useSortedSupportedPlugin(
     featureMethod: keyof IPlugin.IPluginInstanceMethods,
 ) {
-    const meta = AppConfig.getConfig("private.pluginMeta") ?? {};
-    return sortPluginsByMeta(
-        delegatePluginsStore
-            .useValue()
-            .filter((_) => _.supportedMethod.includes(featureMethod)),
-        meta,
-    );
+    const plugins = delegatePluginsStore.useValue();
+    const meta = useAppConfig("private.pluginMeta") ?? {};
+
+    return useMemo(() => {
+        return sortPluginsByMeta(
+            plugins.filter(
+                (_) => _.supportedMethod.includes(featureMethod) && isPluginEnabled(_.platform, meta),
+            ),
+            meta,
+        );
+    }, [plugins, meta, featureMethod]);
 }
 
 export function useSortedPlugins() {

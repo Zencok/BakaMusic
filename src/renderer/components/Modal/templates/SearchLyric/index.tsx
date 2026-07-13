@@ -24,7 +24,7 @@ export default function SearchLyric(props: IProps) {
     const searchResults = searchResultStore.useValue();
     const { t } = useTranslation();
 
-    const availablePlugins = PluginManager.getSearchablePlugins("lyric");
+    const availablePlugins = PluginManager.getSortedSearchablePlugins("lyric");
 
     useEffect(() => {
         if (inputSearch) {
@@ -34,7 +34,7 @@ export default function SearchLyric(props: IProps) {
 
     return (
         <Base defaultClose withBlur={false}>
-            <div className="modal--search-lyric-container shadow backdrop-color">
+            <div className="modal--search-lyric-container shadow">
                 <Base.Header>
                     <div className="search-lyric-input-container">
                         <input

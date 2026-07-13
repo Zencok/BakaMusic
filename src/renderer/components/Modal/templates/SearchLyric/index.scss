@@ -1,60 +1,113 @@
 .modal--search-lyric-container {
-  width: 680px;
-  max-width: calc(100vw - 40px);
-  max-height: min(620px, calc(100vh - 40px));
+  width: min(700px, calc(100vw - 40px));
+  max-height: min(640px, calc(100vh - 40px));
   display: flex;
   flex-direction: column;
 
   & .search-lyric-input-container {
-    margin-right: 24px;
+    margin-right: 10px;
     flex: 1;
     position: relative;
 
     & .search-lyric-input {
       width: 100%;
-      min-height: 42px;
-      padding-right: 38px;
-      border-radius: var(--controlRadiusLg, 16px);
+      min-height: 40px;
+      padding: 0 42px 0 14px;
+      border-radius: var(--controlRadiusLg, 12px);
+      border: 1px solid var(--panelRowBorder, color-mix(in srgb, var(--textColor) 10%, transparent));
+      background: var(--panelInputBg, color-mix(in srgb, var(--backgroundColor) 80%, transparent));
+      color: var(--textColor);
+      box-shadow: none;
+      outline: none;
+      transition: border-color 140ms ease, background-color 140ms ease;
+
+      &::placeholder {
+        color: var(--panelMutedText, color-mix(in srgb, var(--textColor) 48%, transparent));
+      }
+
+      &:focus {
+        border-color: color-mix(in srgb, var(--primaryColor) 45%, transparent);
+        background: color-mix(in srgb, var(--backgroundColor) 94%, white 6%);
+      }
     }
 
     & .search-lyric-search {
       position: absolute;
       top: 0;
       right: 0;
-      width: 38px;
+      width: 40px;
       height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: rgba(255, 255, 255, 0.82);
+      color: var(--panelMutedText, color-mix(in srgb, var(--textColor) 55%, transparent));
+      border-radius: 0 var(--controlRadiusLg, 12px) var(--controlRadiusLg, 12px) 0;
+      transition: color 140ms ease, background-color 140ms ease;
 
       &:hover {
-        color: #fff;
+        color: var(--primaryColor);
+        background: color-mix(in srgb, var(--primaryColor) 8%, transparent);
       }
 
       & svg {
-        width: 1.1rem;
-        height: 1.1rem;
+        width: 1.05rem;
+        height: 1.05rem;
       }
     }
   }
 
   & .tab-list-container {
-    margin: 0 16px 0;
-    padding: 0.4rem;
+    width: auto;
+    margin: 0 14px;
+    margin-top: 0;
+    padding: 4px;
     overflow-x: auto;
+    display: flex;
+    gap: 4px;
+    border-radius: var(--controlRadiusLg, 12px);
+    background: var(--panelRowSurface, color-mix(in srgb, var(--textColor) 4%, transparent));
+    border: 1px solid var(--panelRowBorder, color-mix(in srgb, var(--textColor) 8%, transparent));
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  & .tab-list-item {
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: var(--controlRadius, 8px);
+    font-size: 0.84rem;
+    font-weight: 620;
+    color: var(--panelMutedText, color-mix(in srgb, var(--textColor) 58%, transparent));
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 140ms ease, color 140ms ease;
+
+    &:hover {
+      color: var(--textColor);
+      background: color-mix(in srgb, var(--textColor) 6%, transparent);
+    }
+
+    &[data-headlessui-state*="selected"],
+    &[aria-selected="true"] {
+      color: color-mix(in srgb, var(--primaryColor) 90%, var(--textColor));
+      background: color-mix(in srgb, var(--primaryColor) 14%, transparent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primaryColor) 22%, transparent);
+    }
   }
 
   & .tab-panels-container {
-    padding: 12px 16px 16px;
+    padding: 12px 14px 16px;
     box-sizing: border-box;
 
     & .tab-panel-container {
-      height: 360px;
-      border-radius: var(--controlRadiusLg, 20px);
+      height: min(380px, calc(100vh - 280px));
+      border-radius: var(--controlRadiusLg, 14px);
       overflow: hidden;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: var(--panelRowSurface, color-mix(in srgb, var(--textColor) 3.5%, transparent));
+      border: 1px solid var(--panelRowBorder, color-mix(in srgb, var(--textColor) 8%, transparent));
     }
   }
 }

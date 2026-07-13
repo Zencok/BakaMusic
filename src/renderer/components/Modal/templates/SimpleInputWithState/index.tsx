@@ -42,8 +42,8 @@ export default function SimpleInputWithState<PromiseItem>(
     const { t } = useTranslation();
 
     return (
-        <Base withBlur={false}>
-            <div className="modal--simple-input-with-state shadow backdrop-color">
+        <Base withBlur={false} defaultClose>
+            <div className="modal--simple-input-with-state shadow">
                 <Base.Header>{title}</Base.Header>
                 <Condition
                     condition={!(loading && withLoading)}

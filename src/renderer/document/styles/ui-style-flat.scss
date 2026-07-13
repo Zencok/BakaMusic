@@ -874,12 +874,12 @@
             border-radius: var(--modalRadius);
             background: var(--appPanelSurface);
             border: 1px solid var(--panelBorder);
-            box-shadow: 0 16px 48px rgba(15, 23, 42, 0.16);
+            box-shadow: var(--panelShadow);
             backdrop-filter: none;
             --textColor: var(--panelTextOnSurface);
             --dividerColor: color-mix(in srgb, var(--textColor) 10%, transparent);
-            --listHoverColor: color-mix(in srgb, var(--textColor) 5%, transparent);
-            --listActiveColor: color-mix(in srgb, var(--textColor) 9%, transparent);
+            --listHoverColor: var(--panelRowSurfaceHover);
+            --listActiveColor: color-mix(in srgb, var(--primaryColor) 10%, transparent);
             --placeholderColor: color-mix(in srgb, var(--textColor) 6%, transparent);
 
             a {
@@ -895,6 +895,24 @@
             border-bottom: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
             color: var(--panelTextOnSurface);
         }
+
+        .components--modal-base-header-close {
+            border-radius: var(--iconButtonRadius) !important;
+        }
+
+        .modal--plugin-picker .plugin-item,
+        .modal--plugin-picker .plugin-item-badge {
+            border-radius: var(--controlRadiusLg) !important;
+        }
+
+        .modal--search-lyric-container {
+            .tab-list-container,
+            .tab-list-item,
+            .tab-panel-container,
+            .search-lyric-input {
+                border-radius: var(--controlRadius) !important;
+            }
+        }
     }
 
     .components--panel-base {
@@ -908,12 +926,12 @@
             border-radius: var(--panelRadius);
             background: var(--appPanelSurface);
             border: 1px solid var(--panelBorder);
-            box-shadow: 0 12px 40px rgba(15, 23, 42, 0.14);
+            box-shadow: var(--panelShadow);
             backdrop-filter: none;
             --textColor: var(--panelTextOnSurface);
             --dividerColor: color-mix(in srgb, var(--textColor) 10%, transparent);
-            --listActiveColor: color-mix(in srgb, var(--textColor) 9%, transparent);
-            --listHoverColor: color-mix(in srgb, var(--textColor) 5%, transparent);
+            --listActiveColor: color-mix(in srgb, var(--primaryColor) 10%, transparent);
+            --listHoverColor: var(--panelRowSurfaceHover);
             --placeholderColor: color-mix(in srgb, var(--textColor) 6%, transparent);
 
             .components--panel-base-header {
@@ -923,15 +941,15 @@
 
             .components--panel-base-header-close {
                 color: var(--appTextSecondary) !important;
-                background: color-mix(in srgb, var(--textColor) 5%, transparent) !important;
-                border: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent) !important;
+                background: var(--panelRowSurface) !important;
+                border: 1px solid var(--panelRowBorder) !important;
                 box-shadow: none !important;
-                border-radius: 10px !important;
+                border-radius: var(--iconButtonRadius) !important;
 
                 &:hover {
                     transform: none !important;
                     color: var(--appTextPrimary) !important;
-                    background: color-mix(in srgb, var(--textColor) 9%, transparent) !important;
+                    background: var(--panelRowSurfaceHover) !important;
                 }
             }
         }
