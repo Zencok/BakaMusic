@@ -58,7 +58,7 @@
   & .react-colorful__hue,
   & .react-colorful__alpha {
     height: 16px;
-    border-radius: 999px;
+    border-radius: var(--appRadiusPill, 999px);
   }
 
   & .react-colorful__pointer {

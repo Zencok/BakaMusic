@@ -32,6 +32,19 @@
     &:hover .open-detail {
       opacity: 1;
     }
+
+    // Detail expanded: blur the bar cover (Lycia-like immersion handoff)
+    &[data-open="true"] .music-cover {
+      filter: blur(7px) saturate(1.08);
+      transform: scale(1.12);
+      transition: filter 220ms ease, transform 220ms ease;
+    }
+
+    &[data-open="true"] .open-detail {
+      background: color-mix(in srgb, #0a0c12 38%, transparent);
+      backdrop-filter: blur(6px);
+      color: #fff;
+    }
   }
 
   & .music-info-placeholder-icon {
@@ -58,6 +71,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: filter 220ms ease, transform 220ms ease;
   }
 
   & .open-detail {
@@ -78,7 +92,8 @@
       );
     backdrop-filter: blur(10px);
     opacity: 0;
-    transition: opacity 160ms ease;
+    z-index: 1;
+    transition: opacity 160ms ease, background 220ms ease;
 
     & svg {
       width: 18px;

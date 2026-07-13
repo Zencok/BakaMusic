@@ -13,7 +13,7 @@
   & .remote-themes-description {
     margin: 0 0 16px;
     padding: 14px 16px;
-    border-radius: 18px;
+    border-radius: var(--controlRadiusLg, 18px);
     color: var(--appTextSecondary);
     background: var(--appSurface);
     border: 1px solid var(--appSurfaceBorder);
@@ -26,7 +26,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 24px;
+    border-radius: var(--cardRadius, 24px);
     color: var(--appTextSecondary);
     background: var(--appSurface);
     border: 1px solid var(--appSurfaceBorder);

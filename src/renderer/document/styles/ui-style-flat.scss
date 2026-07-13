@@ -1,0 +1,1787 @@
+// =============================================================================
+// Flat (WinUI) component overrides
+// Scope: [data-ui-style="flat"] — keep glass styles untouched
+// Reference language: LyciaMusic shell (soft fills, pill search, full-width bar)
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// App shell
+// ---------------------------------------------------------------------------
+[data-ui-style="flat"] {
+    .app-container {
+        background: var(--appBodyBg);
+    }
+
+    .app-container .body-container {
+        background: transparent;
+    }
+
+    .page-container {
+        padding: 0.85rem 1.25rem 1.15rem;
+    }
+
+    // Tabs — rectangular WinUI segments
+    .tab-list-container {
+        gap: 0.2rem;
+        margin-top: 0.85rem;
+        padding: 0.2rem;
+        border-radius: var(--controlRadius);
+        border: 1px solid var(--appSurfaceBorder);
+        background: var(--appSurfaceStrong);
+        box-shadow: none;
+        backdrop-filter: none;
+
+        .tab-list-item {
+            min-height: 2.05rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: var(--appRadiusXs);
+            opacity: 0.72;
+
+            &:hover {
+                opacity: 1;
+                transform: none;
+                background: var(--appInteractiveSurface);
+            }
+
+            &[data-headlessui-state="selected"] {
+                opacity: 1;
+                color: var(--appTextPrimary);
+                background: color-mix(in srgb, var(--primaryColor) 14%, var(--backgroundColor));
+                box-shadow: none;
+
+                &::after {
+                    display: none;
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Header / Title bar
+// ---------------------------------------------------------------------------
+[data-ui-style="flat"] {
+    .header-container {
+        height: var(--appHeaderHeight);
+        padding: 0 14px 0 16px;
+        color: var(--headerTextColor);
+        background: var(--headerChromeBg);
+        border-bottom: 1px solid var(--headerChromeBorder);
+        box-shadow: var(--headerChromeShadow);
+        backdrop-filter: var(--headerChromeFilter);
+
+        &::after {
+            display: none;
+        }
+
+        .left-part {
+            gap: 12px;
+
+            .logo {
+                width: auto;
+                min-width: 0;
+                height: 2rem;
+                opacity: 1;
+                color: color-mix(in srgb, var(--primaryColor) 88%, var(--textColor));
+
+                svg {
+                    height: 1.85rem;
+                }
+            }
+
+            .header-search {
+                min-width: 220px;
+                width: min(320px, 30vw);
+                min-height: 32px;
+                // Square search box (not pill)
+                border-radius: var(--controlRadius) !important;
+                padding: 0 10px 0 12px;
+                border: 1px solid var(--headerSearchBorder);
+                background: var(--headerSearchBg);
+                box-shadow: none;
+                backdrop-filter: none;
+
+                &:hover,
+                &:focus-within {
+                    background: color-mix(in srgb, var(--textColor) 7%, transparent);
+                    border-color: color-mix(in srgb, var(--primaryColor) 28%, var(--headerSearchBorder));
+                    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primaryColor) 14%, transparent);
+                    transform: none;
+                }
+
+                .header-search-input {
+                    font-size: 0.88rem;
+                    color: var(--headerTextColor);
+
+                    &::placeholder {
+                        opacity: 0.55;
+                        color: var(--appTextSecondary);
+                    }
+                }
+
+                .search-submit {
+                    opacity: 0.65;
+                    color: var(--headerTextColor);
+                    border-radius: var(--iconButtonRadius) !important;
+
+                    &:hover {
+                        opacity: 1;
+                        transform: none;
+                        background: color-mix(in srgb, var(--textColor) 8%, transparent);
+                    }
+                }
+            }
+        }
+
+        .right-part {
+            gap: 2px;
+
+            .header-divider {
+                opacity: 0.35;
+                background-color: color-mix(in srgb, var(--textColor) 40%, transparent);
+            }
+
+            .header-button {
+                width: 34px;
+                height: 34px;
+                border-radius: var(--iconButtonRadius) !important;
+                opacity: 0.88;
+                border: 1px solid transparent;
+                background: transparent;
+                box-shadow: none;
+                color: var(--headerTextColor);
+
+                &:hover {
+                    opacity: 1;
+                    transform: none;
+                    background: var(--headerControlHoverBg);
+                    border-color: transparent;
+                }
+
+                svg {
+                    width: 18px;
+                    height: 18px;
+                }
+            }
+        }
+    }
+
+    .header-navigator {
+        gap: 4px;
+
+        .navigator-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: var(--iconButtonRadius) !important;
+            color: var(--headerTextColor);
+            border: 1px solid var(--headerControlBorder);
+            background: var(--headerControlBg);
+            box-shadow: none;
+
+            &:hover {
+                transform: none;
+                background: var(--headerControlHoverBg);
+            }
+
+            svg {
+                width: 15px;
+                height: 15px;
+            }
+        }
+    }
+
+    // Only the dropdown panel — never match child classes like --header / --item
+    .search-history--container {
+        border-radius: 10px !important;
+        backdrop-filter: none !important;
+        box-shadow: 0 10px 28px color-mix(in srgb, var(--textColor) 10%, transparent) !important;
+        background: color-mix(in srgb, var(--backgroundColor) 98%, white 2%) !important;
+        border: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent) !important;
+        padding: 12px !important;
+
+        .search-history--header,
+        .search-history--body,
+        .search-history--header-clear,
+        .search-history--item-remove {
+            border: none !important;
+            box-shadow: none !important;
+            background: transparent !important;
+        }
+
+        .search-history--header {
+            color: color-mix(in srgb, var(--textColor) 72%, transparent);
+            font-weight: 650;
+        }
+
+        .search-history--header-clear {
+            border-radius: 50% !important;
+            color: color-mix(in srgb, var(--textColor) 52%, transparent) !important;
+
+            &:hover {
+                background: color-mix(in srgb, var(--textColor) 7%, transparent) !important;
+                color: var(--textColor) !important;
+            }
+        }
+
+        // Soft chips, no heavy outlined boxes
+        .search-history--item,
+        .search-history--item[data-type="normalButton"] {
+            border: none !important;
+            border-radius: 6px !important;
+            box-shadow: none !important;
+            background: color-mix(in srgb, var(--textColor) 6%, transparent) !important;
+            color: var(--textColor) !important;
+            transform: none !important;
+
+            &:hover {
+                background: color-mix(in srgb, var(--textColor) 10%, transparent) !important;
+                transform: none !important;
+            }
+        }
+
+        .search-history--item-remove {
+            color: color-mix(in srgb, var(--textColor) 48%, transparent) !important;
+
+            &:hover {
+                color: var(--textColor) !important;
+                background: transparent !important;
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Search page — square chips / header / tabs
+// ---------------------------------------------------------------------------
+[data-ui-style="flat"] {
+    .search-view-container {
+        .search-header {
+            border-radius: var(--cardRadius) !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+
+            .highlight {
+                border-radius: var(--tagRadius) !important;
+            }
+        }
+
+        .tab-list-container {
+            border-radius: var(--controlRadius) !important;
+        }
+    }
+
+    .search-view--plugins .plugin-item {
+        border-radius: var(--tagRadius) !important;
+        box-shadow: none !important;
+
+        &:hover {
+            transform: none !important;
+        }
+
+        &[data-selected="true"] {
+            box-shadow: none !important;
+        }
+    }
+
+    .search-view--refresh-button {
+        border-radius: var(--iconButtonRadius) !important;
+        box-shadow: none !important;
+
+        &:hover:not(:disabled) {
+            transform: none !important;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Sidebar
+// ---------------------------------------------------------------------------
+[data-ui-style="flat"] {
+    .side-bar-container {
+        width: clamp(210px, 15.5vw, 236px);
+        padding: 0.7rem 0.55rem 0.9rem;
+        background: var(--sideBarBg);
+        border-right: 1px solid var(--sideBarBorder);
+        box-shadow: none;
+        backdrop-filter: none;
+        --sideBarTextPrimary: var(--appTextPrimary);
+        --sideBarTextSecondary: color-mix(in srgb, var(--textColor) 70%, transparent);
+        --sideBarTextMuted: color-mix(in srgb, var(--textColor) 48%, transparent);
+        --sideBarItemHover: var(--sideBarItemHover);
+        --sideBarItemSelected: var(--sideBarItemSelected);
+
+        &::after {
+            display: none;
+        }
+
+        .side-bar-section-title {
+            height: 2rem;
+            border-radius: var(--controlRadius);
+            color: var(--sideBarTextMuted);
+
+            &:hover {
+                background: color-mix(in srgb, var(--textColor) 4%, transparent);
+            }
+        }
+
+        .side-bar-section-chevron {
+            background: transparent;
+            color: var(--sideBarTextMuted);
+        }
+    }
+
+    .side-bar--list-item-container {
+        height: 2.4rem;
+        font-size: 0.92rem;
+        border-radius: var(--controlRadius);
+        border: 1px solid transparent;
+        gap: 0.5rem;
+        padding: 0 0.7rem;
+        font-weight: 600;
+
+        & span {
+            font-weight: 600;
+        }
+
+        &:hover {
+            background: var(--sideBarItemHover);
+        }
+
+        &[data-selected="true"] {
+            color: var(--appTextPrimary);
+            background: var(--sideBarItemSelected);
+            border-color: transparent;
+            font-weight: 700;
+
+            &::before {
+                opacity: 0;
+                width: 0;
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Flat music bar — square dock + immersive when detail is open
+// ---------------------------------------------------------------------------
+[data-ui-style="flat"] {
+    .music-bar-container {
+        height: var(--appMusicBarHeight, 80px) !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        // Clean dock surface: follow theme bg (white in light mode), no gray wash
+        background: var(--backgroundColor) !important;
+        box-shadow:
+            0 -1px 0 color-mix(in srgb, var(--textColor) 8%, transparent),
+            0 -8px 20px color-mix(in srgb, var(--textColor) 4%, transparent) !important;
+        --musicBarSurface: var(--backgroundColor) !important;
+        --musicBarSurfaceAlt: var(--backgroundColor) !important;
+        --musicBarText: var(--textColor) !important;
+        --musicBarTextSecondary: color-mix(in srgb, var(--textColor) 58%, transparent) !important;
+        --musicBarAccent: var(--primaryColor) !important;
+        --musicBarPrimaryText: #fff !important;
+        transition: background 280ms ease, box-shadow 280ms ease;
+    }
+
+    .music-bar-overlay {
+        display: none !important;
+    }
+
+    .music-bar-shell {
+        inset: 0 !important;
+        border-radius: 0 !important;
+        gap: 12px !important;
+        padding: 14px 18px 10px !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        overflow: visible !important;
+        contain: none !important;
+        color: var(--musicBarText) !important;
+        --textColor: var(--musicBarText) !important;
+    }
+
+    // Progress hairline flush to top of square dock
+    .music-bar--slider-container {
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 14px !important;
+        z-index: 20 !important;
+        overflow: visible !important;
+        --slider-height: 2px;
+
+        &:hover,
+        &[data-seeking="true"] {
+            --slider-height: 3px;
+        }
+
+        .bar,
+        .active-bar {
+            top: 0 !important;
+            left: 0 !important;
+            transform: none !important;
+            height: var(--slider-height) !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+        }
+
+        .bar {
+            width: 100%;
+            background: color-mix(in srgb, var(--musicBarText) 14%, transparent) !important;
+        }
+
+        .active-bar {
+            background: var(--musicBarAccent) !important;
+        }
+
+        .thumb {
+            top: calc(var(--slider-height) / 2) !important;
+            width: 11px !important;
+            height: 11px !important;
+            border-radius: 50% !important;
+            background: var(--musicBarAccent) !important;
+            border: 2px solid color-mix(in srgb, var(--musicBarSurface) 80%, white) !important;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2) !important;
+            transform: translate(-50%, -50%) scale(0.7) !important;
+            z-index: 5 !important;
+        }
+
+        &:hover .thumb,
+        &[data-seeking="true"] .thumb {
+            opacity: 1 !important;
+            transform: translate(-50%, -50%) scale(1) !important;
+        }
+    }
+
+    .music-info-container {
+        gap: 12px;
+        max-width: 400px;
+        color: var(--musicBarText) !important;
+
+        .music-cover-wrap,
+        .music-info-placeholder-icon {
+            width: 48px !important;
+            height: 48px !important;
+            border-radius: 8px !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+        }
+
+        .open-detail {
+            clip-path: inset(0 round 8px);
+            backdrop-filter: none;
+        }
+
+        .music-title {
+            color: var(--musicBarText) !important;
+        }
+
+        .music-subtitle,
+        .progress {
+            color: var(--musicBarTextSecondary) !important;
+        }
+
+        .music-info-action-shell {
+            border-radius: 50% !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: var(--musicBarTextSecondary) !important;
+
+            &:hover {
+                transform: none !important;
+                background: color-mix(in srgb, var(--musicBarText) 8%, transparent) !important;
+                color: var(--musicBarText) !important;
+            }
+        }
+    }
+
+    .music-controller {
+        gap: 6px;
+
+        .music-controller-button {
+            width: 38px !important;
+            min-width: 38px !important;
+            max-width: 38px !important;
+            height: 38px !important;
+            min-height: 38px !important;
+            max-height: 38px !important;
+            border-radius: 50% !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: var(--musicBarText) !important;
+
+            &:hover {
+                transform: none !important;
+                background: color-mix(in srgb, var(--musicBarText) 8%, transparent) !important;
+            }
+        }
+
+        .music-controller-primary {
+            width: 44px !important;
+            min-width: 44px !important;
+            max-width: 44px !important;
+            height: 44px !important;
+            min-height: 44px !important;
+            max-height: 44px !important;
+            border-radius: 50% !important;
+            color: var(--musicBarPrimaryText) !important;
+            background: var(--musicBarAccent) !important;
+            border: none !important;
+            box-shadow: 0 4px 12px color-mix(in srgb, var(--musicBarAccent) 30%, transparent) !important;
+
+            &:hover {
+                transform: none !important;
+                background: color-mix(in srgb, var(--musicBarAccent) 88%, black) !important;
+            }
+        }
+    }
+
+    .music-extra {
+        gap: 4px;
+
+        .extra-btn {
+            width: 34px !important;
+            height: 34px !important;
+            border-radius: 50% !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: var(--musicBarTextSecondary) !important;
+
+            &:hover {
+                transform: none !important;
+                color: var(--musicBarText) !important;
+                background: color-mix(in srgb, var(--musicBarText) 8%, transparent) !important;
+            }
+
+            &.quality-btn {
+                width: auto !important;
+                min-width: 0 !important;
+                padding: 0 8px !important;
+                border-radius: 8px !important;
+                border: none !important;
+                background: transparent !important;
+                box-shadow: none !important;
+            }
+
+            &.highlight {
+                color: var(--musicBarAccent) !important;
+                background: color-mix(in srgb, var(--musicBarAccent) 12%, transparent) !important;
+            }
+        }
+    }
+
+    .volume-bubble-container {
+        border-radius: 12px !important;
+        backdrop-filter: blur(16px) !important;
+        // Readable light dock bubble (never inherit detail-mode pure white text alone)
+        background: var(--backgroundColor) !important;
+        border: 1px solid color-mix(in srgb, var(--textColor) 10%, transparent) !important;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12) !important;
+        clip-path: none !important;
+        color: var(--textColor) !important;
+        --musicBarText: var(--textColor);
+        --musicBarTextSecondary: color-mix(in srgb, var(--textColor) 58%, transparent);
+        --musicBarSurface: var(--backgroundColor);
+        --musicBarSurfaceAlt: var(--backgroundColor);
+        --musicBarAccent: var(--primaryColor);
+    }
+
+    .volume-bubble-container[data-immersive="true"] {
+        background: color-mix(in srgb, #1c1c1c 90%, transparent) !important;
+        border: 1px solid color-mix(in srgb, white 12%, transparent) !important;
+        color: rgba(255, 255, 255, 0.92) !important;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.36) !important;
+        --musicBarText: rgba(255, 255, 255, 0.92);
+        --musicBarTextSecondary: rgba(255, 255, 255, 0.58);
+        --musicBarSurface: #1c1c1c;
+        --musicBarSurfaceAlt: #242424;
+        --musicBarAccent: var(--primaryColor);
+    }
+
+    // ------------------------------------------------------------------
+    // Detail immersive — Lycia-like: fully transparent, ghost chrome
+    // No heavy dark veil / accent fog. Progress floats above the dock.
+    // ------------------------------------------------------------------
+    .music-bar-container[data-detail-open="true"] {
+        background: transparent !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+
+        // Light frosted veil — soft blur without heavy dark wash (Lycia + glass hint)
+        .music-bar-overlay {
+            display: block !important;
+            opacity: 1 !important;
+            inset: 0 !important;
+            top: -12px !important;
+            height: calc(100% + 12px) !important;
+            border: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            background: linear-gradient(
+                180deg,
+                transparent 0%,
+                color-mix(in srgb, #0a0c12 12%, transparent) 40%,
+                color-mix(in srgb, #0a0c12 28%, transparent) 100%
+            ) !important;
+            backdrop-filter: blur(18px) saturate(140%);
+            -webkit-backdrop-filter: blur(18px) saturate(140%);
+            mask-image: linear-gradient(180deg, transparent 0%, #000 36%, #000 100%);
+            -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 36%, #000 100%);
+        }
+
+        .music-bar-shell {
+            background: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+            // Keep identical padding to collapsed dock so title/meta don't shift inward
+            padding: 14px 18px 10px !important;
+            color: rgba(255, 255, 255, 0.92) !important;
+            --textColor: rgba(255, 255, 255, 0.92) !important;
+            --musicBarText: rgba(255, 255, 255, 0.92) !important;
+            --musicBarTextSecondary: rgba(255, 255, 255, 0.55) !important;
+        }
+
+        // Floating hairline progress (Lycia: top -10px, thin, white thumb)
+        .music-bar--slider-container {
+            top: -10px !important;
+            left: 0 !important;
+            right: 0 !important;
+            height: 22px !important;
+            z-index: 40 !important;
+            overflow: visible !important;
+            --slider-height: 2px;
+
+            &:hover,
+            &[data-seeking="true"] {
+                --slider-height: 4px;
+            }
+
+            .bar,
+            .active-bar {
+                top: 50% !important;
+                transform: translateY(-50%) !important;
+                border-radius: 999px !important;
+                box-shadow: none !important;
+            }
+
+            // Soft translucent fill like Lycia's zinc-300/30
+            .bar {
+                background: color-mix(in srgb, white 18%, transparent) !important;
+            }
+
+            .active-bar {
+                background: color-mix(in srgb, white 55%, transparent) !important;
+                box-shadow: none !important;
+            }
+
+            .thumb {
+                top: 50% !important;
+                width: 14px !important;
+                height: 14px !important;
+                border-radius: 50% !important;
+                background: #fff !important;
+                border: 1px solid color-mix(in srgb, white 45%, transparent) !important;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22) !important;
+                transform: translate(-50%, -50%) scale(0.72) !important;
+                z-index: 6 !important;
+            }
+
+            &:hover .thumb,
+            &[data-seeking="true"] .thumb {
+                opacity: 1 !important;
+                transform: translate(-50%, -50%) scale(1) !important;
+            }
+        }
+
+        .music-info-container {
+            .music-cover-wrap,
+            .music-info-placeholder-icon {
+                width: 48px !important;
+                height: 48px !important;
+                border-radius: 10px !important;
+                box-shadow:
+                    0 8px 20px rgba(0, 0, 0, 0.28),
+                    0 0 0 1px color-mix(in srgb, white 12%, transparent) !important;
+            }
+
+            .music-cover-wrap[data-open="true"] .music-cover {
+                filter: blur(8px) saturate(1.1) !important;
+                transform: scale(1.14) !important;
+            }
+
+            .open-detail {
+                clip-path: inset(0 round 10px);
+                background: color-mix(in srgb, #0a0c12 42%, transparent);
+                color: #fff;
+            }
+
+            .music-cover-wrap[data-open="true"] .open-detail {
+                opacity: 1 !important;
+                background: color-mix(in srgb, #0a0c12 45%, transparent) !important;
+                backdrop-filter: blur(4px);
+            }
+
+            .music-title {
+                color: rgba(255, 255, 255, 0.95) !important;
+                font-weight: 700 !important;
+                text-shadow: 0 1px 10px rgba(0, 0, 0, 0.25);
+            }
+
+            .music-subtitle,
+            .progress {
+                color: rgba(255, 255, 255, 0.52) !important;
+            }
+
+            // Ghost icon actions — no permanent chip
+            .music-info-action-shell {
+                color: rgba(255, 255, 255, 0.7) !important;
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+
+                &:hover {
+                    color: #fff !important;
+                    background: color-mix(in srgb, white 12%, transparent) !important;
+                    transform: none !important;
+                }
+            }
+        }
+
+        // Transport inherits --musicBarText (white) + soft surface mix via ThemeSafeRoundButton
+        // Keep Lycia-like soft frosted play disc only; skip uses bar CSS variables
+        .music-controller-primary {
+            width: 44px !important;
+            height: 44px !important;
+            min-width: 44px !important;
+            min-height: 44px !important;
+            max-width: 44px !important;
+            max-height: 44px !important;
+
+            &:hover {
+                color: #fff !important;
+                background: color-mix(in srgb, white 20%, transparent) !important;
+                transform: none !important;
+                box-shadow: none !important;
+            }
+        }
+
+        .music-extra .extra-btn {
+            color: rgba(255, 255, 255, 0.88) !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+
+            &:hover {
+                color: #fff !important;
+                background: color-mix(in srgb, white 10%, transparent) !important;
+                transform: none !important;
+            }
+
+            &.quality-btn {
+                color: rgba(255, 255, 255, 0.72) !important;
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+
+                &:hover {
+                    color: #fff !important;
+                    background: color-mix(in srgb, white 10%, transparent) !important;
+                }
+            }
+
+            &.highlight {
+                color: #fff !important;
+                background: color-mix(in srgb, white 14%, transparent) !important;
+            }
+        }
+
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Music list & cards
+// ---------------------------------------------------------------------------
+[data-ui-style="flat"] {
+    .music-list-container {
+        --musicListSurface: var(--appSurfaceStrong);
+        --musicListRowHoverBg: color-mix(in srgb, var(--textColor) 5%, transparent);
+        --musicListRowActiveBg: color-mix(in srgb, var(--primaryColor) 9%, transparent);
+        margin-top: 10px;
+        padding: var(--listCardPadding);
+        border-radius: var(--listCardRadius);
+        background: var(--musicListSurface);
+        border: 1px solid var(--appSurfaceBorder);
+        box-shadow: none;
+        backdrop-filter: none;
+
+        &[data-surface-mode="header-only"] {
+            .music-list-toolbar {
+                border-radius: 12px;
+                background: var(--appSurfaceStrong);
+                border: 1px solid var(--appSurfaceBorder);
+                box-shadow: none;
+                backdrop-filter: none;
+            }
+
+            .music-list-virtual-spacer {
+                border-radius: 12px;
+                background: var(--appSurfaceStrong);
+                border: 1px solid var(--appSurfaceBorder);
+                box-shadow: none;
+            }
+        }
+
+        .music-list-toolbar-count {
+            border-radius: 8px;
+            background: color-mix(in srgb, var(--primaryColor) 12%, var(--backgroundColor));
+        }
+
+        .music-list-item,
+        .music-list-row,
+        [class*="music-list-item"] {
+            border-radius: var(--listRowRadius);
+        }
+    }
+
+    .music-sheetlike-item-container,
+    .components--music-sheetlike-item,
+    [class*="music-sheetlike-item"] {
+        border-radius: var(--cardRadius) !important;
+    }
+
+    .artist-item-container {
+        border-radius: var(--cardRadius);
+        backdrop-filter: none !important;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Panels / Modals / Popovers
+// ---------------------------------------------------------------------------
+[data-ui-style="flat"] {
+    .components--modal-base {
+        background: var(--appOverlayMask);
+        backdrop-filter: none;
+
+        & > [class^="modal--"],
+        & > [class*=" modal--"] {
+            color: var(--panelTextOnSurface);
+            border-radius: var(--modalRadius);
+            background: var(--appPanelSurface);
+            border: 1px solid var(--panelBorder);
+            box-shadow: 0 16px 48px rgba(15, 23, 42, 0.16);
+            backdrop-filter: none;
+            --textColor: var(--panelTextOnSurface);
+            --dividerColor: color-mix(in srgb, var(--textColor) 10%, transparent);
+            --listHoverColor: color-mix(in srgb, var(--textColor) 5%, transparent);
+            --listActiveColor: color-mix(in srgb, var(--textColor) 9%, transparent);
+            --placeholderColor: color-mix(in srgb, var(--textColor) 6%, transparent);
+
+            a {
+                color: var(--primaryColor) !important;
+
+                &:hover {
+                    color: color-mix(in srgb, var(--primaryColor) 80%, black) !important;
+                }
+            }
+        }
+
+        .components--modal-base-header {
+            border-bottom: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
+            color: var(--panelTextOnSurface);
+        }
+    }
+
+    .components--panel-base {
+        background: var(--appPanelMask);
+        backdrop-filter: none;
+        padding: 10px;
+
+        .components--panel-base-content {
+            width: min(420px, 40vw);
+            color: var(--panelTextOnSurface);
+            border-radius: var(--panelRadius);
+            background: var(--appPanelSurface);
+            border: 1px solid var(--panelBorder);
+            box-shadow: 0 12px 40px rgba(15, 23, 42, 0.14);
+            backdrop-filter: none;
+            --textColor: var(--panelTextOnSurface);
+            --dividerColor: color-mix(in srgb, var(--textColor) 10%, transparent);
+            --listActiveColor: color-mix(in srgb, var(--textColor) 9%, transparent);
+            --listHoverColor: color-mix(in srgb, var(--textColor) 5%, transparent);
+            --placeholderColor: color-mix(in srgb, var(--textColor) 6%, transparent);
+
+            .components--panel-base-header {
+                border-bottom: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
+                color: var(--panelTextOnSurface);
+            }
+
+            .components--panel-base-header-close {
+                color: var(--appTextSecondary) !important;
+                background: color-mix(in srgb, var(--textColor) 5%, transparent) !important;
+                border: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent) !important;
+                box-shadow: none !important;
+                border-radius: 10px !important;
+
+                &:hover {
+                    transform: none !important;
+                    color: var(--appTextPrimary) !important;
+                    background: color-mix(in srgb, var(--textColor) 9%, transparent) !important;
+                }
+            }
+        }
+    }
+
+    .components--modal-base {
+        .components--modal-base-header-close,
+        [class*="modal"] [class*="close"] {
+            color: var(--appTextSecondary) !important;
+            background: color-mix(in srgb, var(--textColor) 5%, transparent) !important;
+            border-radius: 10px !important;
+            box-shadow: none !important;
+        }
+    }
+
+    // Quality select popover must NOT be restyled by flat UI.
+    // (A previous [class*="quality-select"] rule hit the full-screen layer
+    // and painted the whole app solid white.)
+
+    .components--context-menu,
+    [class*="context-menu"] {
+        border-radius: 12px !important;
+        backdrop-filter: none !important;
+        box-shadow: var(--appSurfaceShadow) !important;
+        background: var(--appSurfaceStrong) !important;
+        border: 1px solid var(--appSurfaceBorder) !important;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+[data-ui-style="flat"] {
+    .setting-view--container {
+        --settingPanelSurface: var(--appSurfaceStrong);
+        --settingSidebarSurface: transparent;
+        --settingRowSurface: color-mix(in srgb, var(--textColor) 2.5%, transparent);
+        --settingRowSurfaceHover: color-mix(in srgb, var(--textColor) 5%, transparent);
+        --settingControlSurface: var(--appSurfaceStrong);
+        --settingControlSurfaceHover: color-mix(in srgb, var(--textColor) 5%, transparent);
+        --settingControlBorder: color-mix(in srgb, var(--textColor) 10%, transparent);
+        --settingControlBorderActive: color-mix(in srgb, var(--primaryColor) 45%, transparent);
+        --settingControlInset: none;
+
+        .setting-view--sidebar {
+            backdrop-filter: none;
+            box-shadow: none;
+            background: transparent;
+            border-right: 1px solid var(--appSurfaceBorder);
+        }
+
+        .setting-view--nav-item {
+            border-radius: 10px;
+
+            &[data-selected="true"],
+            &.active,
+            &[aria-current="page"] {
+                color: var(--appTextPrimary) !important;
+                background: color-mix(in srgb, var(--textColor) 8%, transparent) !important;
+                border-color: transparent !important;
+            }
+        }
+
+        .setting-view--body-item-container {
+            border-radius: 12px;
+            box-shadow: none;
+            backdrop-filter: none;
+            background: var(--appSurfaceStrong);
+        }
+    }
+
+    .music-sheetlike-view--body-container .operations {
+        border-radius: 12px !important;
+        backdrop-filter: none !important;
+        box-shadow: none !important;
+        background: var(--appSurfaceMuted) !important;
+        border: 1px solid var(--appSurfaceBorder) !important;
+    }
+
+    .setting-view--ui-style-picker {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        width: 100%;
+        max-width: 520px;
+    }
+
+    .setting-view--ui-style-card {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+        border-radius: 14px;
+        border: 1.5px solid color-mix(in srgb, var(--textColor) 10%, transparent);
+        background: color-mix(in srgb, var(--backgroundColor) 96%, white);
+        cursor: pointer;
+        text-align: left;
+        transition:
+            border-color 160ms ease,
+            box-shadow 160ms ease,
+            background-color 160ms ease;
+
+        &:hover {
+            border-color: color-mix(in srgb, var(--primaryColor) 35%, transparent);
+            background: color-mix(in srgb, var(--primaryColor) 4%, var(--backgroundColor));
+        }
+
+        &[data-selected="true"] {
+            border-color: color-mix(in srgb, var(--primaryColor) 72%, transparent);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--primaryColor) 16%, transparent);
+            background: color-mix(in srgb, var(--primaryColor) 6%, var(--backgroundColor));
+        }
+    }
+
+    .setting-view--ui-style-preview {
+        position: relative;
+        height: 88px;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
+    }
+
+    .setting-view--ui-style-preview-title {
+        font-size: 0.95rem;
+        font-weight: 720;
+        color: var(--appTextPrimary);
+    }
+
+    .setting-view--ui-style-preview-desc {
+        font-size: 0.78rem;
+        line-height: 1.45;
+        color: var(--appTextSecondary);
+    }
+
+    // Mini mock — glass
+    .ui-style-preview--glass {
+        background:
+            radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--primaryColor) 35%, transparent), transparent 45%),
+            linear-gradient(135deg, #1c2030, #2a3144);
+
+        &::before {
+            content: "";
+            position: absolute;
+            left: 8px;
+            top: 8px;
+            bottom: 8px;
+            width: 22%;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(6px);
+        }
+
+        &::after {
+            content: "";
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: 8px;
+            height: 16px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.16);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+    }
+
+    // Mini mock — flat
+    .ui-style-preview--flat {
+        background: linear-gradient(180deg, #f4f6fa, #e9eef5);
+
+        &::before {
+            content: "";
+            position: absolute;
+            left: 8px;
+            top: 8px;
+            bottom: 8px;
+            width: 22%;
+            border-radius: 6px;
+            background: transparent;
+            border-right: 1px solid rgba(15, 23, 42, 0.08);
+        }
+
+        &::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 18px;
+            background: #fbfcfe;
+            border-top: 1px solid rgba(15, 23, 42, 0.08);
+        }
+    }
+
+    .ui-style-preview--flat .ui-style-preview-bar {
+        position: absolute;
+        left: 34%;
+        top: 10px;
+        width: 40%;
+        height: 10px;
+        border-radius: 3px;
+        background: rgba(15, 23, 42, 0.06);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .ui-style-preview--glass .ui-style-preview-bar {
+        position: absolute;
+        left: 34%;
+        top: 10px;
+        width: 40%;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+}
+
+// Glass mode still gets the picker chrome (works in both styles)
+.setting-view--ui-style-block {
+    width: 100%;
+    margin: 0.35rem 0 0.85rem;
+}
+
+.setting-view--ui-style-label {
+    display: block;
+    margin-bottom: 0.55rem;
+    font-weight: 680;
+    color: var(--appTextPrimary);
+}
+
+.setting-view--ui-style-picker {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    width: 100%;
+    max-width: 520px;
+}
+
+.setting-view--ui-style-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border-radius: var(--appRadiusMd);
+    border: 1.5px solid var(--appSurfaceBorder);
+    background: var(--appSurface);
+    box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
+    backdrop-filter: var(--appGlassFilter);
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    transition:
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        transform 160ms ease,
+        background-color 160ms ease;
+
+    &:hover {
+        border-color: color-mix(in srgb, var(--primaryColor) 35%, transparent);
+        transform: translateY(-1px);
+    }
+
+    &[data-selected="true"] {
+        border-color: color-mix(in srgb, var(--primaryColor) 72%, transparent);
+        box-shadow:
+            0 0 0 3px color-mix(in srgb, var(--primaryColor) 16%, transparent),
+            var(--appSurfaceShadowSoft);
+    }
+}
+
+.setting-view--ui-style-preview {
+    position: relative;
+    height: 88px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--appSurfaceBorder);
+}
+
+.setting-view--ui-style-preview-title {
+    font-size: 0.95rem;
+    font-weight: 720;
+}
+
+.setting-view--ui-style-preview-desc {
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--appTextSecondary);
+}
+
+.ui-style-preview--glass {
+    background:
+        radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--primaryColor) 35%, transparent), transparent 45%),
+        linear-gradient(135deg, #1c2030, #2a3144);
+
+    &::before {
+        content: "";
+        position: absolute;
+        left: 8px;
+        top: 8px;
+        bottom: 8px;
+        width: 22%;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+    }
+
+    &::after {
+        content: "";
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        bottom: 8px;
+        height: 16px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.16);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+}
+
+.ui-style-preview--flat {
+    background: linear-gradient(180deg, #f4f6fa, #e9eef5);
+
+    &::before {
+        content: "";
+        position: absolute;
+        left: 8px;
+        top: 8px;
+        bottom: 8px;
+        width: 22%;
+        border-radius: 6px;
+        background: transparent;
+        border-right: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    &::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 18px;
+        background: #fbfcfe;
+        border-top: 1px solid rgba(15, 23, 42, 0.08);
+    }
+}
+
+.ui-style-preview-bar {
+    position: absolute;
+    left: 34%;
+    top: 10px;
+    width: 40%;
+    height: 10px;
+    border-radius: var(--appRadiusPill, 999px);
+    z-index: 1;
+}
+
+[data-ui-style="flat"] .ui-style-preview--flat .ui-style-preview-bar {
+    border-radius: 3px;
+}
+
+.ui-style-preview--glass .ui-style-preview-bar {
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ui-style-preview--flat .ui-style-preview-bar {
+    background: rgba(15, 23, 42, 0.06);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+// ---------------------------------------------------------------------------
+// Page views — cards, toolbars, local music, downloads, plugins, search
+// ---------------------------------------------------------------------------
+[data-ui-style="flat"] {
+    .local-music-view-container,
+    .download-view-container,
+    .plugin-manager-view-container,
+    .search-view-container,
+    .theme-view-container,
+    [class*="view-container"] {
+        // Soften common glass panels that reuse tokens
+    }
+
+    // Generic surface panels used across views
+    [class*="panel-surface"],
+    [class*="content-panel"],
+    [class*="toolbar-container"] {
+        backdrop-filter: none;
+    }
+
+    .local-music-view--container,
+    .download-view--container {
+        // handled via token inheritance where variables are used
+    }
+
+    // Local music / download outer shells often hardcode glass
+    .local-music-view-container > *,
+    .page-container [class*="shell"],
+    .page-container [class*="panel"] {
+        // Keep lightweight; tokens already reduce glass
+    }
+
+    // Soften large bordered cards
+    .page-container {
+        [class*="container"][class*="card"],
+        [class*="list-panel"],
+        [class*="body-container"] > [class*="panel"] {
+            border-radius: var(--cardRadius);
+        }
+    }
+
+    // Music detail — keep original rounded immersive stage (not squared by flat tokens)
+    .music-detail--container {
+        z-index: 3500;
+        --cardRadius: 22px;
+        --listCardRadius: 28px;
+        --panelRadius: 32px;
+        --controlRadius: 12px;
+        --controlRadiusLg: 18px;
+        --appRadiusPill: 999px;
+        --iconButtonRadius: 50%;
+        --tagRadius: 999px;
+        --coverRadius: 14px;
+
+        .music-detail-info-bar {
+            border-radius: 22px !important;
+        }
+
+        .music-detail-info-artwork {
+            border-radius: 14px !important;
+        }
+
+        .music-detail-info-badge {
+            border-radius: 999px !important;
+        }
+
+        .music-detail-round-button,
+        .music-detail-topbar button,
+        .music-detail-topbar [role="button"],
+        .music-detail-topbar .header-button,
+        .music-detail-lyric-toolbar-button {
+            border-radius: 50% !important;
+        }
+
+        .music-detail-artwork {
+            border-radius: 28px !important;
+        }
+
+        .music-detail-vinyl-cover {
+            border-radius: 50% !important;
+        }
+
+        .music-detail-lyric-panel {
+            border-radius: 32px !important;
+            // Lyric can sit longer; bottom under square dock
+            padding-bottom: calc(var(--appMusicBarHeight, 80px) + 16px) !important;
+        }
+
+        .music-detail-shell {
+            // Leave bottom open so lyric area reaches the square dock
+            padding: 26px 28px 0 !important;
+        }
+
+        .music-detail-primary-column {
+            padding-bottom: calc(var(--appMusicBarHeight, 80px) + 12px) !important;
+            box-sizing: border-box;
+        }
+    }
+
+    // Empty / loading
+    .components--empty-container,
+    .bottom-loading-state,
+    .components--loading {
+        backdrop-filter: none !important;
+    }
+
+    // Toast keep readable
+    .Toastify__toast {
+        border-radius: 12px !important;
+        backdrop-filter: none !important;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// View-specific hard-coded glass shells
+// ---------------------------------------------------------------------------
+[data-ui-style="flat"] {
+    // Local music
+    .local-music-view--container {
+        .header,
+        .operations,
+        .local-music-view--search,
+        .local-music-album-item,
+        .local-music-artist-item,
+        .local-music-folder-item {
+            border-radius: var(--cardRadius) !important;
+            backdrop-filter: none !important;
+            box-shadow: none !important;
+        }
+
+        .operations [data-type="normalButton"] {
+            border-radius: 10px !important;
+        }
+    }
+
+    // Download
+    .download-view--container {
+        border-radius: var(--cardRadius) !important;
+        backdrop-filter: none !important;
+        box-shadow: none !important;
+
+        .header,
+        .tab-list-container {
+            border-radius: var(--cardRadius) !important;
+        }
+    }
+
+    .downloading--container,
+    .downloading-list-container {
+        border-radius: var(--cardRadius) !important;
+        backdrop-filter: none !important;
+        box-shadow: none !important;
+    }
+
+    // Plugin manager
+    .plugin-manager-view--container {
+        .header,
+        .plugin-table--container,
+        .operations {
+            border-radius: var(--cardRadius) !important;
+            backdrop-filter: none !important;
+            box-shadow: none !important;
+        }
+    }
+
+    // Search
+    .search-view-container {
+        .header,
+        .search-result--container,
+        .search-result-container {
+            border-radius: var(--cardRadius) !important;
+            backdrop-filter: none !important;
+        }
+    }
+
+    // Toplist
+    .toplist-view--container,
+    .toplist-item-container {
+        border-radius: var(--cardRadius) !important;
+    }
+
+    // Theme cards
+    .theme-item-container,
+    .theme-view--theme-item {
+        border-radius: var(--cardRadius) !important;
+        backdrop-filter: none !important;
+    }
+
+    // Music sheetlike view
+    .music-sheetlike-view--container,
+    .music-sheetlike-view--header,
+    .music-sheetlike-view--header-container,
+    .music-sheetlike-view--body,
+    .music-sheetlike-view--body-container {
+        border-radius: var(--cardRadius) !important;
+        backdrop-filter: none !important;
+        box-shadow: var(--appSurfaceShadowSoft) !important;
+    }
+
+    .music-sheetlike-view--header-container {
+        &::before {
+            filter: blur(28px);
+            opacity: 0.28;
+        }
+    }
+
+    .download-view--container .download-view-hero {
+        border-radius: var(--cardRadius) !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+    }
+
+    // Album / artist cards
+    .music-sheetlike-item--container,
+    .artist-item-container {
+        border-radius: var(--cardRadius) !important;
+        backdrop-filter: none !important;
+        box-shadow: var(--appSurfaceShadowSoft) !important;
+    }
+
+    // Setting rows
+    .setting-row,
+    .setting-view--radio-group-setting-item-container,
+    .setting-view--checkbox-setting-item-container,
+    .setting-view--listbox-setting-item-container,
+    .setting-view--input-setting-item-container,
+    .setting-view--path-setting-item-container,
+    .setting-view--slider-setting-item-container {
+        border-radius: var(--controlRadius) !important;
+    }
+
+    // Switches keep classic rounded toggle look in flat mode
+    .setting-toggle-control {
+        border-radius: 999px !important;
+    }
+
+    .setting-toggle-thumb {
+        border-radius: 50% !important;
+    }
+
+    .plugin-card-toggle {
+        border-radius: 999px !important;
+    }
+
+    .plugin-card-toggle-thumb {
+        border-radius: 50% !important;
+    }
+
+    // Quality / tag chips — rectangular
+    .tag-container,
+    [class*="quality-badge"],
+    [class*="quality-tag"] {
+        border-radius: var(--tagRadius) !important;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Global square-radius safety net (WinUI: mild rect corners, no pills/circles)
+// ---------------------------------------------------------------------------
+[data-ui-style="flat"] {
+    // Shared utility
+    .backdrop-blur,
+    .glass-surface {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    // Form controls
+    input,
+    textarea,
+    select {
+        border-radius: var(--controlRadius) !important;
+    }
+
+    div[role="button"][data-type="primaryButton"],
+    div[role="button"][data-type="normalButton"],
+    div[role="button"][data-type="dangerButton"] {
+        border-radius: var(--controlRadius) !important;
+
+        &:hover {
+            transform: none !important;
+        }
+    }
+
+    // Common pill / circle chrome → square
+    .music-list-toolbar-count,
+    .option-item-container,
+    .checkbox,
+    .setting-view--radio-group-setting-item-container .option-item-container,
+    .setting-view--radio-group-setting-item-container .checkbox,
+    .plugin-item,
+    .local-music-view--container .operations [data-type="normalButton"],
+    .plugin-manager-view--container [class*="badge"],
+    .plugin-table--container [class*="badge"],
+    .plugin-table--container [class*="pill"],
+    .downloading--container [class*="badge"],
+    .components--modal-base [class*="close"],
+    .components--panel-base-header-close {
+        border-radius: var(--controlRadius) !important;
+    }
+
+    // Album / sheet covers
+    .music-sheetlike-item--container img,
+    .music-sheetlike-item--container .cover-img,
+    .music-sheetlike-item--container [class*="cover"],
+    .artist-item-container img,
+    .artist-item-container [class*="cover"],
+    .music-list-container [class*="cover"],
+    .music-list-container img.music-cover {
+        border-radius: var(--coverRadius) !important;
+    }
+
+    // Menus / toasts (quality-select deliberately excluded — keep original glass look)
+    .components--context-menu,
+    [class*="context-menu"],
+    .Toastify__toast,
+    .Toastify__toast-body {
+        border-radius: var(--controlRadiusLg) !important;
+    }
+
+    // Modal / panel already tokenized; reinforce
+    .components--modal-base > [class^="modal--"],
+    .components--modal-base > [class*=" modal--"],
+    .components--panel-base-content {
+        border-radius: var(--modalRadius) !important;
+    }
+
+    // Sidebar section chevrons / icon circles
+    .side-bar-section-chevron,
+    .side-bar-container [class*="icon-btn"],
+    .my-sheets--add-btn,
+    .starred-sheets [class*="btn"] {
+        border-radius: var(--iconButtonRadius) !important;
+    }
+
+    // Setting UI style cards
+    .setting-view--ui-style-card {
+        border-radius: var(--controlRadiusLg) !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+
+        &:hover {
+            transform: none !important;
+        }
+    }
+
+    .setting-view--ui-style-preview {
+        border-radius: var(--controlRadius) !important;
+    }
+
+    .setting-view--body-item-container {
+        border-radius: var(--controlRadiusLg) !important;
+    }
+
+    .setting-view--nav-item {
+        border-radius: var(--controlRadius) !important;
+    }
+
+    // Local music / download / plugin hero shells
+    .local-music-view--container .header,
+    .local-music-view--container .operations,
+    .download-view-hero,
+    .plugin-manager-view--container .header {
+        border-radius: var(--cardRadius) !important;
+    }
+
+    // Music list count badge stays rectangular; sort/ops icon buttons are circular
+    .music-list-container .music-list-toolbar-count {
+        border-radius: var(--tagRadius) !important;
+    }
+
+    .music-list-sort-btn,
+    .music-list-operation-button,
+    .music-list-operations [role="button"],
+    .music-list-operations button {
+        border-radius: 50% !important;
+    }
+
+    // Progress bars stay flat (no capsule)
+    [class*="progress"] .bar,
+    [class*="progress-bar"],
+    [class*="progress"] .fill {
+        border-radius: var(--appRadiusXs) !important;
+    }
+
+    // Scrollbars already handled by tokens
+    ::-webkit-scrollbar-track,
+    ::-webkit-scrollbar-thumb {
+        border-radius: var(--appRadiusXs) !important;
+    }
+}
+
+// High-specificity sweep: square surfaces / chips — NOT action icon circles
+[data-ui-style="flat"] {
+    .header-search,
+    .header-button,
+    .navigator-btn,
+    .search-submit,
+    .search-view--refresh-button,
+    .search-view--plugins .plugin-item,
+    .search-view-container .search-header .highlight,
+    .music-list-toolbar-count,
+    .tab-list-container,
+    .tab-list-item,
+    .side-bar--list-item-container,
+    .side-bar-section-title,
+    .side-bar-section-chevron,
+    .components--tag-container,
+    .album-play-info,
+    .local-music-view--container .operations [data-type="normalButton"] {
+        border-radius: var(--controlRadius) !important;
+    }
+
+    .header-search {
+        border-radius: var(--controlRadius) !important;
+    }
+
+    // Transport controls: keep soft circles (music UI convention)
+    .music-controller-button,
+    .music-controller-primary {
+        border-radius: 50% !important;
+    }
+
+    .search-view--plugins .plugin-item,
+    .search-view-container .search-header .highlight,
+    .music-list-toolbar-count,
+    .components--tag-container,
+    .album-play-info {
+        border-radius: var(--tagRadius) !important;
+    }
+
+    // Quality label: ghost text, no chip frame
+    .music-extra .extra-btn.quality-btn {
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border-radius: 8px !important;
+    }
+
+    // Action icon circles that must stay round in flat mode
+    .music-list-action-button,
+    .music-list-operation-button,
+    .music-info-action-shell,
+    .music-extra .extra-btn:not(.quality-btn),
+    .local-music-view--container .list-view-action {
+        border-radius: 50% !important;
+    }
+
+    // Cards / panels / lists
+    .music-list-container,
+    .search-view-container .search-header,
+    .local-music-view--container .header,
+    .local-music-view--container .operations,
+    .download-view-hero,
+    .music-sheetlike-view--header-container,
+    .components--albumlike-item-container,
+    .artist-item-container,
+    .setting-view--body-item-container,
+    .setting-view--ui-style-card,
+    .components--panel-base-content,
+    .components--modal-base > [class^="modal--"],
+    .components--modal-base > [class*=" modal--"] {
+        border-radius: var(--cardRadius) !important;
+    }
+
+    // Isolate quality-select from any leftover flat surface rules
+    .quality-select-popover-layer {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+    }
+
+    .music-list-container .music-list-item,
+    .music-list-container [class*="list-item"],
+    .music-list-container tr,
+    .music-list-container [data-row] {
+        border-radius: var(--listRowRadius) !important;
+    }
+}

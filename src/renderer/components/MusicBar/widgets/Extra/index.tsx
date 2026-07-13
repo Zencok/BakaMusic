@@ -259,6 +259,7 @@ function FloatingBubble(props: IFloatingBubbleProps) {
     } = props;
     const bubbleRef = useRef<HTMLDivElement>(null);
     const [style, setStyle] = useState<CSSProperties | null>(null);
+    const musicDetailShown = musicDetailShownStore.useValue();
 
     useEffect(() => {
         if (!visible) {
@@ -278,6 +279,8 @@ function FloatingBubble(props: IFloatingBubbleProps) {
             const bubbleWidth = bubble.offsetWidth;
             const bubbleHeight = bubble.offsetHeight;
             const computedStyle = window.getComputedStyle(anchor);
+            const immersive = musicDetailShownStore.getValue()
+                || document.querySelector(".music-bar-container[data-detail-open=\"true\"]");
 
             const centeredLeft = anchorRect.left + anchorRect.width / 2 - bubbleWidth / 2;
             const maxLeft = window.innerWidth - bubbleWidth - FLOATING_BUBBLE_VIEWPORT_MARGIN;
@@ -294,14 +297,35 @@ function FloatingBubble(props: IFloatingBubbleProps) {
                 );
             }
 
+            // When detail is open, force dark bubble tokens so white dock vars don't
+            // paint white tracks/text on a light surface (bubble is portaled to body).
+            if (immersive) {
+                setStyle({
+                    left,
+                    top,
+                    "--musicBarText": "rgba(255, 255, 255, 0.92)",
+                    "--musicBarSurface": "#1c1c1c",
+                    "--musicBarSurfaceAlt": "#242424",
+                    "--musicBarTextSecondary": "rgba(255, 255, 255, 0.58)",
+                    "--musicBarAccent": computedStyle.getPropertyValue("--musicBarAccent").trim()
+                        || "var(--primaryColor)",
+                } as CSSProperties);
+                return;
+            }
+
             setStyle({
                 left,
                 top,
-                "--musicBarText": computedStyle.getPropertyValue("--musicBarText").trim() || computedStyle.color,
-                "--musicBarSurface": computedStyle.getPropertyValue("--musicBarSurface").trim(),
-                "--musicBarSurfaceAlt": computedStyle.getPropertyValue("--musicBarSurfaceAlt").trim(),
-                "--musicBarTextSecondary": computedStyle.getPropertyValue("--musicBarTextSecondary").trim(),
-                "--musicBarAccent": computedStyle.getPropertyValue("--musicBarAccent").trim(),
+                "--musicBarText": computedStyle.getPropertyValue("--musicBarText").trim()
+                    || "var(--textColor)",
+                "--musicBarSurface": computedStyle.getPropertyValue("--musicBarSurface").trim()
+                    || "var(--backgroundColor)",
+                "--musicBarSurfaceAlt": computedStyle.getPropertyValue("--musicBarSurfaceAlt").trim()
+                    || "var(--backgroundColor)",
+                "--musicBarTextSecondary": computedStyle.getPropertyValue("--musicBarTextSecondary").trim()
+                    || "color-mix(in srgb, var(--textColor) 58%, transparent)",
+                "--musicBarAccent": computedStyle.getPropertyValue("--musicBarAccent").trim()
+                    || "var(--primaryColor)",
             } as CSSProperties);
         };
 
@@ -313,7 +337,7 @@ function FloatingBubble(props: IFloatingBubbleProps) {
             window.removeEventListener("resize", updatePosition);
             window.removeEventListener("scroll", updatePosition, true);
         };
-    }, [anchorRef, visible]);
+    }, [anchorRef, visible, musicDetailShown]);
 
     if (!visible) {
         return null;
@@ -323,6 +347,7 @@ function FloatingBubble(props: IFloatingBubbleProps) {
         <div
             ref={bubbleRef}
             className="volume-bubble-container"
+            data-immersive={musicDetailShown ? "true" : "false"}
             style={style ?? { visibility: "hidden" }}
             onClick={(event) => {
                 event.stopPropagation();

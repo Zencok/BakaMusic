@@ -19,7 +19,7 @@
       $size: 24px;
       width: $size;
       height: $size;
-      border-radius: 50%;
+      border-radius: var(--iconButtonRadius, 50%);
       display: flex;
       align-items: center;
       justify-content: center;

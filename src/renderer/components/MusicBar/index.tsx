@@ -7,6 +7,7 @@ import { useCurrentMusic } from "@renderer/core/track-player/hooks";
 import normalizeArtworkDisplaySrc, {
     getArtworkCacheKey,
 } from "@/renderer/utils/normalize-artwork-display-src";
+import { musicDetailShownStore } from "@renderer/components/MusicDetail/store";
 
 import "./index.scss";
 
@@ -221,15 +222,80 @@ async function extractMusicBarStyle(artwork?: string | null) {
     }
 }
 
+const FLAT_DOCK_STYLE: MusicBarPaletteStyle = {
+    // Clean theme surface — no gray mix with textColor (looks dirty on white themes)
+    "--musicBarSurface": "var(--backgroundColor)",
+    "--musicBarSurfaceAlt": "var(--backgroundColor)",
+    "--musicBarText": "var(--textColor)",
+    "--musicBarTextSecondary": "color-mix(in srgb, var(--textColor) 58%, transparent)",
+    "--musicBarAccent": "var(--primaryColor)",
+    "--musicBarPrimaryText": "#ffffff",
+    "--musicBarBackdropOpacity": "0",
+};
+
+const FLAT_DETAIL_FALLBACK: MusicBarPaletteStyle = {
+    "--musicBarSurface": "transparent",
+    "--musicBarSurfaceAlt": "transparent",
+    "--musicBarText": "rgba(248, 250, 252, 0.95)",
+    "--musicBarTextSecondary": "rgba(248, 250, 252, 0.62)",
+    "--musicBarAccent": "var(--primaryColor)",
+    "--musicBarPrimaryText": "#0b0b0f",
+    "--musicBarBackdropOpacity": "0",
+};
+
+function isFlatUiStyleActive() {
+    return typeof document !== "undefined"
+        && document.documentElement.getAttribute("data-ui-style") === "flat";
+}
+
+function toFlatDetailStyle(palette: MusicBarPaletteStyle): MusicBarPaletteStyle {
+    const accent = palette["--musicBarAccent"];
+    return {
+        "--musicBarSurface": "transparent",
+        "--musicBarSurfaceAlt": "transparent",
+        "--musicBarText": "rgba(248, 250, 252, 0.95)",
+        "--musicBarTextSecondary": "rgba(248, 250, 252, 0.62)",
+        "--musicBarAccent": typeof accent === "string" && accent
+            ? accent
+            : "var(--primaryColor)",
+        "--musicBarPrimaryText": "#0b0b0f",
+        "--musicBarBackdropOpacity": "0",
+    };
+}
+
 export default function MusicBar() {
     const currentMusic = useCurrentMusic();
     const artwork = currentMusic?.coverImg ?? currentMusic?.artwork;
+    const musicDetailShown = musicDetailShownStore.useValue();
     const [musicBarStyle, setMusicBarStyle] = useState<MusicBarPaletteStyle>(DEFAULT_MUSIC_BAR_STYLE);
+    const [uiStyleTick, setUiStyleTick] = useState(0);
+
+    useEffect(() => {
+        const root = document.documentElement;
+        const observer = new MutationObserver(() => {
+            setUiStyleTick((value) => value + 1);
+        });
+        observer.observe(root, {
+            attributes: true,
+            attributeFilter: ["data-ui-style"],
+        });
+        return () => observer.disconnect();
+    }, []);
 
     useEffect(() => {
         let aborted = false;
 
         const syncMusicBarArtwork = async () => {
+            const isFlat = isFlatUiStyleActive();
+
+            // Flat dock: solid readable theme colors (never light text on forced white)
+            if (isFlat && !musicDetailShown) {
+                if (!aborted) {
+                    setMusicBarStyle(FLAT_DOCK_STYLE);
+                }
+                return;
+            }
+
             const nextArtwork = await normalizeArtworkDisplaySrc(artwork);
             if (aborted) {
                 return;
@@ -237,9 +303,17 @@ export default function MusicBar() {
 
             const resolvedArtwork = nextArtwork ?? artwork;
             const nextStyle = await extractMusicBarStyle(resolvedArtwork);
-            if (!aborted) {
-                setMusicBarStyle(nextStyle);
+            if (aborted) {
+                return;
             }
+
+            // Flat + detail: light-on-dark immersive, keep artwork accent
+            if (isFlat && musicDetailShown) {
+                setMusicBarStyle(toFlatDetailStyle(nextStyle));
+                return;
+            }
+
+            setMusicBarStyle(nextStyle);
         };
 
         void syncMusicBarArtwork();
@@ -247,10 +321,14 @@ export default function MusicBar() {
         return () => {
             aborted = true;
         };
-    }, [artwork]);
+    }, [artwork, musicDetailShown, uiStyleTick]);
 
     return (
-        <div className="music-bar-container" style={musicBarStyle}>
+        <div
+            className="music-bar-container"
+            style={musicBarStyle}
+            data-detail-open={musicDetailShown ? "true" : "false"}
+        >
             <div className="music-bar-overlay"></div>
             <div className="music-bar-shell">
                 <Slider></Slider>

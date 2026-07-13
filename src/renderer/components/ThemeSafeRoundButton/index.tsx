@@ -79,6 +79,7 @@ export default function ThemeSafeRoundButton(props: IProps) {
             <ThemeSafeIcon
                 iconName={props.iconName}
                 size={props.iconSize}
+                color={props.color}
                 style={props.iconStyle}
             ></ThemeSafeIcon>
         </button>

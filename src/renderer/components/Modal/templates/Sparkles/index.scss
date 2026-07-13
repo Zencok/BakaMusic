@@ -39,7 +39,7 @@
       display: block;
       width: 132px;
       height: 132px;
-      border-radius: 20px;
+      border-radius: var(--controlRadiusLg, 20px);
       box-shadow: 0 14px 28px rgba(0, 0, 0, 0.18);
     }
   }

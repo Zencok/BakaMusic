@@ -13,22 +13,7 @@
     display: flex;
     position: relative;
     isolation: isolate;
-    background:
-      radial-gradient(
-        circle at top left,
-        color-mix(in srgb, var(--primaryColor) 12%, transparent) 0%,
-        transparent 34%
-      ),
-      radial-gradient(
-        circle at top right,
-        color-mix(in srgb, var(--textColor) 5%, transparent) 0%,
-        transparent 28%
-      ),
-      linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--backgroundColor) 24%, transparent),
-        color-mix(in srgb, var(--backgroundColor) 10%, transparent)
-      );
+    background: var(--appBodyBg);
   }
 }
 
@@ -42,7 +27,7 @@
   flex-shrink: 0;
   overflow-x: auto;
   padding: 0.45rem;
-  border-radius: 18px;
+  border-radius: var(--controlRadiusLg, 18px);
   border: 1px solid var(--appSurfaceBorder);
   background: var(--appSurface);
   box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
@@ -67,7 +52,7 @@
     opacity: 0.78;
     white-space: nowrap;
     user-select: none;
-    border-radius: 14px;
+    border-radius: var(--controlRadius, 14px);
     color: var(--appTextPrimary);
     transition:
       opacity 180ms ease,
@@ -134,35 +119,8 @@
   --appHeaderHeight: 54px;
   --appMusicBarHeight: 92px;
 
-  --appSurface: color-mix(in srgb, var(--backgroundColor) 74%, transparent);
-  --appSurfaceStrong: color-mix(in srgb, var(--backgroundColor) 88%, transparent);
-  --appSurfaceMuted: color-mix(in srgb, var(--backgroundColor) 60%, transparent);
-  --appSurfaceBorder: color-mix(in srgb, var(--textColor) 14%, transparent);
-  --appSurfaceBorderStrong: color-mix(in srgb, var(--textColor) 22%, transparent);
-  --appSurfaceInset: inset 0 1px 0 color-mix(in srgb, white 16%, transparent);
-  --appSurfaceShadow: 0 22px 48px rgba(15, 23, 42, 0.12);
-  --appSurfaceShadowSoft: 0 12px 28px rgba(15, 23, 42, 0.08);
-  --appGlassFilter: blur(22px) saturate(145%);
-  --appRadiusMd: 16px;
-  --appRadiusLg: 22px;
-  --appRadiusXl: 28px;
-  --appTextPrimary: var(--textColor);
-  --appTextSecondary: color-mix(in srgb, var(--textColor) 72%, transparent);
-  --appTextTertiary: color-mix(in srgb, var(--textColor) 56%, transparent);
-  --appInteractiveSurface: color-mix(in srgb, var(--textColor) 8%, transparent);
-  --appInteractiveSurfaceHover: color-mix(in srgb, var(--textColor) 12%, transparent);
-  --appInteractiveSurfaceStrong: color-mix(in srgb, var(--primaryColor) 16%, var(--backgroundColor));
-  --appInteractiveBorder: color-mix(in srgb, var(--textColor) 16%, transparent);
-  --appImageFallback: color-mix(in srgb, var(--backgroundColor) 84%, var(--textColor) 16%);
-  --appOverlayMask:
-    linear-gradient(180deg, rgba(7, 9, 14, 0.16), rgba(7, 9, 14, 0.3)),
-    radial-gradient(circle at center, rgba(255, 255, 255, 0.05), transparent 52%);
-  --appPanelMask:
-    linear-gradient(180deg, rgba(7, 9, 14, 0.14), rgba(7, 9, 14, 0.24)),
-    linear-gradient(90deg, rgba(7, 9, 14, 0.04), rgba(7, 9, 14, 0.28));
-  --appPanelSurface:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.16), transparent 30%),
-    linear-gradient(180deg, rgba(18, 18, 24, 0.86), rgba(10, 10, 16, 0.76));
+  // Surface / glass tokens are defined in document/styles/ui-styles.scss
+  // (glass default + flat overrides via [data-ui-style]).
 
   font-size: 13px;
   color: var(--textColor);

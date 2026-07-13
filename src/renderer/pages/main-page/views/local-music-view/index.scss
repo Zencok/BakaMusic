@@ -12,7 +12,7 @@
     margin-top: 0.45rem;
     margin-bottom: 1rem;
     padding: 1.15rem 1.3rem;
-    border-radius: 24px;
+    border-radius: var(--cardRadius, 24px);
     background: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 78%, transparent));
     border: 1px solid var(--appSurfaceBorder);
     box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
@@ -30,7 +30,7 @@
     justify-content: space-between;
     gap: 14px;
     padding: 0.9rem 1rem;
-    border-radius: 22px;
+    border-radius: var(--cardRadius, 22px);
     background: var(--appSurfaceMuted);
     border: 1px solid var(--appSurfaceBorder);
     box-shadow: var(--appSurfaceInset);
@@ -39,7 +39,7 @@
       min-height: 2.4rem;
       padding-left: 1rem;
       padding-right: 1rem;
-      border-radius: 999px;
+      border-radius: var(--controlRadius, 999px);
       border-color: var(--appInteractiveBorder);
       background: color-mix(in srgb, var(--backgroundColor) 78%, transparent);
       color: var(--appTextPrimary);
@@ -130,7 +130,7 @@
         height: 2.5rem;
         margin-right: 0;
         padding: 0 1rem;
-        border-radius: 999px;
+        border-radius: var(--appRadiusPill, 999px);
         border: 1px solid var(--appInteractiveBorder);
         background: color-mix(in srgb, var(--backgroundColor) 84%, transparent);
         box-shadow: var(--appSurfaceInset);
@@ -140,7 +140,7 @@
       & .list-view-action {
         width: 2.55rem;
         height: 2.55rem;
-        border-radius: 999px;
+        border-radius: var(--appRadiusPill, 999px);
         cursor: pointer;
         display: flex;
         align-items: center;

@@ -1,0 +1,16 @@
+// Shared chrome lives in document/styles/ui-style-flat.scss
+// (glass + flat both use the same picker structure).
+
+.setting-view--ui-style-block {
+    width: 100%;
+    margin: 0.2rem 0 0.95rem;
+    padding: 0.2rem 0;
+}
+
+.setting-view--ui-style-label {
+    display: block;
+    margin-bottom: 0.6rem;
+    font-size: 0.95rem;
+    font-weight: 680;
+    color: var(--appTextPrimary, var(--textColor));
+}

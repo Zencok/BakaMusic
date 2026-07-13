@@ -12,7 +12,7 @@
     & input {
       width: 100%;
       min-height: 46px;
-      border-radius: 16px;
+      border-radius: var(--controlRadiusLg, 16px);
     }
   }
 
@@ -28,7 +28,7 @@
   & .hint-area {
     margin: 0 18px 18px;
     padding: 12px 14px;
-    border-radius: 18px;
+    border-radius: var(--controlRadiusLg, 18px);
     flex: 1;
     overflow-y: auto;
     color: rgba(255, 255, 255, 0.72);

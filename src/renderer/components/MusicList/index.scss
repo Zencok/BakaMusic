@@ -1,4 +1,4 @@
-﻿.music-list-container {
+.music-list-container {
   --musicListSurface: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 82%, transparent));
   --musicListRowBg: transparent;
   --musicListRowBorder: color-mix(in srgb, var(--textColor) 7%, transparent);
@@ -10,8 +10,8 @@
   width: 100%;
   min-height: 300px;
   margin-top: 12px;
-  padding: 12px;
-  border-radius: 28px;
+  padding: var(--listCardPadding, 12px);
+  border-radius: var(--listCardRadius, 28px);
   background: var(--musicListSurface);
   border: 1px solid var(--appSurfaceBorder);
   box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
@@ -28,7 +28,7 @@
 
     & .music-list-toolbar {
       padding: 0.9rem 1rem;
-      border-radius: 22px;
+      border-radius: var(--cardRadius, 22px);
       background: var(--musicListSurface);
       border: 1px solid var(--appSurfaceBorder);
       box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
@@ -43,7 +43,7 @@
 
     & .music-list-virtual-spacer {
       overflow: hidden;
-      border-radius: 20px;
+      border-radius: var(--controlRadiusLg, 20px);
       background: color-mix(in srgb, var(--backgroundColor) 64%, transparent);
       border: 1px solid var(--appSurfaceBorder);
       box-shadow: var(--appSurfaceInset);
@@ -83,7 +83,7 @@
     min-width: 1.9rem;
     height: 1.9rem;
     padding: 0 0.6rem;
-    border-radius: 999px;
+    border-radius: var(--tagRadius, 999px);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -107,6 +107,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    // Action icon buttons stay circular in both UI styles
     border-radius: 50%;
   }
 
@@ -119,7 +120,7 @@
     height: 2rem;
     padding: 0;
     border: 1px solid var(--appInteractiveBorder);
-    border-radius: 999px;
+    border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -236,7 +237,7 @@
     height: 100%;
     box-sizing: border-box;
     padding: 8px 12px;
-    border-radius: 16px;
+    border-radius: var(--controlRadiusLg, 16px);
     border: none;
     background: var(--musicListRowBg);
     box-shadow: none;
@@ -251,7 +252,7 @@
       top: 14px;
       bottom: 14px;
       width: 3px;
-      border-radius: 999px;
+      border-radius: var(--appRadiusPill, 999px);
       background: transparent;
       transition: background-color 180ms ease;
     }
@@ -306,7 +307,7 @@
     margin: 0;
     padding: 0;
     border: none;
-    border-radius: 16px;
+    border-radius: var(--controlRadiusLg, 16px);
     overflow: hidden;
     flex-shrink: 0;
     cursor: pointer;
@@ -417,7 +418,7 @@
   & .music-list-playing-indicator {
     width: 1.55rem;
     height: 1.55rem;
-    border-radius: 999px;
+    border-radius: var(--appRadiusPill, 999px);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -475,7 +476,8 @@
     height: 40px;
     padding: 0;
     border: none;
-    border-radius: 999px;
+    // Favorite / download / more: always circular
+    border-radius: 50%;
     background: color-mix(in srgb, var(--backgroundColor) 76%, transparent);
     color: var(--musicListText);
     box-shadow: var(--appSurfaceInset);

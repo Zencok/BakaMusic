@@ -7,7 +7,7 @@
     margin-top: 0.45rem;
     margin-bottom: 1rem;
     padding: 1.15rem 1.3rem;
-    border-radius: 24px;
+    border-radius: var(--cardRadius, 24px);
     background: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 78%, transparent));
     border: 1px solid var(--appSurfaceBorder);
     box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);

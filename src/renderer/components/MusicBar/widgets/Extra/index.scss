@@ -40,6 +40,7 @@
       width: auto;
       min-width: 38px;
       padding: 0 12px;
+      // Glass default: keep chip frame (border/bg inherited from .extra-btn)
       border-radius: 22px;
 
       & .quality-abbr-text {
@@ -80,16 +81,28 @@
   overflow: hidden;
   isolation: isolate;
   clip-path: inset(0 round 22px);
-  color: var(--musicBarText);
+  color: var(--musicBarText, var(--textColor));
   background:
     linear-gradient(
       180deg,
-      color-mix(in srgb, var(--musicBarSurfaceAlt) 92%, transparent),
-      color-mix(in srgb, var(--musicBarSurface) 96%, transparent)
+      color-mix(in srgb, var(--musicBarSurfaceAlt, var(--backgroundColor)) 92%, transparent),
+      color-mix(in srgb, var(--musicBarSurface, var(--backgroundColor)) 96%, transparent)
     );
   border: none;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(24px) saturate(140%);
+
+  // Detail immersive: always dark glass bubble (portaled out of bar)
+  &[data-immersive="true"] {
+    color: rgba(255, 255, 255, 0.92);
+    background: color-mix(in srgb, #1c1c1c 88%, transparent);
+    border: 1px solid color-mix(in srgb, white 12%, transparent);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.36);
+    --musicBarText: rgba(255, 255, 255, 0.92);
+    --musicBarTextSecondary: rgba(255, 255, 255, 0.58);
+    --musicBarSurface: #1c1c1c;
+    --musicBarSurfaceAlt: #242424;
+  }
 
   &::after {
     content: "";

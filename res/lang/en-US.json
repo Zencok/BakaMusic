@@ -308,7 +308,12 @@
       "max_history_length": "Maximum search history entries",
       "music_list_hide_columns": "Hide columns in song list",
       "languages": "Languages",
-      "toast_switch_language_fail": "Switching language failed"
+      "toast_switch_language_fail": "Switching language failed",
+      "ui_style": "UI Style",
+      "ui_style_glass": "Glass",
+      "ui_style_flat": "Flat",
+      "ui_style_glass_desc": "Frosted glass with soft layered depth",
+      "ui_style_flat_desc": "Clean flat layout with clear structure"
     },
     "play_music": {
       "case_sensitive_in_search": "Case-sensitive search in playlist",

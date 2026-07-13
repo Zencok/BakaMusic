@@ -39,6 +39,7 @@ const _defaultAppConfig: IAppConfig =  {
     "normal.musicListColumnsShown": [],
     "backup.resumeBehavior": "append",
     "normal.language": "zh-CN",
+    "normal.uiStyle": "glass",
     "private.lyricWindowSize": {
         width: 940,
         height: 180,

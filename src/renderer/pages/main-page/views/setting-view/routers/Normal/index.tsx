@@ -2,6 +2,7 @@ import RadioGroupSettingItem from "../../components/RadioGroupSettingItem";
 import CheckBoxSettingItem from "../../components/CheckBoxSettingItem";
 import MultiRadioGroupSettingItem from "../../components/MultiRadioGroupSettingItem";
 import ListBoxSettingItem from "../../components/ListBoxSettingItem";
+import UiStyleSettingItem from "../../components/UiStyleSettingItem";
 
 import "./index.scss";
 import { changeLang, getLangList } from "@/shared/i18n/renderer";
@@ -17,6 +18,7 @@ export default function Normal() {
 
     return (
         <div className="setting-view--normal-container">
+            <UiStyleSettingItem></UiStyleSettingItem>
             <CheckBoxSettingItem
                 label={t("settings.normal.check_update")}
                 keyPath="normal.checkUpdate"

@@ -16,7 +16,7 @@
   & .plugin-item {
     min-height: 2.2rem;
     padding: 0 0.95rem;
-    border-radius: 999px;
+    border-radius: var(--tagRadius, 999px);
     border: 1px solid var(--appInteractiveBorder);
     background: var(--appSurfaceMuted);
     box-shadow: var(--appSurfaceInset);
@@ -47,7 +47,7 @@
   width: 2.2rem;
   height: 2.2rem;
   border: 1px solid var(--appInteractiveBorder);
-  border-radius: 999px;
+  border-radius: var(--iconButtonRadius, 999px);
   background: var(--appSurfaceMuted);
   box-shadow: var(--appSurfaceInset);
   color: var(--appTextSecondary);

@@ -1,4 +1,4 @@
-﻿.music-sheetlike-view--header-container {
+.music-sheetlike-view--header-container {
   position: relative;
   overflow: hidden;
   margin-top: 18px;
@@ -7,7 +7,7 @@
   gap: 1.3rem;
   min-height: 196px;
   padding: 1.2rem 1.25rem;
-  border-radius: 30px;
+  border-radius: var(--cardRadius, 30px);
   background:
     linear-gradient(
       135deg,
@@ -15,7 +15,7 @@
       color-mix(in srgb, var(--backgroundColor) 94%, transparent) 52%,
       color-mix(in srgb, var(--textColor) 4%, var(--backgroundColor)) 100%
     );
-  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.09);
+  box-shadow: var(--appSurfaceShadowSoft, 0 18px 44px rgba(15, 23, 42, 0.09));
   box-sizing: border-box;
   isolation: isolate;
 
@@ -25,7 +25,7 @@
     inset: auto -8% -28% auto;
     width: 300px;
     height: 300px;
-    border-radius: 999px;
+    border-radius: var(--appRadiusPill, 999px);
     background: color-mix(in srgb, var(--primaryColor) 16%, transparent);
     filter: blur(56px);
     opacity: 0.55;
@@ -50,7 +50,7 @@
   & img {
     width: 176px;
     height: 176px;
-    border-radius: 24px;
+    border-radius: var(--cardRadius, 24px);
     user-select: none;
     -webkit-user-drag: none;
     object-fit: cover;
@@ -79,7 +79,7 @@
       & .components--tag-container {
         min-height: 1.7rem;
         padding: 0.22rem 0.72rem;
-        border-radius: 999px;
+        border-radius: var(--appRadiusPill, 999px);
         border-color: color-mix(in srgb, var(--primaryColor) 22%, transparent);
         background: color-mix(in srgb, var(--primaryColor) 10%, transparent);
         color: color-mix(in srgb, var(--primaryColor) 86%, var(--appTextPrimary));
@@ -139,7 +139,7 @@
         align-items: center;
         min-height: 2rem;
         padding: 0.34rem 0.8rem;
-        border-radius: 999px;
+        border-radius: var(--appRadiusPill, 999px);
         background: color-mix(in srgb, var(--backgroundColor) 72%, transparent);
         border: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
         box-shadow: none;
@@ -160,7 +160,7 @@
     & img {
       width: 148px;
       height: 148px;
-      border-radius: 20px;
+      border-radius: var(--controlRadiusLg, 20px);
     }
 
     & .sheet-info-container {

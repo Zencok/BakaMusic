@@ -43,7 +43,7 @@
   &[data-selected="true"] {
     color: color-mix(in srgb, var(--primaryColor) 64%, var(--sideBarTextPrimary, var(--appTextPrimary)));
     background: var(--sideBarItemSelected);
-    border: 1px solid color-mix(in srgb, var(--primaryColor) 32%, transparent);
+    border: 1px solid var(--sideBarItemSelectedBorder, color-mix(in srgb, var(--primaryColor) 32%, transparent));
 
     & svg {
       opacity: 1;
@@ -57,7 +57,8 @@
       top: 0.46rem;
       bottom: 0.46rem;
       border-radius: 999px;
-      background: var(--primaryColor);
+      background: var(--sideBarAccentBar, var(--primaryColor));
+      opacity: var(--sideBarAccentBarOpacity, 1);
     }
   }
 }

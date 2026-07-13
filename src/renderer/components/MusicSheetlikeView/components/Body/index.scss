@@ -1,4 +1,4 @@
-﻿.music-sheetlike-view--body-container {
+.music-sheetlike-view--body-container {
   & .operations {
     margin-top: 1.05rem;
     margin-bottom: 1.05rem;
@@ -7,7 +7,7 @@
     align-items: center;
     gap: 0.9rem;
     padding: 0.72rem;
-    border-radius: 18px;
+    border-radius: var(--cardRadius, 18px);
     background:
       linear-gradient(
         180deg,
@@ -17,8 +17,8 @@
     border: 1px solid color-mix(in srgb, white 18%, var(--appSurfaceBorder));
     box-shadow:
       var(--appSurfaceInset),
-      0 12px 28px rgba(15, 23, 42, 0.05);
-    backdrop-filter: blur(24px) saturate(150%);
+      var(--appSurfaceShadowSoft, 0 12px 28px rgba(15, 23, 42, 0.05));
+    backdrop-filter: var(--appGlassFilter, blur(24px) saturate(150%));
 
     & .buttons {
       display: flex;
@@ -158,7 +158,7 @@
         width: 100%;
         height: 2.5rem;
         padding: 0 2.7rem 0 0.95rem;
-        border-radius: 999px;
+        border-radius: var(--appRadiusPill, 999px);
         border: 1px solid var(--appInteractiveBorder);
         background: color-mix(in srgb, var(--backgroundColor) 84%, transparent);
         box-shadow: var(--appSurfaceInset);

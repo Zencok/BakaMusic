@@ -27,7 +27,7 @@ a {
 
 ::-webkit-scrollbar-track {
     background: var(--scrollbarTrackColor);
-    border-radius: 999px;
+    border-radius: var(--appRadiusPill, 999px);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -35,7 +35,7 @@ a {
     background: linear-gradient(180deg,
             var(--scrollbarThumbColor) 0%,
             color-mix(in srgb, var(--scrollbarThumbColor) 86%, var(--backgroundColor)) 100%);
-    border-radius: 999px;
+    border-radius: var(--appRadiusPill, 999px);
     border: 2px solid var(--scrollbarTrackColor);
     background-clip: content-box;
     transition: all 0.2s ease;

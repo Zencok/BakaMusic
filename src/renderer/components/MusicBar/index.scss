@@ -66,5 +66,6 @@
     );
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
   --textColor: var(--musicBarText);
-  contain: layout paint style;
+  // Avoid contain:paint — clips seek thumb on the top edge (esp. flat dock)
+  contain: layout style;
 }

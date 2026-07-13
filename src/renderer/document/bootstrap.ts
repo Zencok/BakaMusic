@@ -18,6 +18,7 @@ import { IAppState } from "@shared/message-bus/type";
 import MusicDetail from "@renderer/components/MusicDetail";
 import shortCut from "@shared/short-cut/renderer";
 import * as Electron from "electron";
+import { applyUiStyle } from "@renderer/utils/ui-style";
 
 
 setAutoFreeze(false);
@@ -27,6 +28,14 @@ export default async function () {
         AppConfig.setup(),
         PluginManager.setup(),
     ]);
+    // Apply UI style as early as possible after config is ready
+    applyUiStyle(AppConfig.getConfig("normal.uiStyle"));
+    AppConfig.onConfigUpdate((patch, config) => {
+        if ("normal.uiStyle" in patch) {
+            applyUiStyle(config["normal.uiStyle"]);
+        }
+    });
+
     await Promise.all([
         MusicSheet.frontend.setupMusicSheets(),
         trackPlayer.setup(),

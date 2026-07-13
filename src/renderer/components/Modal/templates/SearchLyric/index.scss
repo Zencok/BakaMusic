@@ -14,7 +14,7 @@
       width: 100%;
       min-height: 42px;
       padding-right: 38px;
-      border-radius: 16px;
+      border-radius: var(--controlRadiusLg, 16px);
     }
 
     & .search-lyric-search {
@@ -51,7 +51,7 @@
 
     & .tab-panel-container {
       height: 360px;
-      border-radius: 20px;
+      border-radius: var(--controlRadiusLg, 20px);
       overflow: hidden;
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid rgba(255, 255, 255, 0.06);

@@ -13,7 +13,7 @@
       display: flex;
       align-items: center;
       padding: 0 2.5rem 0 14px;
-      border-radius: 16px;
+      border-radius: var(--controlRadiusLg, 16px);
       color: var(--settingTextPrimary);
       background: var(--settingControlSurface);
       border: 1px solid var(--settingControlBorder);
@@ -38,7 +38,7 @@
       position: absolute;
       padding: 0.45rem;
       margin-block-start: 0;
-      border-radius: 18px;
+      border-radius: var(--controlRadiusLg, 18px);
       left: 0;
       top: calc(100% + 10px);
       z-index: 10;

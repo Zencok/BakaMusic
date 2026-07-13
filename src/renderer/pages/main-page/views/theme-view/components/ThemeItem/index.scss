@@ -2,7 +2,7 @@
   width: 100%;
   min-width: 0;
   position: relative;
-  border-radius: 18px;
+  border-radius: var(--controlRadiusLg, 18px);
   background: var(--appImageFallback);
   isolation: isolate;
   transition: transform 180ms ease;
@@ -81,7 +81,7 @@
       }
 
       & .theme-option-button {
-        border-radius: 999px;
+        border-radius: var(--appRadiusPill, 999px);
         border: 1px solid rgba(255, 255, 255, 0.18);
         font-size: 0.84rem;
         font-weight: 700;

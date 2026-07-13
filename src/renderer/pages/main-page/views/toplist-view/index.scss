@@ -37,7 +37,7 @@
     isolation: isolate;
     cursor: pointer;
     user-select: none;
-    border-radius: 18px;
+    border-radius: var(--controlRadiusLg, 18px);
     background: var(--appImageFallback);
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
     transition: transform 180ms ease, box-shadow 180ms ease;
@@ -124,7 +124,7 @@
     }
 
     & .toplist-cover-item {
-      border-radius: 16px;
+      border-radius: var(--controlRadiusLg, 16px);
     }
 
     & .toplist-cover-item--overlay {

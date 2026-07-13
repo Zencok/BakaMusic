@@ -18,7 +18,7 @@
 
         &::-webkit-slider-runnable-track {
             height: 6px;
-            border-radius: 999px;
+            border-radius: var(--appRadiusPill, 999px);
             border: 1px solid var(--settingControlBorder);
             background: linear-gradient(
                 to right,
@@ -34,7 +34,7 @@
             margin-top: -6px;
             width: 16px;
             height: 16px;
-            border-radius: 50%;
+            border-radius: var(--iconButtonRadius, 50%);
             background: var(--primaryColor);
             border: 2px solid var(--backgroundColor);
             box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);

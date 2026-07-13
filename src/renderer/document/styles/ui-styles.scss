@@ -1,0 +1,243 @@
+// =============================================================================
+// Dual UI Style Tokens
+// glass  — current glassmorphism (default)
+// flat   — WinUI / Fluent-inspired flat style (LyciaMusic reference)
+// Applied via documentElement[data-ui-style="glass|flat"]
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// Glass tokens (explicit, also the implicit default in app.scss)
+// ---------------------------------------------------------------------------
+:root,
+:root[data-ui-style="glass"] {
+    --uiStyle: glass;
+
+    --appRadiusXs: 6px;
+    --appRadiusSm: 10px;
+    --appRadiusMd: 16px;
+    --appRadiusLg: 22px;
+    --appRadiusXl: 28px;
+    --appRadiusPill: 999px;
+    --controlRadius: 10px;
+    --controlRadiusLg: 14px;
+    --iconButtonRadius: 50%;
+    --coverRadius: 12px;
+    --tagRadius: 999px;
+
+    --appSurface: color-mix(in srgb, var(--backgroundColor) 74%, transparent);
+    --appSurfaceStrong: color-mix(in srgb, var(--backgroundColor) 88%, transparent);
+    --appSurfaceMuted: color-mix(in srgb, var(--backgroundColor) 60%, transparent);
+    --appSurfaceBorder: color-mix(in srgb, var(--textColor) 14%, transparent);
+    --appSurfaceBorderStrong: color-mix(in srgb, var(--textColor) 22%, transparent);
+    --appSurfaceInset: inset 0 1px 0 color-mix(in srgb, white 16%, transparent);
+    --appSurfaceShadow: 0 22px 48px rgba(15, 23, 42, 0.12);
+    --appSurfaceShadowSoft: 0 12px 28px rgba(15, 23, 42, 0.08);
+    --appGlassFilter: blur(22px) saturate(145%);
+
+    --appTextPrimary: var(--textColor);
+    --appTextSecondary: color-mix(in srgb, var(--textColor) 72%, transparent);
+    --appTextTertiary: color-mix(in srgb, var(--textColor) 56%, transparent);
+    --appInteractiveSurface: color-mix(in srgb, var(--textColor) 8%, transparent);
+    --appInteractiveSurfaceHover: color-mix(in srgb, var(--textColor) 12%, transparent);
+    --appInteractiveSurfaceStrong: color-mix(in srgb, var(--primaryColor) 16%, var(--backgroundColor));
+    --appInteractiveBorder: color-mix(in srgb, var(--textColor) 16%, transparent);
+    --appImageFallback: color-mix(in srgb, var(--backgroundColor) 84%, var(--textColor) 16%);
+
+    --appOverlayMask:
+        linear-gradient(180deg, rgba(7, 9, 14, 0.16), rgba(7, 9, 14, 0.3)),
+        radial-gradient(circle at center, rgba(255, 255, 255, 0.05), transparent 52%);
+    --appPanelMask:
+        linear-gradient(180deg, rgba(7, 9, 14, 0.14), rgba(7, 9, 14, 0.24)),
+        linear-gradient(90deg, rgba(7, 9, 14, 0.04), rgba(7, 9, 14, 0.28));
+    --appPanelSurface:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.16), transparent 30%),
+        linear-gradient(180deg, rgba(18, 18, 24, 0.86), rgba(10, 10, 16, 0.76));
+
+    --appBodyBg:
+        radial-gradient(
+            circle at top left,
+            color-mix(in srgb, var(--primaryColor) 12%, transparent) 0%,
+            transparent 34%
+        ),
+        radial-gradient(
+            circle at top right,
+            color-mix(in srgb, var(--textColor) 5%, transparent) 0%,
+            transparent 28%
+        ),
+        linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--backgroundColor) 24%, transparent),
+            color-mix(in srgb, var(--backgroundColor) 10%, transparent)
+        );
+
+    --headerChromeBg:
+        linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--primaryColor) 78%, #1d2432) 0%,
+            color-mix(in srgb, var(--primaryColor) 48%, #161a24) 56%,
+            rgba(12, 14, 20, 0.94) 100%
+        );
+    --headerChromeBorder: rgba(255, 255, 255, 0.12);
+    --headerChromeShadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+    --headerChromeFilter: blur(24px) saturate(155%);
+    --headerControlBg: rgba(255, 255, 255, 0.08);
+    --headerControlBorder: rgba(255, 255, 255, 0.08);
+    --headerControlHoverBg: rgba(255, 255, 255, 0.16);
+    --headerSearchBg: rgba(255, 255, 255, 0.12);
+    --headerSearchBorder: rgba(255, 255, 255, 0.12);
+    --headerSearchInset: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+
+    --sideBarBg:
+        linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--backgroundColor) 84%, transparent),
+            color-mix(in srgb, var(--backgroundColor) 68%, transparent)
+        );
+    --sideBarBorder: var(--appSurfaceBorder);
+    --sideBarFilter: var(--appGlassFilter);
+    --sideBarShadow: inset -1px 0 0 color-mix(in srgb, white 10%, transparent);
+    --sideBarItemHover: color-mix(in srgb, var(--primaryColor) 9%, transparent);
+    --sideBarItemSelected:
+        linear-gradient(
+            90deg,
+            color-mix(in srgb, var(--primaryColor) 20%, transparent),
+            color-mix(in srgb, var(--primaryColor) 8%, transparent)
+        );
+    --sideBarItemSelectedBorder: color-mix(in srgb, var(--primaryColor) 32%, transparent);
+    --sideBarAccentBar: var(--primaryColor);
+    --sideBarAccentBarOpacity: 1;
+
+    --musicBarHeight: 92px;
+    --musicBarInset: 8px 12px 10px;
+    --musicBarShellRadius: 24px;
+    --musicBarShellPadding: 12px 16px 8px 18px;
+    --musicBarShellShadow: 0 12px 28px rgba(0, 0, 0, 0.1);
+    --musicBarOverlayVisible: 1;
+    --musicBarFloating: 1;
+
+    --listCardRadius: 28px;
+    --listCardPadding: 12px;
+    --listRowRadius: 14px;
+    --cardRadius: 22px;
+
+    --panelRadius: 34px;
+    --modalRadius: var(--appRadiusXl);
+    --panelFilter: blur(28px) saturate(148%);
+    --panelContentColor: #fff;
+    --panelBorder: rgba(255, 255, 255, 0.1);
+    --panelTextOnSurface: rgba(255, 255, 255, 0.92);
+}
+
+// ---------------------------------------------------------------------------
+// Flat / WinUI tokens (LyciaMusic-inspired Fluent surface language)
+// ---------------------------------------------------------------------------
+:root[data-ui-style="flat"] {
+    --uiStyle: flat;
+
+    --appHeaderHeight: 56px;
+    --appMusicBarHeight: 76px;
+
+    // WinUI-like: mild square corners, no pills/circles for chrome
+    --appRadiusXs: 2px;
+    --appRadiusSm: 4px;
+    --appRadiusMd: 6px;
+    --appRadiusLg: 8px;
+    --appRadiusXl: 10px;
+    --appRadiusPill: 4px;
+    --controlRadius: 4px;
+    --controlRadiusLg: 6px;
+    --iconButtonRadius: 4px;
+
+    // Solid, slightly cool Mica-like surfaces
+    --appSurface: color-mix(in srgb, var(--backgroundColor) 94%, white 6%);
+    --appSurfaceStrong: color-mix(in srgb, var(--backgroundColor) 98%, white 2%);
+    --appSurfaceMuted: color-mix(in srgb, var(--textColor) 4.5%, var(--backgroundColor));
+    --appSurfaceBorder: color-mix(in srgb, var(--textColor) 8%, transparent);
+    --appSurfaceBorderStrong: color-mix(in srgb, var(--textColor) 12%, transparent);
+    --appSurfaceInset: none;
+    --appSurfaceShadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+    --appSurfaceShadowSoft: 0 2px 10px rgba(15, 23, 42, 0.04);
+    --appGlassFilter: none;
+
+    --appTextPrimary: var(--textColor);
+    --appTextSecondary: color-mix(in srgb, var(--textColor) 68%, transparent);
+    --appTextTertiary: color-mix(in srgb, var(--textColor) 48%, transparent);
+    --appInteractiveSurface: color-mix(in srgb, var(--textColor) 5.5%, transparent);
+    --appInteractiveSurfaceHover: color-mix(in srgb, var(--textColor) 9%, transparent);
+    --appInteractiveSurfaceStrong: color-mix(in srgb, var(--primaryColor) 12%, var(--backgroundColor));
+    --appInteractiveBorder: color-mix(in srgb, var(--textColor) 10%, transparent);
+    --appImageFallback: color-mix(in srgb, var(--backgroundColor) 90%, var(--textColor) 10%);
+
+    --listEvenColor: transparent;
+    --listHoverColor: color-mix(in srgb, var(--textColor) 5%, transparent);
+    --listActiveColor: color-mix(in srgb, var(--textColor) 8%, transparent);
+    --dividerColor: color-mix(in srgb, var(--textColor) 8%, transparent);
+    --shadowColor: rgba(15, 23, 42, 0.08);
+    --maskColor: rgba(15, 23, 42, 0.32);
+
+    // Light Fluent flyouts / dialogs
+    --appOverlayMask: rgba(15, 23, 42, 0.28);
+    --appPanelMask: rgba(15, 23, 42, 0.1);
+    --appPanelSurface: color-mix(in srgb, var(--backgroundColor) 97%, white 3%);
+
+    --appBodyBg:
+        linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--backgroundColor) 96%, #e8eef6 4%) 0%,
+            color-mix(in srgb, var(--backgroundColor) 92%, #dfe7f2 8%) 100%
+        );
+
+    // Title bar integrates with content (Lycia-like)
+    --headerTextColor: var(--textColor);
+    --headerChromeBg: transparent;
+    --headerChromeBorder: color-mix(in srgb, var(--textColor) 7%, transparent);
+    --headerChromeShadow: none;
+    --headerChromeFilter: none;
+    --headerControlBg: color-mix(in srgb, var(--textColor) 5%, transparent);
+    --headerControlBorder: color-mix(in srgb, var(--textColor) 9%, transparent);
+    --headerControlHoverBg: color-mix(in srgb, var(--textColor) 9%, transparent);
+    --headerSearchBg: color-mix(in srgb, var(--textColor) 4.5%, transparent);
+    --headerSearchBorder: color-mix(in srgb, var(--textColor) 10%, transparent);
+    --headerSearchInset: none;
+
+    --sideBarBg: transparent;
+    --sideBarBorder: color-mix(in srgb, var(--textColor) 7%, transparent);
+    --sideBarFilter: none;
+    --sideBarShadow: none;
+    --sideBarItemHover: color-mix(in srgb, var(--textColor) 6%, transparent);
+    --sideBarItemSelected: color-mix(in srgb, var(--textColor) 9%, transparent);
+    --sideBarItemSelectedBorder: transparent;
+    --sideBarAccentBar: transparent;
+    --sideBarAccentBarOpacity: 0;
+
+    // Square full-width dock (overrides glass floating capsule via flat SCSS)
+    --musicBarHeight: 80px;
+    --appMusicBarHeight: 80px;
+    --musicBarInset: 0;
+    --musicBarShellRadius: 0;
+    --musicBarShellPadding: 14px 18px 10px;
+    --musicBarShellShadow: none;
+    --musicBarOverlayVisible: 0;
+    --musicBarFloating: 0;
+
+    --listCardRadius: 6px;
+    --listCardPadding: 6px 8px;
+    --listRowRadius: 4px;
+    --cardRadius: 6px;
+    --coverRadius: 4px;
+    --tagRadius: 4px;
+
+    --panelRadius: 8px;
+    --modalRadius: 8px;
+    --panelFilter: none;
+    --panelContentColor: var(--textColor);
+    --panelBorder: color-mix(in srgb, var(--textColor) 10%, transparent);
+    --panelTextOnSurface: var(--textColor);
+
+    // Flat-mode scrollbar: thinner, quieter
+    --scrollbarWidth: 8px;
+    --scrollbarTrackColor: transparent;
+    --scrollbarThumbColor: color-mix(in srgb, var(--textColor) 18%, transparent);
+    --scrollbarThumbHoverColor: color-mix(in srgb, var(--textColor) 28%, transparent);
+    --scrollbarThumbActiveColor: color-mix(in srgb, var(--textColor) 36%, transparent);
+}

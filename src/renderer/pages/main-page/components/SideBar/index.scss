@@ -8,25 +8,19 @@
   padding: 1rem 0.66rem 1.15rem;
   position: relative;
   color: var(--sideBarTextPrimary);
-  background:
+  background: var(--sideBarBg,
     linear-gradient(
       180deg,
       color-mix(in srgb, var(--backgroundColor) 84%, transparent),
       color-mix(in srgb, var(--backgroundColor) 68%, transparent)
-    );
-  border-right: 1px solid var(--appSurfaceBorder);
-  box-shadow: inset -1px 0 0 color-mix(in srgb, white 10%, transparent);
-  backdrop-filter: var(--appGlassFilter);
+    ));
+  border-right: 1px solid var(--sideBarBorder, var(--appSurfaceBorder));
+  box-shadow: var(--sideBarShadow, inset -1px 0 0 color-mix(in srgb, white 10%, transparent));
+  backdrop-filter: var(--sideBarFilter, var(--appGlassFilter));
   --sideBarTextPrimary: var(--appTextPrimary);
   --sideBarTextSecondary: color-mix(in srgb, var(--textColor) 76%, transparent);
   --sideBarTextMuted: color-mix(in srgb, var(--textColor) 58%, transparent);
-  --sideBarItemHover: color-mix(in srgb, var(--primaryColor) 9%, transparent);
-  --sideBarItemSelected:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--primaryColor) 20%, transparent),
-      color-mix(in srgb, var(--primaryColor) 8%, transparent)
-    );
+  // --sideBarItemHover / --sideBarItemSelected come from ui-styles tokens
 
   &::-webkit-scrollbar {
     display: none;
@@ -91,7 +85,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: var(--iconButtonRadius, 50%);
   color: var(--sideBarTextMuted, currentColor);
   background: color-mix(in srgb, var(--textColor) 5%, transparent);
   transition:

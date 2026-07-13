@@ -5,3 +5,5 @@
 @forward './components.scss';
 @forward './tables.scss';
 @forward './fallback.scss';
+@use './ui-styles.scss';
+@use './ui-style-flat.scss';

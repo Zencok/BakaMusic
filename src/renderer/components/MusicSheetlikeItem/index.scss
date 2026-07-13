@@ -3,7 +3,7 @@
   width: 100%;
   min-width: 0;
   overflow: visible;
-  border-radius: 18px;
+  border-radius: var(--cardRadius, 18px);
   background: transparent;
   isolation: isolate;
   transition: transform 180ms ease;
@@ -48,7 +48,7 @@
       max-width: calc(100% - 1.44rem);
       min-height: 1.72rem;
       padding: 0 0.62rem;
-      border-radius: 999px;
+      border-radius: var(--tagRadius, 999px);
       overflow: hidden;
       display: flex;
       align-items: center;

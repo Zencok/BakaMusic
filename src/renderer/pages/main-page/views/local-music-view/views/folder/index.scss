@@ -1,4 +1,4 @@
-﻿.local-music--folder-view-container {
+.local-music--folder-view-container {
   flex: 1;
   overflow-y: auto;
   padding: 14px 0 0;
@@ -9,7 +9,7 @@
   & .left-part {
     width: 240px;
     padding: 10px;
-    border-radius: 22px;
+    border-radius: var(--cardRadius, 22px);
     background: var(--appSurfaceMuted);
     border: 1px solid var(--appSurfaceBorder);
     box-shadow: var(--appSurfaceInset);
@@ -23,7 +23,7 @@
       justify-content: center;
       gap: 0.24rem;
       padding: 0.7rem 0.9rem;
-      border-radius: 16px;
+      border-radius: var(--controlRadiusLg, 16px);
       cursor: pointer;
       user-select: none;
       transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;

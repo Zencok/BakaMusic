@@ -6,7 +6,7 @@
   overflow-y: auto;
   top: calc(100% + 8px);
   left: 0;
-  border-radius: 18px;
+  border-radius: var(--controlRadiusLg, 18px);
   padding: 14px;
   color: var(--appTextPrimary);
   border: 1px solid var(--appSurfaceBorderStrong);
@@ -36,7 +36,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 50%;
+      border-radius: var(--iconButtonRadius, 50%);
       color: var(--appTextSecondary);
 
       &:hover {
@@ -59,16 +59,20 @@
 
   & .search-history--item[data-type="normalButton"] {
     font-size: 0.9rem;
-    padding-right: 0.75rem;
+    padding: 0.45rem 0.7rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--appInteractiveBorder);
+    // Soft chip — avoid heavy outlined box (especially ugly in flat UI)
+    border: none;
+    border-radius: var(--controlRadius, 8px);
     color: var(--appTextPrimary);
-    background: color-mix(in srgb, var(--backgroundColor) 82%, var(--textColor) 18%);
+    background: color-mix(in srgb, var(--textColor) 7%, transparent);
+    box-shadow: none;
 
     &:hover {
-      background: var(--appInteractiveSurfaceStrong);
+      background: color-mix(in srgb, var(--textColor) 11%, transparent);
+      transform: none;
     }
 
     & .search-history--item-remove {
@@ -76,6 +80,9 @@
       height: 1rem;
       margin-left: 6px;
       color: var(--appTextSecondary);
+      border: none;
+      background: transparent;
+      box-shadow: none;
 
       &:hover {
         color: var(--appTextPrimary);

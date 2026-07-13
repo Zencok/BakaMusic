@@ -41,7 +41,7 @@
     min-height: 2.5rem;
     padding: 0 0.95rem;
     border: 1px solid var(--appInteractiveBorder);
-    border-radius: 999px;
+    border-radius: var(--appRadiusPill, 999px);
     background: var(--appSurfaceMuted);
     box-shadow: var(--appSurfaceInset);
     color: var(--appTextPrimary);

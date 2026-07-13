@@ -1,9 +1,9 @@
-﻿.downloading-container {
+.downloading-container {
   width: 100%;
   min-height: 300px;
   margin-top: 12px;
   padding: 12px;
-  border-radius: 28px;
+  border-radius: var(--listCardRadius, 28px);
   background: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 82%, transparent));
   border: 1px solid var(--appSurfaceBorder);
   box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
@@ -35,7 +35,7 @@
     min-width: 1.9rem;
     height: 1.9rem;
     padding: 0 0.6rem;
-    border-radius: 999px;
+    border-radius: var(--appRadiusPill, 999px);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -68,7 +68,7 @@
     align-items: center;
     gap: 14px;
     padding: 12px 14px;
-    border-radius: 22px;
+    border-radius: var(--cardRadius, 22px);
     background: color-mix(in srgb, var(--backgroundColor) 68%, transparent);
     border: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
     transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
@@ -101,7 +101,7 @@
   & .downloading-item-cover {
     width: 56px;
     height: 56px;
-    border-radius: 16px;
+    border-radius: var(--controlRadiusLg, 16px);
     overflow: hidden;
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
 

@@ -7,6 +7,8 @@ interface _IAppConfig {
     "normal.taskbarThumb": "window" | "artwork";
     "normal.musicListColumnsShown": Array<"duration" | "platform">;
     "normal.language": string;
+    /** 界面风格：玻璃拟态 / WinUI 扁平 */
+    "normal.uiStyle": "glass" | "flat";
 
     /** 歌单内搜索区分大小写 */
     "playMusic.caseSensitiveInSearch": boolean;
