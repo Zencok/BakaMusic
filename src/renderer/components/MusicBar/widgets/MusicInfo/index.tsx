@@ -8,7 +8,7 @@ import MusicDetail, { useMusicDetailShown } from "@/renderer/components/MusicDet
 import albumImg from "@/assets/imgs/album-cover.jpg";
 import { useTranslation } from "react-i18next";
 import { useCurrentMusic, useProgress } from "@renderer/core/track-player/hooks";
-import { hidePanel, showPanel } from "@renderer/components/Panel";
+import { getCurrentPanel, hidePanel, showPanel } from "@renderer/components/Panel";
 import MusicDownloaded from "@renderer/components/MusicDownloaded";
 import PluginManager from "@shared/plugin-manager/renderer";
 import { useEffect, useState } from "react";
@@ -165,6 +165,12 @@ export default function MusicInfo() {
                     data-disabled={!canShowComments}
                     onClick={() => {
                         if (!canShowComments) {
+                            return;
+                        }
+
+                        // Toggle like playlist: second click closes the panel
+                        if (getCurrentPanel()?.type === "MusicComment") {
+                            hidePanel();
                             return;
                         }
 
