@@ -17,17 +17,17 @@
       width: 100%;
       justify-content: space-between;
       gap: 12px;
-      color: rgba(255, 255, 255, 0.88);
+      color: var(--textColor);
     }
 
     & .modal--body-scan-content {
       width: 100%;
       margin-top: 14px;
       flex-grow: 1;
-      border-radius: var(--controlRadiusLg, 18px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.05);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      border-radius: var(--controlRadiusLg, 14px);
+      border: 1px solid var(--panelRowBorder, color-mix(in srgb, var(--textColor) 9%, transparent));
+      background: var(--panelRowSurface, color-mix(in srgb, var(--textColor) 4%, transparent));
+      box-shadow: none;
       overflow-y: auto;
       padding: 8px;
       box-sizing: border-box;
@@ -38,8 +38,8 @@
       padding: 0 10px;
       display: flex;
       align-items: center;
-      border-radius: 14px;
-      color: rgba(255, 255, 255, 0.88);
+      border-radius: var(--controlRadius, 10px);
+      color: var(--textColor);
 
       & .title {
         white-space: nowrap;
@@ -50,7 +50,7 @@
       }
 
       & .delete-path {
-        color: #fc8f8f;
+        color: var(--dangerColor, #fc5f5f);
         width: 24px;
         height: 24px;
         display: flex;
@@ -59,7 +59,7 @@
         border-radius: var(--iconButtonRadius, 50%);
 
         &:hover {
-          background: rgba(252, 95, 95, 0.12);
+          background: color-mix(in srgb, var(--dangerColor, #fc5f5f) 12%, transparent);
         }
 
         & svg {
@@ -69,17 +69,17 @@
       }
 
       &:hover {
-        background-color: rgba(255, 255, 255, 0.08);
+        background-color: var(--panelRowSurfaceHover, color-mix(in srgb, var(--textColor) 7%, transparent));
       }
 
       &:active {
-        background-color: rgba(255, 255, 255, 0.14);
+        background-color: color-mix(in srgb, var(--textColor) 10%, transparent);
       }
     }
   }
 
   & .footer-options {
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
     padding-top: 14px;
     display: flex;
     justify-content: flex-end;

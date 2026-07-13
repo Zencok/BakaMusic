@@ -9,10 +9,11 @@
     padding: 16px 20px 20px;
     flex: 1;
     overflow-y: auto;
-    color: rgba(255, 255, 255, 0.84);
+    color: var(--textColor);
 
     & p {
       margin: 0 0 0.9rem;
+      color: var(--panelMutedText, color-mix(in srgb, var(--textColor) 78%, transparent));
     }
 
     & .footer {
@@ -39,8 +40,8 @@
       display: block;
       width: 132px;
       height: 132px;
-      border-radius: var(--controlRadiusLg, 20px);
-      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.18);
+      border-radius: var(--controlRadiusLg, 16px);
+      box-shadow: 0 14px 28px color-mix(in srgb, var(--textColor) 10%, transparent);
     }
   }
 }
