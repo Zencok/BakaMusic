@@ -20,6 +20,10 @@ export default function Normal() {
         <div className="setting-view--normal-container">
             <UiStyleSettingItem></UiStyleSettingItem>
             <CheckBoxSettingItem
+                label={t("settings.normal.detail_auto_hide_music_bar")}
+                keyPath="normal.detailAutoHideMusicBar"
+            ></CheckBoxSettingItem>
+            <CheckBoxSettingItem
                 label={t("settings.normal.check_update")}
                 keyPath="normal.checkUpdate"
             ></CheckBoxSettingItem>

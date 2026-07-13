@@ -313,7 +313,8 @@
       "ui_style_glass": "Glass",
       "ui_style_flat": "Flat",
       "ui_style_glass_desc": "Frosted glass with soft layered depth",
-      "ui_style_flat_desc": "Clean flat layout with clear structure"
+      "ui_style_flat_desc": "Clean flat layout with clear structure",
+      "detail_auto_hide_music_bar": "Auto-hide the music bar on the detail page (show on hover)"
     },
     "play_music": {
       "case_sensitive_in_search": "Case-sensitive search in playlist",

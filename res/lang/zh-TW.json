@@ -313,7 +313,8 @@
       "ui_style_glass": "玻璃",
       "ui_style_flat": "扁平",
       "ui_style_glass_desc": "半透明毛玻璃，柔和光影層次",
-      "ui_style_flat_desc": "乾淨扁平分區，清晰俐落"
+      "ui_style_flat_desc": "乾淨扁平分區，清晰俐落",
+      "detail_auto_hide_music_bar": "進入播放詳情頁時自動隱藏底欄（懸停顯示）"
     },
     "play_music": {
       "case_sensitive_in_search": "搜尋歌單時區分大小寫",

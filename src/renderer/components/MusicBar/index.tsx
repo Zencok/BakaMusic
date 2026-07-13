@@ -1,4 +1,4 @@
-import { CSSProperties, useEffect, useState } from "react";
+import { CSSProperties, useEffect, useRef, useState } from "react";
 import Slider from "./widgets/Slider";
 import MusicInfo from "./widgets/MusicInfo";
 import Controller from "./widgets/Controller";
@@ -8,6 +8,9 @@ import normalizeArtworkDisplaySrc, {
     getArtworkCacheKey,
 } from "@/renderer/utils/normalize-artwork-display-src";
 import { musicDetailShownStore } from "@renderer/components/MusicDetail/store";
+import { getCurrentPanel } from "@/renderer/components/Panel";
+import { isQualitySelectPopoverOpen } from "@/renderer/components/QualitySelectPopover";
+import useAppConfig from "@/hooks/useAppConfig";
 
 import "./index.scss";
 
@@ -263,18 +266,38 @@ function toFlatDetailStyle(palette: MusicBarPaletteStyle): MusicBarPaletteStyle 
     };
 }
 
+function hasPinnedMusicBarOverlay() {
+    if (typeof document === "undefined") {
+        return false;
+    }
+    return Boolean(
+        document.querySelector(".volume-bubble-container")
+        || isQualitySelectPopoverOpen()
+        || getCurrentPanel()?.type,
+    );
+}
+
 export default function MusicBar() {
     const currentMusic = useCurrentMusic();
     const artwork = currentMusic?.coverImg ?? currentMusic?.artwork;
     const musicDetailShown = musicDetailShownStore.useValue();
+    // Default true: pure detail stage; settings can keep bar always visible (glass + flat)
+    const detailAutoHideMusicBar = useAppConfig("normal.detailAutoHideMusicBar") !== false;
     const [musicBarStyle, setMusicBarStyle] = useState<MusicBarPaletteStyle>(DEFAULT_MUSIC_BAR_STYLE);
     const [uiStyleTick, setUiStyleTick] = useState(0);
+    // Detail open: dock auto-hides; hover / pinned overlays reveal it
+    const [autoHideRevealed, setAutoHideRevealed] = useState(false);
+    const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const autoHide = musicDetailShown && detailAutoHideMusicBar;
 
     useEffect(() => {
         const root = document.documentElement;
-        const observer = new MutationObserver(() => {
+        const sync = () => {
             setUiStyleTick((value) => value + 1);
-        });
+        };
+        sync();
+        const observer = new MutationObserver(sync);
         observer.observe(root, {
             attributes: true,
             attributeFilter: ["data-ui-style"],
@@ -283,13 +306,51 @@ export default function MusicBar() {
     }, []);
 
     useEffect(() => {
+        if (!autoHide) {
+            setAutoHideRevealed(false);
+            if (hideTimerRef.current !== null) {
+                clearTimeout(hideTimerRef.current);
+                hideTimerRef.current = null;
+            }
+        }
+    }, [autoHide]);
+
+    // Keep dock visible while volume bubble / quality / panel is open
+    useEffect(() => {
+        if (!autoHide) {
+            return;
+        }
+        const syncPinned = () => {
+            if (hasPinnedMusicBarOverlay()) {
+                if (hideTimerRef.current !== null) {
+                    clearTimeout(hideTimerRef.current);
+                    hideTimerRef.current = null;
+                }
+                setAutoHideRevealed(true);
+            }
+        };
+        syncPinned();
+        const observer = new MutationObserver(syncPinned);
+        observer.observe(document.body, { childList: true, subtree: true });
+        return () => observer.disconnect();
+    }, [autoHide]);
+
+    useEffect(() => {
+        return () => {
+            if (hideTimerRef.current !== null) {
+                clearTimeout(hideTimerRef.current);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
         let aborted = false;
 
         const syncMusicBarArtwork = async () => {
-            const isFlat = isFlatUiStyleActive();
+            const flat = isFlatUiStyleActive();
 
             // Flat dock: solid readable theme colors (never light text on forced white)
-            if (isFlat && !musicDetailShown) {
+            if (flat && !musicDetailShown) {
                 if (!aborted) {
                     setMusicBarStyle(FLAT_DOCK_STYLE);
                 }
@@ -308,7 +369,7 @@ export default function MusicBar() {
             }
 
             // Flat + detail: light-on-dark immersive, keep artwork accent
-            if (isFlat && musicDetailShown) {
+            if (flat && musicDetailShown) {
                 setMusicBarStyle(toFlatDetailStyle(nextStyle));
                 return;
             }
@@ -323,12 +384,53 @@ export default function MusicBar() {
         };
     }, [artwork, musicDetailShown, uiStyleTick]);
 
+    const clearHideTimer = () => {
+        if (hideTimerRef.current !== null) {
+            clearTimeout(hideTimerRef.current);
+            hideTimerRef.current = null;
+        }
+    };
+
+    const revealBar = () => {
+        if (!autoHide) {
+            return;
+        }
+        clearHideTimer();
+        setAutoHideRevealed(true);
+    };
+
+    const scheduleHideBar = () => {
+        if (!autoHide) {
+            return;
+        }
+        clearHideTimer();
+        hideTimerRef.current = setTimeout(() => {
+            hideTimerRef.current = null;
+            // Stay if a bar-related overlay is still up
+            if (!hasPinnedMusicBarOverlay()) {
+                setAutoHideRevealed(false);
+            }
+        }, 320);
+    };
+
     return (
         <div
             className="music-bar-container"
             style={musicBarStyle}
             data-detail-open={musicDetailShown ? "true" : "false"}
+            data-auto-hide={autoHide ? "true" : "false"}
+            data-revealed={autoHide ? (autoHideRevealed ? "true" : "false") : "true"}
+            onMouseEnter={revealBar}
+            onMouseLeave={scheduleHideBar}
+            onFocusCapture={revealBar}
         >
+            {autoHide ? (
+                <div
+                    className="music-bar-hover-zone"
+                    onMouseEnter={revealBar}
+                    aria-hidden="true"
+                ></div>
+            ) : null}
             <div className="music-bar-overlay"></div>
             <div className="music-bar-shell">
                 <Slider></Slider>

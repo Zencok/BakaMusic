@@ -40,6 +40,7 @@ const _defaultAppConfig: IAppConfig =  {
     "backup.resumeBehavior": "append",
     "normal.language": "zh-CN",
     "normal.uiStyle": "glass",
+    "normal.detailAutoHideMusicBar": true,
     "private.lyricWindowSize": {
         width: 940,
         height: 180,

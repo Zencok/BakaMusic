@@ -69,3 +69,70 @@
   // Avoid contain:paint — clips seek thumb on the top edge (esp. flat dock)
   contain: layout style;
 }
+
+// ---------------------------------------------------------------------------
+// Detail auto-hide (glass + flat) — driven by data-auto-hide / data-revealed
+// ---------------------------------------------------------------------------
+.music-bar-hover-zone {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28px;
+  z-index: 60;
+  pointer-events: auto;
+  cursor: default;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, #0a0c12 22%, transparent) 100%
+  );
+}
+
+.music-bar-container[data-auto-hide="true"] {
+  .music-bar-overlay,
+  .music-bar-shell {
+    transition:
+      opacity 220ms ease,
+      transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  // Tucked away — pure detail stage
+  &[data-revealed="false"] {
+    pointer-events: none;
+
+    .music-bar-overlay {
+      opacity: 0;
+    }
+
+    .music-bar-shell {
+      opacity: 0;
+      transform: translateY(18px);
+      pointer-events: none;
+    }
+
+    .music-bar-hover-zone {
+      display: block;
+    }
+  }
+
+  // Revealed by hover / pinned overlays
+  &[data-revealed="true"] {
+    pointer-events: auto;
+
+    .music-bar-overlay {
+      opacity: 1;
+    }
+
+    .music-bar-shell {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .music-bar-hover-zone {
+      display: none;
+    }
+  }
+}

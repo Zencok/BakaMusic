@@ -603,15 +603,15 @@
     }
 
     // ------------------------------------------------------------------
-    // Detail immersive — Lycia-like: fully transparent, ghost chrome
-    // No heavy dark veil / accent fog. Progress floats above the dock.
+    // Detail immersive — light glass veil + ghost chrome (flat dock)
+    // Auto-hide / reveal motion lives in MusicBar/index.scss (shared with glass)
     // ------------------------------------------------------------------
     .music-bar-container[data-detail-open="true"] {
         background: transparent !important;
         box-shadow: none !important;
         overflow: visible !important;
 
-        // Light frosted veil — soft blur without heavy dark wash (Lycia + glass hint)
+        // Light frosted veil
         .music-bar-overlay {
             display: block !important;
             opacity: 1 !important;
@@ -631,6 +631,7 @@
             -webkit-backdrop-filter: blur(18px) saturate(140%);
             mask-image: linear-gradient(180deg, transparent 0%, #000 36%, #000 100%);
             -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 36%, #000 100%);
+            pointer-events: none !important;
         }
 
         .music-bar-shell {

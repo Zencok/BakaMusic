@@ -9,6 +9,8 @@ interface _IAppConfig {
     "normal.language": string;
     /** 界面风格：玻璃拟态 / WinUI 扁平 */
     "normal.uiStyle": "glass" | "flat";
+    /** 进入播放详情页时自动隐藏底栏（悬停再显示；玻璃/扁平均生效） */
+    "normal.detailAutoHideMusicBar": boolean;
 
     /** 歌单内搜索区分大小写 */
     "playMusic.caseSensitiveInSearch": boolean;
