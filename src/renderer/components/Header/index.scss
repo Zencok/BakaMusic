@@ -11,24 +11,30 @@
   font-size: 1rem;
   position: relative;
   z-index: 2000;
-  color: var(--headerTextColor);
-  background: var(--headerChromeBg,
+  color: var(--headerTextColor, var(--textColor));
+  background: var(
+    --headerChromeBg,
     linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--primaryColor) 78%, #1d2432) 0%,
-      color-mix(in srgb, var(--primaryColor) 48%, #161a24) 56%,
-      rgba(12, 14, 20, 0.94) 100%
-    ));
-  border-bottom: 1px solid var(--headerChromeBorder, rgba(255, 255, 255, 0.12));
-  box-shadow: var(--headerChromeShadow, 0 18px 40px rgba(15, 23, 42, 0.18));
-  backdrop-filter: var(--headerChromeFilter, blur(24px) saturate(155%));
+      180deg,
+      color-mix(in srgb, var(--backgroundColor) 78%, var(--primaryColor) 10%) 0%,
+      color-mix(in srgb, var(--backgroundColor) 86%, transparent) 100%
+    )
+  );
+  border-bottom: 1px solid var(--headerChromeBorder, color-mix(in srgb, var(--textColor) 10%, transparent));
+  box-shadow: var(--headerChromeShadow, 0 10px 28px color-mix(in srgb, var(--textColor) 6%, transparent));
+  backdrop-filter: var(--headerChromeFilter, blur(22px) saturate(145%));
 
   &::after {
     content: "";
     position: absolute;
     inset: auto 0 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--headerHairline, color-mix(in srgb, var(--primaryColor) 28%, transparent)),
+      transparent
+    );
     pointer-events: none;
   }
 
@@ -41,10 +47,10 @@
     & .logo {
       width: 188px;
       height: 2.35rem;
-      color: var(--headerTextColor);
+      color: color-mix(in srgb, var(--primaryColor) 72%, var(--headerTextColor, var(--textColor)));
       display: flex;
       align-items: center;
-      opacity: 0.92;
+      opacity: 0.96;
       flex-shrink: 0;
 
       & svg {
@@ -64,15 +70,22 @@
       display: flex;
       align-items: center;
       margin-left: 4px;
-      border: 1px solid var(--headerSearchBorder, rgba(255, 255, 255, 0.12));
-      background: var(--headerSearchBg, rgba(255, 255, 255, 0.12));
-      box-shadow: var(--headerSearchInset, inset 0 1px 0 rgba(255, 255, 255, 0.18));
+      border: 1px solid var(--headerSearchBorder, color-mix(in srgb, var(--textColor) 12%, transparent));
+      background: var(--headerSearchBg, color-mix(in srgb, var(--backgroundColor) 62%, transparent));
+      box-shadow: var(--headerSearchInset, inset 0 1px 0 color-mix(in srgb, var(--textColor) 6%, transparent));
       backdrop-filter: var(--headerChromeFilter, blur(22px) saturate(140%));
       transition:
         background-color 180ms ease,
         border-color 180ms ease,
         box-shadow 180ms ease,
         transform 180ms ease;
+
+      &:hover,
+      &:focus-within {
+        border-color: color-mix(in srgb, var(--primaryColor) 32%, var(--headerSearchBorder, transparent));
+        background: color-mix(in srgb, var(--backgroundColor) 72%, transparent);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--primaryColor) 12%, transparent);
+      }
 
       & .header-search-input {
         flex: auto;
@@ -82,14 +95,14 @@
         outline: none;
         border: none;
         background-color: transparent !important;
-        color: var(--headerTextColor);
+        color: var(--headerTextColor, var(--textColor));
         padding: 0;
         box-shadow: none;
 
         &::placeholder {
-          opacity: 0.68;
+          opacity: 0.58;
           user-select: none;
-          color: var(--headerTextColor);
+          color: var(--headerTextColor, var(--textColor));
         }
       }
 
@@ -98,8 +111,8 @@
         margin-left: 8px;
         width: $box-size;
         height: $box-size;
-        color: var(--headerTextColor);
-        opacity: 0.78;
+        color: var(--headerTextColor, var(--textColor));
+        opacity: 0.72;
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -113,7 +126,7 @@
         &:hover {
           opacity: 1;
           transform: translateY(-1px);
-          background: rgba(255, 255, 255, 0.14);
+          background: var(--headerControlHoverBg, color-mix(in srgb, var(--textColor) 10%, transparent));
         }
 
         & svg {
@@ -126,7 +139,7 @@
 
   & .right-part {
     height: 100%;
-    color: var(--headerTextColor);
+    color: var(--headerTextColor, var(--textColor));
     display: flex;
     justify-content: flex-end;
     align-items: center;
@@ -137,9 +150,9 @@
     & .header-divider {
       height: 18px;
       width: 1px;
-      opacity: 0.2;
+      opacity: 1;
       margin: 0 4px;
-      background-color: rgba(255, 255, 255, 0.76);
+      background-color: var(--headerDividerColor, color-mix(in srgb, var(--textColor) 18%, transparent));
     }
 
     & .sparkles-icon:hover {
@@ -153,11 +166,12 @@
       width: 32px;
       height: 32px;
       border-radius: var(--iconButtonRadius, 50%);
-      opacity: 0.82;
+      opacity: 0.88;
       cursor: pointer;
-      border: 1px solid var(--headerControlBorder, rgba(255, 255, 255, 0.08));
-      background: var(--headerControlBg, rgba(255, 255, 255, 0.08));
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      color: var(--headerTextColor, var(--textColor));
+      border: 1px solid var(--headerControlBorder, color-mix(in srgb, var(--textColor) 10%, transparent));
+      background: var(--headerControlBg, color-mix(in srgb, var(--textColor) 7%, transparent));
+      box-shadow: none;
       transition:
         opacity 160ms ease,
         transform 160ms ease,
@@ -167,8 +181,8 @@
       &:hover {
         opacity: 1;
         transform: translateY(-1px);
-        background: var(--headerControlHoverBg, rgba(255, 255, 255, 0.16));
-        border-color: var(--headerControlBorder, rgba(255, 255, 255, 0.12));
+        background: var(--headerControlHoverBg, color-mix(in srgb, var(--textColor) 12%, transparent));
+        border-color: color-mix(in srgb, var(--primaryColor) 22%, var(--headerControlBorder, transparent));
       }
 
       & svg {

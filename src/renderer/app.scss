@@ -112,7 +112,7 @@
   --dangerColor: #fc5f5f;
   --infoColor: #0a95c8;
   --linkColor: #0c66fc;
-  --headerTextColor: white;
+  --headerTextColor: var(--textColor);
   --animate-duration: 300ms !important;
   --scrollbarWidth: 12px;
 

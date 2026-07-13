@@ -59,7 +59,7 @@ $animate-duration: 300ms;
     // ===========================
     // 3. 文本色彩 (Text Colors)
     // ===========================
-    --headerTextColor: white;
+    --headerTextColor: var(--textColor);
 
     // ===========================
     // 4. 交互色彩 (Interactive Colors)

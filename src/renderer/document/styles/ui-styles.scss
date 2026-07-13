@@ -71,22 +71,25 @@
             color-mix(in srgb, var(--backgroundColor) 10%, transparent)
         );
 
+    // Title bar blends into theme (no forced dark chrome / white icons)
+    --headerTextColor: var(--textColor);
     --headerChromeBg:
         linear-gradient(
-            135deg,
-            color-mix(in srgb, var(--primaryColor) 78%, #1d2432) 0%,
-            color-mix(in srgb, var(--primaryColor) 48%, #161a24) 56%,
-            rgba(12, 14, 20, 0.94) 100%
+            180deg,
+            color-mix(in srgb, var(--backgroundColor) 78%, var(--primaryColor) 10%) 0%,
+            color-mix(in srgb, var(--backgroundColor) 86%, transparent) 100%
         );
-    --headerChromeBorder: rgba(255, 255, 255, 0.12);
-    --headerChromeShadow: 0 18px 40px rgba(15, 23, 42, 0.18);
-    --headerChromeFilter: blur(24px) saturate(155%);
-    --headerControlBg: rgba(255, 255, 255, 0.08);
-    --headerControlBorder: rgba(255, 255, 255, 0.08);
-    --headerControlHoverBg: rgba(255, 255, 255, 0.16);
-    --headerSearchBg: rgba(255, 255, 255, 0.12);
-    --headerSearchBorder: rgba(255, 255, 255, 0.12);
-    --headerSearchInset: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    --headerChromeBorder: color-mix(in srgb, var(--textColor) 10%, transparent);
+    --headerChromeShadow: 0 10px 28px color-mix(in srgb, var(--textColor) 6%, transparent);
+    --headerChromeFilter: blur(22px) saturate(145%);
+    --headerControlBg: color-mix(in srgb, var(--textColor) 7%, transparent);
+    --headerControlBorder: color-mix(in srgb, var(--textColor) 10%, transparent);
+    --headerControlHoverBg: color-mix(in srgb, var(--textColor) 12%, transparent);
+    --headerSearchBg: color-mix(in srgb, var(--backgroundColor) 62%, transparent);
+    --headerSearchBorder: color-mix(in srgb, var(--textColor) 12%, transparent);
+    --headerSearchInset: inset 0 1px 0 color-mix(in srgb, var(--textColor) 6%, transparent);
+    --headerDividerColor: color-mix(in srgb, var(--textColor) 18%, transparent);
+    --headerHairline: color-mix(in srgb, var(--primaryColor) 28%, transparent);
 
     --sideBarBg:
         linear-gradient(
@@ -207,6 +210,8 @@
     --headerSearchBg: color-mix(in srgb, var(--textColor) 4.5%, transparent);
     --headerSearchBorder: color-mix(in srgb, var(--textColor) 10%, transparent);
     --headerSearchInset: none;
+    --headerDividerColor: color-mix(in srgb, var(--textColor) 16%, transparent);
+    --headerHairline: transparent;
 
     --sideBarBg: transparent;
     --sideBarBorder: color-mix(in srgb, var(--textColor) 7%, transparent);
