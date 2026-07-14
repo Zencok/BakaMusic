@@ -15,18 +15,12 @@
   flex-direction: column;
   padding: 8px;
   box-sizing: border-box;
-  // Fixed original glass look — independent of app UI style (glass / flat tokens)
-  border-radius: 18px;
-  color: rgba(255, 255, 255, 0.92);
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.1)),
-    linear-gradient(180deg, rgba(48, 50, 56, 0.48), rgba(18, 18, 22, 0.42));
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  box-shadow:
-    0 22px 52px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.36),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(28px) saturate(170%);
+  border-radius: var(--theme-radius-panel, 18px);
+  color: var(--theme-popover-text);
+  background: var(--theme-popover-bg);
+  border: 1px solid var(--theme-popover-border);
+  box-shadow: var(--theme-shadow);
+  backdrop-filter: blur(var(--theme-blur)) saturate(170%);
   animation: quality-select-popover-in 140ms ease-out;
 
   &[data-placement="center"] {
@@ -72,11 +66,11 @@
   align-items: center;
   gap: 10px;
   padding: 7px 6px 4px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--theme-popover-text-secondary);
 
   & span {
     height: 1px;
-    background: rgba(255, 255, 255, 0.14);
+    background: var(--theme-divider);
   }
 
   & em {
@@ -99,12 +93,12 @@
   border-radius: 12px;
   box-sizing: border-box;
   cursor: pointer;
-  color: rgba(255, 255, 255, 0.84);
+  color: var(--theme-popover-text);
   transition: background-color 150ms ease, transform 150ms ease, color 150ms ease;
 
   &:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.14);
+    color: var(--theme-popover-text);
+    background: var(--theme-panel-row-hover-bg);
   }
 
   &:active {
@@ -112,8 +106,8 @@
   }
 
   &[data-active="true"] {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.18);
+    color: var(--theme-popover-text);
+    background: var(--theme-interactive-active);
 
     & > svg {
       opacity: 1;
@@ -122,14 +116,14 @@
 
   &[data-ai="true"] {
     background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
-      rgba(255, 255, 255, 0.04);
+      linear-gradient(135deg, var(--theme-panel-row-bg), transparent),
+      var(--theme-panel-row-bg);
 
     &:hover,
     &[data-active="true"] {
       background:
-        linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08)),
-        rgba(255, 255, 255, 0.08);
+        linear-gradient(135deg, var(--theme-panel-row-hover-bg), transparent),
+        var(--theme-panel-row-hover-bg);
     }
   }
 
@@ -147,8 +141,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  color: rgba(255, 255, 255, 0.88);
-  background: rgba(255, 255, 255, 0.12);
+  color: var(--theme-popover-text);
+  background: var(--theme-panel-row-bg);
 
   & svg {
     width: 16px;
@@ -181,7 +175,7 @@
   font-size: 0.72rem;
   font-weight: 600;
   line-height: 1;
-  color: rgba(255, 255, 255, 0.58);
+  color: var(--theme-popover-text-secondary);
 }
 
 .quality-select-popover-option-abbr {
@@ -192,8 +186,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  color: rgba(255, 255, 255, 0.78);
-  background: rgba(0, 0, 0, 0.18);
+  color: var(--theme-popover-text-secondary);
+  background: var(--theme-panel-row-bg);
   font-size: 0.66rem;
   font-weight: 800;
   line-height: 1;

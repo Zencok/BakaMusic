@@ -92,16 +92,16 @@
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(24px) saturate(140%);
 
-  // Detail immersive: always dark glass bubble (portaled out of bar)
+  // Portaled detail bubble follows the detail semantic palette.
   &[data-immersive="true"] {
-    color: rgba(255, 255, 255, 0.92);
-    background: color-mix(in srgb, #1c1c1c 88%, transparent);
-    border: 1px solid color-mix(in srgb, white 12%, transparent);
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.36);
-    --musicBarText: rgba(255, 255, 255, 0.92);
-    --musicBarTextSecondary: rgba(255, 255, 255, 0.58);
-    --musicBarSurface: #1c1c1c;
-    --musicBarSurfaceAlt: #242424;
+    color: var(--theme-detail-text);
+    background: var(--theme-detail-surface);
+    border: 1px solid var(--theme-detail-border);
+    box-shadow: var(--theme-shadow);
+    --musicBarText: var(--theme-detail-text);
+    --musicBarTextSecondary: var(--theme-detail-text-secondary);
+    --musicBarSurface: var(--theme-detail-surface);
+    --musicBarSurfaceAlt: var(--theme-detail-surface-hover);
   }
 
   &::after {

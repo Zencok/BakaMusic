@@ -1,14 +1,12 @@
 // 主样式文件 - 导入所有样式模块
 @forward './variables.scss';
-@forward './theme-bridge.scss';
 @forward './base.scss';
 @forward './utilities.scss';
 @forward './components.scss';
 @forward './tables.scss';
 @forward './fallback.scss';
-// Load order: vars → bridge → ui styles → scheme overrides (must be last)
+// Load order: app defaults → UI geometry → public theme contract (last).
 @use './variables.scss';
-@use './theme-bridge.scss';
 @use './ui-styles.scss';
 @use './ui-style-flat.scss';
-@use './theme-scheme.scss';
+@use './theme-bridge.scss';

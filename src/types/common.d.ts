@@ -47,15 +47,18 @@ declare namespace ICommon {
     srcUrl?: string;
     /** 主题作者 */
     author?: string;
+    authorUrl?: string;
     /** 版本号 */
-    version?: string;
-    description?: string;
+      version?: string;
+      /** Repository publication timestamp retained in downloaded packs. */
+      createdAt?: string;
+      description?: string;
+    tags?: string[];
     /** light | dark — optional metadata mirror of --theme-scheme */
     scheme?: "light" | "dark" | string;
-    iframe?: Record<
-      "app" | "header" | "body" | "music-bar" | "side-bar" | "page",
-      string
-    >;
+    iframe?: {
+      app: string;
+    };
   }
 
   interface IDownloadFileSize {

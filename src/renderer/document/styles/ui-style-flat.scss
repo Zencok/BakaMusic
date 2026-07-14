@@ -375,13 +375,13 @@
         box-shadow:
             0 -1px 0 color-mix(in srgb, var(--textColor) 8%, transparent),
             0 -8px 20px color-mix(in srgb, var(--textColor) 4%, transparent) !important;
-        --musicBarSurface: var(--backgroundColor) !important;
-        --musicBarSurfaceAlt: var(--backgroundColor) !important;
-        --musicBarText: var(--textColor) !important;
-        --musicBarTextSecondary: color-mix(in srgb, var(--textColor) 58%, transparent) !important;
-        --musicBarAccent: var(--primaryColor) !important;
+        --musicBarSurface: var(--theme-player-bg) !important;
+        --musicBarSurfaceAlt: var(--theme-player-bg-alt) !important;
+        --musicBarText: var(--theme-player-text) !important;
+        --musicBarTextSecondary: var(--theme-player-text-secondary) !important;
+        --musicBarAccent: var(--theme-player-accent) !important;
         // Play glyph on accent disc — keep light for contrast on brand color
-        --musicBarPrimaryText: var(--theme-text-on-primary, #fff) !important;
+        --musicBarPrimaryText: var(--theme-player-text-on-accent) !important;
         transition: background 280ms ease, box-shadow 280ms ease;
     }
 
@@ -579,28 +579,28 @@
         border-radius: 12px !important;
         backdrop-filter: blur(16px) !important;
         // Readable light dock bubble (never inherit detail-mode pure white text alone)
-        background: var(--backgroundColor) !important;
-        border: 1px solid color-mix(in srgb, var(--textColor) 10%, transparent) !important;
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12) !important;
+        background: var(--theme-popover-bg) !important;
+        border: 1px solid var(--theme-popover-border) !important;
+        box-shadow: var(--theme-shadow-soft) !important;
         clip-path: none !important;
-        color: var(--textColor) !important;
-        --musicBarText: var(--textColor);
-        --musicBarTextSecondary: color-mix(in srgb, var(--textColor) 58%, transparent);
-        --musicBarSurface: var(--backgroundColor);
-        --musicBarSurfaceAlt: var(--backgroundColor);
-        --musicBarAccent: var(--primaryColor);
+        color: var(--theme-popover-text) !important;
+        --musicBarText: var(--theme-popover-text);
+        --musicBarTextSecondary: var(--theme-popover-text-secondary);
+        --musicBarSurface: var(--theme-popover-bg);
+        --musicBarSurfaceAlt: var(--theme-popover-bg);
+        --musicBarAccent: var(--theme-primary);
     }
 
     .volume-bubble-container[data-immersive="true"] {
-        background: color-mix(in srgb, #1c1c1c 90%, transparent) !important;
-        border: 1px solid color-mix(in srgb, white 12%, transparent) !important;
-        color: rgba(255, 255, 255, 0.92) !important;
-        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.36) !important;
-        --musicBarText: rgba(255, 255, 255, 0.92);
-        --musicBarTextSecondary: rgba(255, 255, 255, 0.58);
-        --musicBarSurface: #1c1c1c;
-        --musicBarSurfaceAlt: #242424;
-        --musicBarAccent: var(--primaryColor);
+        background: var(--theme-detail-surface) !important;
+        border: 1px solid var(--theme-detail-border) !important;
+        color: var(--theme-detail-text) !important;
+        box-shadow: var(--theme-shadow) !important;
+        --musicBarText: var(--theme-detail-text);
+        --musicBarTextSecondary: var(--theme-detail-text-secondary);
+        --musicBarSurface: var(--theme-detail-surface);
+        --musicBarSurfaceAlt: var(--theme-detail-surface-hover);
+        --musicBarAccent: var(--theme-detail-accent);
     }
 
     // ------------------------------------------------------------------
@@ -626,8 +626,8 @@
             background: linear-gradient(
                 180deg,
                 transparent 0%,
-                color-mix(in srgb, #0a0c12 12%, transparent) 40%,
-                color-mix(in srgb, #0a0c12 28%, transparent) 100%
+                color-mix(in srgb, var(--musicDetailBackdropBase) 12%, transparent) 40%,
+                color-mix(in srgb, var(--musicDetailBackdropBase) 28%, transparent) 100%
             ) !important;
             backdrop-filter: blur(18px) saturate(140%);
             -webkit-backdrop-filter: blur(18px) saturate(140%);
@@ -649,10 +649,10 @@
             border: none !important;
             // Keep identical padding to collapsed dock so title/meta don't shift inward
             padding: 14px 18px 10px !important;
-            color: rgba(255, 255, 255, 0.92) !important;
-            --textColor: rgba(255, 255, 255, 0.92) !important;
-            --musicBarText: rgba(255, 255, 255, 0.92) !important;
-            --musicBarTextSecondary: rgba(255, 255, 255, 0.55) !important;
+            color: var(--theme-detail-text) !important;
+            --textColor: var(--theme-detail-text) !important;
+            --musicBarText: var(--theme-detail-text) !important;
+            --musicBarTextSecondary: var(--theme-detail-text-secondary) !important;
         }
 
         // Floating hairline progress (Lycia: top -10px, thin, white thumb)
@@ -680,11 +680,11 @@
 
             // Soft translucent fill like Lycia's zinc-300/30
             .bar {
-                background: color-mix(in srgb, white 18%, transparent) !important;
+                background: color-mix(in srgb, var(--theme-detail-text) 18%, transparent) !important;
             }
 
             .active-bar {
-                background: color-mix(in srgb, white 55%, transparent) !important;
+                background: color-mix(in srgb, var(--theme-detail-text) 55%, transparent) !important;
                 box-shadow: none !important;
             }
 
@@ -693,8 +693,8 @@
                 width: 14px !important;
                 height: 14px !important;
                 border-radius: 50% !important;
-                background: #fff !important;
-                border: 1px solid color-mix(in srgb, white 45%, transparent) !important;
+                background: var(--theme-detail-text) !important;
+                border: 1px solid var(--theme-detail-border) !important;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22) !important;
                 transform: translate(-50%, -50%) scale(0.72) !important;
                 z-index: 6 !important;
@@ -725,37 +725,37 @@
 
             .open-detail {
                 clip-path: inset(0 round 10px);
-                background: color-mix(in srgb, #0a0c12 42%, transparent);
-                color: #fff;
+                background: color-mix(in srgb, var(--musicDetailBackdropBase) 42%, transparent);
+                color: var(--theme-detail-text);
             }
 
             .music-cover-wrap[data-open="true"] .open-detail {
                 opacity: 1 !important;
-                background: color-mix(in srgb, #0a0c12 45%, transparent) !important;
+                background: color-mix(in srgb, var(--musicDetailBackdropBase) 45%, transparent) !important;
                 backdrop-filter: blur(4px);
             }
 
             .music-title {
-                color: rgba(255, 255, 255, 0.95) !important;
+                color: var(--theme-detail-text) !important;
                 font-weight: 700 !important;
                 text-shadow: 0 1px 10px rgba(0, 0, 0, 0.25);
             }
 
             .music-subtitle,
             .progress {
-                color: rgba(255, 255, 255, 0.52) !important;
+                color: var(--theme-detail-text-secondary) !important;
             }
 
             // Ghost icon actions — no permanent chip
             .music-info-action-shell {
-                color: rgba(255, 255, 255, 0.7) !important;
+                color: var(--theme-detail-text-secondary) !important;
                 background: transparent !important;
                 border: none !important;
                 box-shadow: none !important;
 
                 &:hover {
-                    color: #fff !important;
-                    background: color-mix(in srgb, white 12%, transparent) !important;
+                    color: var(--theme-detail-text) !important;
+                    background: var(--theme-detail-surface) !important;
                     transform: none !important;
                 }
             }
@@ -772,41 +772,41 @@
             max-height: 44px !important;
 
             &:hover {
-                color: #fff !important;
-                background: color-mix(in srgb, white 20%, transparent) !important;
+                color: var(--theme-detail-text) !important;
+                background: var(--theme-detail-surface-hover) !important;
                 transform: none !important;
                 box-shadow: none !important;
             }
         }
 
         .music-extra .extra-btn {
-            color: rgba(255, 255, 255, 0.88) !important;
+            color: var(--theme-detail-text) !important;
             background: transparent !important;
             border: none !important;
             box-shadow: none !important;
             filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 
             &:hover {
-                color: #fff !important;
-                background: color-mix(in srgb, white 10%, transparent) !important;
+                color: var(--theme-detail-text) !important;
+                background: var(--theme-detail-surface) !important;
                 transform: none !important;
             }
 
             &.quality-btn {
-                color: rgba(255, 255, 255, 0.72) !important;
+                color: var(--theme-detail-text-secondary) !important;
                 background: transparent !important;
                 border: none !important;
                 box-shadow: none !important;
 
                 &:hover {
-                    color: #fff !important;
-                    background: color-mix(in srgb, white 10%, transparent) !important;
+                    color: var(--theme-detail-text) !important;
+                    background: var(--theme-detail-surface) !important;
                 }
             }
 
             &.highlight {
-                color: #fff !important;
-                background: color-mix(in srgb, white 14%, transparent) !important;
+                color: var(--theme-detail-text) !important;
+                background: var(--theme-detail-surface-hover) !important;
             }
         }
 
@@ -818,9 +818,9 @@
 // ---------------------------------------------------------------------------
 [data-ui-style="flat"] {
     .music-list-container {
-        --musicListSurface: var(--appSurfaceStrong);
-        --musicListRowHoverBg: color-mix(in srgb, var(--textColor) 5%, transparent);
-        --musicListRowActiveBg: color-mix(in srgb, var(--primaryColor) 9%, transparent);
+        --musicListSurface: var(--theme-list-bg);
+        --musicListRowHoverBg: var(--theme-list-row-hover-bg);
+        --musicListRowActiveBg: var(--theme-list-row-active-bg);
         margin-top: 10px;
         padding: var(--listCardPadding);
         border-radius: var(--listCardRadius);
@@ -1002,14 +1002,14 @@
 // ---------------------------------------------------------------------------
 [data-ui-style="flat"] {
     .setting-view--container {
-        --settingPanelSurface: var(--appSurfaceStrong);
-        --settingSidebarSurface: transparent;
-        --settingRowSurface: color-mix(in srgb, var(--textColor) 2.5%, transparent);
-        --settingRowSurfaceHover: color-mix(in srgb, var(--textColor) 5%, transparent);
-        --settingControlSurface: var(--appSurfaceStrong);
-        --settingControlSurfaceHover: color-mix(in srgb, var(--textColor) 5%, transparent);
-        --settingControlBorder: color-mix(in srgb, var(--textColor) 10%, transparent);
-        --settingControlBorderActive: color-mix(in srgb, var(--primaryColor) 45%, transparent);
+        --settingPanelSurface: var(--theme-panel-bg);
+        --settingSidebarSurface: var(--theme-sidebar-bg);
+        --settingRowSurface: var(--theme-panel-row-bg);
+        --settingRowSurfaceHover: var(--theme-panel-row-hover-bg);
+        --settingControlSurface: var(--theme-input-bg);
+        --settingControlSurfaceHover: var(--theme-input-bg-hover);
+        --settingControlBorder: var(--theme-input-border);
+        --settingControlBorderActive: var(--theme-input-border-active);
         --settingControlInset: none;
 
         .setting-view--sidebar {

@@ -17,9 +17,9 @@
   border-right: 1px solid var(--sideBarBorder, var(--appSurfaceBorder));
   box-shadow: var(--sideBarShadow, inset -1px 0 0 color-mix(in srgb, white 10%, transparent));
   backdrop-filter: var(--sideBarFilter, var(--appGlassFilter));
-  --sideBarTextPrimary: var(--appTextPrimary);
-  --sideBarTextSecondary: color-mix(in srgb, var(--textColor) 76%, transparent);
-  --sideBarTextMuted: color-mix(in srgb, var(--textColor) 58%, transparent);
+  --sideBarTextPrimary: var(--theme-sidebar-text);
+  --sideBarTextSecondary: var(--theme-sidebar-text-secondary);
+  --sideBarTextMuted: var(--theme-sidebar-text-muted);
   // --sideBarItemHover / --sideBarItemSelected come from ui-styles tokens
 
   &::-webkit-scrollbar {

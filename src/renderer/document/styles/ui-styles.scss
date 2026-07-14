@@ -18,10 +18,10 @@
     --appRadiusLg: 22px;
     --appRadiusXl: 28px;
     --appRadiusPill: 999px;
-    --controlRadius: 10px;
+    --controlRadius: var(--theme-radius-control, 10px);
     --controlRadiusLg: 14px;
     --iconButtonRadius: 50%;
-    --coverRadius: 12px;
+    --coverRadius: var(--theme-radius-cover, 12px);
     --tagRadius: 999px;
 
     --appSurface: color-mix(in srgb, var(--backgroundColor) 74%, transparent);
@@ -123,9 +123,9 @@
     --listCardRadius: 28px;
     --listCardPadding: 12px;
     --listRowRadius: 14px;
-    --cardRadius: 22px;
+    --cardRadius: var(--theme-radius-card, 22px);
 
-    --panelRadius: 22px;
+    --panelRadius: var(--theme-radius-panel, 22px);
     --modalRadius: 20px;
     --panelFilter: blur(28px) saturate(150%);
     --panelContentColor: var(--textColor);
@@ -156,7 +156,7 @@
     --appRadiusLg: 8px;
     --appRadiusXl: 10px;
     --appRadiusPill: 4px;
-    --controlRadius: 4px;
+    --controlRadius: var(--theme-radius-control, 4px);
     --controlRadiusLg: 6px;
     --iconButtonRadius: 4px;
 
@@ -237,11 +237,11 @@
     --listCardRadius: 6px;
     --listCardPadding: 6px 8px;
     --listRowRadius: 4px;
-    --cardRadius: 6px;
-    --coverRadius: 4px;
+    --cardRadius: var(--theme-radius-card, 6px);
+    --coverRadius: var(--theme-radius-cover, 4px);
     --tagRadius: 4px;
 
-    --panelRadius: 10px;
+    --panelRadius: var(--theme-radius-panel, 10px);
     --modalRadius: 10px;
     --panelFilter: none;
     --panelContentColor: var(--textColor);

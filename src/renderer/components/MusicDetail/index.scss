@@ -3,10 +3,10 @@
     inset: 0;
     z-index: 3000;
     overflow: hidden;
-    color: #fff;
-    // Solid base so the page behind never bleeds through (all UI styles / themepacks).
-    // !important: packs often force transparent body chrome + backdrop blur.
-    background-color: #0a0a0e !important;
+    color: var(--theme-detail-text);
+    // The immersive artwork stage is product behaviour, not theme chrome.
+    // Keep an opaque base so the page behind can never bleed through.
+    background-color: var(--musicDetailBackdropBase) !important;
     background-image: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
@@ -20,14 +20,12 @@
     }
 
     & .music-detail-background {
-        // Solid underlay — themepacks often set `background: $color !important` here.
-        background-color: #0a0a0e !important;
+        background-color: var(--musicDetailBackdropBase) !important;
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
         overflow: hidden;
 
-        // Album frost lives on a pseudo so pack `background` shorthands cannot wipe it.
-        // Uses element filter (not backdrop-filter) so the main page never bleeds through.
+        // Album frost uses an element filter so the main page never bleeds through.
         &::before {
             content: "";
             position: absolute;
@@ -38,20 +36,19 @@
             background-repeat: no-repeat;
             filter: blur(82px) saturate(148%);
             transform: scale(1.16);
-            opacity: 1;
+            opacity: 0.8;
             pointer-events: none;
         }
     }
 
     & .music-detail-overlay {
-        // Fully opaque base + soft highlights. Never let the main app show through,
-        // including the strip under an auto-hidden music bar (glass / flat / themes).
+        // Client-owned translucent light wash keeps the blurred artwork visible.
         background:
-            radial-gradient(circle at top left, rgba(255, 255, 255, 0.16), rgba(14, 14, 18, 0) 32%),
-            radial-gradient(circle at 80% 16%, rgba(255, 120, 160, 0.1), rgba(10, 10, 14, 0) 24%),
-            linear-gradient(135deg, #121218 0%, #0a0a0e 100%) !important;
-        backdrop-filter: none !important;
-        -webkit-backdrop-filter: none !important;
+            radial-gradient(circle at top left, rgba(255, 255, 255, 0.18), transparent 32%),
+            radial-gradient(circle at 80% 16%, rgba(255, 120, 160, 0.12), transparent 24%),
+            linear-gradient(135deg, rgba(14, 14, 18, 0.36), rgba(8, 8, 12, 0.74)) !important;
+        backdrop-filter: blur(22px) !important;
+        -webkit-backdrop-filter: blur(22px) !important;
         opacity: 1 !important;
     }
 }
@@ -102,8 +99,8 @@
     gap: 14px;
     padding: 10px 14px;
     border-radius: 22px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.08));
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--theme-detail-surface);
+    border: 1px solid var(--theme-detail-border);
     box-shadow: 0 18px 44px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.14);
     backdrop-filter: blur(18px) saturate(126%);
 }
@@ -152,7 +149,7 @@
     text-overflow: ellipsis;
     font-size: 0.86rem;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.74);
+    color: var(--theme-detail-text-secondary);
 }
 
 .music-detail-info-badge {
@@ -165,14 +162,14 @@
     font-size: 0.73rem;
     font-weight: 700;
     letter-spacing: 0.02em;
-    color: rgba(255, 255, 255, 0.9);
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--theme-detail-text);
+    background: var(--theme-detail-surface);
+    border: 1px solid var(--theme-detail-border);
 }
 
 .music-detail-info-badge--strong {
-    background: rgba(255, 255, 255, 0.18);
-    color: #fff;
+    background: var(--theme-detail-surface-hover);
+    color: var(--theme-detail-text);
 }
 
 .music-detail-round-button {
@@ -183,16 +180,16 @@
     justify-content: center;
     border-radius: 50%;
     cursor: pointer;
-    color: rgba(255, 255, 255, 0.9);
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--theme-detail-text);
+    background: var(--theme-detail-surface);
+    border: 1px solid var(--theme-detail-border);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
     backdrop-filter: blur(18px);
     transition: transform 160ms ease, background-color 160ms ease;
 
     &:hover {
         transform: translateY(-1px);
-        background: rgba(255, 255, 255, 0.16);
+        background: var(--theme-detail-surface-hover);
     }
 
     & svg {
@@ -700,9 +697,6 @@
         transition: none;
     }
 }
-
-
-
 
 
 

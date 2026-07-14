@@ -1,12 +1,12 @@
 .music-list-container {
-  --musicListSurface: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 82%, transparent));
-  --musicListRowBg: transparent;
-  --musicListRowBorder: color-mix(in srgb, var(--textColor) 7%, transparent);
-  --musicListRowHoverBg: color-mix(in srgb, var(--primaryColor) 7%, transparent);
-  --musicListRowActiveBg: color-mix(in srgb, var(--primaryColor) 11%, transparent);
-  --musicListTextStrong: color-mix(in srgb, var(--textColor) 94%, black);
-  --musicListText: color-mix(in srgb, var(--textColor) 76%, transparent);
-  --musicListTextSoft: color-mix(in srgb, var(--textColor) 56%, transparent);
+  --musicListSurface: var(--theme-list-bg);
+  --musicListRowBg: var(--theme-list-row-bg);
+  --musicListRowBorder: var(--theme-list-row-border);
+  --musicListRowHoverBg: var(--theme-list-row-hover-bg);
+  --musicListRowActiveBg: var(--theme-list-row-active-bg);
+  --musicListTextStrong: var(--theme-text);
+  --musicListText: var(--theme-text-secondary);
+  --musicListTextSoft: var(--theme-text-muted);
   width: 100%;
   min-height: 300px;
   margin-top: 12px;
@@ -541,4 +541,3 @@
     }
   }
 }
-

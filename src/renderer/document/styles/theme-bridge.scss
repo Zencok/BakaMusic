@@ -1,75 +1,249 @@
 // =============================================================================
-// Theme Spec v2 bridge — maps --theme-* (author contract) → internal tokens
-// Themes only set --theme-*. Client owns chrome / layout.
-// Scheme surface overrides live in theme-scheme.scss (after ui-styles).
+// bakamusic-theme@2 semantic bridge
+//
+// Public --theme-* tokens are the only author API. The app maps them once to
+// private component tokens; theme packs never target BakaMusic selectors.
+// Layout, z-index, visibility and behaviour remain app-owned.
 // =============================================================================
 
-// Defaults only apply when no pack is active.
-// Active packs inject html[data-theme-spec="2"] { --theme-* } AFTER this sheet
-// (style#themepack-node moved to end of head) with higher specificity.
-:root:not([data-theme-spec="2"]) {
+:root {
+    // Required foundations (also the no-pack fallback).
     --theme-primary: #f17d34;
     --theme-bg: #fdfdfd;
-    --theme-text: #333333;
+    --theme-text: #333;
     --theme-scheme: light;
+
+    // Foundation defaults.
+    --theme-primary-hover: color-mix(in srgb, var(--theme-primary) 84%, black);
+    --theme-primary-active: color-mix(in srgb, var(--theme-primary) 72%, black);
     --theme-text-secondary: color-mix(in srgb, var(--theme-text) 72%, transparent);
+    --theme-text-muted: color-mix(in srgb, var(--theme-text) 52%, transparent);
     --theme-text-on-primary: #0b0b0f;
     --theme-header-text: var(--theme-text);
     --theme-link: var(--theme-primary);
+    --theme-success: #08a34c;
+    --theme-warning: #d97706;
+    --theme-danger: #fc5f5f;
+    --theme-info: #0a95c8;
     --theme-divider: color-mix(in srgb, var(--theme-text) 12%, transparent);
-    --theme-mask: color-mix(in srgb, var(--theme-text) 32%, transparent);
+    --theme-mask: color-mix(in srgb, black 42%, transparent);
     --theme-placeholder: color-mix(in srgb, var(--theme-text) 8%, var(--theme-bg));
     --theme-surface-alpha: 0.88;
+
+    // Shared surfaces.
+    --theme-surface: color-mix(in srgb, var(--theme-bg) 82%, transparent);
+    --theme-surface-strong: color-mix(in srgb, var(--theme-bg) 92%, var(--theme-text) 8%);
+    --theme-surface-muted: color-mix(in srgb, var(--theme-bg) 70%, transparent);
+    --theme-surface-border: color-mix(in srgb, var(--theme-text) 14%, transparent);
+    --theme-surface-border-strong: color-mix(in srgb, var(--theme-text) 22%, transparent);
+    --theme-shadow: 0 22px 48px color-mix(in srgb, black 22%, transparent);
+    --theme-shadow-soft: 0 12px 28px color-mix(in srgb, black 14%, transparent);
+    --theme-interactive: color-mix(in srgb, var(--theme-text) 8%, transparent);
+    --theme-interactive-hover: color-mix(in srgb, var(--theme-text) 12%, transparent);
+    --theme-interactive-active: color-mix(in srgb, var(--theme-primary) 18%, var(--theme-bg));
+    --theme-page-bg:
+        radial-gradient(circle at top left, color-mix(in srgb, var(--theme-primary) 12%, transparent), transparent 34%),
+        linear-gradient(180deg, color-mix(in srgb, var(--theme-bg) 38%, transparent), transparent);
+    --theme-card-bg: var(--theme-surface);
+    --theme-card-bg-hover: var(--theme-surface-strong);
+    --theme-card-border: var(--theme-surface-border);
+
+    // Header.
+    --theme-header-bg: var(--theme-surface);
+    --theme-header-border: var(--theme-surface-border);
+    --theme-header-control-bg: var(--theme-interactive);
+    --theme-header-control-hover-bg: var(--theme-interactive-hover);
+    --theme-header-search-bg: var(--theme-surface-muted);
+    --theme-header-search-border: var(--theme-surface-border);
+
+    // Sidebar.
+    --theme-sidebar-bg: var(--theme-surface-muted);
+    --theme-sidebar-text: var(--theme-text);
+    --theme-sidebar-text-secondary: var(--theme-text-secondary);
+    --theme-sidebar-text-muted: var(--theme-text-muted);
+    --theme-sidebar-border: var(--theme-surface-border);
+    --theme-sidebar-item-hover: var(--theme-interactive-hover);
+    --theme-sidebar-item-active: var(--theme-interactive-active);
+    --theme-sidebar-item-active-border: color-mix(in srgb, var(--theme-primary) 42%, transparent);
+
+    // Bottom player.
+    --theme-player-bg: var(--theme-surface-strong);
+    --theme-player-bg-alt: color-mix(in srgb, var(--theme-bg) 84%, var(--theme-primary) 16%);
+    --theme-player-text: var(--theme-text);
+    --theme-player-text-secondary: var(--theme-text-secondary);
+    --theme-player-accent: var(--theme-primary);
+    --theme-player-text-on-accent: var(--theme-text-on-primary);
+    --theme-player-border: var(--theme-surface-border);
+
+    // Lists, sheets and inputs.
+    --theme-list-bg: var(--theme-card-bg);
+    --theme-list-row-bg: transparent;
+    --theme-list-row-alt-bg: color-mix(in srgb, var(--theme-text) 4%, transparent);
+    --theme-list-row-hover-bg: var(--theme-interactive-hover);
+    --theme-list-row-active-bg: var(--theme-interactive-active);
+    --theme-list-row-border: color-mix(in srgb, var(--theme-text) 8%, transparent);
+    --theme-panel-bg: var(--theme-surface-strong);
+    --theme-panel-text: var(--theme-text);
+    --theme-panel-text-secondary: var(--theme-text-secondary);
+    --theme-panel-border: var(--theme-surface-border);
+    --theme-panel-row-bg: var(--theme-interactive);
+    --theme-panel-row-hover-bg: var(--theme-interactive-hover);
+    --theme-panel-row-border: var(--theme-surface-border);
+    --theme-input-bg: var(--theme-surface-strong);
+    --theme-input-bg-hover: var(--theme-card-bg-hover);
+    --theme-input-border: var(--theme-surface-border);
+    --theme-input-border-active: color-mix(in srgb, var(--theme-primary) 52%, var(--theme-text) 10%);
+
+    // Menus / quality picker.
+    --theme-popover-bg: var(--theme-panel-bg);
+    --theme-popover-text: var(--theme-panel-text);
+    --theme-popover-text-secondary: var(--theme-panel-text-secondary);
+    --theme-popover-border: var(--theme-panel-border);
+
+    // Detail chrome remains themeable without allowing packs to disable the
+    // product-owned artwork backdrop.
+    --theme-detail-text: #fff;
+    --theme-detail-text-secondary: rgba(255, 255, 255, 0.72);
+    --theme-detail-surface: rgba(255, 255, 255, 0.1);
+    --theme-detail-surface-hover: rgba(255, 255, 255, 0.16);
+    --theme-detail-border: rgba(255, 255, 255, 0.14);
+    --theme-detail-accent: var(--theme-primary);
+
+    // Effects and small geometry (no layout dimensions).
     --theme-blur: 22px;
     --theme-bg-image: none;
+    --theme-scrollbar-track: transparent;
     --theme-scrollbar-thumb: color-mix(in srgb, var(--theme-text) 38%, var(--theme-bg));
-}
-
-// Always map --theme-* → legacy names (pack tokens or defaults above)
-:root {
+    --theme-scrollbar-thumb-hover: var(--theme-primary-hover);
+    --theme-scrollbar-thumb-active: var(--theme-primary-active);
+    // Public foundations -> legacy/private foundations.
     --primaryColor: var(--theme-primary);
     --backgroundColor: var(--theme-bg);
     --textColor: var(--theme-text);
-    --headerTextColor: var(--theme-header-text, var(--theme-text));
-    --linkColor: var(--theme-link, var(--theme-primary));
-    --dividerColor: var(--theme-divider, color-mix(in srgb, var(--theme-text) 12%, transparent));
-    --maskColor: var(--theme-mask, color-mix(in srgb, var(--theme-text) 32%, transparent));
-    --placeholderColor: var(
-        --theme-placeholder,
-        color-mix(in srgb, var(--theme-text) 8%, var(--theme-bg))
-    );
-    --listEvenColor: color-mix(in srgb, var(--theme-text) 5%, transparent);
-    --listHoverColor: color-mix(in srgb, var(--theme-text) 6%, transparent);
-    --listActiveColor: color-mix(in srgb, var(--theme-text) 10%, transparent);
-    --scrollbarThumbColor: var(
-        --theme-scrollbar-thumb,
-        color-mix(in srgb, var(--theme-text) 38%, var(--theme-bg))
-    );
-    --scrollbarThumbHoverColor: color-mix(
-        in srgb,
-        var(--theme-primary) 55%,
-        var(--theme-scrollbar-thumb, var(--theme-primary))
-    );
-    --scrollbarThumbActiveColor: color-mix(
-        in srgb,
-        var(--theme-primary) 70%,
-        var(--theme-scrollbar-thumb, var(--theme-primary))
-    );
+    --headerTextColor: var(--theme-header-text);
+    --linkColor: var(--theme-link);
+    --successColor: var(--theme-success);
+    --warningColor: var(--theme-warning);
+    --dangerColor: var(--theme-danger);
+    --infoColor: var(--theme-info);
+    --dividerColor: var(--theme-divider);
+    --maskColor: var(--theme-mask);
+    --placeholderColor: var(--theme-placeholder);
 }
 
-// Solid page canvas when a V2 pack is active
+// This bridge is loaded after both UI-style sheets. It deliberately owns every
+// colour/effect token while glass/flat continue to own geometry and behaviour.
+:root {
+    --musicDetailBackdropBase: #0a0a0e;
+    --appSurface: var(--theme-surface);
+    --appSurfaceStrong: var(--theme-surface-strong);
+    --appSurfaceMuted: var(--theme-surface-muted);
+    --appSurfaceBorder: var(--theme-surface-border);
+    --appSurfaceBorderStrong: var(--theme-surface-border-strong);
+    --appSurfaceInset: none;
+    --appSurfaceShadow: var(--theme-shadow);
+    --appSurfaceShadowSoft: var(--theme-shadow-soft);
+    --appGlassFilter: blur(var(--theme-blur)) saturate(145%);
+    --appTextPrimary: var(--theme-text);
+    --appTextSecondary: var(--theme-text-secondary);
+    --appTextTertiary: var(--theme-text-muted);
+    --appInteractiveSurface: var(--theme-interactive);
+    --appInteractiveSurfaceHover: var(--theme-interactive-hover);
+    --appInteractiveSurfaceStrong: var(--theme-interactive-active);
+    --appInteractiveBorder: var(--theme-surface-border);
+    --appImageFallback: var(--theme-surface-muted);
+    --appOverlayMask: var(--theme-mask);
+    --appPanelMask: color-mix(in srgb, var(--theme-mask) 62%, transparent);
+    --appPanelSurface: var(--theme-panel-bg);
+    --appBodyBg: var(--theme-page-bg);
+
+    --headerChromeBg: var(--theme-header-bg);
+    --headerChromeBorder: var(--theme-header-border);
+    --headerChromeShadow: var(--theme-shadow-soft);
+    --headerChromeFilter: blur(var(--theme-blur)) saturate(145%);
+    --headerControlBg: var(--theme-header-control-bg);
+    --headerControlBorder: var(--theme-header-search-border);
+    --headerControlHoverBg: var(--theme-header-control-hover-bg);
+    --headerSearchBg: var(--theme-header-search-bg);
+    --headerSearchBorder: var(--theme-header-search-border);
+    --headerSearchInset: none;
+    --headerDividerColor: var(--theme-divider);
+    --headerHairline: color-mix(in srgb, var(--theme-primary) 34%, transparent);
+
+    --sideBarBg: var(--theme-sidebar-bg);
+    --sideBarBorder: var(--theme-sidebar-border);
+    --sideBarFilter: blur(var(--theme-blur)) saturate(145%);
+    --sideBarShadow: none;
+    --sideBarTextPrimary: var(--theme-sidebar-text);
+    --sideBarTextSecondary: var(--theme-sidebar-text-secondary);
+    --sideBarTextMuted: var(--theme-sidebar-text-muted);
+    --sideBarItemHover: var(--theme-sidebar-item-hover);
+    --sideBarItemSelected: var(--theme-sidebar-item-active);
+    --sideBarItemSelectedBorder: var(--theme-sidebar-item-active-border);
+    --sideBarAccentBar: var(--theme-primary);
+
+    --musicBarSurface: var(--theme-player-bg);
+    --musicBarSurfaceAlt: var(--theme-player-bg-alt);
+    --musicBarText: var(--theme-player-text);
+    --musicBarTextSecondary: var(--theme-player-text-secondary);
+    --musicBarAccent: var(--theme-player-accent);
+    --musicBarPrimaryText: var(--theme-player-text-on-accent);
+
+    --listEvenColor: var(--theme-list-row-alt-bg);
+    --listHoverColor: var(--theme-list-row-hover-bg);
+    --listActiveColor: var(--theme-list-row-active-bg);
+    --musicListSurface: var(--theme-list-bg);
+    --musicListRowBg: var(--theme-list-row-bg);
+    --musicListRowBorder: var(--theme-list-row-border);
+    --musicListRowHoverBg: var(--theme-list-row-hover-bg);
+    --musicListRowActiveBg: var(--theme-list-row-active-bg);
+    --musicListTextStrong: var(--theme-text);
+    --musicListText: var(--theme-text-secondary);
+    --musicListTextSoft: var(--theme-text-muted);
+
+    --panelContentColor: var(--theme-panel-text);
+    --panelBorder: var(--theme-panel-border);
+    --panelTextOnSurface: var(--theme-panel-text);
+    --panelMutedText: var(--theme-panel-text-secondary);
+    --panelRowSurface: var(--theme-panel-row-bg);
+    --panelRowSurfaceHover: var(--theme-panel-row-hover-bg);
+    --panelRowBorder: var(--theme-panel-row-border);
+    --panelInputBg: var(--theme-input-bg);
+    --panelShadow: var(--theme-shadow);
+    --panelFilter: blur(var(--theme-blur)) saturate(145%);
+
+    --settingTextPrimary: var(--theme-text);
+    --settingTextSecondary: var(--theme-text-secondary);
+    --settingTextMuted: var(--theme-text-muted);
+    --settingPanelSurface: var(--theme-panel-bg);
+    --settingSidebarSurface: var(--theme-sidebar-bg);
+    --settingRowSurface: var(--theme-panel-row-bg);
+    --settingRowSurfaceHover: var(--theme-panel-row-hover-bg);
+    --settingControlSurface: var(--theme-input-bg);
+    --settingControlSurfaceHover: var(--theme-input-bg-hover);
+    --settingControlBorder: var(--theme-input-border);
+    --settingControlBorderActive: var(--theme-input-border-active);
+    --settingControlInset: none;
+    --searchHistoryBg: var(--theme-popover-bg);
+
+    --scrollbarTrackColor: var(--theme-scrollbar-track);
+    --scrollbarThumbColor: var(--theme-scrollbar-thumb);
+    --scrollbarThumbHoverColor: var(--theme-scrollbar-thumb-hover);
+    --scrollbarThumbActiveColor: var(--theme-scrollbar-thumb-active);
+}
+
 html[data-theme-spec="2"] {
     color: var(--theme-text);
+    color-scheme: var(--theme-scheme);
     background-color: var(--theme-bg);
-    background-image: var(--theme-bg-image, none);
-    background-size: cover;
+    background-image: var(--theme-bg-image);
     background-position: center;
     background-repeat: no-repeat;
+    background-size: cover;
 }
 
 html[data-theme-spec="2"] body,
-html[data-theme-spec="2"] #root,
-html[data-theme-spec="2"] .app-container {
-    background-color: var(--theme-bg);
+html[data-theme-spec="2"] #root {
     color: var(--theme-text);
+    background: transparent;
 }

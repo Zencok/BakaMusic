@@ -14,7 +14,8 @@
     "lint-staged": "lint-staged",
     "prepare": "husky install",
     "postinstall": "node scripts/patch-node-gyp.js",
-    "build:native": "node scripts/build-native.js"
+    "build:native": "node scripts/build-native.js",
+    "test:theme-contract": "node -r ts-node/register scripts/theme-contract.test.cjs"
   },
   "keywords": [],
   "author": {

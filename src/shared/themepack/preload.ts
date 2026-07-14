@@ -9,6 +9,7 @@ import unzipper from "unzipper";
 import { getGlobalContext } from "../global-context/preload";
 import CryptoJS from "crypto-js";
 import exposeInMainWorld from "@/preload/expose-in-main-world";
+import { parseThemeCss, validateThemePackConfig } from "./contract";
 import {
     BUILTIN_DEFAULT_THEME_CSS,
     BUILTIN_DEFAULT_THEME_HASH,
@@ -26,27 +27,19 @@ function isThemeSpecV2(themePack: ICommon.IThemePack | null | undefined): boolea
     return themePack?.spec === THEME_SPEC_V2;
 }
 
-function clearThemeDocumentAttrs() {
-    document.documentElement.removeAttribute("data-theme-spec");
-    document.documentElement.removeAttribute("data-theme-scheme");
-    document.body?.removeAttribute("data-theme-spec");
-    document.body?.removeAttribute("data-theme-scheme");
-}
-
 function resolveThemeScheme(
     themePack: ICommon.IThemePack,
-    rawCss: string,
+    themeTokens: ReadonlyMap<string, string>,
 ): "light" | "dark" {
     if (themePack.scheme === "dark" || themePack.scheme === "light") {
         return themePack.scheme;
     }
-    const cssScheme = rawCss.match(/--theme-scheme\s*:\s*(light|dark)\s*;/i);
-    if (cssScheme?.[1] === "dark" || cssScheme?.[1] === "light") {
-        return cssScheme[1].toLowerCase() as "light" | "dark";
+    const cssScheme = themeTokens.get("--theme-scheme");
+    if (cssScheme === "dark" || cssScheme === "light") {
+        return cssScheme;
     }
     // Fallback: dark text → light scheme, light text → dark scheme
-    const textMatch = rawCss.match(/--theme-text\s*:\s*([^;]+);/i);
-    const text = textMatch?.[1] ?? "";
+    const text = themeTokens.get("--theme-text") ?? "";
     const rgb = text.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
     if (rgb) {
         const r = Number(rgb[1]);
@@ -73,27 +66,18 @@ function resolveThemeScheme(
     return "light";
 }
 
-function applyThemeDocumentAttrs(themePack: ICommon.IThemePack, rawCss: string) {
+function applyThemeDocumentAttrs(
+    themePack: ICommon.IThemePack,
+    themeTokens: ReadonlyMap<string, string>,
+) {
     document.documentElement.setAttribute("data-theme-spec", "2");
-    const scheme = resolveThemeScheme(themePack, rawCss);
+    const scheme = resolveThemeScheme(themePack, themeTokens);
     document.documentElement.setAttribute("data-theme-scheme", scheme);
     // Keep body in sync (index.html also sets data-ui-style on body)
     document.body?.setAttribute("data-theme-scheme", scheme);
     document.body?.setAttribute("data-theme-spec", "2");
 }
-const themeScrollbarHideRulePattern = /(^|})\s*([^{}]*::-webkit-scrollbar[^{}]*)\{[^{}]*display\s*:\s*none\s*!important;?[^{}]*\}/g;
-
-const validIframeMap = new Map<
-  "app" | "header" | "body" | "music-bar" | "side-bar" | "page",
-  HTMLIFrameElement | null
->([
-    ["app", null],
-    ["header", null],
-    ["body", null],
-    ["music-bar", null],
-    ["side-bar", null],
-    ["page", null],
-]);
+let themeBackgroundIframe: HTMLIFrameElement | null = null;
 
 const nextThemePackBasePath: string = path.resolve(
     getGlobalContext().appPath.userData,
@@ -103,34 +87,15 @@ const legacyThemePackBasePath: string = path.resolve(
     getGlobalContext().appPath.userData,
     "./musicfree-themepacks",
 );
-const themePackBasePath: string =
-    fsSync.existsSync(nextThemePackBasePath) || !fsSync.existsSync(legacyThemePackBasePath)
-        ? nextThemePackBasePath
-        : legacyThemePackBasePath;
+const themePackSearchPaths = [nextThemePackBasePath, legacyThemePackBasePath] as const;
 
 /**
  * TODO: iframe需要运行在独立的进程中，不然会影响到app的fps 得想个办法
  */
 
 function clearThemeIframes() {
-    validIframeMap.forEach((value, key) => {
-        if (value !== null) {
-            value.remove();
-            validIframeMap.set(key, null);
-        }
-    });
-}
-
-/**
- * Theme CSS must beat bundled :root defaults (theme-bridge).
- * Bundled styles load AFTER #themepack-node in the document, so a pack that only
- * sets :root { --theme-* } is overwritten by bridge defaults (everything looks
- * like the default theme). Rewrite to html[data-theme-spec="2"] (higher specificity)
- * and keep the style tag at the end of <head>.
- */
-function normalizeThemePackCss(rawStyle: string): string {
-    // Replace :root selectors (not inside comments ideally — packs only use :root as selector)
-    return rawStyle.replace(/:root\b/g, "html[data-theme-spec=\"2\"]");
+    themeBackgroundIframe?.remove();
+    themeBackgroundIframe = null;
 }
 
 function getOrCreateThemeStyleNode(): HTMLStyleElement {
@@ -145,12 +110,45 @@ function getOrCreateThemeStyleNode(): HTMLStyleElement {
 }
 
 function applyThemeCss(themePack: ICommon.IThemePack, rawStyle: string, aliasBasePath?: string) {
+    const parsedThemeCss = parseThemeCss(rawStyle);
     const themeNode = getOrCreateThemeStyleNode();
-    applyThemeDocumentAttrs(themePack, rawStyle);
-    const withAlias = aliasBasePath
-        ? replaceAlias(stripThemeScrollbarHidingRules(rawStyle), aliasBasePath)
-        : stripThemeScrollbarHidingRules(rawStyle);
-    themeNode.textContent = normalizeThemePackCss(withAlias);
+    applyThemeDocumentAttrs(themePack, parsedThemeCss.tokens);
+    themeNode.textContent = aliasBasePath
+        ? replaceAlias(parsedThemeCss.css, aliasBasePath)
+        : parsedThemeCss.css;
+}
+
+function resolvePackAssetPath(aliasPath: string, basePath: string): string {
+    if (!aliasPath.startsWith("@/")) {
+        throw new Error(`Theme asset must use @/: ${aliasPath}`);
+    }
+    const resolvedBasePath = path.resolve(basePath);
+    const resolvedAssetPath = path.resolve(resolvedBasePath, aliasPath.slice(2));
+    const safeBasePath = `${resolvedBasePath}${path.sep}`;
+    if (!resolvedAssetPath.startsWith(safeBasePath)) {
+        throw new Error(`Theme asset escapes pack root: ${aliasPath}`);
+    }
+    return resolvedAssetPath;
+}
+
+async function applyThemeIframe(themePack: ICommon.IThemePack) {
+    clearThemeIframes();
+    const iframeSource = themePack.iframe?.app;
+    if (!iframeSource) {
+        return;
+    }
+
+    const rawHtml = await fs.readFile(
+        resolvePackAssetPath(iframeSource, themePack.path),
+        "utf-8",
+    );
+    const iframeNode = document.createElement("iframe");
+    iframeNode.setAttribute("sandbox", "allow-scripts");
+    iframeNode.setAttribute("aria-hidden", "true");
+    iframeNode.scrolling = "no";
+    iframeNode.srcdoc = replaceAlias(rawHtml, themePack.path);
+    document.querySelector(".app-container")?.prepend(iframeNode);
+    themeBackgroundIframe = iframeNode;
 }
 
 /** 选择某个主题（仅 bakamusic-theme@2；null → 内置默认 V2） */
@@ -184,46 +182,7 @@ async function selectTheme(themePack: ICommon.IThemePack | null) {
     );
     applyThemeCss(themePack, rawStyle, themePack.path);
 
-    if (themePack.iframe) {
-        const iframeConfig = themePack.iframe;
-        // V2: only app slot is part of the contract
-        validIframeMap.forEach(async (value, key) => {
-            const themePackIframeSource =
-                key === "app" ? iframeConfig.app : iframeConfig[key];
-            if (themePackIframeSource && key === "app") {
-                let iframeNode = null;
-                if (value !== null) {
-                    value.remove();
-                    validIframeMap.set(key, null);
-                }
-                iframeNode = document.createElement("iframe");
-                iframeNode.scrolling = "no";
-                document.querySelector(`.${key}-container`)?.prepend?.(iframeNode);
-                validIframeMap.set(key, iframeNode);
-
-                if (themePackIframeSource.startsWith("http")) {
-                    iframeNode.src = themePackIframeSource;
-                } else {
-                    const rawHtml = await fs.readFile(
-                        replaceAlias(themePackIframeSource, themePack.path, false),
-                        "utf-8",
-                    );
-                    if (iframeNode.contentWindow) {
-                        iframeNode.contentWindow.document.open();
-                        iframeNode.contentWindow.document.write(
-                            replaceAlias(rawHtml, themePack.path),
-                        );
-                        iframeNode.contentWindow.document.close();
-                    }
-                }
-            } else if (value) {
-                value.remove();
-                validIframeMap.set(key, null);
-            }
-        });
-    } else {
-        clearThemeIframes();
-    }
+    await applyThemeIframe(themePack);
     localStorage.setItem(themePathKey, themePack.path);
 }
 
@@ -239,20 +198,16 @@ function replaceAlias(
     );
 }
 
-function stripThemeScrollbarHidingRules(rawStyle: string) {
-    return rawStyle.replace(themeScrollbarHideRulePattern, "$1");
-}
-
 async function checkPath() {
     // 路径:
     try {
-        const res = await fs.stat(themePackBasePath);
+        const res = await fs.stat(nextThemePackBasePath);
         if (!res.isDirectory()) {
-            await rimraf(themePackBasePath);
+            await rimraf(nextThemePackBasePath);
             throw new Error();
         }
     } catch {
-        await fs.mkdir(themePackBasePath, {
+        await fs.mkdir(nextThemePackBasePath, {
             recursive: true,
         });
     }
@@ -339,15 +294,40 @@ async function parseThemePack(
             path.resolve(resolvedThemePackPath, "config.json"),
             "utf-8",
         );
-        const jsonData = JSON.parse(rawConfig);
+        const jsonData = JSON.parse(rawConfig) as Record<string, unknown>;
+        validateThemePackConfig(jsonData);
+        const rawCss = await fs.readFile(
+            path.resolve(resolvedThemePackPath, "index.css"),
+            "utf-8",
+        );
+        const parsedCss = parseThemeCss(rawCss);
+        if (parsedCss.tokens.get("--theme-scheme") !== jsonData.scheme) {
+            throw new Error("config.scheme and --theme-scheme must match");
+        }
+        if (typeof jsonData.preview === "string" && !jsonData.preview.startsWith("#")) {
+            await fs.access(resolvePackAssetPath(jsonData.preview, resolvedThemePackPath));
+        }
+        const iframe = jsonData.iframe as { app: string } | undefined;
+        if (iframe) {
+            await fs.access(resolvePackAssetPath(iframe.app, resolvedThemePackPath));
+        }
 
         const themePack: ICommon.IThemePack = {
-            ...jsonData,
-            spec: typeof jsonData.spec === "string" ? jsonData.spec : undefined,
-            hash: CryptoJS.MD5(rawConfig).toString(CryptoJS.enc.Hex),
-            preview: jsonData.preview?.startsWith?.("#")
-                ? jsonData.preview
-                : jsonData.preview?.replace?.(
+            id: jsonData.id as string | undefined,
+            spec: jsonData.spec as string,
+            name: jsonData.name as string,
+            author: jsonData.author as string,
+            authorUrl: jsonData.authorUrl as string | undefined,
+            version: jsonData.version as string,
+            description: jsonData.description as string,
+            createdAt: jsonData.createdAt as string | undefined,
+            tags: jsonData.tags as string[],
+            scheme: jsonData.scheme as "light" | "dark",
+            iframe,
+            hash: CryptoJS.MD5(`${rawConfig}\n${rawCss}`).toString(CryptoJS.enc.Hex),
+            preview: (jsonData.preview as string).startsWith("#")
+                ? jsonData.preview as string
+                : (jsonData.preview as string).replace(
                     "@/",
                     addTailSlash(addFileScheme(resolvedThemePackPath)),
                 ),
@@ -447,19 +427,32 @@ async function initCurrentTheme() {
 }
 
 async function loadThemePacks() {
-    const themePackDirNames = await fs.readdir(themePackBasePath);
     const parsedThemePacks: ICommon.IThemePack[] = [];
+    const loadedThemeKeys = new Set<string>();
 
-    for (const themePackDir of themePackDirNames) {
-        const themePackDirPath = path.resolve(themePackBasePath, themePackDir);
-        const themePackRoot = await findThemePackRoot(themePackDirPath);
-        if (!themePackRoot) {
+    // Read both the current and historical storage roots. Creating the new
+    // folder must never make already-installed themes disappear.
+    for (const themePackSearchPath of themePackSearchPaths) {
+        let themePackDirNames: string[];
+        try {
+            themePackDirNames = await fs.readdir(themePackSearchPath);
+        } catch {
             continue;
         }
 
-        const parsedThemePack = await parseThemePack(themePackRoot);
-        if (parsedThemePack) {
-            parsedThemePacks.push(parsedThemePack);
+        for (const themePackDir of themePackDirNames) {
+            const themePackDirPath = path.resolve(themePackSearchPath, themePackDir);
+            const themePackRoot = await findThemePackRoot(themePackDirPath);
+            if (!themePackRoot) {
+                continue;
+            }
+
+            const parsedThemePack = await parseThemePack(themePackRoot);
+            const themeKey = parsedThemePack?.id || parsedThemePack?.hash || parsedThemePack?.path;
+            if (parsedThemePack && themeKey && !loadedThemeKeys.has(themeKey)) {
+                loadedThemeKeys.add(themeKey);
+                parsedThemePacks.push(parsedThemePack);
+            }
         }
     }
     return parsedThemePacks;
@@ -486,7 +479,7 @@ async function installRemoteThemePack(remoteUrl: string) {
 async function installThemePack(themePackPath: string) {
     await checkPath();
 
-    const cacheFolder = path.resolve(themePackBasePath, nanoid(12));
+    const cacheFolder = path.resolve(nextThemePackBasePath, nanoid(12));
 
     try {
         await fs.mkdir(cacheFolder, {

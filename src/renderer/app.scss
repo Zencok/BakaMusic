@@ -103,11 +103,11 @@
 
 :root {
   // Colors come from theme-bridge.scss (--theme-* → --primaryColor / etc.)
-  // Status colors stay app-owned (not part of theme contract)
-  --successColor: #08a34c;
-  --dangerColor: #fc5f5f;
-  --infoColor: #0a95c8;
-  --shadowColor: rgba(0, 0, 0, 0.2);
+  --successColor: var(--theme-success);
+  --warningColor: var(--theme-warning);
+  --dangerColor: var(--theme-danger);
+  --infoColor: var(--theme-info);
+  --shadowColor: color-mix(in srgb, black 20%, transparent);
   --animate-duration: 300ms !important;
   --scrollbarWidth: 12px;
 

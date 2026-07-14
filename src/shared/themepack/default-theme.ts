@@ -1,6 +1,7 @@
 /** Built-in default theme — bakamusic-theme@2 */
 
-export const THEME_SPEC_V2 = "bakamusic-theme@2";
+export { THEME_SPEC_V2 } from "./contract";
+import { THEME_SPEC_V2 } from "./contract";
 
 /** localStorage / path sentinel for the built-in default pack */
 export const BUILTIN_DEFAULT_THEME_PATH = "@builtin/default";
@@ -11,10 +12,13 @@ export const BUILTIN_DEFAULT_THEME_HASH = "builtin-default-v2";
 export const BUILTIN_DEFAULT_THEME_CSS = `/* bakamusic-theme@2 — built-in default */
 :root {
     --theme-primary: #f17d34;
+    --theme-primary-hover: #d96924;
+    --theme-primary-active: #bd591b;
     --theme-bg: #fdfdfd;
     --theme-text: #333333;
     --theme-scheme: light;
     --theme-text-secondary: color-mix(in srgb, #333333 72%, transparent);
+    --theme-text-muted: color-mix(in srgb, #333333 52%, transparent);
     --theme-text-on-primary: #0b0b0f;
     --theme-header-text: #333333;
     --theme-link: #f17d34;
@@ -25,6 +29,8 @@ export const BUILTIN_DEFAULT_THEME_CSS = `/* bakamusic-theme@2 — built-in defa
     --theme-blur: 22px;
     --theme-bg-image: none;
     --theme-scrollbar-thumb: color-mix(in srgb, #333333 38%, #fdfdfd);
+    --theme-scrollbar-thumb-hover: #d96924;
+    --theme-scrollbar-thumb-active: #bd591b;
 }
 `;
 

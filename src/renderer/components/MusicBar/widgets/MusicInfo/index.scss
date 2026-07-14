@@ -41,9 +41,9 @@
     }
 
     &[data-open="true"] .open-detail {
-      background: color-mix(in srgb, #0a0c12 38%, transparent);
+      background: color-mix(in srgb, var(--musicDetailBackdropBase) 38%, transparent);
       backdrop-filter: blur(6px);
-      color: #fff;
+      color: var(--theme-detail-text);
     }
   }
 

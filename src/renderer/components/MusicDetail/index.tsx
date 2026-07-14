@@ -110,7 +110,7 @@ function MusicDetail() {
                 className="music-detail-background"
                 style={
                     {
-                        // CSS var survives themepack `background: … !important` on this node
+                        // Component-owned artwork input; theme controls the surrounding stage.
                         ["--music-detail-artwork" as string]: `url(${artwork})`,
                     }
                 }

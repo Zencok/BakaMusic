@@ -4,28 +4,18 @@
   overflow: hidden;
   position: relative;
   color: var(--settingTextPrimary);
-  --settingTextPrimary: var(--appTextPrimary);
-  --settingTextSecondary: color-mix(in srgb, var(--textColor) 64%, transparent);
-  --settingTextMuted: color-mix(in srgb, var(--textColor) 48%, transparent);
-  --settingPanelSurface:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--backgroundColor) 90%, transparent),
-      color-mix(in srgb, var(--backgroundColor) 78%, transparent)
-    );
-  --settingSidebarSurface:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--backgroundColor) 82%, transparent),
-      color-mix(in srgb, var(--backgroundColor) 64%, transparent)
-    );
-  --settingRowSurface: color-mix(in srgb, var(--textColor) 3%, transparent);
-  --settingRowSurfaceHover: color-mix(in srgb, var(--primaryColor) 7%, transparent);
-  --settingControlSurface: color-mix(in srgb, var(--backgroundColor) 88%, var(--textColor) 6%);
-  --settingControlSurfaceHover: color-mix(in srgb, var(--backgroundColor) 84%, var(--primaryColor) 10%);
-  --settingControlBorder: color-mix(in srgb, var(--textColor) 14%, transparent);
-  --settingControlBorderActive: color-mix(in srgb, var(--primaryColor) 42%, var(--textColor) 14%);
-  --settingControlInset: inset 0 1px 0 color-mix(in srgb, white 14%, transparent);
+  --settingTextPrimary: var(--theme-text);
+  --settingTextSecondary: var(--theme-text-secondary);
+  --settingTextMuted: var(--theme-text-muted);
+  --settingPanelSurface: var(--theme-panel-bg);
+  --settingSidebarSurface: var(--theme-sidebar-bg);
+  --settingRowSurface: var(--theme-panel-row-bg);
+  --settingRowSurfaceHover: var(--theme-panel-row-hover-bg);
+  --settingControlSurface: var(--theme-input-bg);
+  --settingControlSurfaceHover: var(--theme-input-bg-hover);
+  --settingControlBorder: var(--theme-input-border);
+  --settingControlBorderActive: var(--theme-input-border-active);
+  --settingControlInset: none;
 
   & .setting-view--shell {
     width: 100%;

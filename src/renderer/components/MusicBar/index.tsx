@@ -236,16 +236,6 @@ const FLAT_DOCK_STYLE: MusicBarPaletteStyle = {
     "--musicBarBackdropOpacity": "0",
 };
 
-const FLAT_DETAIL_FALLBACK: MusicBarPaletteStyle = {
-    "--musicBarSurface": "transparent",
-    "--musicBarSurfaceAlt": "transparent",
-    "--musicBarText": "rgba(248, 250, 252, 0.95)",
-    "--musicBarTextSecondary": "rgba(248, 250, 252, 0.62)",
-    "--musicBarAccent": "var(--primaryColor)",
-    "--musicBarPrimaryText": "#0b0b0f",
-    "--musicBarBackdropOpacity": "0",
-};
-
 function isFlatUiStyleActive() {
     return typeof document !== "undefined"
         && document.documentElement.getAttribute("data-ui-style") === "flat";

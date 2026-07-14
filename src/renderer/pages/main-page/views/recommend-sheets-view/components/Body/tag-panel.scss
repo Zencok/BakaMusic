@@ -25,7 +25,7 @@
 
   & .tag-group--tag {
     font-size: 1rem !important;
-    color: #666;
+    color: var(--theme-text-secondary);
     white-space: nowrap;
     
     cursor: pointer;

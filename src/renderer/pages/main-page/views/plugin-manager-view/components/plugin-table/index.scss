@@ -309,7 +309,7 @@
       width: 12px;
       height: 12px;
       border-radius: 50%;
-      background: #fff;
+      background: var(--theme-text-on-primary);
       box-shadow: 0 1px 4px rgba(0,0,0,0.26);
       transition: transform 200ms ease;
     }

@@ -134,7 +134,7 @@
 
                 &.error-message {
                     color: var(--dangerColor);
-                    background: rgba(252, 95, 95, 0.1);
+                    background: color-mix(in srgb, var(--dangerColor) 10%, transparent);
                     padding: 12px;
                     border-radius: 6px;
                     border-left: 4px solid var(--dangerColor);
@@ -143,7 +143,7 @@
 
                 &.music-info {
                     color: var(--infoColor);
-                    background: rgba(10, 149, 200, 0.1);
+                    background: color-mix(in srgb, var(--infoColor) 10%, transparent);
                     padding: 12px;
                     border-radius: 6px;
                     border-left: 4px solid var(--infoColor);
@@ -212,14 +212,4 @@
         }
     }
 
-    // 深色主题适配
-    @media (prefers-color-scheme: dark) {
-        .fallback-content {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .section-content {
-            background: rgba(255, 255, 255, 0.03);
-        }
-    }
 }

@@ -44,11 +44,12 @@ $animate-duration: 300ms;
 // 这里只放非主题色的应用常量，避免在 :root 上用字面量盖住主题包。
 :root {
     // ===========================
-    // 1. 状态色彩 (Status Colors) — app-owned
+    // 1. 状态色彩 (Status Colors) — mapped by theme-bridge.scss
     // ===========================
-    --successColor: #{$success-color};
-    --dangerColor: #{$danger-color};
-    --infoColor: #{$info-color};
+    --successColor: var(--theme-success, #{$success-color});
+    --warningColor: var(--theme-warning, #d97706);
+    --dangerColor: var(--theme-danger, #{$danger-color});
+    --infoColor: var(--theme-info, #{$info-color});
 
     // ===========================
     // 2. 布局尺寸 (Layout Dimensions)
