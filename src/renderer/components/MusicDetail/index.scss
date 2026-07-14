@@ -4,6 +4,8 @@
     z-index: 3000;
     overflow: hidden;
     color: #fff;
+    // Solid base so the page behind never bleeds through (all UI styles)
+    background-color: #0a0a0e;
     -webkit-app-region: no-drag;
 
     & .music-detail-background,
@@ -17,15 +19,16 @@
         background-position: center;
         filter: blur(82px) saturate(148%);
         transform: scale(1.16);
-        opacity: 0.8;
+        opacity: 1;
     }
 
     & .music-detail-overlay {
+        // Fully opaque base + soft highlights. Never let the main app show through,
+        // including the strip under an auto-hidden music bar (glass / flat).
         background:
-            radial-gradient(circle at top left, rgba(255, 255, 255, 0.18), transparent 32%),
-            radial-gradient(circle at 80% 16%, rgba(255, 120, 160, 0.12), transparent 24%),
-            linear-gradient(135deg, rgba(14, 14, 18, 0.36), rgba(8, 8, 12, 0.74));
-        backdrop-filter: blur(22px);
+            radial-gradient(circle at top left, rgba(255, 255, 255, 0.16), rgba(14, 14, 18, 0) 32%),
+            radial-gradient(circle at 80% 16%, rgba(255, 120, 160, 0.1), rgba(10, 10, 14, 0) 24%),
+            linear-gradient(135deg, #121218 0%, #0a0a0e 100%);
     }
 }
 

@@ -611,10 +611,11 @@
         box-shadow: none !important;
         overflow: visible !important;
 
-        // Light frosted veil
+        // Light frosted veil — only while the dock is actually visible.
+        // Do NOT force opacity:1 here; auto-hide [data-revealed=false] must clear
+        // this veil completely (was leaving a permanent blur band at the bottom).
         .music-bar-overlay {
             display: block !important;
-            opacity: 1 !important;
             inset: 0 !important;
             top: -12px !important;
             height: calc(100% + 12px) !important;
@@ -632,6 +633,13 @@
             mask-image: linear-gradient(180deg, transparent 0%, #000 36%, #000 100%);
             -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 36%, #000 100%);
             pointer-events: none !important;
+        }
+
+        // When dock is up (always-on, or auto-hide revealed), show the veil
+        &[data-auto-hide="false"] .music-bar-overlay,
+        &[data-revealed="true"] .music-bar-overlay {
+            opacity: 1 !important;
+            visibility: visible !important;
         }
 
         .music-bar-shell {
