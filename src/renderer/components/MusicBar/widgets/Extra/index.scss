@@ -94,14 +94,14 @@
 
   // Portaled detail bubble follows the detail semantic palette.
   &[data-immersive="true"] {
-    color: var(--theme-detail-text);
-    background: var(--theme-detail-surface);
-    border: 1px solid var(--theme-detail-border);
-    box-shadow: var(--theme-shadow);
-    --musicBarText: var(--theme-detail-text);
-    --musicBarTextSecondary: var(--theme-detail-text-secondary);
-    --musicBarSurface: var(--theme-detail-surface);
-    --musicBarSurfaceAlt: var(--theme-detail-surface-hover);
+    color: var(--musicDetailText);
+    background: var(--musicDetailSurface);
+    border: 1px solid var(--musicDetailBorder);
+    box-shadow: var(--musicDetailShadow);
+    --musicBarText: var(--musicDetailText);
+    --musicBarTextSecondary: var(--musicDetailTextSecondary);
+    --musicBarSurface: var(--musicDetailSurface);
+    --musicBarSurfaceAlt: var(--musicDetailSurfaceHover);
   }
 
   &::after {

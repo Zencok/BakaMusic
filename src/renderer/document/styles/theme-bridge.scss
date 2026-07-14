@@ -100,15 +100,6 @@
     --theme-popover-text-secondary: var(--theme-panel-text-secondary);
     --theme-popover-border: var(--theme-panel-border);
 
-    // Detail chrome remains themeable without allowing packs to disable the
-    // product-owned artwork backdrop.
-    --theme-detail-text: #fff;
-    --theme-detail-text-secondary: rgba(255, 255, 255, 0.72);
-    --theme-detail-surface: rgba(255, 255, 255, 0.1);
-    --theme-detail-surface-hover: rgba(255, 255, 255, 0.16);
-    --theme-detail-border: rgba(255, 255, 255, 0.14);
-    --theme-detail-accent: var(--theme-primary);
-
     // Effects and small geometry (no layout dimensions).
     --theme-blur: 22px;
     --theme-bg-image: none;
@@ -135,6 +126,22 @@
 // colour/effect token while glass/flat continue to own geometry and behaviour.
 :root {
     --musicDetailBackdropBase: #0a0a0e;
+    // Product-owned immersive palette. Theme packs cannot declare private
+    // tokens, so detail panels stay stable over every artwork and theme.
+    --musicDetailText: #fff;
+    --musicDetailTextSecondary: rgba(255, 255, 255, 0.72);
+    --musicDetailSurface: rgba(255, 255, 255, 0.1);
+    --musicDetailSurfaceHover: rgba(255, 255, 255, 0.16);
+    --musicDetailBorder: rgba(255, 255, 255, 0.14);
+    --musicDetailAccent: #fff;
+    --musicDetailShadow: 0 22px 48px rgba(0, 0, 0, 0.28);
+
+    // Always composite search history onto an opaque client base. The theme's
+    // popover colour remains as tint, but transparent packs cannot expose page
+    // content through the panel and destroy text contrast.
+    --searchHistoryBg:
+        linear-gradient(var(--theme-popover-bg), var(--theme-popover-bg)),
+        light-dark(#f8f8fa, #17171d);
     --appSurface: var(--theme-surface);
     --appSurfaceStrong: var(--theme-surface-strong);
     --appSurfaceMuted: var(--theme-surface-muted);

@@ -196,7 +196,7 @@
         border-radius: 10px !important;
         backdrop-filter: none !important;
         box-shadow: 0 10px 28px color-mix(in srgb, var(--textColor) 10%, transparent) !important;
-        background: color-mix(in srgb, var(--backgroundColor) 98%, white 2%) !important;
+        background: var(--searchHistoryBg) !important;
         border: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent) !important;
         padding: 12px !important;
 
@@ -592,15 +592,15 @@
     }
 
     .volume-bubble-container[data-immersive="true"] {
-        background: var(--theme-detail-surface) !important;
-        border: 1px solid var(--theme-detail-border) !important;
-        color: var(--theme-detail-text) !important;
-        box-shadow: var(--theme-shadow) !important;
-        --musicBarText: var(--theme-detail-text);
-        --musicBarTextSecondary: var(--theme-detail-text-secondary);
-        --musicBarSurface: var(--theme-detail-surface);
-        --musicBarSurfaceAlt: var(--theme-detail-surface-hover);
-        --musicBarAccent: var(--theme-detail-accent);
+        background: var(--musicDetailSurface) !important;
+        border: 1px solid var(--musicDetailBorder) !important;
+        color: var(--musicDetailText) !important;
+        box-shadow: var(--musicDetailShadow) !important;
+        --musicBarText: var(--musicDetailText);
+        --musicBarTextSecondary: var(--musicDetailTextSecondary);
+        --musicBarSurface: var(--musicDetailSurface);
+        --musicBarSurfaceAlt: var(--musicDetailSurfaceHover);
+        --musicBarAccent: var(--musicDetailAccent);
     }
 
     // ------------------------------------------------------------------
@@ -649,10 +649,10 @@
             border: none !important;
             // Keep identical padding to collapsed dock so title/meta don't shift inward
             padding: 14px 18px 10px !important;
-            color: var(--theme-detail-text) !important;
-            --textColor: var(--theme-detail-text) !important;
-            --musicBarText: var(--theme-detail-text) !important;
-            --musicBarTextSecondary: var(--theme-detail-text-secondary) !important;
+            color: var(--musicDetailText) !important;
+            --textColor: var(--musicDetailText) !important;
+            --musicBarText: var(--musicDetailText) !important;
+            --musicBarTextSecondary: var(--musicDetailTextSecondary) !important;
         }
 
         // Floating hairline progress (Lycia: top -10px, thin, white thumb)
@@ -680,11 +680,11 @@
 
             // Soft translucent fill like Lycia's zinc-300/30
             .bar {
-                background: color-mix(in srgb, var(--theme-detail-text) 18%, transparent) !important;
+                background: color-mix(in srgb, var(--musicDetailText) 18%, transparent) !important;
             }
 
             .active-bar {
-                background: color-mix(in srgb, var(--theme-detail-text) 55%, transparent) !important;
+                background: color-mix(in srgb, var(--musicDetailText) 55%, transparent) !important;
                 box-shadow: none !important;
             }
 
@@ -693,8 +693,8 @@
                 width: 14px !important;
                 height: 14px !important;
                 border-radius: 50% !important;
-                background: var(--theme-detail-text) !important;
-                border: 1px solid var(--theme-detail-border) !important;
+                background: var(--musicDetailText) !important;
+                border: 1px solid var(--musicDetailBorder) !important;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22) !important;
                 transform: translate(-50%, -50%) scale(0.72) !important;
                 z-index: 6 !important;
@@ -726,7 +726,7 @@
             .open-detail {
                 clip-path: inset(0 round 10px);
                 background: color-mix(in srgb, var(--musicDetailBackdropBase) 42%, transparent);
-                color: var(--theme-detail-text);
+                color: var(--musicDetailText);
             }
 
             .music-cover-wrap[data-open="true"] .open-detail {
@@ -736,26 +736,26 @@
             }
 
             .music-title {
-                color: var(--theme-detail-text) !important;
+                color: var(--musicDetailText) !important;
                 font-weight: 700 !important;
                 text-shadow: 0 1px 10px rgba(0, 0, 0, 0.25);
             }
 
             .music-subtitle,
             .progress {
-                color: var(--theme-detail-text-secondary) !important;
+                color: var(--musicDetailTextSecondary) !important;
             }
 
             // Ghost icon actions — no permanent chip
             .music-info-action-shell {
-                color: var(--theme-detail-text-secondary) !important;
+                color: var(--musicDetailTextSecondary) !important;
                 background: transparent !important;
                 border: none !important;
                 box-shadow: none !important;
 
                 &:hover {
-                    color: var(--theme-detail-text) !important;
-                    background: var(--theme-detail-surface) !important;
+                    color: var(--musicDetailText) !important;
+                    background: var(--musicDetailSurface) !important;
                     transform: none !important;
                 }
             }
@@ -772,41 +772,41 @@
             max-height: 44px !important;
 
             &:hover {
-                color: var(--theme-detail-text) !important;
-                background: var(--theme-detail-surface-hover) !important;
+                color: var(--musicDetailText) !important;
+                background: var(--musicDetailSurfaceHover) !important;
                 transform: none !important;
                 box-shadow: none !important;
             }
         }
 
         .music-extra .extra-btn {
-            color: var(--theme-detail-text) !important;
+            color: var(--musicDetailText) !important;
             background: transparent !important;
             border: none !important;
             box-shadow: none !important;
             filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 
             &:hover {
-                color: var(--theme-detail-text) !important;
-                background: var(--theme-detail-surface) !important;
+                color: var(--musicDetailText) !important;
+                background: var(--musicDetailSurface) !important;
                 transform: none !important;
             }
 
             &.quality-btn {
-                color: var(--theme-detail-text-secondary) !important;
+                color: var(--musicDetailTextSecondary) !important;
                 background: transparent !important;
                 border: none !important;
                 box-shadow: none !important;
 
                 &:hover {
-                    color: var(--theme-detail-text) !important;
-                    background: var(--theme-detail-surface) !important;
+                    color: var(--musicDetailText) !important;
+                    background: var(--musicDetailSurface) !important;
                 }
             }
 
             &.highlight {
-                color: var(--theme-detail-text) !important;
-                background: var(--theme-detail-surface-hover) !important;
+                color: var(--musicDetailText) !important;
+                background: var(--musicDetailSurfaceHover) !important;
             }
         }
 

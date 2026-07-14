@@ -1,11 +1,24 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const {
+    CLIENT_OWNED_COMPATIBILITY_TOKENS,
     THEME_SPEC_V2,
     parseThemeCss,
     validateThemePackConfig,
 } = require("../src/shared/themepack/contract");
 
 assert.equal(THEME_SPEC_V2, "bakamusic-theme@2");
+assert.deepEqual(CLIENT_OWNED_COMPATIBILITY_TOKENS, [
+    "--theme-detail-bg",
+    "--theme-detail-overlay",
+    "--theme-detail-text",
+    "--theme-detail-text-secondary",
+    "--theme-detail-surface",
+    "--theme-detail-surface-hover",
+    "--theme-detail-border",
+    "--theme-detail-accent",
+]);
 
 const valid = parseThemeCss(`
     /* comments are discarded */
@@ -20,6 +33,37 @@ const valid = parseThemeCss(`
 `);
 assert.equal(valid.tokens.get("--theme-header-bg"), "var(--theme-bg)");
 assert.match(valid.css, /^html\[data-theme-spec="2"\]/);
+
+// Detail tokens remain parser-compatible for installed early V2.1 packs, but
+// the client must not consume them anywhere in detail or immersive UI styles.
+assert.doesNotThrow(() => parseThemeCss(`
+    :root {
+        --theme-primary: #5ee2d4;
+        --theme-bg: #111;
+        --theme-text: #fff;
+        --theme-scheme: dark;
+        --theme-detail-surface: red;
+        --theme-detail-accent: lime;
+    }
+`));
+const clientOwnedDetailStyleFiles = [
+    "src/renderer/components/MusicDetail/index.scss",
+    "src/renderer/components/MusicDetail/widgets/Lyric/index.scss",
+    "src/renderer/components/MusicBar/widgets/MusicInfo/index.scss",
+    "src/renderer/components/MusicBar/widgets/Extra/index.scss",
+    "src/renderer/document/styles/ui-style-flat.scss",
+    "src/renderer/document/styles/theme-bridge.scss",
+];
+for (const relativePath of clientOwnedDetailStyleFiles) {
+    const stylesheet = fs.readFileSync(path.join(__dirname, "..", relativePath), "utf8");
+    assert.doesNotMatch(stylesheet, /var\(--theme-detail-/);
+}
+
+const searchHistoryStyles = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/Header/widgets/SearchHistory/index.scss",
+), "utf8");
+assert.doesNotMatch(searchHistoryStyles, /--searchHistoryBg:\s*var\(--theme-popover-bg\)/);
 
 const invalidSamples = [
     ":root { --theme-primary: red; } .header-container { display: none; }",

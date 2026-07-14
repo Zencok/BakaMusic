@@ -7,6 +7,19 @@ export const REQUIRED_THEME_TOKENS = [
     "--theme-scheme",
 ] as const;
 
+// Accepted only so installed early V2.1 packs keep loading. MusicDetail and
+// its immersive MusicBar chrome are product-owned and never consume them.
+export const CLIENT_OWNED_COMPATIBILITY_TOKENS = [
+    "--theme-detail-bg",
+    "--theme-detail-overlay",
+    "--theme-detail-text",
+    "--theme-detail-text-secondary",
+    "--theme-detail-surface",
+    "--theme-detail-surface-hover",
+    "--theme-detail-border",
+    "--theme-detail-accent",
+] as const;
+
 /**
  * Public visual contract. Layout, visibility, z-index and product behaviour are
  * deliberately absent: packs may paint every BakaMusic region, but may not
@@ -85,16 +98,7 @@ export const THEME_TOKENS = [
     "--theme-popover-text",
     "--theme-popover-text-secondary",
     "--theme-popover-border",
-    // Accepted for compatibility with early 2.1 packs. The client deliberately
-    // ignores them: artwork backdrop and light wash are product behaviour.
-    "--theme-detail-bg",
-    "--theme-detail-overlay",
-    "--theme-detail-text",
-    "--theme-detail-text-secondary",
-    "--theme-detail-surface",
-    "--theme-detail-surface-hover",
-    "--theme-detail-border",
-    "--theme-detail-accent",
+    ...CLIENT_OWNED_COMPATIBILITY_TOKENS,
     "--theme-blur",
     "--theme-bg-image",
     "--theme-scrollbar-track",
