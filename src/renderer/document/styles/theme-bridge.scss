@@ -1,0 +1,75 @@
+// =============================================================================
+// Theme Spec v2 bridge — maps --theme-* (author contract) → internal tokens
+// Themes only set --theme-*. Client owns chrome / layout.
+// Scheme surface overrides live in theme-scheme.scss (after ui-styles).
+// =============================================================================
+
+// Defaults only apply when no pack is active.
+// Active packs inject html[data-theme-spec="2"] { --theme-* } AFTER this sheet
+// (style#themepack-node moved to end of head) with higher specificity.
+:root:not([data-theme-spec="2"]) {
+    --theme-primary: #f17d34;
+    --theme-bg: #fdfdfd;
+    --theme-text: #333333;
+    --theme-scheme: light;
+    --theme-text-secondary: color-mix(in srgb, var(--theme-text) 72%, transparent);
+    --theme-text-on-primary: #0b0b0f;
+    --theme-header-text: var(--theme-text);
+    --theme-link: var(--theme-primary);
+    --theme-divider: color-mix(in srgb, var(--theme-text) 12%, transparent);
+    --theme-mask: color-mix(in srgb, var(--theme-text) 32%, transparent);
+    --theme-placeholder: color-mix(in srgb, var(--theme-text) 8%, var(--theme-bg));
+    --theme-surface-alpha: 0.88;
+    --theme-blur: 22px;
+    --theme-bg-image: none;
+    --theme-scrollbar-thumb: color-mix(in srgb, var(--theme-text) 38%, var(--theme-bg));
+}
+
+// Always map --theme-* → legacy names (pack tokens or defaults above)
+:root {
+    --primaryColor: var(--theme-primary);
+    --backgroundColor: var(--theme-bg);
+    --textColor: var(--theme-text);
+    --headerTextColor: var(--theme-header-text, var(--theme-text));
+    --linkColor: var(--theme-link, var(--theme-primary));
+    --dividerColor: var(--theme-divider, color-mix(in srgb, var(--theme-text) 12%, transparent));
+    --maskColor: var(--theme-mask, color-mix(in srgb, var(--theme-text) 32%, transparent));
+    --placeholderColor: var(
+        --theme-placeholder,
+        color-mix(in srgb, var(--theme-text) 8%, var(--theme-bg))
+    );
+    --listEvenColor: color-mix(in srgb, var(--theme-text) 5%, transparent);
+    --listHoverColor: color-mix(in srgb, var(--theme-text) 6%, transparent);
+    --listActiveColor: color-mix(in srgb, var(--theme-text) 10%, transparent);
+    --scrollbarThumbColor: var(
+        --theme-scrollbar-thumb,
+        color-mix(in srgb, var(--theme-text) 38%, var(--theme-bg))
+    );
+    --scrollbarThumbHoverColor: color-mix(
+        in srgb,
+        var(--theme-primary) 55%,
+        var(--theme-scrollbar-thumb, var(--theme-primary))
+    );
+    --scrollbarThumbActiveColor: color-mix(
+        in srgb,
+        var(--theme-primary) 70%,
+        var(--theme-scrollbar-thumb, var(--theme-primary))
+    );
+}
+
+// Solid page canvas when a V2 pack is active
+html[data-theme-spec="2"] {
+    color: var(--theme-text);
+    background-color: var(--theme-bg);
+    background-image: var(--theme-bg-image, none);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+html[data-theme-spec="2"] body,
+html[data-theme-spec="2"] #root,
+html[data-theme-spec="2"] .app-container {
+    background-color: var(--theme-bg);
+    color: var(--theme-text);
+}

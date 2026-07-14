@@ -22,7 +22,7 @@ export default function RemoteThemes() {
                     i18nKey={"theme.how_to_submit_new_theme"}
                     components={{
                         Github: (
-                            <A href="https://github.com/maotoumao/MusicFreeThemePacks"></A>
+                            <A href="https://github.com/Toskysun/BakaThemePacks"></A>
                         ),
                     }}
                 ></Trans>

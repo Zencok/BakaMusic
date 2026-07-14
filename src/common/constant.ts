@@ -169,11 +169,13 @@ export enum DownloadState {
     DONE = "DONE",
 }
 
-// 主题更新链接
+// 主题市场源：BakaThemePacks v2/prod（bakamusic-theme@2 产物根目录）
+// 目录约定：publish.json、themes/*.mftheme、previews/*
+export const THEME_SPEC_V2 = "bakamusic-theme@2";
+
 export const themePackStoreBaseUrl = [
-    "https://raw.githubusercontent.com/maotoumao/MusicFreeThemePacks/master/", //github
-    "https://cdn.jsdelivr.net/gh/maotoumao/MusicFreeThemePacks@master/",
-    "https://dev.azure.com/maotoumao/MusicFree/_apis/git/repositories/MusicFreeThemePacks/items?scopePath=/.publish/publish.json&api-version=6.0", // azure
+    "https://raw.githubusercontent.com/Toskysun/BakaThemePacks/v2/prod/",
+    "https://cdn.jsdelivr.net/gh/Toskysun/BakaThemePacks@v2%2Fprod/",
 ];
 
 // GitHub API 端点，优先使用国内镜像

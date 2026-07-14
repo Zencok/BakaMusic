@@ -29,6 +29,11 @@ declare namespace ICommon {
 
   interface IThemePack {
     id?: string;
+    /**
+     * Theme contract version. V2 clients only apply packs with
+     * `bakamusic-theme@2`.
+     */
+    spec?: string;
     /** 主题 */
     name: string;
     /** 加载之后的路径，内部属性 */
@@ -45,6 +50,8 @@ declare namespace ICommon {
     /** 版本号 */
     version?: string;
     description?: string;
+    /** light | dark — optional metadata mirror of --theme-scheme */
+    scheme?: "light" | "dark" | string;
     iframe?: Record<
       "app" | "header" | "body" | "music-bar" | "side-bar" | "page",
       string

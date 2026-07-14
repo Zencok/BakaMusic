@@ -30,6 +30,9 @@ export default function ThemeItem(props: IProps) {
     const selectTheme = async () => {
         try {
             if (type === "local") {
+                if (!Themepack.isThemeSpecV2(config)) {
+                    throw new Error(t("theme.unsupported_theme_spec"));
+                }
                 await Themepack.selectTheme(config);
             } else {
                 if (latestInstalled && hash) {
@@ -40,6 +43,9 @@ export default function ThemeItem(props: IProps) {
                         config.srcUrl,
                         config.id,
                     );
+                    if (!Themepack.isThemeSpecV2(themePack)) {
+                        throw new Error(t("theme.unsupported_theme_spec"));
+                    }
                     await Themepack.selectTheme(themePack);
                 } else {
                     throw new Error("Invalid remote theme config");

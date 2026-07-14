@@ -470,6 +470,7 @@
     "how_to_submit_new_theme": "💡How to submit a new theme: The themes in the marketplace are synchronized with the <Github>theme resource repository</Github>. If you want to submit a new theme, please open a pull request directly.",
     "load_remote_theme_error": "An error occurred...",
     "invalid_theme": "Invalid theme: {{reason}}",
+    "unsupported_theme_spec": "This theme is not bakamusic-theme@2. Reinstall a compatible pack from the marketplace.",
     "bakamusic_theme": "BakaMusic Theme"
   }
 }

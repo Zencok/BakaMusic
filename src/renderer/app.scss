@@ -5,6 +5,8 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  // Solid theme canvas under translucent chrome (critical for dark packs)
+  background-color: var(--backgroundColor);
 
   & .body-container {
     width: 100%;
@@ -13,7 +15,10 @@
     display: flex;
     position: relative;
     isolation: isolate;
-    background: var(--appBodyBg);
+    background-color: var(--backgroundColor);
+    background-image: var(--appBodyBg);
+    background-repeat: no-repeat;
+    background-size: cover;
   }
 }
 
@@ -97,30 +102,19 @@
 }
 
 :root {
-  --primaryColor: #f17d34;
-  --backgroundColor: #fdfdfd;
-  --dividerColor: rgba(0, 0, 0, 0.1);
-  --listEvenColor: rgba(0, 0, 0, 0.05);
-  --listHoverColor: rgba(0, 0, 0, 0.05);
-  --listActiveColor: rgba(0, 0, 0, 0.1);
-  --textColor: #333333;
-  --maskColor: rgba(51, 51, 51, 0.5);
-  --shadowColor: rgba(0, 0, 0, 0.2);
-  --placeholderColor: #f4f4f4;
-
+  // Colors come from theme-bridge.scss (--theme-* → --primaryColor / etc.)
+  // Status colors stay app-owned (not part of theme contract)
   --successColor: #08a34c;
   --dangerColor: #fc5f5f;
   --infoColor: #0a95c8;
-  --linkColor: #0c66fc;
-  --headerTextColor: var(--textColor);
+  --shadowColor: rgba(0, 0, 0, 0.2);
   --animate-duration: 300ms !important;
   --scrollbarWidth: 12px;
 
   --appHeaderHeight: 54px;
   --appMusicBarHeight: 92px;
 
-  // Surface / glass tokens are defined in document/styles/ui-styles.scss
-  // (glass default + flat overrides via [data-ui-style]).
+  // Surface / glass tokens: document/styles/ui-styles.scss (+ flat overrides)
 
   font-size: 13px;
   color: var(--textColor);

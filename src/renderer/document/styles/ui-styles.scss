@@ -32,7 +32,8 @@
     --appSurfaceInset: inset 0 1px 0 color-mix(in srgb, white 16%, transparent);
     --appSurfaceShadow: 0 22px 48px rgba(15, 23, 42, 0.12);
     --appSurfaceShadowSoft: 0 12px 28px rgba(15, 23, 42, 0.08);
-    --appGlassFilter: blur(22px) saturate(145%);
+    // Prefer theme-contract blur when a V2 pack is active
+    --appGlassFilter: blur(var(--theme-blur, 22px)) saturate(145%);
 
     --appTextPrimary: var(--textColor);
     --appTextSecondary: color-mix(in srgb, var(--textColor) 72%, transparent);
@@ -81,7 +82,7 @@
         );
     --headerChromeBorder: color-mix(in srgb, var(--textColor) 10%, transparent);
     --headerChromeShadow: 0 10px 28px color-mix(in srgb, var(--textColor) 6%, transparent);
-    --headerChromeFilter: blur(22px) saturate(145%);
+    --headerChromeFilter: blur(var(--theme-blur, 22px)) saturate(145%);
     --headerControlBg: color-mix(in srgb, var(--textColor) 7%, transparent);
     --headerControlBorder: color-mix(in srgb, var(--textColor) 10%, transparent);
     --headerControlHoverBg: color-mix(in srgb, var(--textColor) 12%, transparent);

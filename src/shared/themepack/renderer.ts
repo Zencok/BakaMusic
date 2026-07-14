@@ -30,6 +30,11 @@ async function selectTheme(themePack: ICommon.IThemePack | null) {
     if (!themePack?.hash) {
         themePack = null;
     }
+    if (themePack && themePack.spec !== "bakamusic-theme@2") {
+        throw new Error(
+            `Unsupported theme spec (need bakamusic-theme@2, got ${themePack.spec || "missing"})`,
+        );
+    }
     await mod.selectTheme(themePack);
     currentThemePackStore.setValue(themePack);
 }
@@ -40,8 +45,7 @@ async function selectThemeByHash(hash: string) {
         .find((it) => it?.hash === hash);
 
     if (targetTheme) {
-        await mod.selectTheme(targetTheme);
-        currentThemePackStore.setValue(targetTheme);
+        await selectTheme(targetTheme);
     }
 }
 
@@ -49,7 +53,12 @@ let themePacksLoaded = false;
 async function setupThemePacks(): Promise<void> {
     try {
         const currentTheme = await mod.initCurrentTheme();
-        await selectTheme(currentTheme);
+        if (currentTheme && currentTheme.spec === "bakamusic-theme@2") {
+            await selectTheme(currentTheme);
+        } else {
+            // Drop incompatible local selection without crashing boot
+            await selectTheme(null);
+        }
 
         requestIdleCallback(() => {
             if (!themePacksLoaded) {
@@ -149,6 +158,9 @@ const ThemePack = {
     replaceAlias: mod.replaceAlias,
     useLocalThemePacks,
     useCurrentThemePack: currentThemePackStore.useValue,
+    THEME_SPEC_V2: "bakamusic-theme@2" as const,
+    isThemeSpecV2: (themePack: ICommon.IThemePack | null | undefined) =>
+        themePack?.spec === "bakamusic-theme@2",
 };
 
 export default ThemePack;

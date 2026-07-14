@@ -1,0 +1,154 @@
+// =============================================================================
+// Scheme-aware surface overrides — MUST load after ui-styles / ui-style-flat
+// so glass|flat light-biased tokens do not wash out dark theme packs.
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// Dark scheme
+// ---------------------------------------------------------------------------
+html[data-theme-scheme="dark"],
+html[data-theme-scheme="dark"][data-ui-style="glass"],
+:root[data-theme-scheme="dark"],
+:root[data-theme-scheme="dark"][data-ui-style="glass"] {
+    color-scheme: dark;
+
+    --listEvenColor: color-mix(in srgb, var(--theme-text, var(--textColor)) 4%, transparent);
+    --listHoverColor: color-mix(in srgb, var(--theme-text, var(--textColor)) 8%, transparent);
+    --listActiveColor: color-mix(in srgb, var(--theme-text, var(--textColor)) 12%, transparent);
+    --shadowColor: rgba(0, 0, 0, 0.45);
+    --maskColor: color-mix(in srgb, #000 62%, transparent);
+
+    --appSurface: color-mix(in srgb, var(--backgroundColor) 82%, #000 18%);
+    --appSurfaceStrong: color-mix(in srgb, var(--backgroundColor) 90%, #000 10%);
+    --appSurfaceMuted: color-mix(in srgb, var(--backgroundColor) 70%, #000 30%);
+    --appSurfaceBorder: color-mix(in srgb, var(--textColor) 14%, transparent);
+    --appSurfaceBorderStrong: color-mix(in srgb, var(--textColor) 22%, transparent);
+    --appSurfaceInset: inset 0 1px 0 color-mix(in srgb, var(--textColor) 8%, transparent);
+    --appSurfaceShadow: 0 22px 48px rgba(0, 0, 0, 0.4);
+    --appSurfaceShadowSoft: 0 12px 28px rgba(0, 0, 0, 0.28);
+
+    --appTextPrimary: var(--textColor);
+    --appTextSecondary: color-mix(in srgb, var(--textColor) 72%, transparent);
+    --appTextTertiary: color-mix(in srgb, var(--textColor) 52%, transparent);
+    --appInteractiveSurface: color-mix(in srgb, var(--textColor) 8%, transparent);
+    --appInteractiveSurfaceHover: color-mix(in srgb, var(--textColor) 12%, transparent);
+    --appInteractiveSurfaceStrong: color-mix(in srgb, var(--primaryColor) 18%, var(--backgroundColor));
+    --appInteractiveBorder: color-mix(in srgb, var(--textColor) 16%, transparent);
+    --appImageFallback: color-mix(in srgb, var(--backgroundColor) 80%, var(--textColor) 20%);
+
+    --appOverlayMask: color-mix(in srgb, #000 55%, transparent);
+    --appPanelMask: color-mix(in srgb, #000 35%, transparent);
+    --appPanelSurface: color-mix(in srgb, var(--backgroundColor) 92%, #000 8%);
+
+    // Solid dark page canvas (replaces ~10% tint over transparent)
+    --appBodyBg:
+        radial-gradient(
+            circle at top left,
+            color-mix(in srgb, var(--primaryColor) 14%, transparent) 0%,
+            transparent 36%
+        ),
+        linear-gradient(
+            180deg,
+            var(--backgroundColor) 0%,
+            color-mix(in srgb, var(--backgroundColor) 88%, #000 12%) 100%
+        );
+
+    --headerChromeBg:
+        linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--backgroundColor) 88%, var(--primaryColor) 12%) 0%,
+            color-mix(in srgb, var(--backgroundColor) 96%, #000 4%) 100%
+        );
+    --headerChromeBorder: color-mix(in srgb, var(--textColor) 12%, transparent);
+    --headerChromeShadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+    --headerControlBg: color-mix(in srgb, var(--textColor) 8%, transparent);
+    --headerControlBorder: color-mix(in srgb, var(--textColor) 12%, transparent);
+    --headerControlHoverBg: color-mix(in srgb, var(--textColor) 14%, transparent);
+    --headerSearchBg: color-mix(in srgb, var(--backgroundColor) 70%, #000 30%);
+    --headerSearchBorder: color-mix(in srgb, var(--textColor) 14%, transparent);
+    --headerSearchInset: inset 0 1px 0 color-mix(in srgb, var(--textColor) 6%, transparent);
+    --headerDividerColor: color-mix(in srgb, var(--textColor) 18%, transparent);
+    --headerHairline: color-mix(in srgb, var(--primaryColor) 36%, transparent);
+    --headerTextColor: var(--textColor);
+
+    --sideBarBg:
+        linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--backgroundColor) 94%, #000 6%),
+            color-mix(in srgb, var(--backgroundColor) 82%, #000 18%)
+        );
+    --sideBarBorder: color-mix(in srgb, var(--textColor) 12%, transparent);
+    --sideBarShadow: inset -1px 0 0 color-mix(in srgb, var(--textColor) 6%, transparent);
+    --sideBarItemHover: color-mix(in srgb, var(--textColor) 8%, transparent);
+    --sideBarItemSelected:
+        linear-gradient(
+            90deg,
+            color-mix(in srgb, var(--primaryColor) 22%, transparent),
+            color-mix(in srgb, var(--primaryColor) 8%, transparent)
+        );
+    --sideBarItemSelectedBorder: color-mix(in srgb, var(--primaryColor) 40%, transparent);
+
+    --panelContentColor: var(--textColor);
+    --panelBorder: color-mix(in srgb, var(--textColor) 14%, transparent);
+    --panelTextOnSurface: var(--textColor);
+    --panelMutedText: color-mix(in srgb, var(--textColor) 58%, transparent);
+    --panelRowSurface: color-mix(in srgb, var(--textColor) 6%, transparent);
+    --panelRowSurfaceHover: color-mix(in srgb, var(--primaryColor) 14%, var(--backgroundColor));
+    --panelRowBorder: color-mix(in srgb, var(--textColor) 10%, transparent);
+    --panelInputBg: color-mix(in srgb, var(--backgroundColor) 70%, #000 30%);
+    --panelShadow: 0 24px 64px rgba(0, 0, 0, 0.5),
+        0 1px 0 color-mix(in srgb, var(--textColor) 8%, transparent) inset;
+
+    --panelFilter: blur(var(--theme-blur, 22px)) saturate(140%);
+}
+
+// Flat + dark: kill hardcoded light Fluent mixes (#e8eef6 / white)
+html[data-ui-style="flat"][data-theme-scheme="dark"],
+:root[data-ui-style="flat"][data-theme-scheme="dark"] {
+    --appSurface: color-mix(in srgb, var(--backgroundColor) 96%, #000 4%);
+    --appSurfaceStrong: var(--backgroundColor);
+    --appSurfaceMuted: color-mix(in srgb, var(--textColor) 6%, var(--backgroundColor));
+    --appSurfaceBorder: color-mix(in srgb, var(--textColor) 10%, transparent);
+    --appSurfaceBorderStrong: color-mix(in srgb, var(--textColor) 14%, transparent);
+    --appSurfaceInset: none;
+    --appSurfaceShadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    --appSurfaceShadowSoft: 0 2px 10px rgba(0, 0, 0, 0.25);
+    --appGlassFilter: none;
+
+    --appPanelSurface: color-mix(in srgb, var(--backgroundColor) 98%, #000 2%);
+    --appOverlayMask: rgba(0, 0, 0, 0.55);
+    --appPanelMask: rgba(0, 0, 0, 0.28);
+    --maskColor: rgba(0, 0, 0, 0.55);
+    --shadowColor: rgba(0, 0, 0, 0.4);
+
+    --appBodyBg:
+        linear-gradient(
+            180deg,
+            var(--backgroundColor) 0%,
+            color-mix(in srgb, var(--backgroundColor) 92%, #000 8%) 100%
+        );
+
+    --headerChromeBg: transparent;
+    --headerChromeBorder: color-mix(in srgb, var(--textColor) 10%, transparent);
+    --headerChromeShadow: none;
+    --headerChromeFilter: none;
+    --headerSearchBg: color-mix(in srgb, var(--textColor) 6%, transparent);
+    --sideBarBg: transparent;
+    --sideBarFilter: none;
+    --sideBarShadow: none;
+
+    --panelFilter: none;
+    --panelInputBg: color-mix(in srgb, var(--textColor) 6%, var(--backgroundColor));
+    --panelShadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+
+    --scrollbarTrackColor: transparent;
+    --scrollbarThumbColor: color-mix(in srgb, var(--textColor) 22%, transparent);
+    --scrollbarThumbHoverColor: color-mix(in srgb, var(--textColor) 32%, transparent);
+    --scrollbarThumbActiveColor: color-mix(in srgb, var(--textColor) 40%, transparent);
+}
+
+// Light scheme: solid-enough page base under glass
+html[data-theme-scheme="light"],
+:root[data-theme-scheme="light"] {
+    color-scheme: light;
+}

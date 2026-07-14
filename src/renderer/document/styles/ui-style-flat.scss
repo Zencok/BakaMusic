@@ -370,7 +370,7 @@
         height: var(--appMusicBarHeight, 80px) !important;
         padding: 0 !important;
         overflow: visible !important;
-        // Clean dock surface: follow theme bg (white in light mode), no gray wash
+        // Clean dock surface: follow theme bg (light or dark), no gray wash
         background: var(--backgroundColor) !important;
         box-shadow:
             0 -1px 0 color-mix(in srgb, var(--textColor) 8%, transparent),
@@ -380,7 +380,8 @@
         --musicBarText: var(--textColor) !important;
         --musicBarTextSecondary: color-mix(in srgb, var(--textColor) 58%, transparent) !important;
         --musicBarAccent: var(--primaryColor) !important;
-        --musicBarPrimaryText: #fff !important;
+        // Play glyph on accent disc — keep light for contrast on brand color
+        --musicBarPrimaryText: var(--theme-text-on-primary, #fff) !important;
         transition: background 280ms ease, box-shadow 280ms ease;
     }
 

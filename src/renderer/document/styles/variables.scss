@@ -40,46 +40,24 @@ $font-size: 13px;
 $animate-duration: 300ms;
 
 // CSS自定义属性定义（供主题系统使用）
+// NOTE: --primaryColor / --backgroundColor / --textColor 等色彩桥接见 theme-bridge.scss
+// 这里只放非主题色的应用常量，避免在 :root 上用字面量盖住主题包。
 :root {
     // ===========================
-    // 1. 主题色彩 (Theme Colors)
-    // ===========================
-    --primaryColor: #{$primary-color};
-    --backgroundColor: #{$background-color};
-    --textColor: #{$text-color};
-    --linkColor: #{$link-color};
-
-    // ===========================
-    // 2. 状态色彩 (Status Colors)
+    // 1. 状态色彩 (Status Colors) — app-owned
     // ===========================
     --successColor: #{$success-color};
     --dangerColor: #{$danger-color};
     --infoColor: #{$info-color};
 
     // ===========================
-    // 3. 文本色彩 (Text Colors)
-    // ===========================
-    --headerTextColor: var(--textColor);
-
-    // ===========================
-    // 4. 交互色彩 (Interactive Colors)
-    // ===========================
-    --dividerColor: #{$divider-color};
-    --listEvenColor: #{$list-even-color};
-    --listHoverColor: #{$list-hover-color};
-    --listActiveColor: #{$list-active-color};
-    --maskColor: #{$mask-color};
-    --shadowColor: #{$shadow-color};
-    --placeholderColor: #{$placeholder-color};
-
-    // ===========================
-    // 5. 布局尺寸 (Layout Dimensions)
+    // 2. 布局尺寸 (Layout Dimensions)
     // ===========================
     --appHeaderHeight: #{$app-header-height};
     --appMusicBarHeight: #{$app-music-bar-height};
 
     // ===========================
-    // 6. 组件尺寸 (Component Dimensions)
+    // 3. 组件尺寸 (Component Dimensions)
     // ===========================
     --scrollbarWidth: #{$scrollbar-width};
     --scrollbarTrackColor: color-mix(in srgb, var(--textColor) 10%, transparent);
@@ -87,14 +65,15 @@ $animate-duration: 300ms;
     --scrollbarThumbHoverColor: color-mix(in srgb, var(--textColor) 48%, var(--backgroundColor));
     --scrollbarThumbActiveColor: color-mix(in srgb, var(--textColor) 58%, var(--backgroundColor));
     --fontSize: #{$font-size};
+    --shadowColor: #{$shadow-color};
 
     // ===========================
-    // 7. 动效变量 (Animation)
+    // 4. 动效变量 (Animation)
     // ===========================
     --animate-duration: #{$animate-duration} !important;
 
     // ===========================
-    // 8. 兼容性变量 (Deprecated)
+    // 5. 兼容性变量 (Deprecated)
     // ===========================
     --scrollbar-width: var(--scrollbarWidth); // @deprecated 使用 --scrollbarWidth
 }

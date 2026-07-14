@@ -470,6 +470,7 @@
     "how_to_submit_new_theme": "💡如何提交新主题: 主题市场中的主题与 <Github>主题资源仓库</Github> 同步，如果需要提交新主题请直接提 PR。",
     "load_remote_theme_error": "出错啦...",
     "invalid_theme": "主题无效: {{reason}}",
+    "unsupported_theme_spec": "此主题不是 bakamusic-theme@2，请从主题市场重新安装兼容版本",
     "bakamusic_theme": "BakaMusic 主题"
   }
 }
