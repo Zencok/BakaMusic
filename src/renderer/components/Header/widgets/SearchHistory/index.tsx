@@ -24,7 +24,7 @@ export default function SearchHistory(props: ISearchHistoryProps) {
 
     return (
         <div
-            className="search-history--container backdrop-color shadow"
+            className="search-history--container shadow"
             tabIndex={-1}
             onFocus={onHistoryPanelFocus}
             onBlur={onHistoryPanelBlur}

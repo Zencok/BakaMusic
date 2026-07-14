@@ -87,14 +87,10 @@ export default function LocalThemes() {
                     ></ThemeItem>
                 ))}
                 <ThemeItem
-                    config={
-                        {
-                            name: t("common.default"),
-                            preview: "#f17d34",
-                        } as any
-                    }
+                    config={ThemePack.createBuiltinDefaultThemePack(t("common.default"))}
+                    hash={ThemePack.BUILTIN_DEFAULT_THEME_HASH}
                     type="local"
-                    selected={!currentThemePack}
+                    selected={ThemePack.isBuiltinDefaultTheme(currentThemePack)}
                 ></ThemeItem>
             </div>
         </div>

@@ -113,7 +113,7 @@ export default function ThemeItem(props: IProps) {
                                 >
                                     {t("theme.use_theme")}
                                 </div>
-                                {hash && (
+                                {hash && !Themepack.isBuiltinDefaultTheme(config) && (
                                     <div
                                         className="theme-option-button"
                                         role="button"

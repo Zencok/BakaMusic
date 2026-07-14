@@ -1,4 +1,8 @@
 .search-history--container {
+  // Theme-colored but fully opaque: strip alpha from --backgroundColor (theme packs
+  // often use translucent bg). Relative color keeps hue; falls back to solid mix.
+  --searchHistoryBg: var(--backgroundColor);
+  --searchHistoryBg: rgb(from var(--backgroundColor) r g b);
   position: absolute;
   box-sizing: border-box;
   width: 100%;
@@ -6,18 +10,20 @@
   overflow-y: auto;
   top: calc(100% + 8px);
   left: 0;
+  z-index: 40;
   border-radius: var(--controlRadiusLg, 18px);
   padding: 14px;
   color: var(--appTextPrimary);
   border: 1px solid var(--appSurfaceBorderStrong);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--backgroundColor) 94%, var(--textColor) 6%),
-      color-mix(in srgb, var(--backgroundColor) 88%, var(--textColor) 12%)
-    );
-  box-shadow: var(--appSurfaceShadow), var(--appSurfaceInset);
-  backdrop-filter: var(--appGlassFilter);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--searchHistoryBg) 94%, var(--textColor) 6%) 0%,
+    color-mix(in srgb, var(--searchHistoryBg) 90%, var(--textColor) 10%) 100%
+  );
+  box-shadow: var(--appSurfaceShadow), 0 12px 32px color-mix(in srgb, var(--textColor) 12%, transparent);
+  // No glass blur — avoids page text bleeding through the panel
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 
   & .search-history--header {
     height: 1.6rem;

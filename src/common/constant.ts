@@ -171,6 +171,7 @@ export enum DownloadState {
 
 // 主题市场源：BakaThemePacks v2/prod（bakamusic-theme@2 产物根目录）
 // 目录约定：publish.json、themes/*.mftheme、previews/*
+// Spec constant also lives in shared/themepack/default-theme.ts for the runtime pack system
 export const THEME_SPEC_V2 = "bakamusic-theme@2";
 
 export const themePackStoreBaseUrl = [

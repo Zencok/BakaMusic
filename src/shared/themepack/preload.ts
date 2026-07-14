@@ -9,12 +9,18 @@ import unzipper from "unzipper";
 import { getGlobalContext } from "../global-context/preload";
 import CryptoJS from "crypto-js";
 import exposeInMainWorld from "@/preload/expose-in-main-world";
+import {
+    BUILTIN_DEFAULT_THEME_CSS,
+    BUILTIN_DEFAULT_THEME_HASH,
+    BUILTIN_DEFAULT_THEME_PATH,
+    THEME_SPEC_V2,
+    createBuiltinDefaultThemePack,
+    isBuiltinDefaultTheme,
+} from "./default-theme";
 
 const themeNodeId = "themepack-node";
 const themePathKey = "themepack-path";
 const themePackRequiredFiles = ["config.json", "index.css"] as const;
-/** Strict client contract — see docs/theme-spec-v2.md */
-const THEME_SPEC_V2 = "bakamusic-theme@2";
 
 function isThemeSpecV2(themePack: ICommon.IThemePack | null | undefined): boolean {
     return themePack?.spec === THEME_SPEC_V2;
@@ -138,14 +144,23 @@ function getOrCreateThemeStyleNode(): HTMLStyleElement {
     return themeNode;
 }
 
-/** 选择某个主题（仅 bakamusic-theme@2） */
-async function selectTheme(themePack: ICommon.IThemePack | null) {
+function applyThemeCss(themePack: ICommon.IThemePack, rawStyle: string, aliasBasePath?: string) {
     const themeNode = getOrCreateThemeStyleNode();
-    if (themePack === null) {
-        themeNode.textContent = "";
+    applyThemeDocumentAttrs(themePack, rawStyle);
+    const withAlias = aliasBasePath
+        ? replaceAlias(stripThemeScrollbarHidingRules(rawStyle), aliasBasePath)
+        : stripThemeScrollbarHidingRules(rawStyle);
+    themeNode.textContent = normalizeThemePackCss(withAlias);
+}
+
+/** 选择某个主题（仅 bakamusic-theme@2；null → 内置默认 V2） */
+async function selectTheme(themePack: ICommon.IThemePack | null) {
+    // Built-in default is a first-class V2 pack (not “no theme”)
+    if (themePack === null || isBuiltinDefaultTheme(themePack)) {
+        const builtin = createBuiltinDefaultThemePack(themePack?.name);
         clearThemeIframes();
-        clearThemeDocumentAttrs();
-        localStorage.removeItem(themePathKey);
+        applyThemeCss(builtin, BUILTIN_DEFAULT_THEME_CSS);
+        localStorage.setItem(themePathKey, BUILTIN_DEFAULT_THEME_PATH);
         return;
     }
 
@@ -155,15 +170,19 @@ async function selectTheme(themePack: ICommon.IThemePack | null) {
         );
     }
 
+    if (!themePack.path || themePack.path === BUILTIN_DEFAULT_THEME_PATH) {
+        const builtin = createBuiltinDefaultThemePack(themePack.name);
+        clearThemeIframes();
+        applyThemeCss(builtin, BUILTIN_DEFAULT_THEME_CSS);
+        localStorage.setItem(themePathKey, BUILTIN_DEFAULT_THEME_PATH);
+        return;
+    }
+
     const rawStyle = await fs.readFile(
         path.resolve(themePack.path, "index.css"),
         "utf-8",
     );
-    // Attrs first so html[data-theme-spec="2"] selectors match immediately
-    applyThemeDocumentAttrs(themePack, rawStyle);
-    themeNode.textContent = normalizeThemePackCss(
-        replaceAlias(stripThemeScrollbarHidingRules(rawStyle), themePack.path),
-    );
+    applyThemeCss(themePack, rawStyle, themePack.path);
 
     if (themePack.iframe) {
         const iframeConfig = themePack.iframe;
@@ -415,15 +434,15 @@ async function initCurrentTheme() {
     try {
         await checkPath();
         const currentThemePath = localStorage.getItem(themePathKey);
-        if (!currentThemePath) {
-            return null;
+        if (!currentThemePath || currentThemePath === BUILTIN_DEFAULT_THEME_PATH) {
+            return createBuiltinDefaultThemePack();
         }
         const currentTheme: ICommon.IThemePack | null = await parseThemePack(
             currentThemePath,
         );
         return currentTheme;
     } catch {
-        return null;
+        return createBuiltinDefaultThemePack();
     }
 }
 
@@ -505,6 +524,9 @@ async function installThemePack(themePackPath: string) {
 }
 
 async function uninstallThemePack(themePack: ICommon.IThemePack) {
+    if (isBuiltinDefaultTheme(themePack) || themePack.path === BUILTIN_DEFAULT_THEME_PATH) {
+        return;
+    }
     return await rimraf(themePack.path);
 }
 
@@ -518,6 +540,10 @@ export const mod = {
     replaceAlias,
     THEME_SPEC_V2,
     isThemeSpecV2,
+    createBuiltinDefaultThemePack,
+    isBuiltinDefaultTheme,
+    BUILTIN_DEFAULT_THEME_PATH,
+    BUILTIN_DEFAULT_THEME_HASH,
 };
 
 exposeInMainWorld("@shared/themepack", mod);

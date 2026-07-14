@@ -2,11 +2,20 @@ import Store from "@/common/store";
 import type { IMod } from "./type";
 import { toast } from "react-toastify";
 import { useEffect } from "react";
+import {
+    BUILTIN_DEFAULT_THEME_HASH,
+    BUILTIN_DEFAULT_THEME_PATH,
+    THEME_SPEC_V2,
+    createBuiltinDefaultThemePack,
+    isBuiltinDefaultTheme,
+} from "./default-theme";
 
 const mod = window["@shared/themepack" as any] as unknown as IMod;
 
 const localThemePacksStore = new Store<Array<ICommon.IThemePack | null>>([]);
-const currentThemePackStore = new Store<ICommon.IThemePack | null>(null);
+const currentThemePackStore = new Store<ICommon.IThemePack | null>(
+    createBuiltinDefaultThemePack(),
+);
 
 function mergeThemePacks(
     prevThemePacks: Array<ICommon.IThemePack | null>,
@@ -26,20 +35,45 @@ function mergeThemePacks(
     return Array.from(themePackMap.values());
 }
 
-async function selectTheme(themePack: ICommon.IThemePack | null) {
-    if (!themePack?.hash) {
-        themePack = null;
+function resolveThemeSelection(
+    themePack: ICommon.IThemePack | null,
+): ICommon.IThemePack {
+    // null / empty / built-in → official V2 default pack
+    if (
+        !themePack
+        || isBuiltinDefaultTheme(themePack)
+        || (!themePack.path && !themePack.hash)
+        || themePack.path === BUILTIN_DEFAULT_THEME_PATH
+    ) {
+        return createBuiltinDefaultThemePack(themePack?.name);
     }
-    if (themePack && themePack.spec !== "bakamusic-theme@2") {
+    return themePack;
+}
+
+async function selectTheme(themePack: ICommon.IThemePack | null) {
+    const resolved = resolveThemeSelection(themePack);
+
+    if (!isBuiltinDefaultTheme(resolved) && resolved.spec !== THEME_SPEC_V2) {
         throw new Error(
-            `Unsupported theme spec (need bakamusic-theme@2, got ${themePack.spec || "missing"})`,
+            `Unsupported theme spec (need ${THEME_SPEC_V2}, got ${resolved.spec || "missing"})`,
         );
     }
-    await mod.selectTheme(themePack);
-    currentThemePackStore.setValue(themePack);
+
+    await mod.selectTheme(resolved);
+    // Always keep a concrete pack in store (never null) so UI selection works
+    currentThemePackStore.setValue(
+        isBuiltinDefaultTheme(resolved)
+            ? createBuiltinDefaultThemePack(resolved.name)
+            : resolved,
+    );
 }
 
 async function selectThemeByHash(hash: string) {
+    if (hash === BUILTIN_DEFAULT_THEME_HASH) {
+        await selectTheme(createBuiltinDefaultThemePack());
+        return;
+    }
+
     const targetTheme = localThemePacksStore
         .getValue()
         .find((it) => it?.hash === hash);
@@ -53,11 +87,11 @@ let themePacksLoaded = false;
 async function setupThemePacks(): Promise<void> {
     try {
         const currentTheme = await mod.initCurrentTheme();
-        if (currentTheme && currentTheme.spec === "bakamusic-theme@2") {
+        if (currentTheme && (isBuiltinDefaultTheme(currentTheme) || currentTheme.spec === THEME_SPEC_V2)) {
             await selectTheme(currentTheme);
         } else {
-            // Drop incompatible local selection without crashing boot
-            await selectTheme(null);
+            // Incompatible pack → fall back to built-in V2 default
+            await selectTheme(createBuiltinDefaultThemePack());
         }
 
         requestIdleCallback(() => {
@@ -66,7 +100,11 @@ async function setupThemePacks(): Promise<void> {
             }
         });
     } catch {
-        return;
+        try {
+            await selectTheme(createBuiltinDefaultThemePack());
+        } catch {
+            return;
+        }
     }
 }
 
@@ -123,12 +161,18 @@ async function installRemoteThemePack(
 
 async function uninstallThemePack(themePack: ICommon.IThemePack) {
     try {
+        if (isBuiltinDefaultTheme(themePack)) {
+            return;
+        }
         await mod.uninstallThemePack(themePack);
         localThemePacksStore.setValue((prev) =>
             prev.filter((it) => it?.path !== themePack.path),
         );
-        if (currentThemePackStore.getValue()?.path === themePack.path) {
-            selectTheme(null);
+        if (
+            currentThemePackStore.getValue()?.path === themePack.path
+            || currentThemePackStore.getValue()?.hash === themePack.hash
+        ) {
+            await selectTheme(createBuiltinDefaultThemePack());
         }
     } catch {
         toast.error("卸载失败");
@@ -158,9 +202,13 @@ const ThemePack = {
     replaceAlias: mod.replaceAlias,
     useLocalThemePacks,
     useCurrentThemePack: currentThemePackStore.useValue,
-    THEME_SPEC_V2: "bakamusic-theme@2" as const,
+    THEME_SPEC_V2,
+    BUILTIN_DEFAULT_THEME_PATH,
+    BUILTIN_DEFAULT_THEME_HASH,
+    createBuiltinDefaultThemePack,
+    isBuiltinDefaultTheme,
     isThemeSpecV2: (themePack: ICommon.IThemePack | null | undefined) =>
-        themePack?.spec === "bakamusic-theme@2",
+        themePack?.spec === THEME_SPEC_V2 || isBuiltinDefaultTheme(themePack),
 };
 
 export default ThemePack;
