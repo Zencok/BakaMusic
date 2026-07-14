@@ -177,6 +177,8 @@ export enum DownloadState {
 export const THEME_SPEC_V2 = "bakamusic-theme@2";
 
 export const themePackStoreBaseUrl = [
+    "https://gh.xmly.dev/https://raw.githubusercontent.com/Toskysun/BakaThemePacks/v2/prod/",
+    "https://gh-proxy.org/https://raw.githubusercontent.com/Toskysun/BakaThemePacks/v2/prod/",
     "https://raw.githubusercontent.com/Toskysun/BakaThemePacks/v2/prod/",
     "https://cdn.jsdelivr.net/gh/Toskysun/BakaThemePacks@v2%2Fprod/",
 ];
