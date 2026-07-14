@@ -1,0 +1,116 @@
+.downloaded-container {
+  width: 100%;
+  min-height: 360px;
+  padding: 14px;
+  box-sizing: border-box;
+  border: 1px solid var(--appSurfaceBorder);
+  border-radius: var(--listCardRadius, 28px);
+  background: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 82%, transparent));
+  box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
+  backdrop-filter: var(--appGlassFilter);
+
+  &[data-embedded="true"] {
+    min-height: 0;
+    padding: 14px 0 0;
+    border: 0;
+    border-top: 1px solid color-mix(in srgb, var(--textColor) 7%, transparent);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+
+    & .downloaded-list {
+      overflow: visible;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+  }
+
+  & .downloaded-toolbar {
+    padding: 2px 2px 14px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  & .downloaded-toolbar-copy {
+    min-width: 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  & .downloaded-toolbar-copy strong {
+    color: var(--appTextPrimary);
+    font-size: 0.98rem;
+  }
+
+  & .downloaded-toolbar-copy span {
+    color: var(--appTextTertiary);
+    font-size: 0.78rem;
+  }
+
+  & .downloaded-toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  & .downloaded-toolbar-actions button {
+    min-height: 2.25rem;
+    padding: 0 0.78rem;
+    border: 1px solid var(--appInteractiveBorder);
+    border-radius: var(--appRadiusPill, 999px);
+    background: var(--appSurfaceMuted);
+    color: var(--appTextSecondary);
+    box-shadow: var(--appSurfaceInset);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition: transform 160ms ease, color 160ms ease, background-color 160ms ease;
+  }
+
+  & .downloaded-toolbar-actions button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    color: var(--appTextPrimary);
+    background: var(--appInteractiveSurface);
+  }
+
+  & .downloaded-toolbar-actions button[data-variant="danger"] {
+    color: color-mix(in srgb, var(--dangerColor) 84%, var(--appTextPrimary));
+    border-color: color-mix(in srgb, var(--dangerColor) 22%, transparent);
+    background: color-mix(in srgb, var(--dangerColor) 9%, var(--backgroundColor));
+  }
+
+  & .downloaded-toolbar-actions button:disabled {
+    opacity: 0.42;
+    cursor: default;
+  }
+
+  & .downloaded-list {
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--textColor) 7%, transparent);
+    border-radius: var(--cardRadius, 22px);
+    background: color-mix(in srgb, var(--backgroundColor) 62%, transparent);
+  }
+}
+
+@media (max-width: 900px) {
+  .downloaded-container {
+    & .downloaded-toolbar {
+      flex-direction: column;
+    }
+
+    & .downloaded-toolbar-actions {
+      justify-content: flex-start;
+    }
+  }
+}

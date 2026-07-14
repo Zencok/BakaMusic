@@ -163,6 +163,8 @@ export enum DownloadState {
     WAITING = "WAITING",
     /** 下载中 */
     DOWNLOADING = "DOWNLOADING",
+    /** 已暂停 */
+    PAUSED = "PAUSED",
     /** 失败 */
     ERROR = "ERROR",
     /** 下载完成 */

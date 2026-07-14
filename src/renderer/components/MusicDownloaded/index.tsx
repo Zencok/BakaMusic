@@ -27,6 +27,8 @@ function MusicDownloaded(props: IMusicDownloadedProps) {
 
     if (isDownloadedOrLocal) {
         iconName = "check-circle";
+    } else if (downloadState === DownloadState.PAUSED) {
+        iconName = "pause";
     } else if (
         downloadState !== DownloadState.NONE &&
         downloadState !== DownloadState.ERROR
@@ -41,15 +43,21 @@ function MusicDownloaded(props: IMusicDownloadedProps) {
             }`}
             data-fill-container={fillContainer}
             title={
-                isDownloadedOrLocal ? t("common.downloaded") : t("common.download")
+                isDownloadedOrLocal
+                    ? t("common.downloaded")
+                    : downloadState === DownloadState.PAUSED
+                        ? t("download_page.paused")
+                        : downloadState === DownloadState.ERROR
+                            ? t("download_page.retry")
+                            : t("common.download")
             }
             onClick={(event) => {
                 event.stopPropagation();
-                if (
-                    musicItem &&
-                    (downloadState === DownloadState.NONE ||
-                        downloadState === DownloadState.ERROR)
-                ) {
+                if (musicItem && downloadState === DownloadState.PAUSED) {
+                    Downloader.resumeTask(musicItem);
+                } else if (musicItem && downloadState === DownloadState.ERROR) {
+                    Downloader.retryTask(musicItem);
+                } else if (musicItem && downloadState === DownloadState.NONE) {
                     promptDownloadWithQuality(musicItem, {
                         anchor: event.currentTarget,
                     });

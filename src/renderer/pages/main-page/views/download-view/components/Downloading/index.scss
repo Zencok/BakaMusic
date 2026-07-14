@@ -1,49 +1,157 @@
 .downloading-container {
   width: 100%;
-  min-height: 300px;
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: var(--listCardRadius, 28px);
-  background: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 82%, transparent));
-  border: 1px solid var(--appSurfaceBorder);
-  box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
-  backdrop-filter: var(--appGlassFilter);
+  min-height: 360px;
   box-sizing: border-box;
 
+  & .downloading-controls {
+    margin-bottom: 12px;
+    padding: 0.9rem 1rem 0.55rem;
+    border: 1px solid var(--appSurfaceBorder);
+    border-radius: var(--cardRadius, 22px);
+    background: var(--appSurfaceMuted);
+    box-shadow: var(--appSurfaceInset);
+  }
+
   & .downloading-toolbar {
+    padding: 2px 2px 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 2px 4px 12px;
+    gap: 16px;
   }
 
-  & .downloading-toolbar-summary {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 2.2rem;
+  & .downloading-toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px;
   }
 
-  & .downloading-toolbar-title {
-    font-size: 0.94rem;
-    font-weight: 700;
-    color: var(--appTextPrimary);
-  }
-
-  & .downloading-toolbar-count {
-    min-width: 1.9rem;
-    height: 1.9rem;
-    padding: 0 0.6rem;
+  & .downloading-toolbar-button {
+    min-height: 2.25rem;
+    padding: 0 0.78rem;
+    border: 1px solid var(--appInteractiveBorder);
     border-radius: var(--appRadiusPill, 999px);
+    background: var(--appSurfaceMuted);
+    color: var(--appTextSecondary);
+    box-shadow: var(--appSurfaceInset);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: color-mix(in srgb, var(--primaryColor) 14%, var(--backgroundColor));
-    color: color-mix(in srgb, var(--primaryColor) 78%, var(--appTextPrimary));
+    gap: 7px;
+    font: inherit;
     font-size: 0.78rem;
-    font-weight: 700;
+    font-weight: 650;
+    cursor: pointer;
+    transition: transform 160ms ease, color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+  }
+
+  & .downloading-toolbar-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    color: var(--appTextPrimary);
+    background: var(--appInteractiveSurface);
+  }
+
+  & .downloading-toolbar-button[data-variant="danger"] {
+    color: color-mix(in srgb, var(--dangerColor) 84%, var(--appTextPrimary));
+    border-color: color-mix(in srgb, var(--dangerColor) 22%, transparent);
+    background: color-mix(in srgb, var(--dangerColor) 9%, var(--backgroundColor));
+  }
+
+  & button:disabled {
+    opacity: 0.42;
+    cursor: default;
+  }
+
+  & .downloading-filterbar {
+    padding: 7px 4px;
+    border-top: 1px solid color-mix(in srgb, var(--textColor) 7%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+  }
+
+  & .downloading-filters {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  & .downloading-filter {
+    min-height: 2rem;
+    padding: 0 0.72rem;
+    border: 0;
+    border-radius: var(--appRadiusPill, 999px);
+    background: transparent;
+    color: var(--appTextTertiary);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font: inherit;
+    font-size: 0.76rem;
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  & .downloading-filter span {
+    min-width: 1.2rem;
+    height: 1.2rem;
+    padding: 0 0.28rem;
+    border-radius: var(--appRadiusPill, 999px);
+    background: color-mix(in srgb, currentColor 9%, transparent);
+    display: inline-grid;
+    place-items: center;
+    font-size: 0.66rem;
     font-variant-numeric: tabular-nums;
+  }
+
+  & .downloading-filter[data-active="true"] {
+    background: color-mix(in srgb, var(--primaryColor) 13%, var(--backgroundColor));
+    color: color-mix(in srgb, var(--primaryColor) 78%, var(--appTextPrimary));
+  }
+
+  & .downloading-search {
+    width: min(230px, 28vw);
+    height: 2.15rem;
+    padding: 0 0.7rem;
+    box-sizing: border-box;
+    border: 1px solid var(--appInteractiveBorder);
+    border-radius: var(--appRadiusPill, 999px);
+    background: var(--appSurfaceMuted);
+    color: var(--appTextTertiary);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  & .downloading-search:focus-within {
+    border-color: color-mix(in srgb, var(--primaryColor) 34%, transparent);
+    color: var(--primaryColor);
+  }
+
+  & .downloading-search input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--appTextPrimary);
+    font: inherit;
+    font-size: 0.78rem;
+  }
+
+  & .downloading-search input::placeholder {
+    color: var(--appTextTertiary);
+  }
+
+  & .downloading-search button {
+    padding: 2px;
+    border: 0;
+    background: transparent;
+    color: currentColor;
+    cursor: pointer;
   }
 
   & .downloading-virtual-spacer {
@@ -56,61 +164,65 @@
   }
 
   & .downloading-item-wrapper {
-    height: 106px;
-    padding: 8px 0;
+    height: 132px;
+    padding: 7px 0;
     box-sizing: border-box;
   }
 
   & .downloading-item-card {
     height: 100%;
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 14px;
-    padding: 12px 14px;
+    padding: 13px 14px;
+    box-sizing: border-box;
+    border: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
     border-radius: var(--cardRadius, 22px);
     background: color-mix(in srgb, var(--backgroundColor) 68%, transparent);
-    border: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
-    transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
-
-    &:hover {
-      transform: translateY(-1px);
-      background: color-mix(in srgb, var(--primaryColor) 9%, var(--backgroundColor));
-      border-color: color-mix(in srgb, var(--primaryColor) 14%, transparent);
-      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
-      z-index: 3;
-    }
-  }
-
-  & .downloading-item-leading {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(160px, 1fr) minmax(210px, 0.75fr) auto;
     align-items: center;
-    gap: 12px;
-    flex-shrink: 0;
+    gap: 14px;
+    transition: transform 170ms ease, background-color 170ms ease, border-color 170ms ease, box-shadow 170ms ease;
   }
 
-  & .downloading-item-index {
-    width: 2rem;
-    text-align: center;
-    font-size: 0.8rem;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    color: var(--appTextTertiary);
+  & .downloading-item-card:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--primaryColor) 16%, transparent);
+    background: color-mix(in srgb, var(--primaryColor) 7%, var(--backgroundColor));
+    box-shadow: 0 13px 30px rgba(15, 23, 42, 0.08);
   }
 
   & .downloading-item-cover {
-    width: 56px;
-    height: 56px;
-    border-radius: var(--controlRadiusLg, 16px);
+    position: relative;
+    width: 66px;
+    height: 66px;
     overflow: hidden;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+    border-radius: var(--controlRadiusLg, 17px);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.15);
+  }
 
-    & img {
-      width: 100%;
-      height: 100%;
-      display: block;
-      object-fit: cover;
-    }
+  & .downloading-item-cover img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+  }
+
+  & .downloading-item-cover span {
+    position: absolute;
+    left: 5px;
+    bottom: 5px;
+    min-width: 1.42rem;
+    height: 1.42rem;
+    padding: 0 0.3rem;
+    box-sizing: border-box;
+    border-radius: var(--appRadiusPill, 999px);
+    background: rgba(10, 12, 18, 0.66);
+    color: #fff;
+    backdrop-filter: blur(8px);
+    display: inline-grid;
+    place-items: center;
+    font-size: 0.62rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
   }
 
   & .downloading-item-main {
@@ -121,53 +233,207 @@
   }
 
   & .downloading-item-title {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--appTextPrimary);
-    white-space: nowrap;
     overflow: hidden;
+    color: var(--appTextPrimary);
+    font-size: 0.94rem;
+    font-weight: 700;
     text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   & .downloading-item-subtitle {
-    font-size: 0.86rem;
-    color: var(--appTextSecondary);
-    white-space: nowrap;
     overflow: hidden;
+    color: var(--appTextSecondary);
+    font-size: 0.78rem;
     text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   & .downloading-item-meta {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
   }
 
-  & .downloading-item-status {
-    max-width: min(280px, 30vw);
-    font-size: 0.84rem;
-    font-weight: 600;
+  & .downloading-item-progress {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  & .downloading-item-progress-header,
+  & .downloading-progress-detail {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  & .downloading-item-state {
+    min-width: 0;
     color: var(--appTextSecondary);
-    text-align: right;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.74rem;
+    font-weight: 650;
+  }
+
+  & .downloading-item-state i {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--appTextTertiary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--appTextTertiary) 13%, transparent);
+  }
+
+  & .downloading-item-progress[data-state="downloading"] .downloading-item-state i {
+    background: var(--infoColor, var(--primaryColor));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--infoColor, var(--primaryColor)) 15%, transparent);
+  }
+
+  & .downloading-item-progress[data-state="error"] .downloading-item-state,
+  & .downloading-item-progress[data-state="error"] .downloading-progress-detail {
+    color: var(--dangerColor, #fc5f5f);
+  }
+
+  & .downloading-item-progress[data-state="error"] .downloading-item-state i {
+    background: var(--dangerColor, #fc5f5f);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--dangerColor) 15%, transparent);
+  }
+
+  & .downloading-item-percent {
+    color: var(--appTextPrimary);
+    font-size: 0.76rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  & .downloading-progress-track {
+    height: 5px;
+    overflow: hidden;
+    border-radius: var(--appRadiusPill, 999px);
+    background: color-mix(in srgb, var(--textColor) 9%, transparent);
+  }
+
+  & .downloading-progress-track span {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--primaryColor), color-mix(in srgb, var(--primaryColor) 62%, white));
+    display: block;
+    transition: width 140ms linear;
+  }
+
+  & .downloading-item-progress[data-state="paused"] .downloading-progress-track span {
+    filter: saturate(0.2);
+    opacity: 0.7;
+  }
+
+  & .downloading-progress-detail {
+    overflow: hidden;
+    color: var(--appTextTertiary);
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
     white-space: nowrap;
+  }
+
+  & .downloading-progress-detail span {
     overflow: hidden;
     text-overflow: ellipsis;
   }
-}
 
-@media (max-width: 980px) {
-  .downloading-container {
-    & .downloading-item-card {
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: 12px;
-    }
+  & .downloading-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
 
-    & .downloading-item-status {
-      grid-column: 2;
-      max-width: none;
-      text-align: left;
-    }
+  & .downloading-item-action {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid var(--appInteractiveBorder);
+    border-radius: 50%;
+    background: var(--appSurfaceMuted);
+    color: var(--appTextSecondary);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: transform 150ms ease, color 150ms ease, background-color 150ms ease;
+  }
+
+  & .downloading-item-action:hover {
+    transform: scale(1.06);
+    color: var(--primaryColor);
+    background: var(--appInteractiveSurface);
+  }
+
+  & .downloading-item-action[data-variant="danger"]:hover {
+    color: var(--dangerColor, #fc5f5f);
+    background: color-mix(in srgb, var(--dangerColor) 10%, var(--backgroundColor));
+  }
+
+  & .downloading-empty {
+    min-height: 300px;
+    color: var(--appTextSecondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  & .downloading-empty > span {
+    width: 58px;
+    height: 58px;
+    margin-bottom: 14px;
+    border-radius: 20px;
+    background: color-mix(in srgb, var(--primaryColor) 11%, var(--backgroundColor));
+    color: var(--primaryColor);
+    display: grid;
+    place-items: center;
+  }
+
+  & .downloading-empty strong {
+    color: var(--appTextPrimary);
+    font-size: 0.96rem;
+  }
+
+  & .downloading-empty p {
+    max-width: 360px;
+    margin: 0.45rem 0 0;
+    color: var(--appTextTertiary);
+    font-size: 0.78rem;
+    line-height: 1.5;
   }
 }
 
+@media (max-width: 1100px) {
+  .downloading-container {
+    & .downloading-toolbar,
+    & .downloading-filterbar {
+      align-items: stretch;
+      flex-direction: column;
+    }
 
+    & .downloading-toolbar-actions {
+      justify-content: flex-start;
+    }
+
+    & .downloading-search {
+      width: 100%;
+    }
+
+  }
+}
+
+@media (max-width: 720px) {
+  .downloading-container {
+    & .downloading-toolbar-button {
+      flex: 1 1 calc(50% - 8px);
+    }
+
+  }
+}

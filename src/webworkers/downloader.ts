@@ -233,15 +233,18 @@ const responseToReadable = (
         })
         : undefined;
     rs._read = async () => {
-        const result = await reader.read();
-        if (!result.done) {
-            rs.push(Buffer.from(result.value));
-            size += result.value.byteLength;
-            tOnRead?.(size);
-        } else {
-            rs.push(null);
-            options?.onDone?.();
-            return;
+        try {
+            const result = await reader.read();
+            if (!result.done) {
+                rs.push(Buffer.from(result.value));
+                size += result.value.byteLength;
+                tOnRead?.(size);
+            } else {
+                rs.push(null);
+                options?.onDone?.();
+            }
+        } catch (error) {
+            rs.destroy(toError(error));
         }
     };
     if (options?.onError) {
@@ -257,12 +260,61 @@ type IOnStateChangeFunc = (data: {
     msg?: string;
 }) => void;
 
+interface IActiveDownload {
+    abortController: AbortController;
+    filePath: string;
+    readable?: Readable;
+    writeStream?: fs.WriteStream;
+    cancelled: boolean;
+    failed: boolean;
+}
+
+const activeDownloads = new Map<string, IActiveDownload>();
+const downloadPaths = new Map<string, string>();
+
+async function abortDownload(taskId: string, removePartial = true) {
+    const activeDownload = activeDownloads.get(taskId);
+    if (activeDownload) {
+        activeDownload.cancelled = true;
+        activeDownload.abortController.abort();
+        activeDownload.readable?.destroy();
+        const waitForClose = activeDownload.writeStream
+            && !activeDownload.writeStream.closed
+            ? new Promise<void>((resolve) => {
+                activeDownload.writeStream?.once("close", resolve);
+            })
+            : Promise.resolve();
+        activeDownload.writeStream?.destroy();
+        await waitForClose;
+        activeDownloads.delete(taskId);
+    }
+
+    if (removePartial) {
+        const filePath = activeDownload?.filePath ?? downloadPaths.get(taskId);
+        downloadPaths.delete(taskId);
+        if (filePath) {
+            await cleanFile(filePath);
+        }
+    }
+}
+
 async function downloadFile(
+    taskId: string,
     mediaSource: IMusic.IMusicSource,
     filePath: string,
     onStateChange: IOnStateChangeFunc,
 ) {
+    await abortDownload(taskId, false);
+    const activeDownload: IActiveDownload = {
+        abortController: new AbortController(),
+        filePath,
+        cancelled: false,
+        failed: false,
+    };
+    activeDownloads.set(taskId, activeDownload);
+    downloadPaths.set(taskId, filePath);
     let state = DownloadState.DOWNLOADING;
+    let existingSize = 0;
     try {
         const stat = fs.statSync(filePath);
         // if (stat.isFile()) {
@@ -281,6 +333,7 @@ async function downloadFile(
             });
             return;
         }
+        existingSize = stat.size;
     } catch {
         state = DownloadState.DOWNLOADING;
     }
@@ -289,6 +342,9 @@ async function downloadFile(
     };
     if (mediaSource.userAgent) {
         _headers["user-agent"] = mediaSource.userAgent;
+    }
+    if (existingSize > 0) {
+        _headers.Range = `bytes=${existingSize}-`;
     }
 
     try {
@@ -307,18 +363,29 @@ async function downloadFile(
             urlObj.password = "";
             res = await fetch(urlObj.toString(), {
                 headers: _headers,
+                signal: activeDownload.abortController.signal,
             });
         } else {
-            res = await fetch(encodeUrlHeaders(mediaSource.url, _headers));
+            res = await fetch(encodeUrlHeaders(mediaSource.url, _headers), {
+                signal: activeDownload.abortController.signal,
+            });
         }
 
-        const totalSize = +(res.headers.get("content-length") ?? 0);
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+
+        const isPartialResponse = res.status === 206 && existingSize > 0;
+        const contentLength = +(res.headers.get("content-length") ?? 0);
+        const rangeTotal = res.headers.get("content-range")?.match(/\/(\d+)$/)?.[1];
+        const startSize = isPartialResponse ? existingSize : 0;
+        const totalSize = rangeTotal ? +rangeTotal : contentLength + startSize;
         onStateChange({
             state,
-            downloaded: 0,
+            downloaded: startSize,
             total: totalSize,
         });
-        const stm = responseToReadable(res, {
+        const readable = responseToReadable(res, {
             onRead(size) {
                 if (state !== DownloadState.DOWNLOADING) {
                     return;
@@ -326,37 +393,65 @@ async function downloadFile(
                 state = DownloadState.DOWNLOADING;
                 onStateChange({
                     state,
-                    downloaded: size,
+                    downloaded: startSize + size,
                     total: totalSize,
                 });
             },
             onError: (e) => {
+                if (activeDownload.cancelled) {
+                    return;
+                }
+                activeDownload.failed = true;
                 state = DownloadState.ERROR;
                 onStateChange({
                     state,
                     msg: e?.message,
                 });
+                activeDownload.writeStream?.destroy();
             },
-        }).pipe(fs.createWriteStream(filePath));
+        });
+        const writeStream = fs.createWriteStream(filePath, {
+            flags: isPartialResponse ? "a" : "w",
+        });
+        activeDownload.readable = readable;
+        activeDownload.writeStream = writeStream;
+        const stm = readable.pipe(writeStream);
 
         stm.on("close", () => {
+            activeDownloads.delete(taskId);
+            if (activeDownload.cancelled || activeDownload.failed) {
+                return;
+            }
+            downloadPaths.delete(taskId);
             state = DownloadState.DONE;
             onStateChange({
                 state,
             });
         });
 
-        stm.on("error", () => {
+        stm.on("error", (error) => {
+            activeDownloads.delete(taskId);
+            if (!activeDownload.cancelled && !activeDownload.failed) {
+                activeDownload.failed = true;
+                state = DownloadState.ERROR;
+                onStateChange({
+                    state,
+                    msg: toError(error).message,
+                });
+            }
             // 清理文件
-            cleanFile(filePath);
+            void cleanFile(filePath);
         });
     } catch (e) {
+        activeDownloads.delete(taskId);
+        if (activeDownload.cancelled) {
+            return;
+        }
         state = DownloadState.ERROR;
         onStateChange({
             state,
             msg: toError(e).message,
         });
-        cleanFile(filePath);
     }
 }
 
@@ -464,6 +559,7 @@ async function downloadFileNew(
 
 Comlink.expose({
     downloadFile,
+    abortDownload,
     downloadFileNew,
     postprocessDownloadedFile,
 });
