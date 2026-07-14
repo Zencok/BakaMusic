@@ -71,8 +71,18 @@
 }
 
 // ---------------------------------------------------------------------------
-// Detail auto-hide (glass + flat) — driven by data-auto-hide / data-revealed
+// Detail immersive + auto-hide (glass + flat) — data-detail-open / auto-hide
 // ---------------------------------------------------------------------------
+// Themepacks commonly inject:
+//   .music-bar-container { background: transparent; backdrop-filter: blur(10px); }
+// That container-level frost survives opacity:0 on overlay/shell and leaves a
+// permanent blurred strip over the detail stage. Neutralize it while detail is open;
+// flat keeps its own controlled veil on .music-bar-overlay only.
+.music-bar-container[data-detail-open="true"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
 .music-bar-hover-zone {
   display: none;
   position: absolute;
@@ -99,11 +109,16 @@
       visibility 0s linear 0s;
   }
 
-  // Tucked away — pure detail stage (no residual blur / glass veil)
+  // Tucked away — pure detail stage (no residual blur / glass veil / theme frost)
   &[data-revealed="false"] {
     pointer-events: none;
     background: transparent !important;
+    background-color: transparent !important;
     box-shadow: none !important;
+    // Kill themepack container frost (often without !important, sometimes with)
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    filter: none !important;
 
     .music-bar-overlay {
       // !important: beat style-specific `opacity: 1 !important` (flat frosted veil)
@@ -111,6 +126,7 @@
       visibility: hidden !important;
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
+      filter: none !important;
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
@@ -128,14 +144,24 @@
       pointer-events: none;
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
+      filter: none !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
+    // Theme packs may put frost on arbitrary descendants inside the dock
+    .music-bar-shell *,
+    .music-bar-overlay * {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
     }
 
     .music-bar-hover-zone {
       display: block;
       // Hit target only — never leave a frosted / transparent band
-      background: transparent;
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
+      background: transparent !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
     }
   }
 

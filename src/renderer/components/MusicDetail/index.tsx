@@ -108,9 +108,12 @@ function MusicDetail() {
         >
             <div
                 className="music-detail-background"
-                style={{
-                    backgroundImage: `url(${artwork})`,
-                }}
+                style={
+                    {
+                        // CSS var survives themepack `background: … !important` on this node
+                        ["--music-detail-artwork" as string]: `url(${artwork})`,
+                    }
+                }
             ></div>
             <div className="music-detail-overlay"></div>
 
