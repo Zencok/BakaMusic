@@ -69,6 +69,7 @@ declare namespace IMusic {
     downloadData?: {
       path: string;
       quality: IQualityKey;
+      completedAt?: number;
     };
   }
 

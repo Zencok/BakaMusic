@@ -8,7 +8,7 @@ import SvgAsset from "@/renderer/components/SvgAsset";
 import Tag from "@/renderer/components/Tag";
 import Downloader, { IDownloadTaskSnapshot } from "@/renderer/core/downloader";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Downloaded from "../Downloaded";
 import "./index.scss";
@@ -22,19 +22,10 @@ const compactTagStyle = {
     maxWidth: "none",
 };
 
-type TaskFilter = "all" | "active" | "paused" | "failed" | "downloaded";
+type TaskFilter = "all" | "active" | "downloaded";
 
-function getTaskFilterState(filter: TaskFilter, state: DownloadState) {
-    if (filter === "active") {
-        return [DownloadState.WAITING, DownloadState.DOWNLOADING].includes(state);
-    }
-    if (filter === "paused") {
-        return state === DownloadState.PAUSED;
-    }
-    if (filter === "failed") {
-        return state === DownloadState.ERROR;
-    }
-    return filter === "all";
+function shouldShowTasks(filter: TaskFilter) {
+    return filter !== "downloaded";
 }
 
 function TaskAction({ task }: { task: IDownloadTaskSnapshot }) {
@@ -136,8 +127,9 @@ export default function Downloading() {
     const downloadedList = Downloader.useDownloadedMusicList();
     const [filter, setFilter] = useState<TaskFilter>("all");
     const [query, setQuery] = useState("");
+    const taskListRef = useRef<HTMLDivElement>(null);
     const counts = useMemo(() => ({
-        active: tasks.filter(({ status }) => [
+        pausable: tasks.filter(({ status }) => [
             DownloadState.WAITING,
             DownloadState.DOWNLOADING,
         ].includes(status.state)).length,
@@ -146,8 +138,8 @@ export default function Downloading() {
     }), [tasks]);
     const visibleTasks = useMemo(() => {
         const normalizedQuery = query.trim().toLocaleLowerCase();
-        return tasks.filter(({ musicItem, status }) => {
-            const matchesState = getTaskFilterState(filter, status.state);
+        return tasks.filter(({ musicItem }) => {
+            const matchesState = shouldShowTasks(filter);
             const matchesQuery = !normalizedQuery || [
                 musicItem.title,
                 musicItem.artist,
@@ -176,6 +168,7 @@ export default function Downloading() {
         data: visibleTasks,
         scrollElementQuery: "#page-container",
         estimateItemHeight,
+        offsetHeight: () => taskListRef.current?.offsetTop ?? 0,
     });
     const filters: Array<{ key: TaskFilter; label: string; count: number }> = [
         {
@@ -183,9 +176,7 @@ export default function Downloading() {
             label: t("download_page.all_tasks"),
             count: tasks.length + downloadedList.length,
         },
-        { key: "active", label: t("download_page.active"), count: counts.active },
-        { key: "paused", label: t("download_page.paused"), count: counts.paused },
-        { key: "failed", label: t("download_page.failed_count"), count: counts.failed },
+        { key: "active", label: t("download_page.active"), count: tasks.length },
         {
             key: "downloaded",
             label: t("common.downloaded"),
@@ -212,7 +203,7 @@ export default function Downloading() {
                         <button
                             type="button"
                             className="downloading-toolbar-button"
-                            disabled={!counts.active}
+                            disabled={!counts.pausable}
                             onClick={() => void Downloader.pauseAllTasks()}
                         >
                             <SvgAsset iconName="pause" size={15}></SvgAsset>
@@ -278,14 +269,9 @@ export default function Downloading() {
                     </div>
                 </div>
             </div>
-            {visibleDownloadedList.length ? (
-                <Downloaded
-                    embedded
-                    musicList={visibleDownloadedList}
-                ></Downloaded>
-            ) : null}
             {visibleTasks.length ? (
                 <div
+                    ref={taskListRef}
                     className="downloading-virtual-spacer"
                     style={{ height: virtualController.totalHeight }}
                 >
@@ -332,6 +318,12 @@ export default function Downloading() {
                         })}
                     </div>
                 </div>
+            ) : null}
+            {visibleDownloadedList.length ? (
+                <Downloaded
+                    embedded
+                    musicList={visibleDownloadedList}
+                ></Downloaded>
             ) : null}
             {!visibleTasks.length && !visibleDownloadedList.length ? (
                 <div className="downloading-empty">

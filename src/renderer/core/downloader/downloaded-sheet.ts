@@ -22,10 +22,47 @@ const downloadedSet = new Set<string>();
 // 在初始化歌单时一起初始化
 export async function setupDownloadedMusicList() {
     const downloadedPKs = (await getUserPreferenceIDB("downloadedList")) ?? [];
-    downloadedMusicListStore.setValue(await getDownloadedDetails(downloadedPKs));
+    const downloadedDetails = await getDownloadedDetails(downloadedPKs);
+    await migrateDownloadCompletedAt(downloadedDetails);
+    downloadedMusicListStore.setValue(downloadedDetails);
     downloadedPKs.forEach((it) => {
         downloadedSet.add(getMediaPrimaryKey(it));
     });
+}
+
+async function migrateDownloadCompletedAt(
+    musicItems: Array<IMusic.IMusicItem & { [musicRefSymbol]: number }>,
+) {
+    let completedAtCursor = 0;
+    const changedItems: Array<IMusic.IMusicItem & { [musicRefSymbol]: number }> = [];
+
+    musicItems.forEach((musicItem) => {
+        const downloadData = getInternalData<IMusic.IMusicItemInternalData>(
+            musicItem,
+            "downloadData",
+        );
+        if (!downloadData) {
+            return;
+        }
+
+        const completedAt = downloadData.completedAt;
+        if (typeof completedAt === "number" && Number.isFinite(completedAt) && completedAt > 0) {
+            completedAtCursor = Math.max(completedAtCursor, completedAt);
+            return;
+        }
+
+        completedAtCursor++;
+        setInternalData<IMusic.IMusicItemInternalData>(
+            musicItem,
+            "downloadData",
+            { ...downloadData, completedAt: completedAtCursor },
+        );
+        changedItems.push(musicItem);
+    });
+
+    if (changedItems.length) {
+        await musicSheetDB.musicStore.bulkPut(changedItems);
+    }
 }
 
 async function getDownloadedDetails(mediaBases: IMedia.IMediaBase[]) {

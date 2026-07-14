@@ -73,6 +73,13 @@ const taskControls = new Map<string, IDownloadTaskControl>();
 const downloadingQueue = new PQueue({ concurrency: 5 });
 const concurrencyLimit = 20;
 let downloaderWorker: IDownloaderWorker;
+let lastDownloadCompletedAt = 0;
+
+function getNextDownloadCompletedAt() {
+    const now = Date.now();
+    lastDownloadCompletedAt = Math.max(now, lastDownloadCompletedAt + 1);
+    return lastDownloadCompletedAt;
+}
 
 async function setupDownloader() {
     setupDownloaderWorker();
@@ -405,7 +412,11 @@ async function finalizeDownloadedMusic(
     const downloadedMusic = setInternalData<IMusic.IMusicItemInternalData>(
         musicItem as any,
         "downloadData",
-        { path: downloadPath, quality: realQuality },
+        {
+            path: downloadPath,
+            quality: realQuality,
+            completedAt: getNextDownloadCompletedAt(),
+        },
         true,
     ) as IMusic.IMusicItem;
 

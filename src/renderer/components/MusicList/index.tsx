@@ -501,8 +501,15 @@ function getSortValue(musicItem: IMusic.IMusicItem, field: SortField): string | 
             return parts.join(sep).toLocaleLowerCase();
         }
         case "addedTime": {
-            // $$addedAt is a string key persisted in IndexedDB; fall back to Symbol for same-session adds
-            const ts: number = (musicItem as any).$$addedAt ?? (musicItem as any)[timeStampSymbol] ?? 0;
+            const downloadCompletedAt = getInternalData<IMusic.IMusicItemInternalData>(
+                musicItem,
+                "downloadData",
+            )?.completedAt;
+            // $$addedAt is persisted for sheets; downloaded items use their completion time.
+            const ts: number = downloadCompletedAt
+                ?? (musicItem as any).$$addedAt
+                ?? (musicItem as any)[timeStampSymbol]
+                ?? 0;
             const idx: number = (musicItem as any).$$batchIndex ?? (musicItem as any)[sortIndexSymbol] ?? 0;
             return ts * 100000 + idx;
         }
