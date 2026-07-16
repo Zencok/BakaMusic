@@ -111,3 +111,10 @@
 - **Decision**: Default unset music detail cover preferences to vinyl while preserving explicit cover selections.
 - **Files**: 2 files
 - **Tests**: npm run lint; npx tsc --noEmit; git diff --check
+
+## 2026-07-16T23:58:09.6956755+08:00 — fix(minimode): balance cover proportions
+`pending`
+- **Decision**: Use a 68px mini-mode cover to balance the 104px window height and lyric width.
+- **Bug**: The unchanged 56px cover appeared undersized after the window height increase.
+- **Files**: 1 file
+- **Tests**: npm run lint; npx sass --no-source-map src/renderer-minimode/pages/index.scss; git diff --check
