@@ -186,7 +186,7 @@ src/
 
 ## 第三方项目说明
 
-- 本项目基于 [applemusic-like-lyrics](https://github.com/amll-dev/applemusic-like-lyrics) Core 0.5.2 维护内置歌词渲染实现，源码及本地适配位于 `src/amll-core/`。
+- 本项目基于 [applemusic-like-lyrics](https://github.com/amll-dev/applemusic-like-lyrics) Core 维护内置歌词渲染实现，源码及本地适配位于 `src/amll-core/`。
 - 该项目主要用于逐字歌词、翻译歌词、罗马音歌词及相关动画效果的渲染。
 - BakaMusic 在其基础上完成了适配、集成与界面层改造，以满足本项目的歌词显示需求。
 - 上述第三方项目使用 `AGPL-3.0-only`，相关版权与协议归原作者及原项目所有。
