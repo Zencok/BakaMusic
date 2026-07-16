@@ -1,29 +1,31 @@
 .side-bar--list-item-container {
-  $height: 2.58rem;
+  $height: 2.68rem;
   height: $height;
-  font-size: 0.98rem;
+  font-size: 0.92rem;
   width: 100%;
   position: relative;
   display: flex;
   align-items: center;
-  gap: 0.54rem;
+  gap: 0.62rem;
   box-sizing: border-box;
-  padding: 0 0.72rem 0 0.76rem;
-  border: 1px solid transparent;
-  border-radius: 8px;
+  padding: 0 0.72rem 0 0.82rem;
+  border: 0;
+  border-radius: 7px;
+  outline: none;
   user-select: none;
   cursor: pointer;
   color: var(--sideBarTextSecondary, var(--appTextPrimary));
   transition:
-    border-color 160ms ease,
     background-color 160ms ease,
-    color 160ms ease;
+    color 160ms ease,
+    transform 160ms ease;
 
   & svg {
-    width: 1.14rem;
-    height: 1.14rem;
+    width: 1.22rem;
+    height: 1.22rem;
     flex-shrink: 0;
-    opacity: 0.82;
+    opacity: 0.76;
+    transition: opacity 160ms ease;
   }
 
   & span {
@@ -32,18 +34,23 @@
     overflow: hidden;
     text-overflow: ellipsis;
     padding-right: 0.5rem;
-    font-weight: 650;
+    font-weight: 590;
   }
 
-  &:hover {
+  &:hover,
+  &:focus-visible {
     color: var(--sideBarTextPrimary, var(--appTextPrimary));
     background: var(--sideBarItemHover, var(--appInteractiveSurface));
+
+    & svg {
+      opacity: 0.94;
+    }
   }
 
   &[data-selected="true"] {
-    color: color-mix(in srgb, var(--primaryColor) 64%, var(--sideBarTextPrimary, var(--appTextPrimary)));
+    color: color-mix(in srgb, var(--primaryColor) 72%, var(--sideBarTextPrimary, var(--appTextPrimary)));
     background: var(--sideBarItemSelected);
-    border: 1px solid var(--sideBarItemSelectedBorder, color-mix(in srgb, var(--primaryColor) 32%, transparent));
+    font-weight: 700;
 
     & svg {
       opacity: 1;
@@ -52,10 +59,10 @@
     &::before {
       content: "";
       position: absolute;
-      width: 4px;
-      left: 0.28rem;
-      top: 0.46rem;
-      bottom: 0.46rem;
+      width: 3px;
+      left: 0;
+      top: 0.36rem;
+      bottom: 0.36rem;
       border-radius: 999px;
       background: var(--sideBarAccentBar, var(--primaryColor));
       opacity: var(--sideBarAccentBarOpacity, 1);

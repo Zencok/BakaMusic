@@ -30,7 +30,7 @@ export default function StarredSheets() {
                         <div className="side-bar-section-text">{t("side_bar.starred_sheets")}</div>
                     </div>
                 </Disclosure.Button>
-                <Disclosure.Panel>
+                <Disclosure.Panel className="side-bar-sheet-list">
                     {starredSheets.map((item) => (
                         <ListItem
                             key={item.id}

@@ -15,8 +15,16 @@ export default function ListItem(props: IProps) {
         <div
             onClick={onClick}
             onContextMenu={onContextMenu}
+            onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onClick?.();
+                }
+            }}
             title={title}
             role="button"
+            tabIndex={0}
+            aria-current={selected ? "page" : undefined}
             className="side-bar--list-item-container"
             data-selected={selected}
         >

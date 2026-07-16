@@ -299,8 +299,9 @@
 // ---------------------------------------------------------------------------
 [data-ui-style="flat"] {
     .side-bar-container {
-        width: clamp(210px, 15.5vw, 236px);
-        padding: 0.7rem 0.55rem 0.9rem;
+        width: 220px;
+        flex-basis: 220px;
+        padding: 0;
         background: var(--sideBarBg);
         border-right: 1px solid var(--sideBarBorder);
         box-shadow: none;
@@ -310,34 +311,67 @@
         --sideBarTextMuted: color-mix(in srgb, var(--textColor) 48%, transparent);
         --sideBarItemHover: var(--sideBarItemHover);
         --sideBarItemSelected: var(--sideBarItemSelected);
+        --sideBarAccentBar: var(--primaryColor);
+        --sideBarAccentBarOpacity: 1;
 
         &::after {
             display: none;
         }
 
         .side-bar-section-title {
-            height: 2rem;
-            border-radius: var(--controlRadius);
+            height: 2.15rem;
+            padding: 0 0.56rem 0 0.68rem;
+            border: 0;
+            border-radius: 0;
             color: var(--sideBarTextMuted);
 
             &:hover {
-                background: color-mix(in srgb, var(--textColor) 4%, transparent);
+                background: transparent;
             }
         }
 
+        .side-bar-section-title-main {
+            gap: 0.36rem;
+        }
+
         .side-bar-section-chevron {
+            width: 1rem;
+            height: 1rem;
             background: transparent;
             color: var(--sideBarTextMuted);
+
+            svg {
+                width: 0.66rem;
+                height: 0.66rem;
+            }
+        }
+
+        .side-bar-section-title:hover .side-bar-section-chevron {
+            color: var(--sideBarTextMuted);
+            background: transparent;
+        }
+
+        .side-bar-section-text {
+            color: currentColor;
+            font-size: 0.72rem;
+            font-weight: 720;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .side-bar-section-actions {
+            gap: 0.08rem;
+            margin-left: 0.25rem;
         }
     }
 
     .side-bar--list-item-container {
-        height: 2.4rem;
+        height: 2.68rem;
         font-size: 0.92rem;
-        border-radius: var(--controlRadius);
-        border: 1px solid transparent;
-        gap: 0.5rem;
-        padding: 0 0.7rem;
+        border-radius: 6px;
+        border: 0;
+        gap: 0.62rem;
+        padding: 0 0.72rem 0 0.82rem;
         font-weight: 600;
 
         & span {
@@ -351,14 +385,19 @@
         &[data-selected="true"] {
             color: var(--appTextPrimary);
             background: var(--sideBarItemSelected);
-            border-color: transparent;
             font-weight: 700;
 
             &::before {
-                opacity: 0;
-                width: 0;
+                opacity: 1;
+                width: 3px;
             }
         }
+    }
+
+    .side-bar-sheet-list .side-bar--list-item-container {
+        height: 2.42rem;
+        padding-left: 1.05rem;
+        font-size: 0.87rem;
     }
 }
 

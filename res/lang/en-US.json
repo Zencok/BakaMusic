@@ -209,8 +209,10 @@
     "refresh_current_platform": "Refresh current platform"
   },
   "side_bar": {
+    "discover": "Discover",
+    "library": "Library",
     "toplist": "Top Charts",
-    "recommend_sheets": "Popular Playlists",
+    "recommend_sheets": "Recommended Playlists",
     "download_management": "Download Management",
     "local_music": "Local Music",
     "plugin_management": "Plugin Management",
@@ -220,11 +222,11 @@
     "delete_sheet": "Delete",
     "rename_sheet": "Rename",
     "unstar_sheet": "Unstar",
-    "statistics": "Statistics"
+    "statistics": "Listening Stats"
   },
   "statistics_page": {
     "eyebrow": "Listening insights",
-    "title": "Statistics",
+    "title": "Listening Statistics",
     "subtitle": "Look back on your listening history and rediscover the tracks you return to most.",
     "total_plays": "Total plays",
     "total_plays_hint": "Successful playback starts recorded",

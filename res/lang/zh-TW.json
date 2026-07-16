@@ -209,7 +209,9 @@
     "refresh_current_platform": "重新整理目前平台"
   },
   "side_bar": {
-    "toplist": "排行榜",
+    "discover": "探索",
+    "library": "音樂庫",
+    "toplist": "熱門榜單",
     "recommend_sheets": "推薦歌單",
     "download_management": "下載管理",
     "local_music": "本地音樂",
@@ -220,11 +222,11 @@
     "delete_sheet": "刪除歌單",
     "rename_sheet": "重歌單",
     "unstar_sheet": "取消收藏",
-    "statistics": "統計"
+    "statistics": "聽歌統計"
   },
   "statistics_page": {
     "eyebrow": "Listening insights",
-    "title": "統計",
+    "title": "聽歌統計",
     "subtitle": "回顧你的聽歌足跡，找出最近循環和最常播放的聲音。",
     "total_plays": "總播放",
     "total_plays_hint": "累計成功開始播放的次數",

@@ -136,3 +136,12 @@
 - **Decision**: Remove duplicate horizontal top-three cards and retain rank emphasis in the list.
 - **Files**: 2 files
 - **Tests**: ESLint; TypeScript; SCSS; diff check
+
+## 2026-07-17T00:53:28.9360021+08:00 — refactor(sidebar): reorganize navigation layout
+`pending`
+- **Decision**: Reorganize the sidebar into discovery, library, and playlist groups within a fixed 220px rail.
+- **Decision**: Support collapsible discovery and library groups in flat and glass modes while preserving their distinct visual treatments.
+- **Decision**: Replace the extensions footer with an accessible plugin-management icon in the discovery header.
+- **Decision**: Restore familiar navigation wording and synchronize Simplified Chinese, Traditional Chinese, and English.
+- **Files**: 12 files
+- **Tests**: ESLint; TypeScript; SCSS; i18n JSON parse; diff check

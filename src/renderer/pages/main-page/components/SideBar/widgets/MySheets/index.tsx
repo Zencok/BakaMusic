@@ -26,7 +26,6 @@ export default function MySheets() {
 
     return (
         <div className="side-bar-container--my-sheets">
-            <div className="divider"></div>
             <Disclosure defaultOpen>
                 <Disclosure.Button className="title side-bar-section-title" as="div" role="button">
                     <div className="side-bar-section-title-main">
@@ -75,7 +74,7 @@ export default function MySheets() {
                         </div>
                     </div>
                 </Disclosure.Button>
-                <Disclosure.Panel>
+                <Disclosure.Panel className="side-bar-sheet-list">
                     {musicSheets.map((item) => (
                         <ListItem
                             key={item.id}
