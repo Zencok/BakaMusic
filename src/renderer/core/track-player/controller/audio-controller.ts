@@ -66,13 +66,32 @@ class AudioController extends ControllerBase implements IAudioController {
             });
         };
 
-        // this.audio.onseeking = () => {
-        //     this.playerState = PlayerState.Buffering;
-        // }
-        //
-        // this.audio.onseeked = () => {
-        //     this.playerState = PlayerState.Playing;
-        // }
+        const markBuffering = () => {
+            if (!this.audio.paused && !this.audio.ended) {
+                this.playerState = PlayerState.Buffering;
+            }
+        };
+
+        const restorePlaybackState = () => {
+            if (
+                !this.audio.paused
+                && !this.audio.ended
+                && this.audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA
+            ) {
+                this.playerState = PlayerState.Playing;
+            }
+        };
+
+        this.audio.onseeking = markBuffering;
+        this.audio.onwaiting = markBuffering;
+        this.audio.onseeked = () => {
+            this.onProgressUpdate?.({
+                currentTime: this.audio.currentTime,
+                duration: this.audio.duration,
+            });
+            restorePlaybackState();
+        };
+        this.audio.oncanplay = restorePlaybackState;
 
         this.audio.onended = () => {
             this.playerState = PlayerState.Paused;

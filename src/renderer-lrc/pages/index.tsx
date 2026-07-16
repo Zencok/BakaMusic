@@ -1,7 +1,7 @@
 import "./index.scss";
 import classNames from "@/renderer/utils/classnames";
 import { createFallbackAmlLyricLines, estimateLyricClockProgressMs, mapLyricLinesToAml } from "@/common/amll-lyric";
-import { PlayerState } from "@/common/constant";
+import { isPlaybackActive, PlayerState } from "@/common/constant";
 import useAppConfig from "@/hooks/useAppConfig";
 import SvgAsset, { type SvgAssetIconNames } from "@/renderer/components/SvgAsset";
 import AppleMusicLyricPlayer from "@renderer/components/AppleMusicLyricPlayer";
@@ -261,7 +261,7 @@ export default function LyricWindowPage() {
                     ></DesktopActionButton>
                     <DesktopActionButton
                         emphasis
-                        iconName={playerState === PlayerState.Playing ? "pause" : "play"}
+                        iconName={isPlaybackActive(playerState) ? "pause" : "play"}
                         onClick={() => {
                             if (currentMusic) {
                                 messageBus.sendCommand("TogglePlayerState");

@@ -43,7 +43,7 @@
     grid-template-columns: 56px minmax(0, 1fr);
     align-items: center;
     gap: 12px;
-    padding: 16px 18px;
+    padding: 10px 18px;
     box-sizing: border-box;
   }
 
@@ -76,16 +76,15 @@
   }
 
   & .minimode-lyric-block {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    height: 44px;
+    min-height: 0;
+    overflow: hidden;
+    direction: ltr;
+    text-align: left;
   }
 
   & .minimode-title,
-  & .minimode-artist,
-  & .minimode-romanization,
-  & .minimode-lyric,
-  & .minimode-translation {
+  & .minimode-artist {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -105,23 +104,98 @@
     opacity: 0.62;
   }
 
-  & .minimode-romanization {
-    font-size: 0.68rem;
-    line-height: 1.05;
-    opacity: 0.74;
-  }
+  & .minimode-lyric-player {
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
 
-  & .minimode-lyric {
-    font-size: 0.82rem;
-    line-height: 1.1;
-    font-weight: 600;
-    opacity: 0.96;
-  }
+    & .amll-lyric-player {
+      --lyric-line-padding-x: 0px;
+      --amll-lp-line-padding-x: 0px;
+      --amll-lp-line-width-aspect: 1;
+      color: #fff;
+      font-size: 0.82rem;
+      font-weight: 600;
+      line-height: 1.1;
+      text-align: left;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.48);
+    }
 
-  & .minimode-translation {
-    font-size: 0.72rem;
-    line-height: 1.1;
-    opacity: 0.56;
+    & .amll-lyric-player [class*="lyricLineWrapper"] {
+      left: 0 !important;
+      right: auto !important;
+      align-items: flex-start !important;
+      width: 100% !important;
+      padding: 0 !important;
+      gap: 0;
+    }
+
+    & .amll-lyric-player [class*="lyricLine"],
+    & .amll-lyric-player [class*="lyricMainLine"],
+    & .amll-lyric-player [class*="lyricSubLine"] {
+      direction: ltr;
+      text-align: left !important;
+      transform-origin: left center !important;
+    }
+
+    & .amll-lyric-player [class*="lyricLine"]:not([class*="lyricLineWrapper"]) {
+      align-self: flex-start !important;
+      width: 100% !important;
+      min-width: 100% !important;
+      max-width: 100% !important;
+    }
+
+    & .amll-lyric-player [class*="lyricMainLine"],
+    & .amll-lyric-player [class*="lyricSubLine"] {
+      max-width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    & .amll-lyric-player [class*="lyricMainLine"] {
+      font-size: 0.82rem;
+      line-height: 1.1;
+    }
+
+    & .amll-lyric-player [class*="lyricSubLine"] {
+      font-size: 0.72rem;
+      line-height: 1.1;
+      opacity: 0.56 !important;
+    }
+
+    & .amll-lyric-player [class*="roman"],
+    & .amll-lyric-player [class*="ruby"] {
+      font-size: 0.68rem;
+      line-height: 1.05;
+      opacity: 0.74 !important;
+    }
+
+    & .amll-lyric-player [data-lyric-play-state] {
+      will-change: opacity, filter;
+      transition:
+        opacity 220ms cubic-bezier(0.22, 1, 0.36, 1),
+        filter 220ms cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 250ms ease !important;
+    }
+
+    & .amll-lyric-player [data-lyric-play-state="played"],
+    & .amll-lyric-player [data-lyric-play-state="future"] {
+      opacity: 0 !important;
+    }
+
+    & .amll-lyric-player [data-lyric-play-state="played"] {
+      filter: blur(0.6px) !important;
+    }
+
+    & .amll-lyric-player [data-lyric-play-state="future"] {
+      filter: blur(1.2px) !important;
+    }
+
+    & .amll-lyric-player [data-lyric-play-state="current"] {
+      filter: blur(0) !important;
+      opacity: 1 !important;
+    }
   }
 
   & .minimode-actions {

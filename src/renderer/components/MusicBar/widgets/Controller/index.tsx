@@ -2,7 +2,7 @@ import ThemeSafeRoundButton from "@/renderer/components/ThemeSafeRoundButton";
 import "./index.scss";
 import trackPlayer from "@renderer/core/track-player";
 import { useTranslation } from "react-i18next";
-import { PlayerState } from "@/common/constant";
+import { isPlaybackActive } from "@/common/constant";
 import { usePlayerState } from "@renderer/core/track-player/hooks";
 import { musicDetailShownStore } from "@renderer/components/MusicDetail/store";
 import { useEffect, useMemo, useState } from "react";
@@ -32,7 +32,7 @@ function readRootThemeColors() {
 export default function Controller() {
     const playerState = usePlayerState();
     const { t } = useTranslation();
-    const isPlaying = playerState === PlayerState.Playing;
+    const isPlaying = isPlaybackActive(playerState);
     const musicDetailShown = musicDetailShownStore.useValue();
     const [isFlat, setIsFlat] = useState(isFlatUiStyleActive);
     const [themeTick, setThemeTick] = useState(0);

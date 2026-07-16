@@ -6,6 +6,14 @@ export default async function () {
     // TODO: broadcast
     await AppConfig.setup();
     await setupI18n();
-    messageBus.subscribeAppState(["playerState", "musicItem", "repeatMode", "parsedLrc", "lyricText"]);
+    messageBus.subscribeAppState([
+        "playerState",
+        "musicItem",
+        "repeatMode",
+        "parsedLrc",
+        "lyricText",
+        "fullLyric",
+        "lyricClock",
+    ]);
     messageBus.sendCommand("SyncAppState");
 }

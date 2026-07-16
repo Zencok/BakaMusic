@@ -9,7 +9,7 @@ import {
     isSameMedia,
     sortByTimestampAndIndex,
 } from "@/common/media-util";
-import { PlayerState, RepeatMode, sortIndexSymbol, timeStampSymbol } from "@/common/constant";
+import { isPlaybackActive, PlayerState, RepeatMode, sortIndexSymbol, timeStampSymbol } from "@/common/constant";
 import LyricParser, { IParsedLrcItem } from "@/renderer/utils/lyric-parser";
 import {
     getUserPreference,
@@ -759,7 +759,7 @@ class TrackPlayer {
 
             this.setTrack(mediaSource, currentMusic, {
                 seekTo: this.progress.currentTime ?? 0,
-                autoPlay: this.playerState === PlayerState.Playing,
+                autoPlay: isPlaybackActive(this.playerState),
             });
             this.setCurrentQuality(realQuality);
             return true;

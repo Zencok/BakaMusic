@@ -111,3 +111,4 @@ undefinedelectron-log-preload.js
 *.md
 !README.md
 !changelog.md
+!src/amll-core/UPSTREAM.md

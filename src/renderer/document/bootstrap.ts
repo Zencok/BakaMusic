@@ -1,4 +1,4 @@
-import { localPluginHash, PlayerState, RepeatMode, supportLocalMediaType } from "@/common/constant";
+import { isPlaybackActive, localPluginHash, PlayerState, RepeatMode, supportLocalMediaType } from "@/common/constant";
 import MusicSheet from "../core/music-sheet";
 import trackPlayer from "../core/track-player";
 import { setAutoFreeze } from "immer";
@@ -177,7 +177,7 @@ function setupCommandAndEvents() {
         trackPlayer.skipToPrev();
     });
     messageBus.onCommand("TogglePlayerState", () => {
-        if (trackPlayer.playerState === PlayerState.Playing) {
+        if (isPlaybackActive(trackPlayer.playerState)) {
             trackPlayer.pause();
         } else {
             trackPlayer.resume();

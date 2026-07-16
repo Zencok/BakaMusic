@@ -102,7 +102,7 @@ function syncMainAndBackgroundLines(lines: LyricLine[]) {
 /**
  * 清洗非刻意的重叠
  *
- * 如果重叠大于100ms 且 重叠超过下一行时长的10%，则截断
+ * 如果重叠大于100ms 且 重叠超过下一行时长的10%，则视为刻意重叠，否则将结束时间设为下一行的开始时间
  */
 function cleanUnintentionalOverlaps(lines: LyricLine[]) {
 	for (let i = 0; i < lines.length - 1; i++) {
@@ -140,40 +140,42 @@ function cleanUnintentionalOverlaps(lines: LyricLine[]) {
 }
 
 /**
- * 尝试让歌词提前最多 1 秒开始，如果有重叠则尝试最多提前 400ms 或上一行时长的 30%
+ * 尝试让歌词提前最多 600ms 开始，如果有重叠则尝试最多提前 400ms 或上一行时长的 30%
  */
 function tryAdvanceStartTime(lines: LyricLine[]) {
-	for (let i = lines.length - 1; i >= 0; i--) {
+	const defaultAdvanceAmount = 600;
+	const fallbackAdvanceAmount = 400;
+	const fallbackAdvanceRatio = 0.3;
+
+	let prevLineStartTime = 0;
+	let prevLineEndTime = 0;
+	let prevMainGroupStartTime = 0;
+	let prevMainGroupEndTime = 0;
+	let hasPrevLine = false;
+
+	for (let i = 0; i < lines.length; i++) {
 		const line = lines[i];
 		if (line.isBG) continue;
 
-		let prevLine: LyricLine | null = null;
-		if (i > 0) {
-			let prevIdx = i - 1;
-			if (lines[prevIdx].isBG) {
-				prevIdx--;
-			}
-			if (prevIdx >= 0) {
-				prevLine = lines[prevIdx];
-			}
-		}
+		const originalStartTime = line.startTime;
+		const originalEndTime = line.endTime;
 
 		let targetAdvanceAmount = 0;
 		let safeBoundary = 0;
 
-		if (prevLine) {
-			const originallyHadGap = line.startTime >= prevLine.endTime;
+		if (hasPrevLine) {
+			const originallyHadGap = originalStartTime >= prevLineEndTime;
 
 			if (originallyHadGap) {
-				targetAdvanceAmount = 1000;
-				safeBoundary = prevLine.endTime;
+				targetAdvanceAmount = defaultAdvanceAmount;
+				safeBoundary = prevMainGroupEndTime;
 			} else {
-				targetAdvanceAmount = 400;
-				const prevDuration = prevLine.endTime - prevLine.startTime;
-				safeBoundary = prevLine.startTime + prevDuration * 0.3;
+				targetAdvanceAmount = fallbackAdvanceAmount;
+				const prevDuration = prevLineEndTime - prevLineStartTime;
+				safeBoundary = prevLineStartTime + prevDuration * fallbackAdvanceRatio;
 			}
 		} else {
-			targetAdvanceAmount = 1000;
+			targetAdvanceAmount = defaultAdvanceAmount;
 			safeBoundary = 0;
 		}
 
@@ -188,6 +190,30 @@ function tryAdvanceStartTime(lines: LyricLine[]) {
 		if (nextLine?.isBG) {
 			nextLine.startTime = line.startTime;
 		}
+
+		if (hasPrevLine) {
+			const overlapsPrevGroup =
+				originalStartTime < prevMainGroupEndTime &&
+				originalEndTime > prevMainGroupStartTime;
+
+			if (overlapsPrevGroup) {
+				prevMainGroupStartTime = Math.min(
+					prevMainGroupStartTime,
+					originalStartTime,
+				);
+				prevMainGroupEndTime = Math.max(prevMainGroupEndTime, originalEndTime);
+			} else {
+				prevMainGroupStartTime = originalStartTime;
+				prevMainGroupEndTime = originalEndTime;
+			}
+		} else {
+			prevMainGroupStartTime = originalStartTime;
+			prevMainGroupEndTime = originalEndTime;
+		}
+
+		prevLineStartTime = originalStartTime;
+		prevLineEndTime = originalEndTime;
+		hasPrevLine = true;
 	}
 }
 
@@ -201,7 +227,7 @@ function tryAdvanceStartTime(lines: LyricLine[]) {
 export function optimizeLyricLines(
 	lines: LyricLine[],
 	options?: OptimizeLyricOptions,
-) {
+): void {
 	const config = { ...DEFAULT_OPTIMIZE_OPTIONS, ...options };
 
 	if (config.normalizeSpaces) {

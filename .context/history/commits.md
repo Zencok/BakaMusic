@@ -97,3 +97,11 @@
 `c202faa0`
 - **Decision**: Remove client-side Kuwo lyric decryption entirely
 - **Files**:   - src/shared/plugin-manager/main/lyric-decrypt.ts
+
+## 2026-07-16T23:49:40.2246300+08:00 — feat(lyrics): rebase AMLL core to 0.5.2
+``pending``
+- **Decision**: Keep src/amll-core vendored on the official 0.5.2 baseline.
+- **Decision**: Reapply BakaMusic blur, romanization, interlude, brightness, and typography behavior.
+- **Bug**: Reset the RAF clock before resume to prevent transient lyric jumps.
+- **Files**: 57 files
+- **Tests**: npm run lint; npx tsc --noEmit; npm run package; git diff --check

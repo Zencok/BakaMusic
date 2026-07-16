@@ -219,6 +219,11 @@ export enum PlayerState {
     Buffering,
 }
 
+/** 播放器仍保持播放意图，包括等待缓冲的状态。 */
+export function isPlaybackActive(state?: PlayerState) {
+    return state === PlayerState.Playing || state === PlayerState.Buffering;
+}
+
 /** 播放模式 */
 export enum RepeatMode {
     /** 随机 */

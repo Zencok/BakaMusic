@@ -1,7 +1,7 @@
 import { app, BrowserWindow, nativeImage, screen } from "electron";
 import getResourcePath from "@/common/get-resource-path";
 import { IWindowEvents, IWindowManager } from "@/types/main/window-manager";
-import { localPluginName, PlayerState, ResourceName } from "@/common/constant";
+import { isPlaybackActive, localPluginName, ResourceName } from "@/common/constant";
 import voidCallback from "@/common/void-callback";
 import ThumbBarUtil from "@/common/thumb-bar-util";
 import EventEmitter from "eventemitter3";
@@ -219,7 +219,10 @@ class WindowManager implements IWindowManager {
 
         if (process.platform === "win32") {
             const appState = messageBus.getAppState();
-            ThumbBarUtil.setThumbBarButtons(mainWindow, appState.playerState === PlayerState.Playing);
+            ThumbBarUtil.setThumbBarButtons(
+                mainWindow,
+                isPlaybackActive(appState.playerState),
+            );
         }
     }
 
@@ -517,7 +520,7 @@ class WindowManager implements IWindowManager {
     private createMiniModeWindow() {
         // Create the browser window.
         const width = 428;
-        const height = 92;
+        const height = 104;
         const initPosition = AppConfig.getConfig("private.minimodeWindowPosition");
 
         const miniWindow = new BrowserWindow({
@@ -673,5 +676,3 @@ class WindowManager implements IWindowManager {
 
 
 export default new WindowManager();
-
-

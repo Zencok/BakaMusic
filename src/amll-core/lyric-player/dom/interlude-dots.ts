@@ -1,5 +1,6 @@
-import type { Disposable, HasElement } from "../../interfaces.ts";
-import styles from "../../styles/lyric-player.module.css";
+import type { Disposable, HasElement } from "#interfaces";
+import styles from "#styles/lyric-player.module.css";
+import { clamp, clamp01, clampPositive } from "#utils/clamp.ts";
 
 function easeInOutBack(x: number): number {
 	const c1 = 1.70158;
@@ -13,9 +14,6 @@ function easeInOutBack(x: number): number {
 function easeOutExpo(x: number): number {
 	return x === 1 ? 1 : 1 - 2 ** (-10 * x);
 }
-
-const clamp = (min: number, cur: number, max: number) =>
-	Math.max(min, Math.min(cur, max));
 
 export class InterludeDots implements HasElement, Disposable {
 	private element: HTMLElement = document.createElement("div");
@@ -35,15 +33,15 @@ export class InterludeDots implements HasElement, Disposable {
 		this.element.appendChild(this.dot1);
 		this.element.appendChild(this.dot2);
 	}
-	getElement() {
+	getElement(): HTMLElement {
 		return this.element;
 	}
-	setTransform(left: number = this.left, top: number = this.top) {
+	setTransform(left: number = this.left, top: number = this.top): void {
 		this.left = left;
 		this.top = top;
 		this.update();
 	}
-	setInterlude(interlude?: [number, number]) {
+	setInterlude(interlude?: [number, number]): void {
 		this.currentInterlude = interlude;
 		this.currentTime = interlude?.[0] ?? 0;
 		if (interlude) {
@@ -52,15 +50,15 @@ export class InterludeDots implements HasElement, Disposable {
 			this.element.classList.remove(styles.enabled);
 		}
 	}
-	pause() {
+	pause(): void {
 		this.playing = false;
 		this.element.classList.remove(styles.playing);
 	}
-	resume() {
+	resume(): void {
 		this.playing = true;
 		this.element.classList.add(styles.playing);
 	}
-	update(delta = 0) {
+	update(delta = 0): void {
 		if (this.playing) {
 			this.currentTime += delta;
 		}
@@ -106,16 +104,12 @@ export class InterludeDots implements HasElement, Disposable {
 						);
 				}
 				if (interludeDuration - currentDuration < 375) {
-					globalOpacity *= clamp(
-						0,
-						(interludeDuration - currentDuration) / 375,
-						1,
-					);
+					globalOpacity *= clamp01((interludeDuration - currentDuration) / 375);
 				}
 
-				const dotsDuration = Math.max(0, interludeDuration - 750);
+				const dotsDuration = clampPositive(interludeDuration - 750);
 
-				scale = Math.max(0, scale) * 0.7;
+				scale = clampPositive(scale) * 0.7;
 
 				curStyle += ` scale(${scale})`;
 
@@ -136,21 +130,9 @@ export class InterludeDots implements HasElement, Disposable {
 					1,
 				);
 
-				this.dot0.style.opacity = `${clamp(
-					0,
-					Math.max(0, globalOpacity * dot0Opacity),
-					1,
-				)}`;
-				this.dot1.style.opacity = `${clamp(
-					0,
-					Math.max(0, globalOpacity * dot1Opacity),
-					1,
-				)}`;
-				this.dot2.style.opacity = `${clamp(
-					0,
-					Math.max(0, globalOpacity * dot2Opacity),
-					1,
-				)}`;
+				this.dot0.style.opacity = `${clamp01(globalOpacity * dot0Opacity)}`;
+				this.dot1.style.opacity = `${clamp01(globalOpacity * dot1Opacity)}`;
+				this.dot2.style.opacity = `${clamp01(globalOpacity * dot2Opacity)}`;
 			} else {
 				curStyle += " scale(0)";
 				this.dot0.style.opacity = "0";
@@ -166,7 +148,7 @@ export class InterludeDots implements HasElement, Disposable {
 			}
 		}
 	}
-	dispose() {
+	dispose(): void {
 		this.element.remove();
 	}
 }

@@ -10,6 +10,7 @@ import {
 	loadResourceFromUrl,
 } from "../utils/resource";
 import { BaseRenderer } from "./base";
+import { clampPositive } from "#utils/clamp.ts";
 
 class TimedContainer extends Container {
 	public time = 0;
@@ -22,7 +23,7 @@ export class PixiRenderer extends BaseRenderer {
 	private lastContainer: Set<TimedContainer> = new Set();
 	private onTick = (delta: number): void => {
 		for (const lastContainer of this.lastContainer) {
-			lastContainer.alpha = Math.max(0, lastContainer.alpha - delta / 60);
+			lastContainer.alpha = clampPositive(lastContainer.alpha - delta / 60);
 			if (lastContainer.alpha <= 0) {
 				this.app.stage.removeChild(lastContainer);
 				this.lastContainer.delete(lastContainer);
@@ -107,7 +108,7 @@ export class PixiRenderer extends BaseRenderer {
 		this.rebuildFilters();
 	}
 
-	override setRenderScale(scale: number) {
+	override setRenderScale(scale: number): void {
 		super.setRenderScale(scale);
 		this.rebuildFilters();
 	}
@@ -168,21 +169,21 @@ export class PixiRenderer extends BaseRenderer {
 		}
 	}
 
-	override setStaticMode(enable = false) {
+	override setStaticMode(enable = false): void {
 		this.staticMode = enable;
 		this.app.ticker.start();
 	}
 
-	override setFPS(fps: number) {
+	override setFPS(fps: number): void {
 		this.app.ticker.maxFPS = fps;
 	}
 
-	override pause() {
+	override pause(): void {
 		this.app.ticker.stop();
 		this.app.render();
 	}
 
-	override resume() {
+	override resume(): void {
 		this.app.ticker.start();
 	}
 
@@ -251,7 +252,7 @@ export class PixiRenderer extends BaseRenderer {
 		this.app.ticker.start();
 	}
 
-	override dispose() {
+	override dispose(): void {
 		super.dispose();
 		this.app.ticker.remove(this.onTick);
 		this.app.destroy(true);

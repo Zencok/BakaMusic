@@ -27,7 +27,7 @@ import { setupGlobalContext } from "@/shared/global-context/main";
 import { setupI18n } from "@/shared/i18n/main";
 import { handleDeepLink } from "./deep-link";
 import logger from "@shared/logger/main";
-import { PlayerState } from "@/common/constant";
+import { isPlaybackActive } from "@/common/constant";
 import ThumbBarUtil from "@/common/thumb-bar-util";
 import windowManager from "@main/window-manager";
 import AppConfig from "@shared/app-config/main";
@@ -130,7 +130,10 @@ app.whenReady().then(async () => {
             if (process.platform === "win32") {
                 const mainWindow = windowManager.mainWindow;
                 if (mainWindow) {
-                    ThumbBarUtil.setThumbBarButtons(mainWindow, messageBus.getAppState().playerState === PlayerState.Playing);
+                    ThumbBarUtil.setThumbBarButtons(
+                        mainWindow,
+                        isPlaybackActive(messageBus.getAppState().playerState),
+                    );
                 }
             }
         },
@@ -168,7 +171,10 @@ app.whenReady().then(async () => {
             if (process.platform === "win32") {
                 const mainWindow = windowManager.mainWindow;
                 if (mainWindow) {
-                    ThumbBarUtil.setThumbBarButtons(mainWindow, playerState === PlayerState.Playing);
+                    ThumbBarUtil.setThumbBarButtons(
+                        mainWindow,
+                        isPlaybackActive(playerState),
+                    );
                 }
             }
         } else if ("repeatMode" in patch) {

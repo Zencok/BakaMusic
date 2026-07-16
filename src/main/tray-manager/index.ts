@@ -2,7 +2,7 @@ import { app, Menu, MenuItem, MenuItemConstructorOptions, nativeImage, Tray } fr
 import { t } from "@shared/i18n/main";
 import { IWindowManager } from "@/types/main/window-manager";
 import getResourcePath from "@/common/get-resource-path";
-import { PlayerState, RepeatMode, ResourceName } from "@/common/constant";
+import { isPlaybackActive, RepeatMode, ResourceName } from "@/common/constant";
 import AppConfig from "@shared/app-config/main";
 import windowManager from "@main/window-manager";
 import { IAppConfig } from "@/types/app-config";
@@ -171,7 +171,7 @@ class TrayManager {
         ctxMenu.push(
             {
                 label: musicItem
-                    ? playerState === PlayerState.Playing
+                    ? isPlaybackActive(playerState)
                         ? t("media.music_state_pause")
                         : t("media.music_state_play")
                     : t("media.music_state_play_or_pause"),

@@ -4,6 +4,7 @@
  * 目的是取代原先大量的预设控制点代码
  */
 
+import { clamp01 } from "#utils/clamp.ts";
 import {
 	type ControlPointConf,
 	type ControlPointPreset,
@@ -14,12 +15,8 @@ import {
 const randomRange = (min: number, max: number): number =>
 	Math.random() * (max - min) + min;
 
-function clamp(x: number, min: number, max: number): number {
-	return Math.min(Math.max(x, min), max);
-}
-
 function smoothstep(edge0: number, edge1: number, x: number): number {
-	const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+	const t = clamp01((x - edge0) / (edge1 - edge0));
 	return t * t * (3 - 2 * t);
 }
 
@@ -93,7 +90,7 @@ function smoothifyControlPoints(
 			}
 		}
 		grid = newGrid;
-		f = Math.min(1, Math.max(f + factorIterationModifier, 0));
+		f = clamp01(f + factorIterationModifier);
 	}
 
 	for (let j = 0; j < h; j++) {
@@ -153,12 +150,12 @@ function computeNoiseGradient(
 export function generateControlPoints(
 	width: number,
 	height: number,
-	variationFraction = randomRange(0.4, 0.6), // = 0.2,
-	normalOffset = randomRange(0.3, 0.6), // = 0.3,
+	variationFraction: number = randomRange(0.4, 0.6), // = 0.2,
+	normalOffset: number = randomRange(0.3, 0.6), // = 0.3,
 	blendFactor = 0.8,
-	smoothIters = Math.floor(randomRange(3, 5)), // = 3,
-	smoothFactor = randomRange(0.2, 0.3), // = 0.3,
-	smoothModifier = randomRange(-0.1, -0.05), // = -0.05,
+	smoothIters: number = Math.floor(randomRange(3, 5)), // = 3,
+	smoothFactor: number = randomRange(0.2, 0.3), // = 0.3,
+	smoothModifier: number = randomRange(-0.1, -0.05), // = -0.05,
 ): ControlPointPreset {
 	const w = width ?? Math.floor(randomRange(3, 6));
 	const h = height ?? Math.floor(randomRange(3, 6));

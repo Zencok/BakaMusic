@@ -21,7 +21,7 @@ BakaMusic 是一款基于插件的跨平台桌面音乐播放器，构建于 Ele
 | 🎤 | **逐字歌词** | 支持 word-level 逐字歌词、翻译歌词与罗马音注音 |
 | 🖥️ | **桌面歌词** | 独立悬浮歌词窗口，支持自定义字体与样式 |
 | 📦 | **迷你模式** | 紧凑型播放器，不占桌面空间 |
-| 🎨 | **主题包系统** | CSS 变量 + iframe 背景，外观高度可定制 |
+| 🎨 | **V2 主题包系统** | `bakamusic-theme@2` 语义 Token + 沙箱动态背景 |
 | 🎵 | **多音质支持** | 128k / 320k / FLAC / Hi-Res / Dolby Atmos 等 |
 | ⬇️ | **下载管理** | 并发下载队列，支持音质选择与进度追踪 |
 | 📁 | **本地音乐** | 扫描本地目录，自动识别元信息，支持多种视图 |
@@ -104,27 +104,46 @@ MSYS_NO_PATHCONV=1 iscc /DMyAppVersion=1.2.6 /DMyAppId=BakaMusic "release/build-
 
 ![播放详细页、桌面歌词与迷你模式](./.imgs/showcase.png)
 
-## 主题包
+## V2 主题包
 
-主题包是包含 `index.css` 和 `config.json` 的文件夹。通过覆盖 CSS 变量自定义外观：
+BakaMusic 仅加载契约 ID 为 `bakamusic-theme@2` 的 V2 主题。每个主题包必须包含 `config.json` 和 `index.css`，可选资源放在 `imgs/`，动态背景放在 `iframes/`：
 
-```css
-:root {
-  --primaryColor: #f17d34;
-  --backgroundColor: #fdfdfd;
-  --textColor: #333333;
-  --dividerColor: rgba(0, 0, 0, 0.1);
-  --listHoverColor: rgba(0, 0, 0, 0.05);
-  --listActiveColor: rgba(0, 0, 0, 0.1);
-  --maskColor: rgba(51, 51, 51, 0.2);
-  --shadowColor: rgba(0, 0, 0, 0.2);
-  --successColor: #08A34C;
-  --dangerColor: #FC5F5F;
-  --infoColor: #0A95C8;
+```text
+my-theme/
+├── config.json
+├── index.css
+├── imgs/
+└── iframes/app.html     # 可选，仅用于背景
+```
+
+`config.json` 声明主题元数据和明暗模式：
+
+```json
+{
+  "spec": "bakamusic-theme@2",
+  "name": "示例主题",
+  "author": "someone",
+  "version": "2.1.0",
+  "preview": "@/imgs/preview.jpg",
+  "description": "一句话描述",
+  "tags": ["暗色"],
+  "scheme": "dark",
+  "iframe": { "app": "@/iframes/app.html" }
 }
 ```
 
-`config.json` 支持通过 `iframes` 字段将 HTML 页面作为软件背景。
+`index.css` 只能包含一个 `:root` 规则。以下四个基础 Token 必填，其余区域通过 `--theme-*` 语义 Token 定制：
+
+```css
+:root {
+  --theme-primary: #5ee2d4;
+  --theme-bg: rgba(94, 226, 212, 0.12);
+  --theme-text: #111;
+  --theme-scheme: light;
+}
+```
+
+V2 主题负责颜色、表面、边框、阴影、模糊、背景与小圆角；客户端负责结构、布局、层级和行为。主题不能注入客户端选择器、`@import`、`!important`，动态背景仅允许沙箱化的本地 `iframe.app`。完整字段、Token 和发布规范见 [BakaMusic Theme Spec v2.1](https://github.com/Toskysun/BakaThemePacks/blob/v2/source/docs/theme-spec-v2.md)。
 
 | 主题 | 预览 |
 |------|------|
@@ -149,7 +168,6 @@ src/
 ├── types/                # TypeScript 类型定义
 ├── hooks/                # React Hooks
 └── webworkers/           # Web Workers（下载、本地文件监听、数据库）
-native/qmc2/             # QMC2 解密 native 模块 (C++ / node-gyp)
 ```
 
 ## 技术栈
@@ -168,10 +186,10 @@ native/qmc2/             # QMC2 解密 native 模块 (C++ / node-gyp)
 
 ## 第三方项目说明
 
-- 本项目内置并使用了 [applemusic-like-lyrics](https://github.com/Steve-xmh/applemusic-like-lyrics) 的核心歌词渲染实现，当前源码已融入 `src/amll-core/`。
+- 本项目基于 [applemusic-like-lyrics](https://github.com/amll-dev/applemusic-like-lyrics) Core 0.5.2 维护内置歌词渲染实现，源码及本地适配位于 `src/amll-core/`。
 - 该项目主要用于逐字歌词、翻译歌词、罗马音歌词及相关动画效果的渲染。
 - BakaMusic 在其基础上完成了适配、集成与界面层改造，以满足本项目的歌词显示需求。
-- 上述第三方项目原始协议为 `GPL-3.0`，相关版权与协议归原作者及原项目所有。
+- 上述第三方项目使用 `AGPL-3.0-only`，相关版权与协议归原作者及原项目所有。
 
 ## 法律声明与免责条款
 

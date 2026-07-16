@@ -1,6 +1,12 @@
 import { type PointerEvent as ReactPointerEvent, useMemo, useRef, useState } from "react";
+import {
+    createFallbackAmlLyricLines,
+    estimateLyricClockProgressMs,
+    mapLyricLinesToAml,
+} from "@/common/amll-lyric";
 import ThemeSafeRoundButton from "@/renderer/components/ThemeSafeRoundButton";
-import { PlayerState } from "@/common/constant";
+import AppleMusicLyricPlayer from "@/renderer/components/AppleMusicLyricPlayer";
+import { isPlaybackActive, PlayerState } from "@/common/constant";
 import albumImg from "@/assets/imgs/album-cover.jpg";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
 
@@ -41,6 +47,8 @@ export default function MinimodePage() {
     const currentMusicItem = useAppStatePartial("musicItem");
     const playerState = useAppStatePartial("playerState");
     const lyricItem = useAppStatePartial("parsedLrc");
+    const fullLyric = useAppStatePartial("fullLyric");
+    const lyricClock = useAppStatePartial("lyricClock");
 
     const { t } = useTranslation();
     const showTranslation = useAppConfig("lyric.showTranslation");
@@ -52,7 +60,18 @@ export default function MinimodePage() {
     const currentLyric = lyricItem?.lrc || title;
     const romanization = showRomanization ? lyricItem?.romanization : undefined;
     const translation = showTranslation ? lyricItem?.translation : undefined;
-    const isPlaying = playerState === PlayerState.Playing;
+    const isPlaying = isPlaybackActive(playerState);
+    const shouldAdvanceLyrics = playerState === PlayerState.Playing;
+    const lyricLines = useMemo(() => {
+        const mappedLines = mapLyricLinesToAml(fullLyric ?? [], {
+            includeTranslation: !!showTranslation,
+            includeRomanization: !!showRomanization,
+        });
+
+        return mappedLines.length
+            ? mappedLines
+            : createFallbackAmlLyricLines(currentMusicItem);
+    }, [currentMusicItem, fullLyric, showRomanization, showTranslation]);
     const lyricTitle = [romanization, currentLyric, translation]
         .filter((line) => !!line)
         .join("\n");
@@ -259,13 +278,24 @@ export default function MinimodePage() {
                         className="minimode-lyric-block"
                         title={lyricTitle || currentLyric}
                     >
-                        {romanization ? (
-                            <div className="minimode-romanization">{romanization}</div>
-                        ) : null}
-                        <div className="minimode-lyric">{currentLyric}</div>
-                        {translation ? (
-                            <div className="minimode-translation">{translation}</div>
-                        ) : null}
+                        <AppleMusicLyricPlayer
+                            className="minimode-lyric-player"
+                            lyricLines={lyricLines}
+                            currentTimeMs={estimateLyricClockProgressMs(lyricClock)}
+                            playing={shouldAdvanceLyrics}
+                            speed={lyricClock?.speed || 1}
+                            fontSize="0.82rem"
+                            textColor="#ffffff"
+                            hoverBackgroundColor="transparent"
+                            alignAnchor="center"
+                            alignPosition={0.5}
+                            enableBlur={false}
+                            enableScale
+                            enableSpring
+                            wordFadeWidth={0.66}
+                            inactiveBrightness={0.35}
+                            markLinePlayState
+                        ></AppleMusicLyricPlayer>
                     </div>
                 </div>
 

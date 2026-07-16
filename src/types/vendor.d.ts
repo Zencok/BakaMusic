@@ -39,11 +39,11 @@ declare module "@amll-core/interfaces" {
 }
 
 declare module "@amll-core/lyric-player/index" {
-  export enum MaskObsceneWordsMode {
-    Disabled = "",
-    FullMask = "full-mask",
-    PartialMask = "partial-mask",
-  }
+  export const MaskObsceneWordsMode: {
+    readonly Disabled: "";
+    readonly FullMask: "full-mask";
+    readonly PartialMask: "partial-mask";
+  };
 }
 
 declare module "@amll-core/lyric-player/dom/index" {
@@ -60,6 +60,7 @@ declare module "@amll-core/lyric-player/dom/index" {
     setEnableSpring(enable?: boolean): void;
     setHidePassedLines(hide: boolean): void;
     setWordFadeWidth(value?: number): void;
+    setInactiveBrightness(value?: number): void;
     setLyricLines(lines: LyricLine[], initialTime?: number): void;
     setCurrentTime(time: number, isSeek?: boolean): void;
     update(delta?: number): void;
