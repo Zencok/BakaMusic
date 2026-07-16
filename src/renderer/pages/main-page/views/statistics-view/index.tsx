@@ -192,15 +192,8 @@ export default function StatisticsView() {
 
     return (
         <div id="page-container" className="page-container statistics-page">
-            <header className="statistics-hero">
-                <div className="statistics-hero-copy">
-                    <div className="statistics-hero-eyebrow">
-                        <SvgAsset iconName="dashboard-speed"></SvgAsset>
-                        {t("statistics_page.eyebrow")}
-                    </div>
-                    <h1>{t("statistics_page.title")}</h1>
-                    <p>{t("statistics_page.subtitle")}</p>
-                </div>
+            <header className="statistics-header">
+                <h1>{t("statistics_page.title")}</h1>
                 <button
                     className="statistics-clear-button"
                     type="button"
@@ -212,7 +205,7 @@ export default function StatisticsView() {
                 </button>
             </header>
 
-            <section className="statistics-summary-grid">
+            <section className="statistics-summary-bar">
                 {cards.map((card) => (
                     <article className="statistics-summary-card" key={card.label} data-compact={card.compact}>
                         <div className="statistics-summary-icon">
@@ -262,34 +255,6 @@ export default function StatisticsView() {
                     </div>
                     <span>{t("statistics_page.track_count", { count: visibleEntries.length })}</span>
                 </div>
-
-                {activeTab === "ranking" && !normalizedSearch && mostPlayedEntries.length ? (
-                    <div className="statistics-podium">
-                        {mostPlayedEntries.slice(0, 3).map((entry, index) => (
-                            <button
-                                className="statistics-podium-card"
-                                type="button"
-                                key={getListeningStatisticsKey(entry.musicItem)}
-                                data-rank={index + 1}
-                                onClick={() => playStatisticsEntry(entry)}
-                            >
-                                <span className="statistics-podium-rank">#{index + 1}</span>
-                                <img
-                                    draggable={false}
-                                    src={entry.musicItem.coverImg ?? entry.musicItem.artwork ?? albumImg}
-                                    onError={setFallbackAlbum}
-                                ></img>
-                                <span className="statistics-podium-copy">
-                                    <strong>{entry.musicItem.title || t("media.unknown_title")}</strong>
-                                    <small>{entry.musicItem.artist || t("media.unknown_artist")}</small>
-                                </span>
-                                <span className="statistics-podium-count">
-                                    {t("statistics_page.play_count", { count: entry.playCount })}
-                                </span>
-                            </button>
-                        ))}
-                    </div>
-                ) : null}
 
                 {visibleEntries.length ? (
                     <div className="statistics-track-list">

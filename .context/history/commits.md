@@ -128,3 +128,11 @@
 - **Bug**: Use normal document flow so every statistics row remains inside the list surface.
 - **Files**: 18 files
 - **Tests**: model test; ESLint; TypeScript; SCSS; diff check; Forge webpack stage
+
+## 2026-07-17T00:33:43.5888632+08:00 — refactor(statistics): simplify dashboard layout
+`pending`
+- **Decision**: Match the download-management title surface and compact controls.
+- **Decision**: Merge the four metric cards into a minimal divided bar while enlarging total plays.
+- **Decision**: Remove duplicate horizontal top-three cards and retain rank emphasis in the list.
+- **Files**: 2 files
+- **Tests**: ESLint; TypeScript; SCSS; diff check
