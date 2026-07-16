@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { CSSProperties } from "react";
 import SideBar from "./components/SideBar";
 import PluginManagerView from "./views/plugin-manager-view";
@@ -14,7 +14,7 @@ import LocalMusicView from "./views/local-music-view";
 import Empty from "@/renderer/components/Empty";
 import DownloadView from "./views/download-view";
 import ThemeView from "./views/theme-view";
-import RecentlyPlayView from "./views/recently-play-view";
+import StatisticsView from "./views/statistics-view";
 
 import "./index.scss";
 
@@ -76,8 +76,12 @@ export default function MainPage() {
                     <Route path="setting" element={<SettingView></SettingView>}></Route>
                     <Route path="theme" element={<ThemeView></ThemeView>}></Route>
                     <Route
+                        path="statistics"
+                        element={<StatisticsView></StatisticsView>}
+                    ></Route>
+                    <Route
                         path="recently_play"
-                        element={<RecentlyPlayView></RecentlyPlayView>}
+                        element={<Navigate to="/main/statistics" replace></Navigate>}
                     ></Route>
                     <Route path="*" element={<Empty></Empty>}></Route>
                 </Routes>

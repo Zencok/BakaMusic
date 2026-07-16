@@ -15,7 +15,8 @@
     "prepare": "husky install",
     "postinstall": "node scripts/patch-node-gyp.js",
     "build:native": "node scripts/build-native.js",
-    "test:theme-contract": "node -r ts-node/register scripts/theme-contract.test.cjs"
+    "test:theme-contract": "node -r ts-node/register scripts/theme-contract.test.cjs",
+    "test:listening-statistics": "node -r ts-node/register/transpile-only scripts/listening-statistics.test.cjs"
   },
   "keywords": [],
   "author": {

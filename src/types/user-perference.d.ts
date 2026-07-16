@@ -41,6 +41,8 @@ declare namespace IUserPreference {
     starredMusicSheets: IMedia.IMediaBase[];
     /** 播放次数统计 */
     playCountMap: Record<string, number>;
+    /** 听歌统计（最近播放、次数排行与时间信息） */
+    listeningStatistics: import("@renderer/core/listening-statistics/model").IListeningStatisticsState;
     /** 搜索历史 */
     searchHistory: string[];
     /** 插件数据 */

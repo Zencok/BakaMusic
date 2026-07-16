@@ -78,7 +78,7 @@ MSYS_NO_PATHCONV=1 iscc /DMyAppVersion=1.2.6 /DMyAppId=BakaMusic "release/build-
 
 ## 截图
 
-**主页** — 聚合推荐、最近播放与快速入口
+**主页** — 聚合推荐、听歌统计与快速入口
 
 ![主页](./.imgs/home.png)
 

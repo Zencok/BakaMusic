@@ -118,3 +118,13 @@
 - **Bug**: The unchanged 56px cover appeared undersized after the window height increase.
 - **Files**: 1 file
 - **Tests**: npm run lint; npx sass --no-source-map src/renderer-minimode/pages/index.scss; git diff --check
+
+## 2026-07-17T00:25:57.9020728+08:00 — feat(statistics): redesign listening history
+`pending`
+- **Decision**: Unify recent ordering, play counts, timestamps, and migration in listeningStatistics.
+- **Decision**: Count after playable source setup and keep statistics playback independent from queue replacement.
+- **Decision**: Replace the recent-playlist page with a searchable recent/ranking dashboard and legacy route redirect.
+- **Bug**: Replaying a history row now moves it to the top without removing it.
+- **Bug**: Use normal document flow so every statistics row remains inside the list surface.
+- **Files**: 18 files
+- **Tests**: model test; ESLint; TypeScript; SCSS; diff check; Forge webpack stage

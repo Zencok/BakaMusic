@@ -31,7 +31,7 @@ import { createUniqueMap } from "@/common/unique-map";
 import { getLinkedLyric } from "@renderer/core/link-lyric";
 import { fsUtil } from "@shared/utils/renderer";
 import PluginManager from "@shared/plugin-manager/renderer";
-import { incrementPlayCount } from "@renderer/core/play-count";
+import { recordPlayback } from "@renderer/core/listening-statistics";
 import { toError } from "@/common/error-util";
 
 const {
@@ -373,6 +373,9 @@ class TrackPlayer {
                 this.seekTo(0);
             }
             this.audioController.play();
+            if (restartOnSameMedia && this.audioController.hasSource) {
+                recordPlayback(this.musicQueue[index]);
+            }
 
             return;
         }
@@ -402,6 +405,7 @@ class TrackPlayer {
                 seekTo,
                 autoPlay: true,
             });
+            recordPlayback(nextMusicItem);
 
             // extra information
             const musicInfo = await PluginManager.callPluginDelegateMethod(
@@ -931,7 +935,6 @@ class TrackPlayer {
 
             if (musicItem) {
                 setUserPreference("currentMusic", musicItem);
-                incrementPlayCount(musicItem);
             } else {
                 removeUserPreference("currentMusic");
             }

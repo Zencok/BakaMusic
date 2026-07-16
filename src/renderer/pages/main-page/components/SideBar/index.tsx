@@ -38,8 +38,8 @@ export default function () {
         },
         {
             iconName: "clock",
-            title: t("side_bar.recently_play"),
-            route: "recently_play",
+            title: t("side_bar.statistics"),
+            route: "statistics",
         },
     ] as const;
 
