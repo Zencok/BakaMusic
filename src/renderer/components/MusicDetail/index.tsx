@@ -81,7 +81,7 @@ function MusicDetail() {
     const subtitle = [musicItem?.artist || t("media.unknown_artist"), musicItem?.album]
         .filter(Boolean)
         .join(" · ");
-    const coverStyle = storedCoverStyle === "vinyl" ? "vinyl" : "cover";
+    const coverStyle = storedCoverStyle === "cover" ? "cover" : "vinyl";
     const vinylTonearm =
         storedVinylTonearm === "glass" || storedVinylTonearm === "classic"
             ? storedVinylTonearm

@@ -180,9 +180,9 @@ function CoverStyleSelector() {
     );
     const selectorRef = useRef<HTMLDivElement>(null);
     const { t } = useTranslation();
-    const coverStyle: MusicDetailCoverStyle = storedCoverStyle === "vinyl"
-        ? "vinyl"
-        : "cover";
+    const coverStyle: MusicDetailCoverStyle = storedCoverStyle === "cover"
+        ? "cover"
+        : "vinyl";
     const vinylTonearm: MusicDetailVinylTonearm =
         storedVinylTonearm === "glass" || storedVinylTonearm === "classic"
             ? storedVinylTonearm

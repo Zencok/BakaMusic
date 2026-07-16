@@ -105,3 +105,9 @@
 - **Bug**: Reset the RAF clock before resume to prevent transient lyric jumps.
 - **Files**: 57 files
 - **Tests**: npm run lint; npx tsc --noEmit; npm run package; git diff --check
+
+## 2026-07-16T23:54:41.9288238+08:00 — feat(ui): default music detail to vinyl cover
+`pending`
+- **Decision**: Default unset music detail cover preferences to vinyl while preserving explicit cover selections.
+- **Files**: 2 files
+- **Tests**: npm run lint; npx tsc --noEmit; git diff --check
