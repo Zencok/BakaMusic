@@ -169,3 +169,12 @@
 - **Bug**: Line-timed desktop lyric rows remained extremely dim even after their configured inner opacity was raised to 0.85.
 - **Files**: 3 files
 - **Tests**: theme contract; ESLint; TypeScript; SCSS; diff check
+
+## 2026-07-17T17:00:29.362775+08:00 — fix(ui): separate playlist detail surfaces
+`pending`
+- **Decision**: Keep shadows on concrete playlist surfaces only.
+- **Decision**: Reuse the shared flat card radius.
+- **Decision**: Guard grouping-shadow ownership with contract tests.
+- **Bug**: Transparent grouping-wrapper shadows painted through playlist section gaps and visually joined separate cards.
+- **Files**: 2 files
+- **Tests**: theme contract; ESLint; 10-route flat/glass runtime shadow audit; diff check

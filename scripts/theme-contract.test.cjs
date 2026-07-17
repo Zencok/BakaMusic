@@ -59,6 +59,20 @@ for (const relativePath of clientOwnedDetailStyleFiles) {
     assert.doesNotMatch(stylesheet, /var\(--theme-detail-/);
 }
 
+const flatUiStyles = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/document/styles/ui-style-flat.scss",
+), "utf8");
+assert.match(
+    flatUiStyles,
+    /\.music-sheetlike-view--container,\s*\.music-sheetlike-view--body-container\s*\{[^}]*box-shadow:\s*none\s*!important;/s,
+);
+assert.doesNotMatch(flatUiStyles, /\.music-sheetlike-view--header\s*,/);
+assert.match(
+    flatUiStyles,
+    /\.music-sheetlike-view--body-container \.operations\s*\{[^}]*border-radius:\s*var\(--cardRadius\)\s*!important;/s,
+);
+
 const searchHistoryStyles = fs.readFileSync(path.join(
     __dirname,
     "../src/renderer/components/Header/widgets/SearchHistory/index.scss",

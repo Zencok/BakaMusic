@@ -1079,7 +1079,7 @@
     }
 
     .music-sheetlike-view--body-container .operations {
-        border-radius: 12px !important;
+        border-radius: var(--cardRadius) !important;
         backdrop-filter: none !important;
         box-shadow: none !important;
         background: var(--appSurfaceMuted) !important;
@@ -1570,10 +1570,13 @@
 
     // Music sheetlike view
     .music-sheetlike-view--container,
-    .music-sheetlike-view--header,
-    .music-sheetlike-view--header-container,
-    .music-sheetlike-view--body,
     .music-sheetlike-view--body-container {
+        border-radius: 0 !important;
+        backdrop-filter: none !important;
+        box-shadow: none !important;
+    }
+
+    .music-sheetlike-view--header-container {
         border-radius: var(--cardRadius) !important;
         backdrop-filter: none !important;
         box-shadow: var(--appSurfaceShadowSoft) !important;
