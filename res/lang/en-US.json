@@ -536,6 +536,8 @@
   "theme": {
     "tab_local": "Local Theme",
     "tab_remote": "Theme Marketplace",
+    "search_placeholder": "Search themes or authors",
+    "no_search_result": "No matching themes",
     "download_and_use": "Download and Use",
     "use_theme": "Use Theme",
     "install_theme": "Install Theme",

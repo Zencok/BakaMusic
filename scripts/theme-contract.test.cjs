@@ -7,6 +7,38 @@ const {
     parseThemeCss,
     validateThemePackConfig,
 } = require("../src/shared/themepack/contract");
+const {
+    matchesThemeSearch,
+} = require("../src/renderer/pages/main-page/views/theme-view/theme-search");
+
+assert.equal(matchesThemeSearch({}, ""), true);
+assert.equal(matchesThemeSearch({
+    name: "Midnight Blue",
+    author: "Baka Team",
+}, "midnight baka"), true);
+assert.equal(matchesThemeSearch({
+    description: "柔和的浅色主题",
+}, "浅色"), true);
+assert.equal(matchesThemeSearch({ name: "Aurora" }, "store-slug", ["store-slug"]), true);
+assert.equal(matchesThemeSearch({ name: "Aurora" }, "missing"), false);
+
+const themeViewSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/pages/main-page/views/theme-view/index.tsx",
+), "utf8");
+const localThemesSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/pages/main-page/views/theme-view/components/LocalThemes/index.tsx",
+), "utf8");
+const remoteThemesSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/pages/main-page/views/theme-view/components/RemoteThemes/index.tsx",
+), "utf8");
+assert.match(themeViewSource, /className="theme-view-search"/);
+assert.match(themeViewSource, /<LocalThemes searchText=\{searchText\}/);
+assert.match(themeViewSource, /<RemoteThemes searchText=\{searchText\}/);
+assert.match(localThemesSource, /matchesThemeSearch\(it, normalizedSearch\)/);
+assert.match(remoteThemesSource, /matchesThemeSearch\(\s*theme\.config,\s*normalizedSearch,/);
 
 assert.equal(THEME_SPEC_V2, "bakamusic-theme@2");
 assert.deepEqual(CLIENT_OWNED_COMPATIBILITY_TOKENS, [

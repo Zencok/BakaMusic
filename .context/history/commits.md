@@ -201,3 +201,11 @@
 - **Decision**: Guard shortcut ownership with a source contract.
 - **Files**: 3 files
 - **Tests**: theme contract; ESLint; TypeScript; diff check
+
+## 2026-07-17T17:58:07.7850599+08:00 — feat(theme): add local and marketplace search
+`pending`
+- **Decision**: Share one query across the Local Theme and Theme Marketplace tabs.
+- **Decision**: Match normalized multi-token theme metadata and marketplace aliases.
+- **Decision**: Add localized empty states plus responsive glass and flat styling.
+- **Files**: 9 files
+- **Tests**: theme contract; ESLint; TypeScript; SCSS; language JSON; diff check

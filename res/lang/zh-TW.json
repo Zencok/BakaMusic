@@ -536,6 +536,8 @@
   "theme": {
     "tab_local": "本地主題",
     "tab_remote": "主題市場",
+    "search_placeholder": "搜尋主題或作者",
+    "no_search_result": "沒有相符的主題",
     "download_and_use": "下載並使用",
     "use_theme": "使用主題",
     "install_theme": "安裝主題",

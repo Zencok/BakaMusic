@@ -1,8 +1,17 @@
 .theme-view--container {
   padding-top: 1rem;
 
-  & .tab-list-container {
+  & .theme-view-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1.05rem;
     margin-bottom: 1rem;
+  }
+
+  & .tab-list-container {
+    margin: 0;
   }
 
   & .tab-panels-container {
@@ -11,6 +20,137 @@
     & > div {
       width: 100%;
       outline: none;
+    }
+  }
+}
+
+.theme-view-search {
+  width: min(280px, 38%);
+  height: 2.55rem;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 1 280px;
+  padding: 0 0.78rem;
+  border: 1px solid var(--appInteractiveBorder);
+  border-radius: var(--appRadiusPill, 999px);
+  color: var(--appTextTertiary);
+  background: color-mix(in srgb, var(--backgroundColor) 80%, transparent);
+  box-shadow: var(--appSurfaceInset);
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+
+  &:focus-within {
+    border-color: color-mix(in srgb, var(--primaryColor) 42%, var(--appInteractiveBorder));
+    color: var(--primaryColor);
+    background: color-mix(in srgb, var(--backgroundColor) 88%, transparent);
+  }
+
+  & > svg {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+  }
+
+  & input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    color: var(--appTextPrimary);
+    background: transparent;
+    font: inherit;
+    font-size: 0.82rem;
+
+    &::placeholder {
+      color: var(--appTextTertiary);
+    }
+
+    &::-webkit-search-cancel-button {
+      display: none;
+    }
+  }
+
+  & button {
+    width: 1.45rem;
+    height: 1.45rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 1.45rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--iconButtonRadius, 50%);
+    outline: 0;
+    color: currentColor;
+    background: transparent;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      color: var(--appTextPrimary);
+      background: var(--appInteractiveSurface);
+    }
+
+    & svg {
+      width: 0.78rem;
+      height: 0.78rem;
+    }
+  }
+}
+
+.theme-search-empty {
+  min-height: 180px;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.65rem;
+  box-sizing: border-box;
+  border: 1px solid var(--appSurfaceBorder);
+  border-radius: var(--cardRadius, 24px);
+  color: var(--appTextSecondary);
+  background: var(--appSurface);
+  box-shadow: var(--appSurfaceInset);
+
+  & svg {
+    width: 1.8rem;
+    height: 1.8rem;
+    color: var(--appTextTertiary);
+  }
+
+  & span {
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+}
+
+[data-ui-style="flat"] .theme-view--container {
+  & .theme-view-toolbar {
+    margin-top: 0.85rem;
+  }
+
+  & .theme-view-search,
+  & .theme-search-empty {
+    box-shadow: none;
+  }
+
+  & .theme-view-search {
+    border-radius: var(--controlRadius);
+    background: var(--appSurfaceStrong);
+  }
+}
+
+@media (max-width: 720px) {
+  .theme-view--container {
+    & .theme-view-toolbar {
+      flex-wrap: wrap;
+    }
+
+    & .theme-view-search {
+      width: 100%;
+      flex-basis: 100%;
     }
   }
 }

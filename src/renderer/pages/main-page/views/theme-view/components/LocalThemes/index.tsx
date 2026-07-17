@@ -6,17 +6,30 @@ import ThemeItem from "../ThemeItem";
 
 import "./index.scss";
 import { dialogUtil } from "@shared/utils/renderer";
+import { matchesThemeSearch } from "../../theme-search";
 
-export default function LocalThemes() {
+interface ILocalThemesProps {
+    searchText: string;
+}
+
+export default function LocalThemes(props: ILocalThemesProps) {
+    const { searchText } = props;
     const currentThemePack = ThemePack.useCurrentThemePack();
     const localThemePacks = ThemePack.useLocalThemePacks();
 
     const { t } = useTranslation();
+    const normalizedSearch = searchText.trim();
+    const validLocalThemePacks = localThemePacks
+        .filter((it): it is ICommon.IThemePack => !!it)
+        .filter((it) => matchesThemeSearch(it, normalizedSearch));
+    const defaultThemePack = ThemePack.createBuiltinDefaultThemePack(t("common.default"));
+    const showDefaultTheme = matchesThemeSearch(defaultThemePack, normalizedSearch);
+    const hasSearchResults = validLocalThemePacks.length > 0 || showDefaultTheme;
 
     return (
         <div className="local-themes-container">
             <div className="local-themes-inner-container">
-                <div className="theme-item-container">
+                <div className="theme-item-container" hidden={Boolean(normalizedSearch)}>
                     <div
                         title={t("theme.install_theme")}
                         className="theme-thumb-container theme-install-local"
@@ -77,7 +90,7 @@ export default function LocalThemes() {
                     </div>
                 </div>
 
-                {localThemePacks.filter((it): it is ICommon.IThemePack => !!it).map((it) => (
+                {validLocalThemePacks.map((it) => (
                     <ThemeItem
                         config={it}
                         hash={it.hash}
@@ -86,12 +99,20 @@ export default function LocalThemes() {
                         selected={it.hash === currentThemePack?.hash}
                     ></ThemeItem>
                 ))}
-                <ThemeItem
-                    config={ThemePack.createBuiltinDefaultThemePack(t("common.default"))}
-                    hash={ThemePack.BUILTIN_DEFAULT_THEME_HASH}
-                    type="local"
-                    selected={ThemePack.isBuiltinDefaultTheme(currentThemePack)}
-                ></ThemeItem>
+                {showDefaultTheme ? (
+                    <ThemeItem
+                        config={defaultThemePack}
+                        hash={ThemePack.BUILTIN_DEFAULT_THEME_HASH}
+                        type="local"
+                        selected={ThemePack.isBuiltinDefaultTheme(currentThemePack)}
+                    ></ThemeItem>
+                ) : null}
+                {normalizedSearch && !hasSearchResults ? (
+                    <div className="theme-search-empty">
+                        <SvgAsset iconName="magnifying-glass"></SvgAsset>
+                        <span>{t("theme.no_search_result")}</span>
+                    </div>
+                ) : null}
             </div>
         </div>
     );

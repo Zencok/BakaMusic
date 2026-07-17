@@ -7,13 +7,26 @@ import ThemeItem from "../ThemeItem";
 import ThemePack from "@/shared/themepack/renderer";
 import { Trans, useTranslation } from "react-i18next";
 import A from "@/renderer/components/A";
+import SvgAsset from "@/renderer/components/SvgAsset";
+import { matchesThemeSearch } from "../../theme-search";
 
-export default function RemoteThemes() {
+interface IRemoteThemesProps {
+    searchText: string;
+}
+
+export default function RemoteThemes(props: IRemoteThemesProps) {
+    const { searchText } = props;
     const [themes, loadingState] = useRemoteThemes();
     const currentTheme = ThemePack.useCurrentThemePack();
     const localThemes = ThemePack.useLocalThemePacks();
     const validLocalThemes = localThemes.filter((theme): theme is ICommon.IThemePack => !!theme);
     const { t } = useTranslation();
+    const normalizedSearch = searchText.trim();
+    const visibleThemes = themes.filter((theme) => matchesThemeSearch(
+        theme.config,
+        normalizedSearch,
+        [theme.publishName, theme.packageName, theme.id],
+    ));
 
     return (
         <div className="remote-themes-container">
@@ -33,7 +46,7 @@ export default function RemoteThemes() {
                 </SwitchCase.Case>
                 <SwitchCase.Case case={RequestStateCode.FINISHED}>
                     <div className="remote-themes-inner-container">
-                        {themes.map((it) => (
+                        {visibleThemes.map((it) => (
                             <ThemeItem
                                 config={it.config}
                                 hash={it.hash}
@@ -50,6 +63,12 @@ export default function RemoteThemes() {
                                 }
                             ></ThemeItem>
                         ))}
+                        {normalizedSearch && !visibleThemes.length ? (
+                            <div className="theme-search-empty">
+                                <SvgAsset iconName="magnifying-glass"></SvgAsset>
+                                <span>{t("theme.no_search_result")}</span>
+                            </div>
+                        ) : null}
                     </div>
                 </SwitchCase.Case>
                 <SwitchCase.Case case={RequestStateCode.ERROR}>
