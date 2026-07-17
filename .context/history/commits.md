@@ -162,3 +162,10 @@
 - **Bug**: Desktop lyrics stayed above standalone video players in fullscreen even though browser fullscreen already yielded correctly.
 - **Files**: 9 files
 - **Tests**: lyric z-order; regression suites; ESLint; TypeScript; Forge x64 package; diff check
+
+## 2026-07-17T16:29:41.011985+08:00 — fix(lyric): normalize line-timed lyric opacity
+`pending`
+- **Decision**: Apply desktop line-timed opacity exactly once
+- **Bug**: Line-timed desktop lyric rows remained extremely dim even after their configured inner opacity was raised to 0.85.
+- **Files**: 3 files
+- **Tests**: theme contract; ESLint; TypeScript; SCSS; diff check

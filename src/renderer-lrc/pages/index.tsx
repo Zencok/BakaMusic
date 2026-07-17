@@ -16,7 +16,7 @@ const BASE_FONT_SIZE = 24;
 const MIN_DISPLAY_FONT_SIZE = 16;
 const MAX_DISPLAY_FONT_SIZE = 80;
 const HOVER_VISIBLE_MS = 1000;
-const LINE_TIMED_INACTIVE_OPACITY = 0.7;
+const LINE_TIMED_INACTIVE_OPACITY = 0.62;
 
 interface IDragState {
     pointerId: number;

@@ -65,6 +65,21 @@ const searchHistoryStyles = fs.readFileSync(path.join(
 ), "utf8");
 assert.doesNotMatch(searchHistoryStyles, /--searchHistoryBg:\s*var\(--theme-popover-bg\)/);
 
+const desktopLyricView = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer-lrc/pages/index.tsx",
+), "utf8");
+const desktopLyricStyles = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer-lrc/pages/index.scss",
+), "utf8");
+assert.match(desktopLyricView, /LINE_TIMED_INACTIVE_OPACITY = 0\.62/);
+assert.match(desktopLyricStyles, /line-inactive-opacity, 0\.62/);
+assert.match(
+    desktopLyricStyles,
+    /\[class\*="lyricLineWrapper"\]:has\(\[data-lyric-timing="line"\]\)\s*\{\s*opacity:\s*1\s*!important;/s,
+);
+
 const invalidSamples = [
     ":root { --theme-primary: red; } .header-container { display: none; }",
     ":root { --theme-primary: red !important; --theme-bg: #fff; --theme-text: #000; --theme-scheme: light; }",
