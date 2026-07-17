@@ -1,4 +1,5 @@
 import albumImg from "@/assets/imgs/album-cover.jpg";
+import { secondsToDuration } from "@/common/time-util";
 import {
     getListeningDurationParts,
     getListeningStatisticsKey,
@@ -13,7 +14,9 @@ import { useCurrentMusic } from "@/renderer/core/track-player/hooks";
 import { hideModal, showModal } from "@/renderer/components/Modal";
 import SvgAsset from "@/renderer/components/SvgAsset";
 import type { SvgAssetIconNames } from "@/renderer/components/SvgAsset";
+import Tag from "@/renderer/components/Tag";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
+import { getBestMusicQualityInfo } from "@/renderer/utils/music-quality-metadata";
 import { useMemo, useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
@@ -93,6 +96,7 @@ function StatisticsTrackRow(props: IStatisticsTrackRowProps) {
         ? getListeningStatisticsKey(currentMusic) === getListeningStatisticsKey(entry.musicItem)
         : false;
     const artwork = entry.musicItem.coverImg ?? entry.musicItem.artwork ?? albumImg;
+    const qualityInfo = getBestMusicQualityInfo(entry.musicItem);
 
     return (
         <div
@@ -109,7 +113,7 @@ function StatisticsTrackRow(props: IStatisticsTrackRowProps) {
             }}
         >
             <div className="statistics-track-position" data-top={mode === "ranking" && index < 3}>
-                {mode === "ranking" ? index + 1 : String(index + 1).padStart(2, "0")}
+                {index + 1}
             </div>
             <div className="statistics-track-cover-wrap">
                 <img
@@ -119,7 +123,7 @@ function StatisticsTrackRow(props: IStatisticsTrackRowProps) {
                     onError={setFallbackAlbum}
                 ></img>
                 <div className="statistics-track-cover-play">
-                    <SvgAsset iconName={isCurrent ? "speaker-wave" : "play"}></SvgAsset>
+                    <SvgAsset iconName={isCurrent ? "pause" : "play"}></SvgAsset>
                 </div>
             </div>
             <div className="statistics-track-copy">
@@ -128,6 +132,24 @@ function StatisticsTrackRow(props: IStatisticsTrackRowProps) {
                     {entry.musicItem.artist || t("media.unknown_artist")}
                     {entry.musicItem.album ? ` · ${entry.musicItem.album}` : ""}
                 </span>
+                <div className="statistics-track-meta-row">
+                    <Tag>
+                        {entry.musicItem.duration
+                            ? secondsToDuration(entry.musicItem.duration)
+                            : "--:--"}
+                    </Tag>
+                    {qualityInfo ? (
+                        <Tag>
+                            {qualityInfo.label}
+                            {qualityInfo.sizeText ? ` · ${qualityInfo.sizeText}` : ""}
+                        </Tag>
+                    ) : null}
+                    {entry.musicItem.platform ? (
+                        <Tag fill>
+                            {entry.musicItem.platform}
+                        </Tag>
+                    ) : null}
+                </div>
             </div>
             <div className="statistics-track-last-played">
                 <span>{t("statistics_page.last_played")}</span>
@@ -269,10 +291,14 @@ export default function StatisticsView() {
 
                 <div className="statistics-section-heading">
                     <div>
-                        <h2>{t(`statistics_page.${activeTab}`)}</h2>
+                        <div className="statistics-section-title-row">
+                            <h2>{t(`statistics_page.${activeTab}`)}</h2>
+                            <span className="statistics-section-count">
+                                {visibleEntries.length}
+                            </span>
+                        </div>
                         <p>{t(`statistics_page.${activeTab}_hint`)}</p>
                     </div>
-                    <span>{t("statistics_page.track_count", { count: visibleEntries.length })}</span>
                 </div>
 
                 {visibleEntries.length ? (

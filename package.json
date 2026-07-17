@@ -16,6 +16,7 @@
     "postinstall": "node scripts/patch-node-gyp.js",
     "build:native": "node scripts/build-native.js",
     "test:theme-contract": "node -r ts-node/register scripts/theme-contract.test.cjs",
+    "test:music-quality-metadata": "node -r ts-node/register/transpile-only scripts/music-quality-metadata.test.cjs",
     "test:listening-statistics": "node -r ts-node/register/transpile-only scripts/listening-statistics.test.cjs",
     "test:lyric-window-z-order": "node -r ts-node/register/transpile-only scripts/lyric-window-z-order.test.cjs"
   },

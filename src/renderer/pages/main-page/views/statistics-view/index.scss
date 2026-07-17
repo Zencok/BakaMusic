@@ -1,4 +1,6 @@
 .statistics-page {
+  --statisticsSmallTextSize: 0.76rem;
+
   display: block;
   color: var(--appTextPrimary);
 
@@ -125,7 +127,7 @@
 
   & > span {
     color: var(--appTextTertiary);
-    font-size: 0.67rem;
+    font-size: 0.82rem;
     font-weight: 650;
   }
 
@@ -138,7 +140,7 @@
   & small {
     overflow: hidden;
     color: var(--appTextTertiary);
-    font-size: 0.62rem;
+    font-size: var(--statisticsSmallTextSize);
     white-space: nowrap;
     text-overflow: ellipsis;
   }
@@ -239,6 +241,7 @@
 }
 
 .statistics-section-heading {
+  justify-content: flex-start;
   padding: 1.15rem 0 0.8rem;
 
   & h2,
@@ -251,19 +254,32 @@
     letter-spacing: -0.02em;
   }
 
-  & p,
-  & > span {
-    color: var(--appTextTertiary);
-    font-size: 0.72rem;
-  }
-
   & p {
     margin-top: 0.18rem;
+    color: var(--appTextTertiary);
+    font-size: var(--statisticsSmallTextSize);
   }
+}
 
-  & > span {
-    flex-shrink: 0;
-  }
+.statistics-section-title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.statistics-section-count {
+  min-width: 1.9rem;
+  height: 1.9rem;
+  padding: 0 0.6rem;
+  border-radius: var(--tagRadius, 999px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--primaryColor) 14%, var(--backgroundColor));
+  color: color-mix(in srgb, var(--primaryColor) 78%, var(--appTextPrimary));
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .statistics-track-list {
@@ -301,7 +317,7 @@
 
 .statistics-track-position {
   color: var(--appTextTertiary);
-  font-size: 0.72rem;
+  font-size: var(--statisticsSmallTextSize);
   font-variant-numeric: tabular-nums;
   text-align: center;
 
@@ -368,7 +384,25 @@
   & span {
     margin-top: 0.18rem;
     color: var(--appTextTertiary);
-    font-size: 0.7rem;
+    font-size: var(--statisticsSmallTextSize);
+  }
+}
+
+.statistics-track-meta-row {
+  min-width: 0;
+  margin-top: 0.22rem;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow: hidden;
+
+  & .components--tag-container {
+    max-width: none;
+    padding: 2px 8px;
+    border-radius: 999px;
+    flex-shrink: 0;
+    font-size: var(--statisticsSmallTextSize);
+    line-height: 1.2;
   }
 }
 
@@ -379,13 +413,19 @@
 
   & span {
     color: var(--appTextTertiary);
-    font-size: 0.64rem;
+    font-size: var(--statisticsSmallTextSize);
   }
 
   & strong {
     margin-top: 0.12rem;
-    font-size: 0.72rem;
+    font-size: var(--statisticsSmallTextSize);
     font-weight: 680;
+  }
+}
+
+.statistics-track-last-played {
+  & strong {
+    font-size: 0.82rem;
   }
 }
 
@@ -434,7 +474,7 @@
   & span {
     max-width: 360px;
     margin-top: 0.28rem;
-    font-size: 0.74rem;
+    font-size: var(--statisticsSmallTextSize);
     line-height: 1.5;
   }
 }

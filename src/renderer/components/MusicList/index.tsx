@@ -10,7 +10,6 @@ import albumImg from "@/assets/imgs/album-cover.jpg";
 import { localPluginName, qualityKeys, RequestStateCode, sortIndexSymbol, timeStampSymbol } from "@/common/constant";
 import { toError } from "@/common/error-util";
 import { getInternalData, getMediaPrimaryKey, isSameMedia } from "@/common/media-util";
-import { normalizeFileSize } from "@/common/normalize-util";
 import { secondsToDuration } from "@/common/time-util";
 import { CSSProperties, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import hotkeys from "hotkeys-js";
@@ -37,6 +36,7 @@ import { useCurrentMusic } from "@renderer/core/track-player/hooks";
 import isLocalMusic from "@/renderer/utils/is-local-music";
 import normalizeArtworkDisplaySrc from "@/renderer/utils/normalize-artwork-display-src";
 import { promptDownloadWithQuality } from "@/renderer/utils/download-quality";
+import { getBestMusicQualityInfo } from "@/renderer/utils/music-quality-metadata";
 import LazyImage from "../LazyImage";
 import getCompactArtworkSrc from "@/renderer/utils/get-compact-artwork-src";
 import { getPlayCount } from "@/renderer/core/play-count";
@@ -372,21 +372,6 @@ export function showMusicContextMenu(
     });
 }
 
-const qualityAbbr: Record<IMusic.IQualityKey, string> = {
-    "mgg": "MG",
-    "128k": "LQ",
-    "192k": "MQ",
-    "320k": "HQ",
-    "flac": "SQ",
-    "flac24bit": "HR",
-    "hires": "HR",
-    "vinyl": "VN",
-    "dolby": "DB",
-    "atmos": "AT",
-    "atmos_plus": "A+",
-    "master": "MS",
-};
-
 const compactTagStyle: CSSProperties = {
     fontSize: "0.72rem",
     lineHeight: 1.2,
@@ -409,61 +394,6 @@ const sortFieldOptions: { id: SortField; labelKey: string }[] = [
     { id: "duration", labelKey: "media.media_duration" },
     { id: "addedTime", labelKey: "media.media_added_time" },
 ];
-
-function formatSizeText(size?: string | number) {
-    if (size === undefined || size === null || size === "") {
-        return "";
-    }
-
-    if (typeof size === "number") {
-        return normalizeFileSize(size);
-    }
-
-    const normalizedNumber = Number(size);
-    if (!isNaN(normalizedNumber) && isFinite(normalizedNumber)) {
-        return normalizeFileSize(normalizedNumber);
-    }
-
-    return `${size}`;
-}
-
-function getBestQualityInfo(musicItem: IMusic.IMusicItem) {
-    const qualities = musicItem?.qualities as IMusic.IQuality | undefined;
-    const source =
-        musicItem?.source && typeof musicItem.source === "object"
-            ? musicItem.source as Partial<Record<IMusic.IQualityKey, { size?: string | number; url?: string }>>
-            : undefined;
-    const downloadedData = getInternalData<IMusic.IMusicItemInternalData>(
-        musicItem,
-        "downloadData",
-    );
-
-    const quality = [...qualityKeys].reverse().find((item) => {
-        if (qualities?.[item] !== undefined) {
-            return true;
-        }
-
-        const sourceItem = source?.[item];
-        return downloadedData?.quality === item || !!sourceItem && (
-            sourceItem.url !== undefined ||
-            sourceItem.size !== undefined
-        );
-    });
-
-    if (!quality) {
-        return null;
-    }
-
-    const sizeText = formatSizeText(
-        qualities?.[quality]?.size ?? source?.[quality]?.size ?? (musicItem as { size?: string | number }).size,
-    );
-
-    return {
-        quality,
-        label: qualityAbbr[quality] || quality.toUpperCase(),
-        sizeText,
-    };
-}
 
 function getSortValue(musicItem: IMusic.IMusicItem, field: SortField): string | number {
     switch (field) {
@@ -832,7 +762,7 @@ function _MusicList(props: IMusicListProps) {
                                 subtitleParts.push(musicItem.album);
                             }
 
-                            const qualityInfo = getBestQualityInfo(musicItem);
+                            const qualityInfo = getBestMusicQualityInfo(musicItem);
                             const isActive = activeItems.has(virtualItem.rowIndex);
                             const isPlaying = !!currentMusic && isSameMedia(currentMusic, musicItem);
                             const artworkSrc = getCompactArtworkSrc(musicItem, 160) ?? albumImg;

@@ -72,6 +72,48 @@ assert.match(
     flatUiStyles,
     /\.music-sheetlike-view--body-container \.operations\s*\{[^}]*border-radius:\s*var\(--cardRadius\)\s*!important;/s,
 );
+assert.match(
+    flatUiStyles,
+    /\.statistics-track-row\s*\{[^}]*border-radius:\s*var\(--listRowRadius\)/s,
+);
+
+const statisticsViewSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/pages/main-page/views/statistics-view/index.tsx",
+), "utf8");
+const statisticsViewStyles = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/pages/main-page/views/statistics-view/index.scss",
+), "utf8");
+assert.match(statisticsViewSource, /className="statistics-track-meta-row"/);
+assert.match(statisticsViewSource, /secondsToDuration\(entry\.musicItem\.duration\)/);
+assert.match(statisticsViewSource, /getBestMusicQualityInfo\(entry\.musicItem\)/);
+assert.match(
+    statisticsViewSource,
+    /<Tag fill>\s*\{entry\.musicItem\.platform\}\s*<\/Tag>/s,
+);
+assert.match(statisticsViewSource, /iconName=\{isCurrent \? "pause" : "play"\}/);
+assert.doesNotMatch(statisticsViewSource, /speaker-wave/);
+assert.match(statisticsViewSource, /\{index \+ 1\}/);
+assert.doesNotMatch(statisticsViewSource, /padStart\(2, "0"\)/);
+assert.match(
+    statisticsViewSource,
+    /className="statistics-section-title-row">\s*<h2>[^<]+<\/h2>\s*<span className="statistics-section-count">\s*\{visibleEntries\.length\}/s,
+);
+assert.doesNotMatch(statisticsViewSource, /statistics_page\.track_count/);
+assert.match(statisticsViewStyles, /--statisticsSmallTextSize:\s*0\.76rem/);
+assert.match(
+    statisticsViewStyles,
+    /\.statistics-summary-copy\s*\{[\s\S]*?& > span\s*\{[^}]*font-size:\s*0\.82rem/s,
+);
+assert.match(
+    statisticsViewStyles,
+    /\.statistics-track-last-played\s*\{\s*& strong\s*\{[^}]*font-size:\s*0\.82rem/s,
+);
+const undersizedStatisticsFonts = [...statisticsViewStyles.matchAll(/font-size:\s*([\d.]+)rem/g)]
+    .map((match) => Number(match[1]))
+    .filter((size) => size < 0.76);
+assert.deepEqual(undersizedStatisticsFonts, []);
 
 const searchHistoryStyles = fs.readFileSync(path.join(
     __dirname,

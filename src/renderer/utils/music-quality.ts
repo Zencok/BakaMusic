@@ -1,7 +1,19 @@
 import { localPluginName, qualityKeys, qualityText } from "@/common/constant";
 import { getInternalData } from "@/common/media-util";
-import { normalizeFileSize } from "@/common/normalize-util";
 import PluginManager from "@shared/plugin-manager/renderer";
+import {
+    formatQualitySize,
+    getMusicQualitySize,
+} from "./music-quality-metadata";
+
+export {
+    formatQualitySize,
+    getBestMusicQualityInfo,
+    getMusicQualitySize,
+    getQualityAbbr,
+    qualityAbbr,
+} from "./music-quality-metadata";
+export type { IMusicQualityInfo } from "./music-quality-metadata";
 
 export interface IMusicQualityChoice {
     value: IMusic.IQualityKey;
@@ -21,27 +33,8 @@ export const aiUpscaleQualityKeys: IMusic.IQualityKey[] = [
     "atmos",
 ];
 
-export const qualityAbbr: Record<IMusic.IQualityKey, string> = {
-    "mgg": "MG",
-    "128k": "LQ",
-    "192k": "MQ",
-    "320k": "HQ",
-    "flac": "SQ",
-    "flac24bit": "HR",
-    "hires": "HR",
-    "vinyl": "VN",
-    "dolby": "DB",
-    "atmos": "AT",
-    "atmos_plus": "A+",
-    "master": "MS",
-};
-
 export function isAiUpscaleQuality(quality: IMusic.IQualityKey) {
     return aiUpscaleQualityKeys.includes(quality);
-}
-
-export function getQualityAbbr(quality: IMusic.IQualityKey) {
-    return qualityAbbr[quality] || "HQ";
 }
 
 export function getQualityDisplayText(
@@ -53,52 +46,6 @@ export function getQualityDisplayText(
         return translated;
     }
     return qualityText[quality] || quality.toUpperCase();
-}
-
-export function getMusicQualitySize(
-    musicItem: IMusic.IMusicItem,
-    quality: IMusic.IQualityKey,
-) {
-    const qualities = musicItem?.qualities as IMusic.IQuality | undefined;
-    if (qualities?.[quality]?.size !== undefined && qualities?.[quality]?.size !== null) {
-        return qualities[quality]?.size;
-    }
-
-    const source =
-        musicItem?.source && typeof musicItem.source === "object"
-            ? musicItem.source as Partial<Record<IMusic.IQualityKey, { size?: string | number; url?: string }>>
-            : undefined;
-
-    if (source?.[quality]?.size !== undefined && source?.[quality]?.size !== null) {
-        return source[quality]?.size;
-    }
-
-    const downloadedData = getInternalData<IMusic.IMusicItemInternalData>(
-        musicItem,
-        "downloadData",
-    );
-    if (downloadedData?.quality === quality) {
-        return (musicItem as { size?: string | number })?.size;
-    }
-
-    return undefined;
-}
-
-export function formatQualitySize(size?: string | number) {
-    if (size === undefined || size === null || size === "") {
-        return "";
-    }
-
-    if (typeof size === "number") {
-        return normalizeFileSize(size);
-    }
-
-    const normalizedNumber = Number(size);
-    if (!isNaN(normalizedNumber) && isFinite(normalizedNumber)) {
-        return normalizeFileSize(normalizedNumber);
-    }
-
-    return `${size}`;
 }
 
 function createMusicQualityChoice(

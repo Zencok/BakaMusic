@@ -178,3 +178,11 @@
 - **Bug**: Transparent grouping-wrapper shadows painted through playlist section gaps and visually joined separate cards.
 - **Files**: 2 files
 - **Tests**: theme contract; ESLint; 10-route flat/glass runtime shadow audit; diff check
+
+## 2026-07-17T17:32:43.3363805+08:00 — feat(statistics): enrich listening history rows
+`pending`
+- **Decision**: Share quality and size metadata resolution between MusicList and listening statistics.
+- **Decision**: Align statistics rows with common duration, quality/size, platform, count-badge, pause, and numbering patterns.
+- **Decision**: Raise auxiliary typography and apply flat row geometry consistently.
+- **Files**: 9 files
+- **Tests**: quality metadata; theme contract; listening statistics; ESLint; TypeScript; SCSS; hidden Electron runtime audit; diff check
