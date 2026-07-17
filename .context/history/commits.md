@@ -209,3 +209,13 @@
 - **Decision**: Add localized empty states plus responsive glass and flat styling.
 - **Files**: 9 files
 - **Tests**: theme contract; ESLint; TypeScript; SCSS; language JSON; diff check
+
+## 2026-07-17T18:33:56.3053680+08:00 — feat(plugin): unify ID playback and playlist import
+`pending`
+- **Context-Id**: 5d40f3a1-434b-4b0a-9581-08fe23933dba
+- **Decision**: Replace the two-modal flow with one shared plugin selection and input panel.
+- **Decision**: Normalize manual media identifier aliases and retain the exact selected plugin delegate.
+- **Decision**: Validate empty playlist imports without leaving the panel.
+- **Bug**: QQ Music [L2] expected alphanumeric IDs in songmid/mid rather than id alone.
+- **Files**: 14 files
+- **Tests**: ESLint; TypeScript; theme contract; music quality; listening statistics; lyric z-order; Electron Forge package; diff check

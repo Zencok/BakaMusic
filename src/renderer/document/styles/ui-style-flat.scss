@@ -957,9 +957,9 @@
             border-radius: var(--iconButtonRadius) !important;
         }
 
-        .modal--plugin-picker .plugin-item,
-        .modal--plugin-picker .plugin-item-badge {
-            border-radius: var(--controlRadiusLg) !important;
+        .modal--plugin-input-panel .plugin-input-plugin-option,
+        .modal--plugin-input-panel .plugin-input-plugin-badge {
+            border-radius: var(--controlRadius) !important;
         }
 
         .modal--search-lyric-container {

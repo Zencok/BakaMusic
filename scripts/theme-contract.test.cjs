@@ -10,6 +10,11 @@ const {
 const {
     matchesThemeSearch,
 } = require("../src/renderer/pages/main-page/views/theme-view/theme-search");
+const {
+    bindMediaToPlugin,
+    createMusicIdentifierBase,
+    getMediaPluginDelegate,
+} = require("../src/renderer/core/track-player/plugin-media");
 
 assert.equal(matchesThemeSearch({}, ""), true);
 assert.equal(matchesThemeSearch({
@@ -162,6 +167,55 @@ assert.match(
     /title: t\("side_bar\.library"\),\s*action: \{[\s\S]*?iconName: "identification",[\s\S]*?showModal\("PlayMusicById"/,
 );
 assert.doesNotMatch(mySheetsSource, /PlayMusicById|iconName="identification"/);
+
+const pluginInputPanelSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/Modal/templates/PluginInputPanel/index.tsx",
+), "utf8");
+const playMusicByIdSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/Modal/templates/PlayMusicById/index.tsx",
+), "utf8");
+const importMusicSheetSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/Modal/templates/ImportMusicSheet/index.tsx",
+), "utf8");
+assert.match(pluginInputPanelSource, /useState\(plugins\[0\]\?\.hash \?\? ""\)/);
+assert.match(pluginInputPanelSource, /plugin\.hints\?\.\[hintMethod\] \?\? \[\]/);
+assert.match(pluginInputPanelSource, /className="plugin-input-plugin-grid"/);
+assert.match(pluginInputPanelSource, /className="plugin-input-field"/);
+assert.match(pluginInputPanelSource, /className="plugin-input-hints"/);
+assert.match(playMusicByIdSource, /<PluginInputPanel/);
+assert.match(playMusicByIdSource, /hintMethod="getMusicInfo"/);
+assert.match(playMusicByIdSource, /playMusicByPluginId\(plugin, id\)/);
+assert.doesNotMatch(playMusicByIdSource, /SimpleInputWithState|showModal/);
+assert.match(importMusicSheetSource, /<PluginInputPanel/);
+assert.match(importMusicSheetSource, /hintMethod="importMusicSheet"/);
+assert.doesNotMatch(importMusicSheetSource, /SimpleInputWithState/);
+assert.match(importMusicSheetSource, /!Array\.isArray\(result\) \|\| !result\.length/);
+assert.equal(fs.existsSync(path.join(
+    __dirname,
+    "../src/renderer/components/Modal/templates/plugin-picker.scss",
+)), false);
+
+const identifierBase = createMusicIdentifierBase("QQ音乐[L2]", " 003Y82u91ZIDmO ");
+assert.deepEqual(identifierBase, {
+    platform: "QQ音乐[L2]",
+    id: "003Y82u91ZIDmO",
+    songid: "003Y82u91ZIDmO",
+    songmid: "003Y82u91ZIDmO",
+    mid: "003Y82u91ZIDmO",
+    hash: "003Y82u91ZIDmO",
+    copyrightId: "003Y82u91ZIDmO",
+});
+const boundIdentifier = bindMediaToPlugin(identifierBase, {
+    platform: "QQ音乐[L2]",
+    hash: "PLUGIN_HASH",
+});
+assert.deepEqual(getMediaPluginDelegate(boundIdentifier), {
+    platform: "QQ音乐[L2]",
+    hash: "PLUGIN_HASH",
+});
 
 const searchHistoryStyles = fs.readFileSync(path.join(
     __dirname,

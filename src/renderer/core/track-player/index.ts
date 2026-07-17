@@ -40,6 +40,12 @@ import {
     getListeningStatisticsKey,
 } from "@renderer/core/listening-statistics/model";
 import { toError } from "@/common/error-util";
+import {
+    bindMediaToPlugin,
+    createMusicIdentifierBase,
+    getMediaPluginDelegate,
+    IPluginDelegateReference,
+} from "./plugin-media";
 
 const {
     musicQueueStore,
@@ -425,9 +431,7 @@ class TrackPlayer {
 
             // extra information
             const musicInfo = await PluginManager.callPluginDelegateMethod(
-                {
-                    platform: nextMusicItem.platform,
-                },
+                getMediaPluginDelegate(nextMusicItem),
                 "getMusicInfo",
                 nextMusicItem,
             ).catch(voidCallback);
@@ -476,6 +480,17 @@ class TrackPlayer {
     }
 
     public async playMusicById(platform: string, id: string, quality?: IMusic.IQualityKey) {
+        return this.playMusicByPluginId({ platform }, id, quality);
+    }
+
+    public async playMusicByPluginId(
+        pluginDelegate: IPluginDelegateReference,
+        id: string,
+        quality?: IMusic.IQualityKey,
+    ) {
+        const { platform } = pluginDelegate;
+        const identifierBase = createMusicIdentifierBase(platform, id);
+
         // 1. Try to find in current queue first
         const queueIndex = this.musicQueue.findIndex(
             item => item.platform === platform && String(item.id) === String(id),
@@ -486,14 +501,24 @@ class TrackPlayer {
         // 2. Call plugin getMusicInfo to resolve full item
         try {
             const musicInfo = await PluginManager.callPluginDelegateMethod(
-                { platform },
+                pluginDelegate,
                 "getMusicInfo",
-                { id, platform } as IMedia.IMediaBase,
+                identifierBase,
             );
             if (musicInfo && typeof musicInfo === "object") {
-                // Keep id/platform last so plugin payload cannot overwrite identity
                 return this.playMusic(
-                    { title: "", artist: "", ...musicInfo, id, platform } as IMusic.IMusicItem,
+                    bindMediaToPlugin(
+                        {
+                            title: "",
+                            artist: "",
+                            ...identifierBase,
+                            ...musicInfo,
+                            // Keep the submitted identity stable while retaining resolved aliases.
+                            id: identifierBase.id,
+                            platform,
+                        } as IMusic.IMusicItem,
+                        pluginDelegate,
+                    ),
                     { quality },
                 );
             }
@@ -752,9 +777,7 @@ class TrackPlayer {
                 };
             } else {
                 mediaSource = await PluginManager.callPluginDelegateMethod(
-                    {
-                        platform: currentMusic.platform,
-                    },
+                    getMediaPluginDelegate(currentMusic),
                     "getMediaSource",
                     currentMusic,
                     quality,
@@ -840,14 +863,14 @@ class TrackPlayer {
 
             if (linkedLyricItem) {
                 lyricSource = await PluginManager.callPluginDelegateMethod(
-                    linkedLyricItem,
+                    getMediaPluginDelegate(linkedLyricItem),
                     "getLyric",
                     linkedLyricItem,
                 );
             }
             if (!lyricSource && this.isCurrentMusic(currentMusic)) {
                 lyricSource = await PluginManager.callPluginDelegateMethod(
-                    currentMusic,
+                    getMediaPluginDelegate(currentMusic),
                     "getLyric",
                     currentMusic,
                 );
@@ -918,9 +941,7 @@ class TrackPlayer {
         for (const quality of qualityOrder) {
             try {
                 mediaSource = await PluginManager.callPluginDelegateMethod(
-                    {
-                        platform: musicItem.platform,
-                    },
+                    getMediaPluginDelegate(musicItem),
                     "getMediaSource",
                     musicItem,
                     quality,
