@@ -113,7 +113,7 @@ function StatisticsTrackRow(props: IStatisticsTrackRowProps) {
             }}
         >
             <div className="statistics-track-position" data-top={mode === "ranking" && index < 3}>
-                {index + 1}
+                {String(index + 1).padStart(2, "0")}
             </div>
             <div className="statistics-track-cover-wrap">
                 <img

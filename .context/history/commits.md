@@ -186,3 +186,10 @@
 - **Decision**: Raise auxiliary typography and apply flat row geometry consistently.
 - **Files**: 9 files
 - **Tests**: quality metadata; theme contract; listening statistics; ESLint; TypeScript; SCSS; hidden Electron runtime audit; diff check
+
+## 2026-07-17T17:42:45.2810113+08:00 — fix(statistics): restore padded track numbers
+`pending`
+- **Decision**: Restore 01/02/03 numbering in both recent and ranking statistics tabs.
+- **Bug**: Statistics numbering no longer matched the retained padded song-list presentation.
+- **Files**: 2 files
+- **Tests**: theme contract; ESLint; diff check

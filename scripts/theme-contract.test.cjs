@@ -94,8 +94,10 @@ assert.match(
 );
 assert.match(statisticsViewSource, /iconName=\{isCurrent \? "pause" : "play"\}/);
 assert.doesNotMatch(statisticsViewSource, /speaker-wave/);
-assert.match(statisticsViewSource, /\{index \+ 1\}/);
-assert.doesNotMatch(statisticsViewSource, /padStart\(2, "0"\)/);
+assert.match(
+    statisticsViewSource,
+    /\{String\(index \+ 1\)\.padStart\(2, "0"\)\}/,
+);
 assert.match(
     statisticsViewSource,
     /className="statistics-section-title-row">\s*<h2>[^<]+<\/h2>\s*<span className="statistics-section-count">\s*\{visibleEntries\.length\}/s,
