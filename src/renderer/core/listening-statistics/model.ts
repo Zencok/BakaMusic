@@ -1,6 +1,32 @@
 export const RECENT_TRACK_LIMIT = 500;
 export const STATISTICS_ENTRY_LIMIT = 2000;
 
+const SECOND = 1;
+const MINUTE = 60 * SECOND;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+const MONTH = 30 * DAY;
+const YEAR = 365 * DAY;
+
+export type ListeningDurationUnit = "second" | "minute" | "hour" | "day" | "month" | "year";
+
+export interface IListeningDurationPart {
+    unit: ListeningDurationUnit;
+    value: number;
+}
+
+const LISTENING_DURATION_UNITS: Array<{
+    unit: ListeningDurationUnit;
+    seconds: number;
+}> = [
+    { unit: "year", seconds: YEAR },
+    { unit: "month", seconds: MONTH },
+    { unit: "day", seconds: DAY },
+    { unit: "hour", seconds: HOUR },
+    { unit: "minute", seconds: MINUTE },
+    { unit: "second", seconds: SECOND },
+];
+
 export interface IListeningStatisticsEntry {
     musicItem: IMusic.IMusicItem;
     playCount: number;
@@ -9,10 +35,11 @@ export interface IListeningStatisticsEntry {
 }
 
 export interface IListeningStatisticsState {
-    version: 1;
+    version: 2;
     entries: Record<string, IListeningStatisticsEntry>;
     recentKeys: string[];
     totalPlays: number;
+    totalListeningSeconds: number;
 }
 
 export function getListeningStatisticsKey(musicItem: IMusic.IMusicItem) {
@@ -21,10 +48,11 @@ export function getListeningStatisticsKey(musicItem: IMusic.IMusicItem) {
 
 export function createEmptyListeningStatistics(): IListeningStatisticsState {
     return {
-        version: 1,
+        version: 2,
         entries: {},
         recentKeys: [],
         totalPlays: 0,
+        totalListeningSeconds: 0,
     };
 }
 
@@ -40,6 +68,11 @@ function normalizeCount(value: unknown, fallback = 0) {
 function normalizeTimestamp(value: unknown, fallback: number) {
     const timestamp = Number(value);
     return Number.isFinite(timestamp) && timestamp > 0 ? timestamp : fallback;
+}
+
+function normalizeListeningSeconds(value: unknown) {
+    const seconds = Number(value);
+    return Number.isFinite(seconds) && seconds >= 0 ? Math.floor(seconds) : 0;
 }
 
 export function normalizeListeningStatistics(
@@ -79,10 +112,11 @@ export function normalizeListeningStatistics(
         .reduce((total, entry) => total + entry.playCount, 0);
 
     return pruneListeningStatistics({
-        version: 1,
+        version: 2,
         entries,
         recentKeys,
         totalPlays: Math.max(countedTotal, normalizeCount(candidate.totalPlays)),
+        totalListeningSeconds: normalizeListeningSeconds(candidate.totalListeningSeconds),
     });
 }
 
@@ -146,10 +180,11 @@ export function recordListeningStatistics(
     ].slice(0, RECENT_TRACK_LIMIT);
 
     return pruneListeningStatistics({
-        version: 1,
+        version: 2,
         entries,
         recentKeys,
         totalPlays: state.totalPlays + 1,
+        totalListeningSeconds: state.totalListeningSeconds,
     });
 }
 
@@ -157,6 +192,68 @@ export function getRecentListeningEntries(state: IListeningStatisticsState) {
     return state.recentKeys
         .map((key) => state.entries[key])
         .filter((entry): entry is IListeningStatisticsEntry => !!entry);
+}
+
+export function addListeningDuration(
+    state: IListeningStatisticsState,
+    elapsedSeconds: number,
+) {
+    const seconds = normalizeListeningSeconds(elapsedSeconds);
+    if (!seconds) {
+        return state;
+    }
+
+    return {
+        ...state,
+        totalListeningSeconds: state.totalListeningSeconds + seconds,
+    };
+}
+
+export function getActualListeningSeconds(
+    previousTime: number,
+    currentTime: number,
+    elapsedRealSeconds: number,
+    playbackRate: number,
+) {
+    const progressSeconds = currentTime - previousTime;
+    if (
+        !Number.isFinite(progressSeconds)
+        || progressSeconds <= 0
+        || !Number.isFinite(elapsedRealSeconds)
+        || elapsedRealSeconds <= 0
+    ) {
+        return 0;
+    }
+
+    const normalizedRate = Number.isFinite(playbackRate) && playbackRate > 0
+        ? playbackRate
+        : 1;
+    return Math.min(progressSeconds / normalizedRate, elapsedRealSeconds);
+}
+
+export function getListeningDurationParts(totalSeconds: number) {
+    let remainingSeconds = normalizeListeningSeconds(totalSeconds);
+    const firstUnitIndex = LISTENING_DURATION_UNITS.findIndex(({ seconds }) =>
+        remainingSeconds >= seconds,
+    );
+    const startIndex = firstUnitIndex === -1
+        ? LISTENING_DURATION_UNITS.length - 1
+        : firstUnitIndex;
+    const parts: IListeningDurationPart[] = [];
+
+    for (let index = startIndex; index < LISTENING_DURATION_UNITS.length; index++) {
+        const { unit, seconds } = LISTENING_DURATION_UNITS[index];
+        const value = Math.floor(remainingSeconds / seconds);
+        if (value || parts.length === 0) {
+            parts.push({ unit, value });
+            remainingSeconds -= value * seconds;
+        }
+        if (parts.length === 2) {
+            break;
+        }
+    }
+
+    return parts;
 }
 
 export function getMostPlayedEntries(state: IListeningStatisticsState) {

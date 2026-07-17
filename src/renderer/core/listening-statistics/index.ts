@@ -4,6 +4,7 @@ import {
     setUserPreferenceIDB,
 } from "@/renderer/utils/user-perference";
 import {
+    addListeningDuration,
     createEmptyListeningStatistics,
     getListeningStatisticsKey,
     getMostPlayedEntries,
@@ -19,18 +20,23 @@ const listeningStatisticsStore = new Store<IListeningStatisticsState>(
 );
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingListeningSeconds = 0;
 
-function persistStatistics(state: IListeningStatisticsState) {
+function persistStatistics() {
     if (saveTimer) {
-        clearTimeout(saveTimer);
+        return;
     }
     saveTimer = setTimeout(() => {
-        void setUserPreferenceIDB("listeningStatistics", state);
         saveTimer = null;
+        void setUserPreferenceIDB(
+            "listeningStatistics",
+            listeningStatisticsStore.getValue(),
+        );
     }, 500);
 }
 
 export async function setupListeningStatistics() {
+    pendingListeningSeconds = 0;
     const [storedStatistics, recentlyPlayed, playCountMap] = await Promise.all([
         getUserPreferenceIDB("listeningStatistics"),
         getUserPreferenceIDB("recentlyPlayList"),
@@ -43,7 +49,7 @@ export async function setupListeningStatistics() {
     );
 
     listeningStatisticsStore.setValue(statistics);
-    if (!normalizedStatistics) {
+    if (!normalizedStatistics || storedStatistics?.version !== statistics.version) {
         await setUserPreferenceIDB("listeningStatistics", statistics);
     }
 }
@@ -54,7 +60,27 @@ export function recordPlayback(musicItem: IMusic.IMusicItem) {
         musicItem,
     );
     listeningStatisticsStore.setValue(nextStatistics);
-    persistStatistics(nextStatistics);
+    persistStatistics();
+}
+
+export function recordListeningDuration(elapsedSeconds: number) {
+    if (!Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0) {
+        return;
+    }
+
+    pendingListeningSeconds += elapsedSeconds;
+    const completedSeconds = Math.floor(pendingListeningSeconds);
+    if (!completedSeconds) {
+        return;
+    }
+
+    pendingListeningSeconds -= completedSeconds;
+    const nextStatistics = addListeningDuration(
+        listeningStatisticsStore.getValue(),
+        completedSeconds,
+    );
+    listeningStatisticsStore.setValue(nextStatistics);
+    persistStatistics();
 }
 
 export function getPlayCount(musicItem: IMusic.IMusicItem) {
@@ -67,6 +93,7 @@ export async function clearListeningStatistics() {
         clearTimeout(saveTimer);
         saveTimer = null;
     }
+    pendingListeningSeconds = 0;
     const emptyStatistics = createEmptyListeningStatistics();
     listeningStatisticsStore.setValue(emptyStatistics);
     await setUserPreferenceIDB("listeningStatistics", emptyStatistics);

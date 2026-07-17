@@ -31,7 +31,14 @@ import { createUniqueMap } from "@/common/unique-map";
 import { getLinkedLyric } from "@renderer/core/link-lyric";
 import { fsUtil } from "@shared/utils/renderer";
 import PluginManager from "@shared/plugin-manager/renderer";
-import { recordPlayback } from "@renderer/core/listening-statistics";
+import {
+    recordListeningDuration,
+    recordPlayback,
+} from "@renderer/core/listening-statistics";
+import {
+    getActualListeningSeconds,
+    getListeningStatisticsKey,
+} from "@renderer/core/listening-statistics/model";
 import { toError } from "@/common/error-util";
 
 const {
@@ -71,6 +78,12 @@ interface ITrackOptions {
     seekTo?: number;
     // 自动播放
     autoPlay?: boolean;
+}
+
+interface IListeningProgressAnchor {
+    musicKey: string;
+    currentTime: number;
+    observedAt: number;
 }
 
 class TrackPlayer {
@@ -147,6 +160,8 @@ class TrackPlayer {
 
     private ee: EventEmitter<InternalPlayerEvents>;
 
+    private listeningProgressAnchor: IListeningProgressAnchor | null = null;
+
     constructor() {
         this.indexMap = createIndexMap();
         this.ee = new EventEmitter();
@@ -222,6 +237,7 @@ class TrackPlayer {
         };
         // 进度更新
         audioController.onProgressUpdate = ((progress) => {
+            this.recordListeningProgress(progress);
             this.setProgress(progress);
             this.syncCurrentLyric(progress.currentTime);
         });
@@ -950,6 +966,36 @@ class TrackPlayer {
         this.ee.emit(PlayerEvents.ProgressChanged, progress);
     }
 
+    private recordListeningProgress(progress: CurrentTime) {
+        const musicItem = this.currentMusic;
+        const musicKey = musicItem
+            ? getListeningStatisticsKey(musicItem)
+            : null;
+        const observedAt = performance.now();
+        const previousAnchor = this.listeningProgressAnchor;
+
+        if (
+            this.playerState === PlayerState.Playing
+            && musicKey
+            && previousAnchor?.musicKey === musicKey
+        ) {
+            recordListeningDuration(getActualListeningSeconds(
+                previousAnchor.currentTime,
+                progress.currentTime,
+                (observedAt - previousAnchor.observedAt) / 1000,
+                this.speed,
+            ));
+        }
+
+        this.listeningProgressAnchor = this.playerState === PlayerState.Playing && musicKey
+            ? {
+                musicKey,
+                currentTime: progress.currentTime,
+                observedAt,
+            }
+            : null;
+    }
+
     private normalizeSeekTime(seconds: number) {
         const safeSeconds = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
         const duration = this.progress.duration;
@@ -1002,6 +1048,19 @@ class TrackPlayer {
     }
 
     private setPlayerState(playerState: PlayerState) {
+        if (playerState === PlayerState.Playing && this.playerState !== PlayerState.Playing) {
+            const musicItem = this.currentMusic;
+            this.listeningProgressAnchor = musicItem
+                ? {
+                    musicKey: getListeningStatisticsKey(musicItem),
+                    currentTime: this.progress.currentTime,
+                    observedAt: performance.now(),
+                }
+                : null;
+        } else if (playerState !== PlayerState.Playing) {
+            this.listeningProgressAnchor = null;
+        }
+
         playerStateStore.setValue(playerState);
         this.ee.emit(PlayerEvents.StateChanged, playerState);
     }

@@ -145,3 +145,11 @@
 - **Decision**: Restore familiar navigation wording and synchronize Simplified Chinese, Traditional Chinese, and English.
 - **Files**: 12 files
 - **Tests**: ESLint; TypeScript; SCSS; i18n JSON parse; diff check
+
+## 2026-07-17T13:14:11.4620892+08:00 — feat(statistics): track actual listening duration
+`pending`
+- **Decision**: Measure listening time only from active, continuous playback progress and reject duration estimates.
+- **Decision**: Persist `totalListeningSeconds` in listening-statistics schema version 2; legacy histories start at zero actual seconds.
+- **Decision**: Format the total with up to two localized units from seconds through years.
+- **Files**: 9 files
+- **Tests**: model test; ESLint; TypeScript; i18n JSON parse; diff check

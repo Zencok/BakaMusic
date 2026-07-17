@@ -1,5 +1,8 @@
 import albumImg from "@/assets/imgs/album-cover.jpg";
-import { getListeningStatisticsKey } from "@/renderer/core/listening-statistics/model";
+import {
+    getListeningDurationParts,
+    getListeningStatisticsKey,
+} from "@/renderer/core/listening-statistics/model";
 import {
     clearListeningStatistics,
     useListeningStatistics,
@@ -66,6 +69,18 @@ function formatRelativeTime(timestamp: number, t: TFunction) {
             ? undefined
             : "numeric",
     }).format(timestamp);
+}
+
+function formatListeningDuration(
+    totalSeconds: number,
+    t: TFunction,
+    numberFormatter: Intl.NumberFormat,
+) {
+    return getListeningDurationParts(totalSeconds)
+        .map(({ unit, value }) => t(`statistics_page.duration_${unit}`, {
+            value: numberFormatter.format(value),
+        }))
+        .join(" ");
 }
 
 function playStatisticsEntry(entry: IListeningStatisticsEntry) {
@@ -164,9 +179,13 @@ export default function StatisticsView() {
         },
         {
             icon: "clock",
-            label: t("statistics_page.recent_tracks"),
-            value: numberFormatter.format(recentEntries.length),
-            hint: t("statistics_page.recent_tracks_hint"),
+            label: t("statistics_page.total_listening_time"),
+            value: formatListeningDuration(
+                statistics.totalListeningSeconds,
+                t,
+                numberFormatter,
+            ),
+            hint: t("statistics_page.total_listening_time_hint"),
         },
         {
             icon: "trophy",
@@ -197,7 +216,7 @@ export default function StatisticsView() {
                 <button
                     className="statistics-clear-button"
                     type="button"
-                    disabled={!statistics.totalPlays}
+                    disabled={!statistics.totalPlays && !statistics.totalListeningSeconds}
                     onClick={confirmClearStatistics}
                 >
                     <SvgAsset iconName="trash"></SvgAsset>
