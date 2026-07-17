@@ -119,10 +119,23 @@ class WindowManager implements IWindowManager {
                 webviewTag: true,
             },
             frame: false,
+            // Required for true OS fullscreen (F11 on music detail).
+            fullscreenable: true,
             icon: nativeImage.createFromPath(getResourcePath(ResourceName.LOGO_IMAGE)),
         });
 
         const updateWindowSizeConfig = debounce(() => {
+            if (mainWindow.isDestroyed() || mainWindow.isFullScreen()) {
+                return;
+            }
+            // Skip while immersive fullscreen (native or display-bounds fallback).
+            if (
+                (mainWindow as BrowserWindow & {
+                    __immersiveFullscreen?: boolean;
+                }).__immersiveFullscreen
+            ) {
+                return;
+            }
             const [wWidth, wHeight] = mainWindow.getSize();
             AppConfig.setConfig({
                 "private.mainWindowSize": {
@@ -135,6 +148,38 @@ class WindowManager implements IWindowManager {
             trailing: true,
         });
         mainWindow.on("resize", updateWindowSizeConfig);
+
+        const notifyMainWindowFullScreen = () => {
+            if (mainWindow.isDestroyed()) {
+                return;
+            }
+            mainWindow.webContents.send(
+                "@shared/utils/main-window-fullscreen-changed",
+                mainWindow.isFullScreen(),
+            );
+        };
+        mainWindow.on("enter-full-screen", notifyMainWindowFullScreen);
+        mainWindow.on("leave-full-screen", notifyMainWindowFullScreen);
+
+        // Capture F11 in the main process so Chromium cannot swallow it.
+        // Renderer only acts when the music detail page is open.
+        mainWindow.webContents.on("before-input-event", (event, input) => {
+            if (input.type !== "keyDown") {
+                return;
+            }
+            const isF11 =
+                input.key === "F11"
+                || input.code === "F11"
+                || (input as { keyCode?: string }).keyCode === "F11";
+            if (!isF11) {
+                return;
+            }
+            event.preventDefault();
+            if (mainWindow.isDestroyed()) {
+                return;
+            }
+            mainWindow.webContents.send("@shared/utils/main-window-f11");
+        });
 
         // 2. 加载主界面
         const initUrl = new URL(MAIN_WINDOW_WEBPACK_ENTRY);

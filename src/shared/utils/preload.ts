@@ -146,6 +146,40 @@ function toggleMainWindowMaximize() {
     ipcRenderer.send("@shared/utils/toggle-maximize-main-window");
 }
 
+function setMainWindowFullScreen(enabled: boolean) {
+    ipcRenderer.send("@shared/utils/set-main-window-fullscreen", enabled);
+}
+
+async function toggleMainWindowFullScreen() {
+    return (await ipcRenderer.invoke("@shared/utils/toggle-main-window-fullscreen")) as boolean;
+}
+
+async function isMainWindowFullScreen() {
+    return (await ipcRenderer.invoke("@shared/utils/is-main-window-fullscreen")) as boolean;
+}
+
+function onMainWindowFullScreenChanged(
+    callback: (isFullScreen: boolean) => void,
+): () => void {
+    const handler = (_: Electron.IpcRendererEvent, isFullScreen: boolean) => {
+        callback(Boolean(isFullScreen));
+    };
+    ipcRenderer.on("@shared/utils/main-window-fullscreen-changed", handler);
+    return () => {
+        ipcRenderer.off("@shared/utils/main-window-fullscreen-changed", handler);
+    };
+}
+
+function onMainWindowF11(callback: () => void): () => void {
+    const handler = () => {
+        callback();
+    };
+    ipcRenderer.on("@shared/utils/main-window-f11", handler);
+    return () => {
+        ipcRenderer.off("@shared/utils/main-window-f11", handler);
+    };
+}
+
 const appWindow = {
     minMainWindow,
     showMainWindow,
@@ -157,6 +191,11 @@ const appWindow = {
     setCurrentWindowBounds,
     toggleMainWindowVisible,
     toggleMainWindowMaximize,
+    setMainWindowFullScreen,
+    toggleMainWindowFullScreen,
+    isMainWindowFullScreen,
+    onMainWindowFullScreenChanged,
+    onMainWindowF11,
 };
 
 /****** shell utils *****/

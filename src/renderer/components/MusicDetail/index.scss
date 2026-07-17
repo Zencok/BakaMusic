@@ -13,6 +13,35 @@
     isolation: isolate;
     -webkit-app-region: no-drag;
 
+    // True OS fullscreen (F11): hide chrome for a pure stage.
+    &[data-fullscreen="true"] {
+        .music-detail-topbar {
+            display: none;
+        }
+
+        .music-detail-shell {
+            padding: 36px 40px 40px;
+            gap: 28px;
+        }
+
+        .music-detail-content {
+            gap: clamp(28px, 3.4vw, 48px);
+        }
+
+        .music-detail-primary-stage {
+            width: min(100%, clamp(300px, 48vh, 500px));
+            transform: translateY(0);
+
+            &[data-cover-style="vinyl"] {
+                width: min(100%, clamp(320px, 50vh, 520px));
+            }
+        }
+
+        .music-detail-lyric-column {
+            padding-bottom: 48px;
+        }
+    }
+
     & .music-detail-background,
     & .music-detail-overlay {
         position: absolute;

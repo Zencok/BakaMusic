@@ -32,6 +32,13 @@ interface IMod {
         setCurrentWindowBounds: (bounds: Electron.Rectangle) => void;
         toggleMainWindowVisible: () => void;
         toggleMainWindowMaximize: () => void;
+        setMainWindowFullScreen: (enabled: boolean) => void;
+        toggleMainWindowFullScreen: () => Promise<boolean>;
+        isMainWindowFullScreen: () => Promise<boolean>;
+        onMainWindowFullScreenChanged: (
+            callback: (isFullScreen: boolean) => void,
+        ) => () => void;
+        onMainWindowF11: (callback: () => void) => () => void;
     },
     shell: {
         openExternal: (url: string) => void;

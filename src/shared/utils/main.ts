@@ -9,6 +9,16 @@ import { compare } from "compare-versions";
 
 class Utils {
     private windowManager!: IWindowManager;
+    /**
+     * Immersive fullscreen restore snapshot.
+     * On Windows, frameless + maximized windows can fail native setFullScreen;
+     * we then fall back to display.bounds coverage and track state here.
+     */
+    private immersiveRestore: {
+        bounds: Electron.Rectangle;
+        wasMaximized: boolean;
+        usedBoundsFallback: boolean;
+    } | null = null;
 
     public setup(windowManager: IWindowManager) {
         this.windowManager = windowManager;
@@ -17,6 +27,129 @@ class Utils {
         this.setupWindowUtil();
         this.setupShellUtil();
         this.setupDialogUtil();
+    }
+
+    private getMainWindow() {
+        const mainWindow = this.windowManager.mainWindow;
+        if (!mainWindow || mainWindow.isDestroyed()) {
+            return null;
+        }
+        return mainWindow;
+    }
+
+    private isImmersiveFullScreen(mainWindow: BrowserWindow) {
+        return mainWindow.isFullScreen() || this.immersiveRestore !== null;
+    }
+
+    private notifyMainWindowFullScreen(enabled: boolean) {
+        const mainWindow = this.getMainWindow();
+        if (!mainWindow) {
+            return;
+        }
+        mainWindow.webContents.send(
+            "@shared/utils/main-window-fullscreen-changed",
+            enabled,
+        );
+    }
+
+    private markImmersiveSession(mainWindow: BrowserWindow, active: boolean) {
+        // Used by window-manager resize persistence to skip saving fullscreen size.
+        (mainWindow as BrowserWindow & {
+            __immersiveFullscreen?: boolean;
+        }).__immersiveFullscreen = active;
+    }
+
+    private setImmersiveFullScreen(enabled: boolean): boolean {
+        const mainWindow = this.getMainWindow();
+        if (!mainWindow) {
+            return false;
+        }
+
+        if (enabled) {
+            if (this.isImmersiveFullScreen(mainWindow)) {
+                return true;
+            }
+
+            const wasMaximized = mainWindow.isMaximized();
+            const bounds = mainWindow.getBounds();
+            // Native fullscreen from a maximized frameless window is unreliable on Windows.
+            if (wasMaximized) {
+                mainWindow.unmaximize();
+            }
+
+            // Prefer native fullscreen first (covers taskbar / exclusive mode).
+            try {
+                mainWindow.setFullScreenable(true);
+                mainWindow.setFullScreen(true);
+            } catch {
+                // fall through to bounds fallback
+            }
+
+            if (mainWindow.isFullScreen()) {
+                this.immersiveRestore = {
+                    bounds,
+                    wasMaximized,
+                    usedBoundsFallback: false,
+                };
+                this.markImmersiveSession(mainWindow, true);
+                this.notifyMainWindowFullScreen(true);
+                return true;
+            }
+
+            // Fallback for Windows frameless: cover the full display bounds.
+            // On some builds isFullScreen() stays false even after setFullScreen(true),
+            // so always keep a reliable bounds path.
+            try {
+                // Clear a half-applied native fullscreen attempt.
+                mainWindow.setFullScreen(false);
+            } catch {
+                // ignore
+            }
+            const display = screen.getDisplayMatching(bounds);
+            mainWindow.setBounds(display.bounds);
+            this.immersiveRestore = {
+                bounds,
+                wasMaximized,
+                usedBoundsFallback: true,
+            };
+            this.markImmersiveSession(mainWindow, true);
+            this.notifyMainWindowFullScreen(true);
+            return true;
+        }
+
+        this.markImmersiveSession(mainWindow, false);
+
+        if (mainWindow.isFullScreen()) {
+            try {
+                mainWindow.setFullScreen(false);
+            } catch {
+                // ignore
+            }
+        }
+
+        const restore = this.immersiveRestore;
+        this.immersiveRestore = null;
+
+        if (restore) {
+            if (restore.usedBoundsFallback || !mainWindow.isFullScreen()) {
+                if (restore.wasMaximized) {
+                    mainWindow.maximize();
+                } else {
+                    mainWindow.setBounds(restore.bounds);
+                }
+            }
+        }
+
+        this.notifyMainWindowFullScreen(false);
+        return false;
+    }
+
+    private toggleImmersiveFullScreen(): boolean {
+        const mainWindow = this.getMainWindow();
+        if (!mainWindow) {
+            return false;
+        }
+        return this.setImmersiveFullScreen(!this.isImmersiveFullScreen(mainWindow));
     }
 
 
@@ -241,6 +374,22 @@ class Utils {
                     mainWindow.maximize();
                 }
             }
+        });
+
+        ipcMain.on("@shared/utils/set-main-window-fullscreen", (_, enabled: boolean) => {
+            this.setImmersiveFullScreen(Boolean(enabled));
+        });
+
+        ipcMain.handle("@shared/utils/toggle-main-window-fullscreen", () => {
+            return this.toggleImmersiveFullScreen();
+        });
+
+        ipcMain.handle("@shared/utils/is-main-window-fullscreen", () => {
+            const mainWindow = this.getMainWindow();
+            if (!mainWindow) {
+                return false;
+            }
+            return this.isImmersiveFullScreen(mainWindow);
         });
 
         ipcMain.on("@shared/utils/toggle-main-window-visible", () => {

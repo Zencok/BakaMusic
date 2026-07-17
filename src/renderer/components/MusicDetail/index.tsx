@@ -14,7 +14,7 @@ import {
     usePlayerState,
     useQuality,
 } from "@renderer/core/track-player/hooks";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { musicDetailShownStore } from "@renderer/components/MusicDetail/store";
 import { isModalOpen } from "@/renderer/components/Modal";
 import { isContextMenuOpen } from "@/renderer/components/ContextMenu";
@@ -29,20 +29,98 @@ function MusicDetail() {
     const playerState = usePlayerState();
     const quality = useQuality();
     const musicDetailShown = musicDetailShownStore.useValue();
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const [storedCoverStyle] = useUserPreference("musicDetailCoverStyle");
     const [storedVinylTonearm] = useUserPreference("musicDetailVinylTonearm");
     const [storedTonearmReach] = useUserPreference("musicDetailVinylTonearmReach");
     const { t } = useTranslation();
     const reflowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isFullscreenRef = useRef(false);
+    const lastF11ToggleAtRef = useRef(0);
 
     useEffect(() => {
-        // Only listen while detail is open so Escape doesn't fight other app layers
+        isFullscreenRef.current = isFullscreen;
+    }, [isFullscreen]);
+
+    const toggleImmersiveFullScreen = () => {
+        // Main-process F11 + renderer backup can both fire; debounce to avoid no-op double toggle.
+        const now = Date.now();
+        if (now - lastF11ToggleAtRef.current < 350) {
+            return;
+        }
+        lastF11ToggleAtRef.current = now;
+
+        const toggle = appWindowUtil.toggleMainWindowFullScreen;
+        if (typeof toggle !== "function") {
+            return;
+        }
+        void toggle()
+            .then((next) => {
+                setIsFullscreen(Boolean(next));
+            })
+            .catch(() => {
+                // keep previous state on IPC failure
+            });
+    };
+
+    // Keep UI chrome in sync if the OS leaves fullscreen externally.
+    useEffect(() => {
+        const unsubscribe = appWindowUtil.onMainWindowFullScreenChanged?.((next) => {
+            // Only track fullscreen while detail is open; never re-enter from other pages.
+            if (!musicDetailShownStore.getValue()) {
+                setIsFullscreen(false);
+                return;
+            }
+            setIsFullscreen(Boolean(next));
+        });
+        return () => {
+            unsubscribe?.();
+        };
+    }, []);
+
+    // Main-process F11 capture (before-input-event). Only act on the detail page.
+    useEffect(() => {
+        const unsubscribe = appWindowUtil.onMainWindowF11?.(() => {
+            if (!musicDetailShownStore.getValue()) {
+                return;
+            }
+            toggleImmersiveFullScreen();
+        });
+        return () => {
+            unsubscribe?.();
+        };
+    }, []);
+
+    // Leave OS fullscreen whenever the detail page is closed.
+    useEffect(() => {
+        if (musicDetailShown) {
+            return;
+        }
+        if (!isFullscreenRef.current) {
+            setIsFullscreen(false);
+            return;
+        }
+        appWindowUtil.setMainWindowFullScreen?.(false);
+        setIsFullscreen(false);
+    }, [musicDetailShown]);
+
+    useEffect(() => {
+        // Escape only while detail is open. F11 is handled via main-process IPC above.
         if (!musicDetailShown) {
             return;
         }
 
-        const escHandler = (event: KeyboardEvent) => {
-            if (event.code !== "Escape") {
+        const keyHandler = (event: KeyboardEvent) => {
+            const isF11 = event.code === "F11" || event.key === "F11";
+            if (isF11) {
+                // Backup path if main-process capture is unavailable.
+                event.preventDefault();
+                event.stopPropagation();
+                toggleImmersiveFullScreen();
+                return;
+            }
+
+            if (event.code !== "Escape" && event.key !== "Escape") {
                 return;
             }
 
@@ -57,12 +135,21 @@ function MusicDetail() {
             }
 
             event.preventDefault();
+
+            // Exit fullscreen first; second Escape closes the detail page.
+            if (isFullscreenRef.current) {
+                appWindowUtil.setMainWindowFullScreen?.(false);
+                setIsFullscreen(false);
+                return;
+            }
+
             musicDetailShownStore.setValue(false);
         };
 
-        window.addEventListener("keydown", escHandler);
+        // Capture phase so focused inputs / webviews cannot swallow Escape / F11 first.
+        window.addEventListener("keydown", keyHandler, true);
         return () => {
-            window.removeEventListener("keydown", escHandler);
+            window.removeEventListener("keydown", keyHandler, true);
         };
     }, [musicDetailShown]);
 
@@ -92,6 +179,7 @@ function MusicDetail() {
         <AnimatedDiv
             showIf={musicDetailShown}
             className="music-detail--container animate__animated"
+            data-fullscreen={isFullscreen ? "true" : "false"}
             mountClassName="animate__fadeInUp"
             unmountClassName="animate__fadeOutDown"
             onAnimationEnd={() => {
