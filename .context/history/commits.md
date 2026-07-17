@@ -153,3 +153,12 @@
 - **Decision**: Format the total with up to two localized units from seconds through years.
 - **Files**: 9 files
 - **Tests**: model test; ESLint; TypeScript; i18n JSON parse; diff check
+
+## 2026-07-17T16:16:29.281482+08:00 — fix(lyric): detect fullscreen video players
+`pending`
+- **Decision**: Combine notification state with foreground window geometry
+- **Decision**: Match both outer and client bounds in raw and DIP coordinates
+- **Decision**: Ship get-windows as a CommonJS runtime external
+- **Bug**: Desktop lyrics stayed above standalone video players in fullscreen even though browser fullscreen already yielded correctly.
+- **Files**: 9 files
+- **Tests**: lyric z-order; regression suites; ESLint; TypeScript; Forge x64 package; diff check

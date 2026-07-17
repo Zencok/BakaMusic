@@ -6,6 +6,7 @@ import { WebpackPlugin } from "@electron-forge/plugin-webpack";
 
 import { mainConfig } from "./config/webpack.main.config";
 import { rendererConfig } from "./config/webpack.renderer.config";
+import { createExternalRuntimePlugin } from "./config/forge-external-runtime-plugin";
 import path from "path";
 
 const nativeSourceIgnorePlugin = {
@@ -142,6 +143,10 @@ const config: ForgeConfig = {
                 includeDeps: true,
             },
         },
+        // get-windows does not export package.json, which the legacy externals
+        // plugin needs in order to discover dependencies. Include its runtime
+        // resolver and dependency tree with an exports-compatible plugin.
+        createExternalRuntimePlugin(["get-windows", "@mapbox/node-pre-gyp"]),
     ],
 };
 
