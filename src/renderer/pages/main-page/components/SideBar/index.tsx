@@ -6,6 +6,9 @@ import StarredSheets from "./widgets/StarredSheets";
 import { useTranslation } from "react-i18next";
 import { Disclosure } from "@headlessui/react";
 import SvgAsset from "@/renderer/components/SvgAsset";
+import type { SvgAssetIconNames } from "@/renderer/components/SvgAsset";
+import { showModal } from "@/renderer/components/Modal";
+import { useSortedSupportedPlugin } from "@shared/plugin-manager/renderer";
 
 interface INavigationItem {
     iconName: "fire" | "trophy" | "folder-open" | "array-download-tray" | "clock";
@@ -15,8 +18,8 @@ interface INavigationItem {
 
 interface INavigationGroupProps {
     action?: {
-        iconName: "code-bracket-square";
-        selected: boolean;
+        iconName: SvgAssetIconNames;
+        selected?: boolean;
         title: string;
         onClick: () => void;
     };
@@ -82,10 +85,17 @@ export default function SideBar() {
     const navigate = useNavigate();
     const routePathMatch = useMatch("/main/:routePath");
     const { t } = useTranslation();
+    const getMusicInfoPlugins = useSortedSupportedPlugin("getMusicInfo");
 
     const navigationGroups = [
         {
             title: t("side_bar.discover"),
+            action: {
+                iconName: "code-bracket-square",
+                selected: routePathMatch?.params?.routePath === "plugin-manager-view",
+                title: t("side_bar.plugin_management"),
+                onClick: () => navigate("/main/plugin-manager-view"),
+            },
             items: [
                 {
                     iconName: "fire",
@@ -101,6 +111,13 @@ export default function SideBar() {
         },
         {
             title: t("side_bar.library"),
+            action: {
+                iconName: "identification",
+                title: t("plugin.method_play_by_id"),
+                onClick: () => showModal("PlayMusicById", {
+                    plugins: getMusicInfoPlugins,
+                }),
+            },
             items: [
                 {
                     iconName: "folder-open",
@@ -119,25 +136,19 @@ export default function SideBar() {
                 },
             ],
         },
-    ] satisfies Array<{ title: string; items: readonly INavigationItem[] }>;
-    const pluginItem = {
-        iconName: "code-bracket-square",
-        title: t("side_bar.plugin_management"),
-        route: "plugin-manager-view",
-    } as const;
+    ] satisfies Array<{
+        action: NonNullable<INavigationGroupProps["action"]>;
+        title: string;
+        items: readonly INavigationItem[];
+    }>;
 
     return (
         <aside className="side-bar-container">
             <div className="side-bar-scroll-region">
                 <div className="side-bar-navigation">
-                    {navigationGroups.map((group, index) => (
+                    {navigationGroups.map((group) => (
                         <NavigationGroup
-                            action={index === 0 ? {
-                                iconName: pluginItem.iconName,
-                                selected: routePathMatch?.params?.routePath === pluginItem.route,
-                                title: pluginItem.title,
-                                onClick: () => navigate(`/main/${pluginItem.route}`),
-                            } : undefined}
+                            action={group.action}
                             currentRoute={routePathMatch?.params?.routePath}
                             items={group.items}
                             key={group.title}

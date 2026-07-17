@@ -117,6 +117,20 @@ const undersizedStatisticsFonts = [...statisticsViewStyles.matchAll(/font-size:\
     .filter((size) => size < 0.76);
 assert.deepEqual(undersizedStatisticsFonts, []);
 
+const sideBarSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/pages/main-page/components/SideBar/index.tsx",
+), "utf8");
+const mySheetsSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/pages/main-page/components/SideBar/widgets/MySheets/index.tsx",
+), "utf8");
+assert.match(
+    sideBarSource,
+    /title: t\("side_bar\.library"\),\s*action: \{[\s\S]*?iconName: "identification",[\s\S]*?showModal\("PlayMusicById"/,
+);
+assert.doesNotMatch(mySheetsSource, /PlayMusicById|iconName="identification"/);
+
 const searchHistoryStyles = fs.readFileSync(path.join(
     __dirname,
     "../src/renderer/components/Header/widgets/SearchHistory/index.scss",

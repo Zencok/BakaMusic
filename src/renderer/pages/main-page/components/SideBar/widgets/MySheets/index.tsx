@@ -22,7 +22,6 @@ export default function MySheets() {
 
     // Follow plugin-manager order (private.pluginMeta.order)
     const importablePlugins = useSortedSupportedPlugin("importMusicSheet");
-    const getMusicInfoPlugins = useSortedSupportedPlugin("getMusicInfo");
 
     return (
         <div className="side-bar-container--my-sheets">
@@ -35,19 +34,6 @@ export default function MySheets() {
                         <div className="side-bar-section-text">{t("side_bar.my_sheets")}</div>
                     </div>
                     <div className="side-bar-section-actions">
-                        <div
-                            role="button"
-                            className="option-btn"
-                            title={t("plugin.method_play_by_id")}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                showModal("PlayMusicById", {
-                                    plugins: getMusicInfoPlugins,
-                                });
-                            }}
-                        >
-                            <SvgAsset iconName="identification"></SvgAsset>
-                        </div>
                         <div
                             role="button"
                             className="option-btn"

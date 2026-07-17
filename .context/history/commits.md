@@ -193,3 +193,11 @@
 - **Bug**: Statistics numbering no longer matched the retained padded song-list presentation.
 - **Files**: 2 files
 - **Tests**: theme contract; ESLint; diff check
+
+## 2026-07-17T17:46:55.6738541+08:00 — refactor(sidebar): move play-by-id action to library
+`pending`
+- **Decision**: Place Play by ID beside the Music Library heading and remove it from My Playlists.
+- **Decision**: Reuse and generalize the shared navigation-group action.
+- **Decision**: Guard shortcut ownership with a source contract.
+- **Files**: 3 files
+- **Tests**: theme contract; ESLint; TypeScript; diff check
