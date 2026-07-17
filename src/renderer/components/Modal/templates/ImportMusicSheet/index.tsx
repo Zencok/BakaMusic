@@ -2,15 +2,27 @@ import { hideModal, showModal } from "../..";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import PluginManager from "@shared/plugin-manager/renderer";
+import {
+    getUserPreference,
+    setUserPreference,
+} from "@/renderer/utils/user-perference";
 import PluginInputPanel from "../PluginInputPanel";
 
 interface IProps {
     plugins: IPlugin.IPluginDelegate[];
 }
 
+function rememberImportMusicSheetPlugin(plugin: IPlugin.IPluginDelegate) {
+    if (!plugin?.hash) {
+        return;
+    }
+    setUserPreference("importMusicSheetPluginHash", plugin.hash);
+}
+
 export default function ImportMusicSheet(props: IProps) {
     const { plugins } = props;
     const { t } = useTranslation();
+    const rememberedPluginHash = getUserPreference("importMusicSheetPluginHash");
 
     return (
         <PluginInputPanel
@@ -27,6 +39,7 @@ export default function ImportMusicSheet(props: IProps) {
                 plugin: plugin.platform,
             })]}
             iconName="playlist"
+            initialPluginHash={rememberedPluginHash}
             inputLabel={t("plugin.import_music_sheet_input_label")}
             loadingText={t("plugin_management_page.importing_media")}
             maxLength={1000}
@@ -40,6 +53,7 @@ export default function ImportMusicSheet(props: IProps) {
             submitText={t("plugin.import_music_sheet_submit")}
             title={t("plugin.method_import_music_sheet")}
             variant="import-music-sheet"
+            onSelectedPluginChange={rememberImportMusicSheetPlugin}
             onSubmit={async (plugin, input) => {
                 const result = await PluginManager.callPluginDelegateMethod(
                     plugin,

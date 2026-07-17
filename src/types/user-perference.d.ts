@@ -24,6 +24,10 @@ declare namespace IUserPreference {
     musicDetailCoverStyle: "cover" | "vinyl";
     musicDetailVinylTonearm: "none" | "classic" | "glass";
     musicDetailVinylTonearmReach: "outer" | "inner";
+    /** 通过ID播放：上次选择的插件 hash */
+    playByIdPluginHash: string;
+    /** 导入歌单：上次选择的插件 hash */
+    importMusicSheetPluginHash: string;
   }
 
   interface IDBType {

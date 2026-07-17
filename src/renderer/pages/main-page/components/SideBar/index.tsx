@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import ListItem from "./widgets/ListItem";
 import "./index.scss";
 import MySheets from "./widgets/MySheets";
@@ -8,7 +9,7 @@ import { Disclosure } from "@headlessui/react";
 import SvgAsset from "@/renderer/components/SvgAsset";
 import type { SvgAssetIconNames } from "@/renderer/components/SvgAsset";
 import { showModal } from "@/renderer/components/Modal";
-import { useSortedSupportedPlugin } from "@shared/plugin-manager/renderer";
+import { useSortedPlugins } from "@shared/plugin-manager/renderer";
 
 interface INavigationItem {
     iconName: "fire" | "trophy" | "folder-open" | "array-download-tray" | "clock";
@@ -85,7 +86,17 @@ export default function SideBar() {
     const navigate = useNavigate();
     const routePathMatch = useMatch("/main/:routePath");
     const { t } = useTranslation();
-    const getMusicInfoPlugins = useSortedSupportedPlugin("getMusicInfo");
+    // getMusicInfo is preferred; getMediaSource-only plugins can still play by bare id.
+    const sortedPlugins = useSortedPlugins();
+    const playByIdPlugins = useMemo(
+        () =>
+            sortedPlugins.filter(
+                (plugin) =>
+                    plugin.supportedMethod.includes("getMusicInfo")
+                    || plugin.supportedMethod.includes("getMediaSource"),
+            ),
+        [sortedPlugins],
+    );
 
     const navigationGroups = [
         {
@@ -115,7 +126,7 @@ export default function SideBar() {
                 iconName: "identification",
                 title: t("plugin.method_play_by_id"),
                 onClick: () => showModal("PlayMusicById", {
-                    plugins: getMusicInfoPlugins,
+                    plugins: playByIdPlugins,
                 }),
             },
             items: [

@@ -4,7 +4,7 @@ import trackPlayer from "../core/track-player";
 import { setAutoFreeze } from "immer";
 import Downloader from "../core/downloader";
 import AppConfig from "@shared/app-config/renderer";
-import { setupI18n } from "@/shared/i18n/renderer";
+import { i18n, setupI18n } from "@/shared/i18n/renderer";
 import ThemePack from "@/shared/themepack/renderer";
 import { setupListeningStatistics } from "../core/listening-statistics";
 import ServiceManager from "@shared/service-manager/renderer";
@@ -18,6 +18,7 @@ import MusicDetail from "@renderer/components/MusicDetail";
 import shortCut from "@shared/short-cut/renderer";
 import * as Electron from "electron";
 import { applyUiStyle } from "@renderer/utils/ui-style";
+import { toast } from "react-toastify";
 
 
 setAutoFreeze(false);
@@ -222,9 +223,18 @@ function setupCommandAndEvents() {
     });
 
     messageBus.onCommand("PlayMusicById", (data) => {
-        if (data?.platform && data?.id) {
-            trackPlayer.playMusicById(data.platform, data.id, data.quality);
+        if (!data?.platform || !data?.id) {
+            return;
         }
+
+        void trackPlayer
+            .playMusicById(data.platform, data.id, data.quality)
+            .then(() => {
+                toast.success(i18n.t("plugin.play_by_id_success"));
+            })
+            .catch(() => {
+                toast.warn(i18n.t("plugin.play_by_id_failed"));
+            });
     });
 
 

@@ -12,8 +12,11 @@ const {
 } = require("../src/renderer/pages/main-page/views/theme-view/theme-search");
 const {
     bindMediaToPlugin,
+    buildPlayByIdMusicItem,
     createMusicIdentifierBase,
     getMediaPluginDelegate,
+    matchesMusicIdentifier,
+    resolveMusicItemId,
 } = require("../src/renderer/core/track-player/plugin-media");
 
 assert.equal(matchesThemeSearch({}, ""), true);
@@ -166,6 +169,10 @@ assert.match(
     sideBarSource,
     /title: t\("side_bar\.library"\),\s*action: \{[\s\S]*?iconName: "identification",[\s\S]*?showModal\("PlayMusicById"/,
 );
+assert.match(
+    sideBarSource,
+    /supportedMethod\.includes\("getMusicInfo"\)[\s\S]*?supportedMethod\.includes\("getMediaSource"\)/,
+);
 assert.doesNotMatch(mySheetsSource, /PlayMusicById|iconName="identification"/);
 
 const pluginInputPanelSource = fs.readFileSync(path.join(
@@ -180,7 +187,9 @@ const importMusicSheetSource = fs.readFileSync(path.join(
     __dirname,
     "../src/renderer/components/Modal/templates/ImportMusicSheet/index.tsx",
 ), "utf8");
-assert.match(pluginInputPanelSource, /useState\(plugins\[0\]\?\.hash \?\? ""\)/);
+assert.match(pluginInputPanelSource, /resolveInitialPluginHash/);
+assert.match(pluginInputPanelSource, /initialPluginHash/);
+assert.match(pluginInputPanelSource, /onSelectedPluginChange/);
 assert.match(pluginInputPanelSource, /plugin\.hints\?\.\[hintMethod\] \?\? \[\]/);
 assert.match(pluginInputPanelSource, /className="plugin-input-plugin-grid"/);
 assert.match(pluginInputPanelSource, /className="plugin-input-field"/);
@@ -188,9 +197,15 @@ assert.match(pluginInputPanelSource, /className="plugin-input-hints"/);
 assert.match(playMusicByIdSource, /<PluginInputPanel/);
 assert.match(playMusicByIdSource, /hintMethod="getMusicInfo"/);
 assert.match(playMusicByIdSource, /playMusicByPluginId\(plugin, id\)/);
+assert.match(playMusicByIdSource, /playByIdPluginHash/);
+assert.match(playMusicByIdSource, /initialPluginHash=\{rememberedPluginHash\}/);
+assert.match(playMusicByIdSource, /onSelectedPluginChange=\{rememberPlayByIdPlugin\}/);
 assert.doesNotMatch(playMusicByIdSource, /SimpleInputWithState|showModal/);
 assert.match(importMusicSheetSource, /<PluginInputPanel/);
 assert.match(importMusicSheetSource, /hintMethod="importMusicSheet"/);
+assert.match(importMusicSheetSource, /importMusicSheetPluginHash/);
+assert.match(importMusicSheetSource, /initialPluginHash=\{rememberedPluginHash\}/);
+assert.match(importMusicSheetSource, /onSelectedPluginChange=\{rememberImportMusicSheetPlugin\}/);
 assert.doesNotMatch(importMusicSheetSource, /SimpleInputWithState/);
 assert.match(importMusicSheetSource, /!Array\.isArray\(result\) \|\| !result\.length/);
 assert.equal(fs.existsSync(path.join(
@@ -216,6 +231,68 @@ assert.deepEqual(getMediaPluginDelegate(boundIdentifier), {
     platform: "QQ音乐[L2]",
     hash: "PLUGIN_HASH",
 });
+
+// Prefer plugin canonical id; retain user-entered mid/hash aliases for getMediaSource.
+assert.equal(
+    resolveMusicItemId("003Y82u91ZIDmO", { id: "123456" }),
+    "123456",
+);
+assert.equal(resolveMusicItemId("003Y82u91ZIDmO", { id: "  " }), "003Y82u91ZIDmO");
+assert.equal(resolveMusicItemId("003Y82u91ZIDmO", null), "003Y82u91ZIDmO");
+
+const resolvedWithInfo = buildPlayByIdMusicItem("QQ音乐[L2]", "003Y82u91ZIDmO", {
+    id: "123456",
+    title: "Demo Song",
+    artist: "Demo Artist",
+    songmid: "003Y82u91ZIDmO",
+});
+assert.equal(resolvedWithInfo.id, "123456");
+assert.equal(resolvedWithInfo.songmid, "003Y82u91ZIDmO");
+assert.equal(resolvedWithInfo.mid, "003Y82u91ZIDmO");
+assert.equal(resolvedWithInfo.title, "Demo Song");
+assert.equal(resolvedWithInfo.artist, "Demo Artist");
+assert.equal(resolvedWithInfo.platform, "QQ音乐[L2]");
+
+// Bare-id fallback when getMusicInfo is missing.
+const bareItem = buildPlayByIdMusicItem("酷狗", "ABCDEFHASH", null);
+assert.equal(bareItem.id, "ABCDEFHASH");
+assert.equal(bareItem.hash, "ABCDEFHASH");
+assert.equal(bareItem.title, "ABCDEFHASH");
+assert.equal(bareItem.artist, "");
+
+assert.equal(
+    matchesMusicIdentifier(
+        { platform: "QQ音乐[L2]", id: "123456", songmid: "003Y82u91ZIDmO" },
+        "QQ音乐[L2]",
+        "003Y82u91ZIDmO",
+    ),
+    true,
+);
+assert.equal(
+    matchesMusicIdentifier(
+        { platform: "QQ音乐[L2]", id: "123456" },
+        "网易云",
+        "123456",
+    ),
+    false,
+);
+
+const trackPlayerSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/core/track-player/index.ts",
+), "utf8");
+assert.match(trackPlayerSource, /buildPlayByIdMusicItem/);
+assert.match(trackPlayerSource, /matchesMusicIdentifier/);
+assert.match(trackPlayerSource, /falling back to bare id/);
+
+const bootstrapSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/document/bootstrap.ts",
+), "utf8");
+assert.match(
+    bootstrapSource,
+    /PlayMusicById[\s\S]*?playMusicById\([\s\S]*?\.then\([\s\S]*?play_by_id_success[\s\S]*?\.catch\([\s\S]*?play_by_id_failed/,
+);
 
 const searchHistoryStyles = fs.readFileSync(path.join(
     __dirname,

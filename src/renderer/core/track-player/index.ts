@@ -42,8 +42,10 @@ import {
 import { toError } from "@/common/error-util";
 import {
     bindMediaToPlugin,
+    buildPlayByIdMusicItem,
     createMusicIdentifierBase,
     getMediaPluginDelegate,
+    matchesMusicIdentifier,
     IPluginDelegateReference,
 } from "./plugin-media";
 
@@ -490,39 +492,40 @@ class TrackPlayer {
     ) {
         const { platform } = pluginDelegate;
         const identifierBase = createMusicIdentifierBase(platform, id);
+        const normalizedId = identifierBase.id;
 
-        // 1. Try to find in current queue first
-        const queueIndex = this.musicQueue.findIndex(
-            item => item.platform === platform && String(item.id) === String(id),
+        // 1. Try to find in current queue first (canonical id or aliases)
+        const queueIndex = this.musicQueue.findIndex((item) =>
+            matchesMusicIdentifier(item, platform, normalizedId),
         );
         if (queueIndex !== -1) {
             return this.playIndex(queueIndex, { quality });
         }
-        // 2. Call plugin getMusicInfo to resolve full item
+
+        // 2. Prefer getMusicInfo for full metadata; fall back to bare id aliases.
+        let musicInfo: Record<string, unknown> | null = null;
         try {
-            const musicInfo = await PluginManager.callPluginDelegateMethod(
+            const result = await PluginManager.callPluginDelegateMethod(
                 pluginDelegate,
                 "getMusicInfo",
                 identifierBase,
             );
-            if (musicInfo && typeof musicInfo === "object") {
-                return this.playMusic(
-                    bindMediaToPlugin(
-                        {
-                            title: "",
-                            artist: "",
-                            ...identifierBase,
-                            ...musicInfo,
-                            // Keep the submitted identity stable while retaining resolved aliases.
-                            id: identifierBase.id,
-                            platform,
-                        } as IMusic.IMusicItem,
-                        pluginDelegate,
-                    ),
-                    { quality },
-                );
+            if (result && typeof result === "object") {
+                musicInfo = result as Record<string, unknown>;
             }
-            throw new Error("music info not found");
+        } catch (e) {
+            logger.logError(
+                "playMusicById getMusicInfo failed, falling back to bare id",
+                toError(e),
+            );
+        }
+
+        try {
+            const musicItem = bindMediaToPlugin(
+                buildPlayByIdMusicItem(platform, normalizedId, musicInfo),
+                pluginDelegate,
+            ) as IMusic.IMusicItem;
+            return await this.playMusic(musicItem, { quality });
         } catch (e) {
             logger.logError("playMusicById failed", toError(e));
             throw e instanceof Error ? e : new Error(String(e));

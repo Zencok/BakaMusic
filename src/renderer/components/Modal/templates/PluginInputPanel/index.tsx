@@ -13,6 +13,8 @@ interface IPluginInputPanelProps {
     description: string;
     iconName: SvgAssetIconNames;
     plugins: IPlugin.IPluginDelegate[];
+    /** Preferred plugin hash when the panel opens; falls back to the first plugin. */
+    initialPluginHash?: string | null;
     selectLabel: string;
     availablePluginText: string;
     selectedPluginLabel: string;
@@ -27,7 +29,18 @@ interface IPluginInputPanelProps {
     loadingText: string;
     errorText: string;
     emptySupportMethod: string;
+    onSelectedPluginChange?: (plugin: IPlugin.IPluginDelegate) => void;
     onSubmit: (plugin: IPlugin.IPluginDelegate, input: string) => Promise<void>;
+}
+
+function resolveInitialPluginHash(
+    plugins: IPlugin.IPluginDelegate[],
+    preferredHash?: string | null,
+) {
+    if (preferredHash && plugins.some((plugin) => plugin.hash === preferredHash)) {
+        return preferredHash;
+    }
+    return plugins[0]?.hash ?? "";
 }
 
 function platformInitial(platform: string) {
@@ -55,6 +68,7 @@ export default function PluginInputPanel(props: IPluginInputPanelProps) {
         description,
         iconName,
         plugins,
+        initialPluginHash,
         selectLabel,
         availablePluginText,
         selectedPluginLabel,
@@ -69,9 +83,12 @@ export default function PluginInputPanel(props: IPluginInputPanelProps) {
         loadingText,
         errorText,
         emptySupportMethod,
+        onSelectedPluginChange,
         onSubmit,
     } = props;
-    const [selectedPluginHash, setSelectedPluginHash] = useState(plugins[0]?.hash ?? "");
+    const [selectedPluginHash, setSelectedPluginHash] = useState(() =>
+        resolveInitialPluginHash(plugins, initialPluginHash),
+    );
     const [inputText, setInputText] = useState("");
     const [loading, setLoading] = useState(false);
     const [submitError, setSubmitError] = useState("");
@@ -84,6 +101,12 @@ export default function PluginInputPanel(props: IPluginInputPanelProps) {
         ? resolveHints(selectedPlugin, hintMethod, hints)
         : [];
 
+    function selectPlugin(plugin: IPlugin.IPluginDelegate) {
+        setSelectedPluginHash(plugin.hash);
+        setSubmitError("");
+        onSelectedPluginChange?.(plugin);
+    }
+
     async function submit() {
         if (!selectedPlugin || !canSubmit) {
             return;
@@ -92,6 +115,8 @@ export default function PluginInputPanel(props: IPluginInputPanelProps) {
         setLoading(true);
         setSubmitError("");
         try {
+            // Persist the plugin used for a successful submit as well.
+            onSelectedPluginChange?.(selectedPlugin);
             await onSubmit(selectedPlugin, normalizedInput);
         } catch {
             if (isMounted.current) {
@@ -147,8 +172,7 @@ export default function PluginInputPanel(props: IPluginInputPanelProps) {
                                                 key={plugin.hash}
                                                 type="button"
                                                 onClick={() => {
-                                                    setSelectedPluginHash(plugin.hash);
-                                                    setSubmitError("");
+                                                    selectPlugin(plugin);
                                                 }}
                                             >
                                                 <span
