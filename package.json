@@ -9,7 +9,7 @@
   },
   "scripts": {
     "clean": "rimraf .webpack out tmp",
-    "test": "npm run test:theme-contract && npm run test:music-quality-metadata && npm run test:listening-statistics && npm run test:phase4-data && npm run test:lyric-window-z-order && npm run test:update-flow && npm run test:app-config && npm run test:runtime-performance && npm run test:phase3-network && npm run test:service-manager && npm run test:startup-performance && npm run test:phase5-security && npm run test:phase6-governance && npm run test:runtime-packaging && npm run test:toolchain",
+    "test": "npm run test:theme-contract && npm run test:music-quality-metadata && npm run test:listening-statistics && npm run test:phase4-data && npm run test:lyric-window-z-order && npm run test:update-flow && npm run test:app-config && npm run test:runtime-performance && npm run test:phase3-network && npm run test:service-manager && npm run test:startup-performance && npm run test:playback-boundary && npm run test:phase5-security && npm run test:phase6-governance && npm run test:runtime-packaging && npm run test:toolchain",
     "start": "chcp 65001 >nul 2>&1 & cross-env NODE_ENV=development electron-forge start",
     "dev": "chcp 65001 >nul 2>&1 & cross-env NODE_ENV=development electron-forge start --inspect-electron",
     "package": "cross-env NODE_ENV=production electron-forge package",
@@ -34,6 +34,7 @@
     "test:phase3-network": "node -r ts-node/register/transpile-only scripts/phase3-network.test.cjs",
     "test:service-manager": "node scripts/service-manager.test.cjs",
     "test:startup-performance": "node scripts/startup-performance.test.cjs",
+    "test:playback-boundary": "node -r ts-node/register/transpile-only scripts/playback-boundary.test.cjs",
     "test:phase5-security": "node scripts/phase5-electron-security.test.cjs",
     "test:phase6-governance": "node scripts/phase6-governance.test.cjs",
     "test:runtime-packaging": "node -r ts-node/register/transpile-only scripts/runtime-packaging.test.cjs",

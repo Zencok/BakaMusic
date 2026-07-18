@@ -5,11 +5,11 @@ import CryptoJs from "crypto-js";
 import dayjs from "dayjs";
 import fs from "fs/promises";
 import he from "he";
-import pako from "pako";
 import path from "path";
 import qs from "qs";
 import * as webdav from "webdav";
 import { HttpsProxyAgent } from "https-proxy-agent";
+import pakoForPlugins from "./pako-compat";
 import {
     PluginExecutionEnvironment,
     PluginHostCallbackRequest,
@@ -173,7 +173,7 @@ const packages: Record<string, unknown> = {
     "big-integer": bigInt,
     qs,
     he,
-    pako,
+    pako: pakoForPlugins,
     buffer: { Buffer },
     "@react-native-cookies/cookies": cookies,
     webdav,

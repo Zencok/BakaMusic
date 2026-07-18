@@ -62,8 +62,12 @@ function isPrivateAddress(address) {
             || (a === 203 && b === 0 && octets[2] === 113)
             || a >= 224;
     }
+    // A DNS hostname is not an IP literal. Hostname-specific blocks are
+    // handled by isPrivateHostname(), then resolved and checked in
+    // lookupPublic(). Treating every non-IPv6 string as private rejects all
+    // ordinary HTTPS media hosts before DNS is even reached.
     if (!net.isIPv6(normalized)) {
-        return true;
+        return false;
     }
     if (normalized === "::1" || normalized === "::") {
         return true;
@@ -98,25 +102,44 @@ function assertSafeTargetUrlSync(targetUrl) {
 }
 
 function lookupPublic(hostname, options, callback) {
+    const lookupOptions = typeof options === "number"
+        ? { family: options }
+        : (options || {});
+    const returnAddress = (address, family) => {
+        if (lookupOptions.all) {
+            callback(null, [{ address, family }]);
+            return;
+        }
+        callback(null, address, family);
+    };
     if (net.isIP(hostname)) {
         if (isPrivateAddress(hostname)) {
             callback(new Error("Private target is not allowed"));
             return;
         }
-        callback(null, hostname, net.isIP(hostname));
+        returnAddress(hostname, net.isIP(hostname));
         return;
     }
-    dns.lookup(hostname, { all: true, verbatim: true }, (error, addresses) => {
+    dns.lookup(hostname, {
+        all: true,
+        verbatim: true,
+        family: lookupOptions.family || 0,
+        hints: lookupOptions.hints || 0,
+    }, (error, addresses) => {
         if (error) {
             callback(error);
             return;
         }
-        const publicAddress = addresses.find(({ address }) => !isPrivateAddress(address));
-        if (!publicAddress || addresses.some(({ address }) => isPrivateAddress(address))) {
+        const publicAddresses = addresses.filter(({ address }) => !isPrivateAddress(address));
+        if (!publicAddresses.length || publicAddresses.length !== addresses.length) {
             callback(new Error("Target resolves to a private address"));
             return;
         }
-        callback(null, publicAddress.address, publicAddress.family);
+        if (lookupOptions.all) {
+            callback(null, publicAddresses);
+            return;
+        }
+        callback(null, publicAddresses[0].address, publicAddresses[0].family);
     });
 }
 
@@ -339,6 +362,7 @@ module.exports = {
     assertSafeTargetUrlSync,
     createByteLimitTransform,
     createSessionStore,
+    lookupPublic,
     parseTargetUrl,
     pickResponseHeaders,
     requestUpstream,

@@ -1,6 +1,10 @@
 import { ipcRenderer, webUtils } from "electron";
-import { pathToFileURL } from "url";
+import { fileURLToPath } from "url";
 import exposeInMainWorld from "@/preload/expose-in-main-world";
+import {
+    createLocalMediaUrl,
+    LOCAL_MEDIA_PROTOCOL,
+} from "@shared/local-media/common";
 
 
 /****** fs utils ******/
@@ -34,9 +38,13 @@ function getPathForFile(file: File) {
 }
 
 function addFileScheme(filePath: string) {
-    return filePath.startsWith("file:")
-        ? filePath
-        : pathToFileURL(filePath).toString();
+    if (filePath.startsWith(`${LOCAL_MEDIA_PROTOCOL}:`)) {
+        return filePath;
+    }
+    const localPath = filePath.startsWith("file:")
+        ? fileURLToPath(filePath)
+        : filePath;
+    return createLocalMediaUrl(localPath);
 }
 
 const fsUtil = {

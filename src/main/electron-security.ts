@@ -9,7 +9,7 @@ const productionCsp = [
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: file: bakamusic-theme: https: http:",
-    "media-src 'self' data: blob: file: https: http:",
+    "media-src 'self' data: blob: file: bakamusic-media: bakamusic-theme: https: http:",
     "font-src 'self' data: file: bakamusic-theme:",
     "connect-src 'self' https: http: ws: wss:",
     "worker-src 'self' blob:",
@@ -24,7 +24,7 @@ const developmentCsp = [
     "script-src 'self' 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: file: bakamusic-theme: https: http:",
-    "media-src 'self' data: blob: file: https: http:",
+    "media-src 'self' data: blob: file: bakamusic-media: bakamusic-theme: https: http:",
     "font-src 'self' data: file: bakamusic-theme:",
     "connect-src 'self' https: http: ws: wss:",
     "worker-src 'self' blob:",
@@ -35,6 +35,39 @@ const developmentCsp = [
 ].join("; ");
 
 let sessionSecurityConfigured = false;
+
+function setResponseHeader(
+    headers: Record<string, string[]>,
+    name: string,
+    values: string[],
+) {
+    for (const key of Object.keys(headers)) {
+        if (key.toLocaleLowerCase() === name.toLocaleLowerCase()) {
+            delete headers[key];
+        }
+    }
+    headers[name] = values;
+}
+
+function allowRendererImageCors(
+    details: Electron.OnHeadersReceivedListenerDetails,
+    responseHeaders: Record<string, string[]>,
+) {
+    if (details.resourceType !== "image") {
+        return;
+    }
+    try {
+        const target = new URL(details.url);
+        if (target.protocol !== "https:" && target.protocol !== "http:") {
+            return;
+        }
+        // Artwork is intentionally readable by the renderer for canvas-based
+        // palette/background processing. Keep this exception image-only.
+        setResponseHeader(responseHeaders, "Access-Control-Allow-Origin", ["*"]);
+    } catch {
+        // Ignore malformed response URLs.
+    }
+}
 
 function isSameApplicationDocument(targetUrl: string, entryUrl: string) {
     try {
@@ -68,19 +101,13 @@ export function setupSessionSecurity() {
         callback(false);
     });
     appSession.webRequest.onHeadersReceived((details, callback) => {
-        if (details.resourceType !== "mainFrame" && details.resourceType !== "subFrame") {
-            callback({ responseHeaders: details.responseHeaders });
-            return;
-        }
         const responseHeaders = { ...details.responseHeaders };
-        for (const key of Object.keys(responseHeaders)) {
-            if (key.toLocaleLowerCase() === "content-security-policy") {
-                delete responseHeaders[key];
-            }
+        allowRendererImageCors(details, responseHeaders);
+        if (details.resourceType === "mainFrame" || details.resourceType === "subFrame") {
+            setResponseHeader(responseHeaders, "Content-Security-Policy", [
+                app.isPackaged ? productionCsp : developmentCsp,
+            ]);
         }
-        responseHeaders["Content-Security-Policy"] = [
-            app.isPackaged ? productionCsp : developmentCsp,
-        ];
         callback({ responseHeaders });
     });
 }

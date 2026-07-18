@@ -6,6 +6,7 @@ import albumImg from "@/assets/imgs/album-cover.jpg";
 import getUrlExt from "@/renderer/utils/get-url-ext";
 import { PlayerState } from "@/common/constant";
 import ServiceManager from "@shared/service-manager/renderer";
+import { fsUtil } from "@shared/utils/renderer";
 import ControllerBase from "@renderer/core/track-player/controller/controller-base";
 import { ErrorReason } from "@renderer/core/track-player/enum";
 import voidCallback from "@/common/void-callback";
@@ -362,7 +363,9 @@ class AudioController extends ControllerBase implements IAudioController {
 
 
         // 2. convert url and headers
-        let url = trackSource.url;
+        let url = trackSource.url.startsWith("file:")
+            ? fsUtil.addFileScheme(trackSource.url)
+            : trackSource.url;
         const urlObj = new URL(url);
         let headers: Record<string, any> | null = null;
 

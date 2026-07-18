@@ -18,6 +18,7 @@ const {
     assertSafeTargetUrlSync,
     createByteLimitTransform,
     createSessionStore,
+    lookupPublic,
     requestUpstream,
     sanitizeHeaders,
 } = require("../res/.service/proxy-common.cjs");
@@ -48,6 +49,18 @@ function request(port, pathname) {
             }));
         });
         req.on("error", reject);
+    });
+}
+
+function lookup(hostname, options) {
+    return new Promise((resolve, reject) => {
+        lookupPublic(hostname, options, (error, address, family) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+            resolve({ address, family });
+        });
     });
 }
 
@@ -176,6 +189,18 @@ async function run() {
     assert.throws(() => assertSafeTargetUrlSync("file:///tmp/music"), /HTTP/);
     assert.throws(() => assertSafeTargetUrlSync("http://127.0.0.1/music"), /Private/);
     assert.throws(() => assertSafeTargetUrlSync("http://localhost/music"), /Private/);
+    assert.equal(
+        assertSafeTargetUrlSync("https://media.example.com/music.flac").hostname,
+        "media.example.com",
+    );
+    assert.deepEqual(await lookup("93.184.216.34", {}), {
+        address: "93.184.216.34",
+        family: 4,
+    });
+    assert.deepEqual(await lookup("93.184.216.34", { all: true }), {
+        address: [{ address: "93.184.216.34", family: 4 }],
+        family: undefined,
+    });
     await assert.rejects(requestUpstream("http://127.0.0.1/music"), /Private/);
     const sanitized = sanitizeHeaders({
         authorization: "Bearer token",

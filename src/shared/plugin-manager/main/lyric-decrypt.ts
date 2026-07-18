@@ -6,7 +6,7 @@
  * - QRC (QQ Music): Custom Triple-DES + Zlib decompression
  */
 
-import pako from "pako";
+import * as pako from "pako";
 
 // ============ QRC Custom DES Implementation ============
 // Ported from MusicFree mobile src/utils/customDES.ts

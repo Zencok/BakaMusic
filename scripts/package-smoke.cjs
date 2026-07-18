@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const http = require("node:http");
 const net = require("node:net");
 const os = require("node:os");
 const path = require("node:path");
@@ -11,6 +12,30 @@ const serviceNames = ["request-forwarder", "mflac-proxy", "luna-proxy"];
 
 function delay(milliseconds) {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function createSilentWav(durationSeconds = 1) {
+    const channelCount = 1;
+    const sampleRate = 8_000;
+    const bitsPerSample = 16;
+    const sampleCount = Math.round(sampleRate * durationSeconds);
+    const blockAlign = channelCount * bitsPerSample / 8;
+    const dataSize = sampleCount * blockAlign;
+    const wav = Buffer.alloc(44 + dataSize);
+    wav.write("RIFF", 0, "ascii");
+    wav.writeUInt32LE(36 + dataSize, 4);
+    wav.write("WAVE", 8, "ascii");
+    wav.write("fmt ", 12, "ascii");
+    wav.writeUInt32LE(16, 16);
+    wav.writeUInt16LE(1, 20);
+    wav.writeUInt16LE(channelCount, 22);
+    wav.writeUInt32LE(sampleRate, 24);
+    wav.writeUInt32LE(sampleRate * blockAlign, 28);
+    wav.writeUInt16LE(blockAlign, 32);
+    wav.writeUInt16LE(bitsPerSample, 34);
+    wav.write("data", 36, "ascii");
+    wav.writeUInt32LE(dataSize, 40);
+    return wav;
 }
 
 async function getFreePort() {
@@ -183,6 +208,41 @@ async function inspectWindow(session, name) {
 async function run() {
     assert.ok(fs.existsSync(appPath), `Packaged app not found: ${appPath}`);
     const port = await getFreePort();
+    const resourceServer = http.createServer((request, response) => {
+        if (request.url === "/pixel.png" || request.url?.endsWith("/pixel.png")) {
+            response.writeHead(200, {
+                "Cache-Control": "no-store",
+                "Content-Type": "image/png",
+            });
+            response.end(Buffer.from(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+AvzZAAAAAElFTkSuQmCC",
+                "base64",
+            ));
+            return;
+        }
+        if (
+            request.url === "http://plugin-smoke.invalid/health"
+            || (
+                request.headers.host === "plugin-smoke.invalid"
+                && request.url === "/health"
+            )
+        ) {
+            response.writeHead(200, { "Content-Type": "application/json" });
+            response.end(JSON.stringify({ ok: true }));
+            return;
+        }
+        response.writeHead(404);
+        response.end("Not found");
+    });
+    await new Promise((resolve, reject) => {
+        resourceServer.once("error", reject);
+        resourceServer.listen(0, "127.0.0.1", resolve);
+    });
+    const resourceAddress = resourceServer.address();
+    const resourcePort = typeof resourceAddress === "object" && resourceAddress
+        ? resourceAddress.port
+        : 0;
+    const resourceOrigin = `http://127.0.0.1:${resourcePort}`;
     const userDataPath = await fs.promises.mkdtemp(path.join(os.tmpdir(), "bakamusic-smoke-"));
     const appDataPath = path.join(userDataPath, "app-data");
     const localAppDataPath = path.join(userDataPath, "local-app-data");
@@ -194,11 +254,16 @@ async function run() {
     await fs.promises.mkdir(pluginPath, { recursive: true });
     await fs.promises.writeFile(
         path.join(pluginPath, "phase5-smoke.js"),
-        `const storage = require("musicfree/storage");
+        `const axios = require("axios");
+        const storage = require("musicfree/storage");
         module.exports = {
             platform: "Phase5Smoke",
             version: "1.0.0",
             async search() {
+                const response = await axios.get("http://plugin-smoke.invalid/health");
+                if (response.data?.ok !== true) {
+                    throw new Error("plugin network roundtrip failed");
+                }
                 await storage.setItem("phase5-smoke", "ok");
                 if (await storage.getItem("phase5-smoke") !== "ok") {
                     throw new Error("plugin storage roundtrip failed");
@@ -208,6 +273,8 @@ async function run() {
         };`,
         "utf8",
     );
+    const localMediaPath = path.join(userDataPath, "local-media-smoke.wav");
+    await fs.promises.writeFile(localMediaPath, createSilentWav());
     const themePath = path.join(userDataPath, "bakamusic-themepacks", "phase5-smoke");
     await fs.promises.mkdir(themePath, { recursive: true });
     await Promise.all([
@@ -246,8 +313,14 @@ async function run() {
         env: {
             ...process.env,
             APPDATA: appDataPath,
+            HTTP_PROXY: resourceOrigin,
+            HTTPS_PROXY: resourceOrigin,
             LOCALAPPDATA: localAppDataPath,
+            NO_PROXY: "127.0.0.1,localhost",
             XDG_CONFIG_HOME: appDataPath,
+            http_proxy: resourceOrigin,
+            https_proxy: resourceOrigin,
+            no_proxy: "127.0.0.1,localhost",
         },
         windowsHide: true,
         stdio: ["ignore", "pipe", "pipe"],
@@ -310,6 +383,64 @@ async function run() {
                 assetLoaded: themeAssetLoaded,
             };
         })()`, "theme boundary");
+        const localMediaState = await mainSession.evaluate(`(async () => {
+            const mediaUrl = window["@shared/utils"].fs.addFileScheme(
+                ${JSON.stringify(localMediaPath)}
+            );
+            const audio = new Audio();
+            audio.preload = "auto";
+            const loaded = await new Promise((resolve) => {
+                const timer = setTimeout(() => resolve(null), 10_000);
+                audio.oncanplay = () => {
+                    clearTimeout(timer);
+                    resolve(
+                        Number.isFinite(audio.duration)
+                        && audio.duration > 0
+                        && audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA
+                    );
+                };
+                audio.onerror = () => {
+                    clearTimeout(timer);
+                    resolve(null);
+                };
+                audio.src = mediaUrl;
+                audio.load();
+            });
+            audio.removeAttribute("src");
+            audio.load();
+            return {
+                loaded,
+                protocol: new URL(mediaUrl).protocol,
+            };
+        })()`, "local media boundary");
+        const remoteArtworkCors = await mainSession.evaluate(`(async () => {
+            const image = new Image();
+            image.crossOrigin = "anonymous";
+            const loaded = await new Promise((resolve) => {
+                const timer = setTimeout(() => resolve(false), 10_000);
+                image.onload = () => {
+                    clearTimeout(timer);
+                    try {
+                        const canvas = document.createElement("canvas");
+                        canvas.width = 1;
+                        canvas.height = 1;
+                        const context = canvas.getContext("2d");
+                        context.drawImage(image, 0, 0);
+                        context.getImageData(0, 0, 1, 1);
+                        resolve(true);
+                    } catch {
+                        resolve(false);
+                    }
+                };
+                image.onerror = () => {
+                    clearTimeout(timer);
+                    resolve(false);
+                };
+                image.src = ${JSON.stringify(`${resourceOrigin}/pixel.png`)};
+            });
+            image.src = "";
+            return loaded;
+        })()`, "remote artwork CORS boundary");
         await mainSession.evaluate(
             `window["@shared/node-runtime"].closeWatcher()`,
             "node runtime watcher shutdown",
@@ -318,7 +449,9 @@ async function run() {
         assert.equal(_pluginBridge, "function");
         const boundaryState = {
             ...rendererState,
+            localMediaState,
             pluginResult,
+            remoteArtworkCors,
             themeState,
         };
         assert.deepEqual(boundaryState, {
@@ -327,7 +460,12 @@ async function run() {
             dirnameType: "undefined",
             legacyPathBridgeType: "undefined",
             nodeRuntimeBridge: "function",
+            localMediaState: {
+                loaded: true,
+                protocol: "bakamusic-media:",
+            },
             pluginResult: { isEnd: true, data: [] },
+            remoteArtworkCors: true,
             themeState: {
                 count: 1,
                 pathProtocol: "bakamusic-theme:",
@@ -409,6 +547,8 @@ async function run() {
                 stdio: "ignore",
             });
         }
+        resourceServer.closeAllConnections();
+        await new Promise((resolve) => resourceServer.close(resolve));
         await fs.promises.rm(userDataPath, {
             recursive: true,
             force: true,

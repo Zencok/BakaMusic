@@ -12,6 +12,10 @@ import url from "url";
 import type { BigIntStats, PathLike, StatOptions, Stats } from "original-fs";
 import { setInternalData } from "./media-util";
 import { mapWithConcurrency } from "./concurrency-util";
+import {
+    createLocalMediaUrl,
+    LOCAL_MEDIA_PROTOCOL,
+} from "../shared/local-media/common";
 
 const LOCAL_METADATA_CONCURRENCY = 4;
 
@@ -253,9 +257,13 @@ export async function parseLocalMusicItemFolder(
 }
 
 export function addFileScheme(filePath: string) {
-    return filePath.startsWith("file:")
-        ? filePath
-        : url.pathToFileURL(filePath).toString();
+    if (filePath.startsWith(`${LOCAL_MEDIA_PROTOCOL}:`)) {
+        return filePath;
+    }
+    const localPath = filePath.startsWith("file:")
+        ? url.fileURLToPath(filePath)
+        : filePath;
+    return createLocalMediaUrl(localPath);
 }
 
 export async function safeStat(

@@ -82,6 +82,10 @@ function createPluginHostEnvironment(storagePath: string) {
         "TMP",
         "TMPDIR",
         "TZ",
+        // utilityProcess on Windows needs these locations to initialize
+        // Winsock, including connections made through a local proxy.
+        "SystemRoot",
+        "WINDIR",
     ]) {
         const value = process.env[key];
         if (value !== undefined && value.length <= 32_768) {

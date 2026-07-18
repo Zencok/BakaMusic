@@ -2,6 +2,11 @@ import { localPluginHash, localPluginName } from "@/common/constant";
 import { Plugin } from "../plugin";
 import { addFileScheme, parseLocalMusicItem, parseLocalMusicItemFolder } from "@/common/file-util";
 import url from "url";
+import {
+    LOCAL_MEDIA_PROTOCOL,
+    parseLocalMediaUrl,
+} from "@shared/local-media/common";
+import { grantPathAccess } from "@shared/ipc-security/main";
 
 function getLocalMusicFilePath(musicBase: IMedia.IMediaBase | IMusic.IMusicItemPartial) {
     const localPath =
@@ -20,6 +25,13 @@ function getLocalMusicFilePath(musicBase: IMedia.IMediaBase | IMusic.IMusicItemP
             return null;
         }
     }
+    if (musicUrl?.startsWith?.(`${LOCAL_MEDIA_PROTOCOL}:`)) {
+        try {
+            return parseLocalMediaUrl(musicUrl);
+        } catch {
+            return null;
+        }
+    }
 
     return null;
 }
@@ -33,6 +45,11 @@ function localPluginDefine(): IPlugin.IPluginInstance {
             if (!localFilePath) {
                 return null;
             }
+
+            // Persisted local-library entries may be played after restart,
+            // before a dialog/drop event re-grants their path. Grant this
+            // exact file just before the media protocol validates it.
+            grantPathAccess(localFilePath);
 
             return {
                 url: addFileScheme(localFilePath),

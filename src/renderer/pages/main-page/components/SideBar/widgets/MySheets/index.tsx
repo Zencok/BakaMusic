@@ -13,7 +13,7 @@ import { useSortedSupportedPlugin } from "@shared/plugin-manager/renderer";
 
 export default function MySheets() {
     const sheetIdMatch = useMatch(
-        `/main/musicsheet/${encodeURIComponent(localPluginName)}/:sheetId`,
+        `/main/musicsheet/${localPluginName}/:sheetId`,
     );
     const currentSheetId = sheetIdMatch?.params?.sheetId;
     const musicSheets = MusicSheet.frontend.useAllSheets();
