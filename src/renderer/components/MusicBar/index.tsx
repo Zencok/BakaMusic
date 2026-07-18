@@ -421,12 +421,14 @@ export default function MusicBar() {
                     aria-hidden="true"
                 ></div>
             ) : null}
-            <div className="music-bar-overlay"></div>
-            <div className="music-bar-shell">
-                <Slider></Slider>
-                <MusicInfo></MusicInfo>
-                <Controller></Controller>
-                <Extra></Extra>
+            <div className="music-bar-motion-layer">
+                <div className="music-bar-overlay"></div>
+                <div className="music-bar-shell">
+                    <Slider></Slider>
+                    <MusicInfo></MusicInfo>
+                    <Controller></Controller>
+                    <Extra></Extra>
+                </div>
             </div>
         </div>
     );

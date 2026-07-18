@@ -103,6 +103,24 @@ const flatUiStyles = fs.readFileSync(path.join(
     __dirname,
     "../src/renderer/document/styles/ui-style-flat.scss",
 ), "utf8");
+const musicBarSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/MusicBar/index.tsx",
+), "utf8");
+const musicBarStyles = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/MusicBar/index.scss",
+), "utf8");
+assert.match(
+    musicBarSource,
+    /className="music-bar-motion-layer">\s*<div className="music-bar-overlay"><\/div>\s*<div className="music-bar-shell">/s,
+);
+assert.match(musicBarStyles, /\.music-bar-hover-zone\s*\{[^}]*height:\s*52px;/s);
+assert.match(
+    musicBarStyles,
+    /\[data-revealed="false"\][\s\S]*?\.music-bar-motion-layer\s*\{[^}]*opacity:\s*0;[^}]*transform:\s*translate3d\(0, 12px, 0\);/s,
+);
+assert.match(musicBarStyles, /@media \(prefers-reduced-motion:\s*reduce\)/);
 assert.match(
     flatUiStyles,
     /\.music-sheetlike-view--container,\s*\.music-sheetlike-view--body-container\s*\{[^}]*box-shadow:\s*none\s*!important;/s,

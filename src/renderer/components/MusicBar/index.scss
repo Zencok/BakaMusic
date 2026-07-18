@@ -23,6 +23,11 @@
   border-radius: var(--theme-radius-card, 24px);
 }
 
+.music-bar-motion-layer {
+  position: absolute;
+  inset: 0;
+}
+
 .music-bar-overlay {
   pointer-events: none;
 }
@@ -86,7 +91,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 28px;
+  // Reach the dock before the pointer touches the screen edge.
+  height: 52px;
   z-index: 60;
   pointer-events: auto;
   cursor: default;
@@ -98,11 +104,16 @@
 }
 
 .music-bar-container[data-auto-hide="true"] {
-  .music-bar-overlay,
-  .music-bar-shell {
+  .music-bar-motion-layer {
+    opacity: 1;
+    visibility: visible;
+    transform: translate3d(0, 0, 0);
+    transform-origin: center bottom;
+    backface-visibility: hidden;
+    will-change: transform, opacity;
     transition:
-      opacity 220ms ease,
-      transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 240ms cubic-bezier(0.16, 1, 0.3, 1),
       visibility 0s linear 0s;
   }
 
@@ -116,39 +127,17 @@
     -webkit-backdrop-filter: none !important;
     filter: none !important;
 
-    .music-bar-overlay {
-      // !important: beat style-specific `opacity: 1 !important` (flat frosted veil)
-      opacity: 0 !important;
-      visibility: hidden !important;
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
-      filter: none !important;
-      background: transparent !important;
-      border: none !important;
-      box-shadow: none !important;
-      // Avoid delayed “ghost blur” while opacity animates out
-      transition:
-        opacity 180ms ease,
-        visibility 0s linear 180ms,
-        backdrop-filter 0s linear 0s !important;
-    }
-
-    .music-bar-shell {
-      opacity: 0 !important;
-      visibility: hidden !important;
-      transform: translateY(18px);
+    // Composite the complete dock as one layer. This keeps high-contrast child
+    // controls (notably the favorite heart) on the exact same fade timeline.
+    .music-bar-motion-layer {
+      opacity: 0;
+      visibility: hidden;
+      transform: translate3d(0, 12px, 0);
       pointer-events: none;
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
-      filter: none !important;
-      background: transparent !important;
-      box-shadow: none !important;
-    }
-
-    .music-bar-shell *,
-    .music-bar-overlay * {
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
+      transition:
+        opacity 150ms cubic-bezier(0.4, 0, 1, 1),
+        transform 190ms cubic-bezier(0.4, 0, 1, 1),
+        visibility 0s linear 190ms;
     }
 
     .music-bar-hover-zone {
@@ -164,20 +153,21 @@
   &[data-revealed="true"] {
     pointer-events: auto;
 
-    .music-bar-overlay {
-      opacity: 1 !important;
-      visibility: visible !important;
-    }
-
-    .music-bar-shell {
-      opacity: 1 !important;
-      visibility: visible !important;
-      transform: translateY(0);
+    .music-bar-motion-layer {
+      opacity: 1;
+      visibility: visible;
+      transform: translate3d(0, 0, 0);
       pointer-events: auto;
     }
 
     .music-bar-hover-zone {
       display: none;
     }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-bar-container[data-auto-hide="true"] .music-bar-motion-layer {
+    transition-duration: 1ms;
   }
 }
