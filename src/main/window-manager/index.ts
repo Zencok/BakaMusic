@@ -881,6 +881,10 @@ class WindowManager implements IWindowManager {
         AppConfig.setConfig({
             "private.minimode": false,
         });
+        // Closing mini mode should restore the main window. Do this in the main
+        // process: the mini renderer may also send show-main-window, but that
+        // IPC is rejected once the mini window reference is cleared / destroyed.
+        this.showMainWindow();
     }
 
     private normalizeWindowPosition(window: BrowserWindow, position: ICommon.IPoint, onNormalized: (position: ICommon.IPoint) => void) {

@@ -88,8 +88,8 @@ export default function MinimodePage() {
     }
 
     function closeMinimode() {
+        // Main process restores the main window when mini mode is disabled.
         appWindowUtil.setMinimodeWindow(false);
-        appWindowUtil.showMainWindow();
     }
 
     const updateDragPosition = (
