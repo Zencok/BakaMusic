@@ -263,6 +263,7 @@
     "duration_day": "{{value}} days",
     "duration_month": "{{value}} mo",
     "duration_year": "{{value}} yr",
+    "tracks_unit": "tracks",
     "top_track": "Most played",
     "top_track_hint": "Played {{count}} times",
     "no_data": "No data yet",

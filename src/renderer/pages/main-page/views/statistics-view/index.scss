@@ -87,18 +87,6 @@
 
   &:first-child {
     border-left: 0;
-
-    & .statistics-summary-copy strong {
-      font-size: 1.3rem;
-    }
-  }
-
-  &[data-compact="true"] .statistics-summary-copy strong {
-    font-size: 0.92rem;
-    line-height: 1.35;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 }
 
@@ -132,9 +120,32 @@
   }
 
   & strong {
+    min-width: 0;
+    min-height: 1.46em;
+    display: flex;
+    align-items: baseline;
+    gap: 0.25em;
+    overflow: hidden;
     margin: 0.04rem 0;
     font-size: 1.08rem;
     letter-spacing: -0.025em;
+    line-height: 1.35;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  & .statistics-summary-value-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  & .statistics-summary-value-unit {
+    flex-shrink: 0;
+    color: var(--appTextSecondary);
+    font-size: 0.78em;
+    font-weight: 650;
+    letter-spacing: 0;
   }
 
   & small {

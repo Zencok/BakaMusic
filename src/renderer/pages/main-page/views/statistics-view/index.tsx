@@ -30,8 +30,8 @@ interface IStatisticsCard {
     icon: SvgAssetIconNames;
     label: string;
     value: string;
+    unit?: string;
     hint: string;
-    compact?: boolean;
 }
 
 interface IStatisticsTrackRowProps {
@@ -211,12 +211,14 @@ export default function StatisticsView() {
             icon: "motion-play",
             label: t("statistics_page.total_plays"),
             value: numberFormatter.format(statistics.totalPlays),
+            unit: t("statistics_page.plays_unit"),
             hint: t("statistics_page.total_plays_hint"),
         },
         {
             icon: "musical-note",
             label: t("statistics_page.unique_tracks"),
             value: numberFormatter.format(Object.keys(statistics.entries).length),
+            unit: t("statistics_page.tracks_unit"),
             hint: t("statistics_page.unique_tracks_hint"),
         },
         {
@@ -236,7 +238,6 @@ export default function StatisticsView() {
             hint: topEntry
                 ? t("statistics_page.top_track_hint", { count: topEntry.playCount })
                 : t("statistics_page.no_data"),
-            compact: true,
         },
     ];
 
@@ -272,13 +273,18 @@ export default function StatisticsView() {
 
             <section className="statistics-summary-bar">
                 {cards.map((card) => (
-                    <article className="statistics-summary-card" key={card.label} data-compact={card.compact}>
+                    <article className="statistics-summary-card" key={card.label}>
                         <div className="statistics-summary-icon">
                             <SvgAsset iconName={card.icon}></SvgAsset>
                         </div>
                         <div className="statistics-summary-copy">
                             <span>{card.label}</span>
-                            <strong title={card.value}>{card.value}</strong>
+                            <strong title={card.value}>
+                                <span className="statistics-summary-value-text">{card.value}</span>
+                                {card.unit && (
+                                    <span className="statistics-summary-value-unit">{card.unit}</span>
+                                )}
+                            </strong>
                             <small>{card.hint}</small>
                         </div>
                     </article>

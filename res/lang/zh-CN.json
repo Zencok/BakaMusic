@@ -263,6 +263,7 @@
     "duration_day": "{{value}} 天",
     "duration_month": "{{value}} 个月",
     "duration_year": "{{value}} 年",
+    "tracks_unit": "首",
     "top_track": "最常播放",
     "top_track_hint": "已播放 {{count}} 次",
     "no_data": "暂无数据",

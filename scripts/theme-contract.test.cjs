@@ -156,6 +156,8 @@ const statisticsViewStyles = fs.readFileSync(path.join(
 assert.match(statisticsViewSource, /className="statistics-track-meta-row"/);
 assert.match(statisticsViewSource, /secondsToDuration\(entry\.musicItem\.duration\)/);
 assert.match(statisticsViewSource, /getBestMusicQualityInfo\(entry\.musicItem\)/);
+assert.match(statisticsViewSource, /statistics_page\.tracks_unit/);
+assert.match(statisticsViewSource, /statistics-summary-value-unit/);
 assert.match(
     statisticsViewSource,
     /<Tag fill>\s*\{entry\.musicItem\.platform\}\s*<\/Tag>/s,
@@ -176,6 +178,7 @@ assert.match(
     statisticsViewStyles,
     /\.statistics-summary-copy\s*\{[\s\S]*?& > span\s*\{[^}]*font-size:\s*0\.82rem/s,
 );
+assert.match(statisticsViewStyles, /\.statistics-summary-value-unit\s*\{[\s\S]*font-size:\s*0\.78em/s);
 assert.match(
     statisticsViewStyles,
     /\.statistics-track-last-played\s*\{\s*& strong\s*\{[^}]*font-size:\s*0\.82rem/s,
