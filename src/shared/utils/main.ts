@@ -3,7 +3,11 @@ import { IWindowManager } from "@/types/window-manager";
 import fs from "fs/promises";
 import fsSync from "fs";
 import path from "path";
-import { appUpdateApiSources, githubDownloadMirrors } from "@/common/constant";
+import {
+    appUpdateApiSources,
+    appUpdateLatestPageSources,
+    githubDownloadMirrors,
+} from "@/common/constant";
 import axios from "axios";
 import { compare } from "compare-versions";
 import type { Readable } from "stream";
@@ -55,6 +59,17 @@ interface IActiveUpdateDownload {
 interface ICompletedUpdateDownload {
     filePath: string;
     tempDirectory: string;
+}
+
+interface IGitHubReleaseAsset {
+    name: string;
+    browser_download_url: string;
+}
+
+interface IGitHubRelease {
+    tag_name: string;
+    body: string;
+    assets: IGitHubReleaseAsset[];
 }
 
 function sanitizeUpdateFileName(fileName: string): string {
@@ -513,6 +528,47 @@ class Utils {
         });
     }
 
+    private async fetchLatestRelease(currentVersion: string): Promise<IGitHubRelease> {
+        const controllers = [
+            ...appUpdateApiSources,
+            ...appUpdateLatestPageSources,
+        ].map(() => new AbortController());
+        const requests = [
+            ...appUpdateApiSources.map(async (apiUrl, index) => {
+                const response = await axios.get(apiUrl, {
+                    headers: {
+                        Accept: "application/vnd.github+json",
+                        "X-GitHub-Api-Version": "2022-11-28",
+                        "User-Agent": `BakaMusic/${currentVersion}`,
+                    },
+                    signal: controllers[index].signal,
+                    timeout: 10000,
+                });
+                return normalizeGitHubRelease(response.data);
+            }),
+            ...appUpdateLatestPageSources.map(async (pageUrl, index) => {
+                const response = await axios.get(pageUrl, {
+                    headers: {
+                        Accept: "text/html",
+                        "User-Agent": `BakaMusic/${currentVersion}`,
+                    },
+                    maxRedirects: 0,
+                    signal: controllers[appUpdateApiSources.length + index].signal,
+                    timeout: 10000,
+                    validateStatus: (status) => status >= 300 && status < 400,
+                });
+                return createReleaseFromLatestRedirect(response.headers.location);
+            }),
+        ];
+        try {
+            return await Promise.any(requests);
+        } finally {
+            for (const controller of controllers) {
+                controller.abort();
+            }
+        }
+    }
+
     private async downloadUpdateUrl(
         sender: Electron.WebContents,
         url: string,
@@ -522,6 +578,10 @@ class Utils {
         const fileName = sanitizeUpdateFileName(rawFileName);
         const filePath = path.join(downloadState.tempDirectory, fileName);
         const response = await axios.get<Readable>(url, {
+            headers: {
+                Accept: "application/octet-stream",
+                "User-Agent": `BakaMusic/${app.getVersion()}`,
+            },
             maxRedirects: 5,
             responseType: "stream",
             signal: downloadState.controller.signal,
@@ -666,32 +726,25 @@ class Utils {
             };
             this.availableUpdateDownloads.delete(evt.sender.id);
 
-            for (const apiUrl of appUpdateApiSources) {
-                try {
-                    const response = await axios.get(apiUrl, {
-                        headers: { Accept: "application/vnd.github.v3+json" },
-                        timeout: 10000,
-                    });
-                    const release = response.data;
-                    const latestVersion = (release.tag_name as string).replace(/^v/, "");
+            try {
+                const release = await this.fetchLatestRelease(currentVersion);
+                const latestVersion = release.tag_name.replace(/^v/, "");
 
-                    if (compare(latestVersion, currentVersion, ">")) {
-                        const asset = findReleaseAsset(release.assets, process.platform, process.arch);
-                        const downloadUrls = asset
-                            ? buildMirrorUrls(asset.browser_download_url)
-                            : [];
+                if (compare(latestVersion, currentVersion, ">")) {
+                    const asset = findReleaseAsset(release.assets, process.platform, process.arch);
+                    const downloadUrls = asset
+                        ? buildMirrorUrls(asset.browser_download_url)
+                        : [];
 
-                        updateInfo.update = {
-                            version: latestVersion,
-                            changeLog: parseReleaseBody(release.body as string),
-                            download: downloadUrls,
-                        };
-                        this.availableUpdateDownloads.set(evt.sender.id, downloadUrls);
-                    }
-                    return updateInfo;
-                } catch {
-                    // 尝试下一个源
+                    updateInfo.update = {
+                        version: latestVersion,
+                        changeLog: parseReleaseBody(release.body),
+                        download: downloadUrls,
+                    };
+                    this.availableUpdateDownloads.set(evt.sender.id, downloadUrls);
                 }
+            } catch {
+                // 所有加速源和 GitHub 直连均未返回有效 Release。
             }
             return updateInfo;
         });
@@ -1021,17 +1074,104 @@ class Utils {
 }
 
 
+function normalizeGitHubRelease(data: unknown): IGitHubRelease {
+    assertPlainObject(data, "GitHub release");
+    assertString(data.tag_name, "release tag", 64);
+    const releaseTag = data.tag_name;
+    if (!/^v?\d+\.\d+\.\d+(?:[.-][0-9A-Za-z.-]+)?$/.test(releaseTag)) {
+        throw new Error("Release tag is invalid");
+    }
+    if (data.body !== null && data.body !== undefined) {
+        assertString(data.body, "release body", 256 * 1024, true);
+    }
+    if (!Array.isArray(data.assets) || data.assets.length > 100) {
+        throw new Error("Release assets are invalid");
+    }
+
+    const assets = data.assets.flatMap((candidate): IGitHubReleaseAsset[] => {
+        try {
+            assertPlainObject(candidate, "release asset");
+            assertString(candidate.name, "release asset name", 256);
+            assertUrl(candidate.browser_download_url, ["https:"], 8192);
+            if (
+                candidate.name.includes("/")
+                || candidate.name.includes("\\")
+                || Array.from(candidate.name).some((character) => character.charCodeAt(0) < 32)
+            ) {
+                throw new Error("Release asset name is invalid");
+            }
+            return [createCanonicalReleaseAsset(releaseTag, candidate.name)];
+        } catch {
+            return [];
+        }
+    });
+    if (!assets.length) {
+        throw new Error("Release has no valid assets");
+    }
+
+    return {
+        tag_name: releaseTag,
+        body: typeof data.body === "string" ? data.body : "",
+        assets,
+    };
+}
+
+function createCanonicalReleaseAsset(tag: string, name: string): IGitHubReleaseAsset {
+    return {
+        name,
+        // Never trust a mirror-rewritten download target. Rebuild the canonical
+        // URL from the validated tag and asset file name.
+        browser_download_url: new URL(
+            `${encodeURIComponent(tag)}/${encodeURIComponent(name)}`,
+            "https://github.com/Zencok/BakaMusic/releases/download/",
+        ).toString(),
+    };
+}
+
+function createReleaseFromLatestRedirect(location: unknown): IGitHubRelease {
+    assertString(location, "latest release redirect", 8192);
+    let decodedLocation: string;
+    try {
+        decodedLocation = decodeURIComponent(location);
+    } catch {
+        throw new Error("Latest release redirect is invalid");
+    }
+    const tagMatch = decodedLocation.match(
+        /\/Zencok\/BakaMusic\/releases\/tag\/(v?\d+\.\d+\.\d+(?:[.-][0-9A-Za-z.-]+)?)(?:[/?#]|$)/,
+    );
+    if (!tagMatch) {
+        throw new Error("Latest release redirect is invalid");
+    }
+    const tag = tagMatch[1];
+    const version = tag.replace(/^v/, "");
+    const assetNames = [
+        `BakaMusic-${version}-win32-x64-setup.exe`,
+        `BakaMusic-${version}-darwin-arm64.dmg`,
+        `BakaMusic-${version}-darwin-x64.dmg`,
+        `BakaMusic-${version}-linux-amd64.deb`,
+    ];
+    return {
+        tag_name: tag,
+        body: "",
+        assets: assetNames.map((name) => createCanonicalReleaseAsset(tag, name)),
+    };
+}
+
 /** 根据平台和架构匹配 Release Asset */
-function findReleaseAsset(assets: any[], platform: string, arch: string): any {
+function findReleaseAsset(
+    assets: IGitHubReleaseAsset[],
+    platform: string,
+    arch: string,
+): IGitHubReleaseAsset | undefined {
     if (platform === "win32") {
         // 优先非 legacy 安装包，排除 portable
         return (
-            assets.find((a: any) =>
+            assets.find((a) =>
                 a.name.includes("win32-x64") &&
                 a.name.endsWith("-setup.exe") &&
                 !a.name.includes("legacy"),
             ) ||
-            assets.find((a: any) =>
+            assets.find((a) =>
                 a.name.includes("win32-x64") && a.name.endsWith("-setup.exe"),
             )
         );
@@ -1039,18 +1179,18 @@ function findReleaseAsset(assets: any[], platform: string, arch: string): any {
     if (platform === "darwin") {
         const archStr = arch === "arm64" ? "arm64" : "x64";
         return (
-            assets.find((a: any) => a.name.includes(`darwin-${archStr}`) && a.name.endsWith(".dmg")) ||
-            assets.find((a: any) => a.name.includes("darwin") && a.name.endsWith(".dmg")) ||
-            assets.find((a: any) => a.name.includes("darwin") && a.name.endsWith(".zip"))
+            assets.find((a) => a.name.includes(`darwin-${archStr}`) && a.name.endsWith(".dmg")) ||
+            assets.find((a) => a.name.includes("darwin") && a.name.endsWith(".dmg")) ||
+            assets.find((a) => a.name.includes("darwin") && a.name.endsWith(".zip"))
         );
     }
     if (platform === "linux") {
         return (
-            assets.find((a: any) => a.name.includes("linux") && a.name.endsWith(".deb")) ||
-            assets.find((a: any) => a.name.includes("linux"))
+            assets.find((a) => a.name.includes("linux") && a.name.endsWith(".deb")) ||
+            assets.find((a) => a.name.includes("linux"))
         );
     }
-    return null;
+    return undefined;
 }
 
 /** 为 GitHub 下载链接生成镜像 URL 列表（镜像优先） */

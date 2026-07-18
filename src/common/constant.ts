@@ -160,26 +160,44 @@ export enum DownloadState {
     DONE = "DONE",
 }
 
+// GitHub 加速前缀由主题商店、更新检查和 Release 下载共同复用。
+export const githubAcceleratorPrefixes = [
+    "https://gh.xmly.dev/",
+    "https://gh-proxy.org/",
+] as const;
+
+const themePackStoreDirectUrl =
+    "https://raw.githubusercontent.com/Toskysun/BakaThemePacks/v2/prod/";
+
 // 主题市场源：BakaThemePacks v2/prod（bakamusic-theme@2 产物根目录）
 // 目录约定：publish.json、themes/*.mftheme、previews/*
 export const themePackStoreBaseUrl = [
-    "https://gh.xmly.dev/https://raw.githubusercontent.com/Toskysun/BakaThemePacks/v2/prod/",
-    "https://gh-proxy.org/https://raw.githubusercontent.com/Toskysun/BakaThemePacks/v2/prod/",
-    "https://raw.githubusercontent.com/Toskysun/BakaThemePacks/v2/prod/",
+    ...githubAcceleratorPrefixes.map((prefix) => `${prefix}${themePackStoreDirectUrl}`),
+    themePackStoreDirectUrl,
     "https://cdn.jsdelivr.net/gh/Toskysun/BakaThemePacks@v2%2Fprod/",
 ];
 
-// GitHub API 端点，优先使用国内镜像
+const appLatestReleaseApiUrl =
+    "https://api.github.com/repos/Zencok/BakaMusic/releases/latest";
+const appLatestReleasePageUrl =
+    "https://github.com/Zencok/BakaMusic/releases/latest";
+
+// GitHub API 端点：与主题商店一致，优先并行尝试加速前缀。
 export const appUpdateApiSources = [
+    ...githubAcceleratorPrefixes.map((prefix) => `${prefix}${appLatestReleaseApiUrl}`),
     "https://api.gitmirror.com/repos/Zencok/BakaMusic/releases/latest",
-    "https://api.github.com/repos/Zencok/BakaMusic/releases/latest",
+    appLatestReleaseApiUrl,
+];
+
+// API 受共享限流时，从 latest 页的重定向位置解析版本并按稳定产物名下载。
+export const appUpdateLatestPageSources = [
+    ...githubAcceleratorPrefixes.map((prefix) => `${prefix}${appLatestReleasePageUrl}`),
+    appLatestReleasePageUrl,
 ];
 
 // GitHub 下载加速镜像前缀（空字符串表示直连）
 export const githubDownloadMirrors = [
-    "https://mirror.ghproxy.com/",
-    "https://ghproxy.com/",
-    "https://hub.gitmirror.com/",
+    ...githubAcceleratorPrefixes,
     "",
 ];
 

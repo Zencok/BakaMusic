@@ -7,6 +7,29 @@ const {
 const {
     renderUpdateChangelog,
 } = require("../src/renderer/utils/update-changelog");
+const {
+    appUpdateApiSources,
+    appUpdateLatestPageSources,
+    githubAcceleratorPrefixes,
+    githubDownloadMirrors,
+    themePackStoreBaseUrl,
+} = require("../src/common/constant");
+
+const latestReleaseApiUrl =
+    "https://api.github.com/repos/Zencok/BakaMusic/releases/latest";
+const themeStoreDirectUrl =
+    "https://raw.githubusercontent.com/Toskysun/BakaThemePacks/v2/prod/";
+const latestReleasePageUrl =
+    "https://github.com/Zencok/BakaMusic/releases/latest";
+for (const prefix of githubAcceleratorPrefixes) {
+    assert.ok(appUpdateApiSources.includes(`${prefix}${latestReleaseApiUrl}`));
+    assert.ok(appUpdateLatestPageSources.includes(`${prefix}${latestReleasePageUrl}`));
+    assert.ok(themePackStoreBaseUrl.includes(`${prefix}${themeStoreDirectUrl}`));
+    assert.ok(githubDownloadMirrors.includes(prefix));
+}
+assert.equal(appUpdateApiSources.at(-1), latestReleaseApiUrl);
+assert.equal(appUpdateLatestPageSources.at(-1), latestReleasePageUrl);
+assert.equal(githubDownloadMirrors.at(-1), "");
 
 assert.equal(shouldShowAvailableUpdate("1.2.3", null, false), true);
 assert.equal(shouldShowAvailableUpdate("1.2.3", "1.2.3", false), false);
@@ -35,6 +58,13 @@ assert.match(updateMainSource, /UPDATE_PROGRESS_INTERVAL_MS/);
 assert.match(updateMainSource, /completedUpdateDownloads\.get\(evt\.sender\.id\)/);
 assert.match(updateMainSource, /await fs\.unlink\(filePath\)\.catch/);
 assert.match(updateMainSource, /sender\.once\("destroyed", abortOnSenderDestroyed\)/);
+assert.match(updateMainSource, /Promise\.any\(requests\)/);
+assert.match(updateMainSource, /"X-GitHub-Api-Version": "2022-11-28"/);
+assert.match(updateMainSource, /normalizeGitHubRelease\(response\.data\)/);
+assert.match(updateMainSource, /"https:\/\/github\.com\/Zencok\/BakaMusic\/releases\/download\/"/);
+assert.match(updateMainSource, /throw new Error\("Release has no valid assets"\)/);
+assert.match(updateMainSource, /createReleaseFromLatestRedirect\(response\.headers\.location\)/);
+assert.match(updateMainSource, /BakaMusic-\$\{version\}-win32-x64-setup\.exe/);
 assert.doesNotMatch(
     updateMainSource,
     /@shared\/utils\/install-update",\s*\(_,\s*filePath:/,
