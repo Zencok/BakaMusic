@@ -55,6 +55,10 @@ class WindowManager implements IWindowManager {
     private ee: EventEmitter = new EventEmitter();
     private repaintingTransparentWindows = new WeakSet<BrowserWindow>();
     private lyricWindowZOrderMonitor: NodeJS.Timeout | null = null;
+    private auxiliaryWindowVisibilityBeforeImmersive: {
+        lyric: boolean;
+        minimode: boolean;
+    } | null = null;
 
     getMainWindow(): BrowserWindow {
         if (!WindowManager.mainWindow || WindowManager.mainWindow.isDestroyed()) {
@@ -101,6 +105,65 @@ class WindowManager implements IWindowManager {
             windows.push(WindowManager.miniModeWindow);
         }
         return windows;
+    }
+
+    public setAuxiliaryWindowsSuppressed(suppressed: boolean) {
+        if (suppressed) {
+            if (this.auxiliaryWindowVisibilityBeforeImmersive) {
+                return;
+            }
+
+            const lyricWindow = WindowManager.lrcWindow;
+            const miniModeWindow = WindowManager.miniModeWindow;
+            this.auxiliaryWindowVisibilityBeforeImmersive = {
+                lyric: Boolean(
+                    lyricWindow
+                    && !lyricWindow.isDestroyed()
+                    && lyricWindow.isVisible(),
+                ),
+                minimode: Boolean(
+                    miniModeWindow
+                    && !miniModeWindow.isDestroyed()
+                    && miniModeWindow.isVisible(),
+                ),
+            };
+            if (lyricWindow && !lyricWindow.isDestroyed()) {
+                lyricWindow.hide();
+            }
+            if (miniModeWindow && !miniModeWindow.isDestroyed()) {
+                miniModeWindow.hide();
+            }
+            return;
+        }
+
+        const restore = this.auxiliaryWindowVisibilityBeforeImmersive;
+        if (!restore) {
+            return;
+        }
+        this.auxiliaryWindowVisibilityBeforeImmersive = null;
+        if (restore.lyric) {
+            const lyricWindow = WindowManager.lrcWindow;
+            if (lyricWindow && !lyricWindow.isDestroyed()) {
+                if (process.platform === "win32") {
+                    this.syncLyricWindowZOrder(lyricWindow);
+                }
+                lyricWindow.setBackgroundColor("#00000000");
+                lyricWindow.showInactive();
+                this.repaintTransparentWindowAfterShow(lyricWindow);
+            } else {
+                this.showLyricWindow();
+            }
+        }
+        if (restore.minimode) {
+            const miniModeWindow = WindowManager.miniModeWindow;
+            if (miniModeWindow && !miniModeWindow.isDestroyed()) {
+                miniModeWindow.showInactive();
+                miniModeWindow.moveTop();
+                miniModeWindow.setSkipTaskbar(true);
+            } else {
+                this.showMiniModeWindow();
+            }
+        }
     }
 
     private emit<T extends keyof IWindowEvents>(event: T, data: IWindowEvents[T]) {
@@ -568,6 +631,10 @@ class WindowManager implements IWindowManager {
             if (lyricWindowShown || lyricWindow.isDestroyed()) {
                 return;
             }
+            if (this.auxiliaryWindowVisibilityBeforeImmersive) {
+                this.auxiliaryWindowVisibilityBeforeImmersive.lyric = true;
+                return;
+            }
             lyricWindowShown = true;
             this.showTransparentLyricWindow(lyricWindow);
         };
@@ -630,6 +697,14 @@ class WindowManager implements IWindowManager {
 
 
     public showLyricWindow() {
+        if (this.auxiliaryWindowVisibilityBeforeImmersive) {
+            this.auxiliaryWindowVisibilityBeforeImmersive.lyric = true;
+            AppConfig.setConfig({
+                "lyric.enableDesktopLyric": true,
+            });
+            return;
+        }
+
         const needsCreate = !WindowManager.lrcWindow || WindowManager.lrcWindow.isDestroyed();
         if (needsCreate) {
             this.createLyricWindow();
@@ -650,6 +725,9 @@ class WindowManager implements IWindowManager {
     }
 
     public closeLyricWindow() {
+        if (this.auxiliaryWindowVisibilityBeforeImmersive) {
+            this.auxiliaryWindowVisibilityBeforeImmersive.lyric = false;
+        }
         this.stopLyricWindowZOrderMonitor();
         const lyricWindow = WindowManager.lrcWindow;
         if (lyricWindow && !lyricWindow.isDestroyed()) {
@@ -762,6 +840,14 @@ class WindowManager implements IWindowManager {
     }
 
     public showMiniModeWindow() {
+        if (this.auxiliaryWindowVisibilityBeforeImmersive) {
+            this.auxiliaryWindowVisibilityBeforeImmersive.minimode = true;
+            AppConfig.setConfig({
+                "private.minimode": true,
+            });
+            return;
+        }
+
         if (!WindowManager.miniModeWindow) {
             this.createMiniModeWindow();
         }
@@ -787,6 +873,9 @@ class WindowManager implements IWindowManager {
 
 
     public closeMiniModeWindow() {
+        if (this.auxiliaryWindowVisibilityBeforeImmersive) {
+            this.auxiliaryWindowVisibilityBeforeImmersive.minimode = false;
+        }
         WindowManager.miniModeWindow?.close();
         WindowManager.miniModeWindow = null;
         AppConfig.setConfig({

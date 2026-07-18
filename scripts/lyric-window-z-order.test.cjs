@@ -1,4 +1,6 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const {
     isFullscreenNotificationState,
 } = require("../src/main/window-manager/fullscreen-notification-state");
@@ -46,5 +48,37 @@ assert.equal(isFullscreenWindowBounds({
     bounds: { x: 0, y: 0, width: 1920, height: 1040 },
     contentBounds: { x: 0, y: 0, width: 1920, height: 1040 },
 }, [primaryDisplay]), false, "work-area window");
+
+const projectRoot = path.join(__dirname, "..");
+const windowManagerSource = fs.readFileSync(path.join(
+    projectRoot,
+    "src/main/window-manager/index.ts",
+), "utf8");
+const utilsMainSource = fs.readFileSync(path.join(
+    projectRoot,
+    "src/shared/utils/main.ts",
+), "utf8");
+const musicDetailSource = fs.readFileSync(path.join(
+    projectRoot,
+    "src/renderer/components/MusicDetail/index.tsx",
+), "utf8");
+const musicDetailStyles = fs.readFileSync(path.join(
+    projectRoot,
+    "src/renderer/components/MusicDetail/index.scss",
+), "utf8");
+
+assert.match(windowManagerSource, /setAuxiliaryWindowsSuppressed\(suppressed: boolean\)/);
+assert.match(windowManagerSource, /lyricWindow\.hide\(\)/);
+assert.match(windowManagerSource, /miniModeWindow\.hide\(\)/);
+assert.match(utilsMainSource, /powerSaveBlocker\.start\("prevent-display-sleep"\)/);
+assert.match(utilsMainSource, /powerSaveBlocker\.stop\(this\.displaySleepBlockerId\)/);
+assert.match(utilsMainSource, /setAuxiliaryWindowsSuppressed\(true\)/);
+assert.match(utilsMainSource, /setAuxiliaryWindowsSuppressed\(false\)/);
+assert.match(musicDetailSource, /FULLSCREEN_CURSOR_IDLE_MS = 1600/);
+assert.match(musicDetailSource, /data-cursor-hidden=\{isFullscreenCursorHidden/);
+assert.match(
+    musicDetailStyles,
+    /\[data-fullscreen="true"\]\[data-cursor-hidden="true"\][\s\S]*?cursor: none !important;/,
+);
 
 console.log("lyric window z-order tests passed");

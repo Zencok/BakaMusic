@@ -23,6 +23,7 @@ import { getCurrentPanel } from "@/renderer/components/Panel";
 
 export const isMusicDetailShown = musicDetailShownStore.getValue;
 export const useMusicDetailShown = musicDetailShownStore.useValue;
+const FULLSCREEN_CURSOR_IDLE_MS = 1600;
 
 function MusicDetail() {
     const musicItem = useCurrentMusic();
@@ -30,6 +31,7 @@ function MusicDetail() {
     const quality = useQuality();
     const musicDetailShown = musicDetailShownStore.useValue();
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isFullscreenCursorHidden, setIsFullscreenCursorHidden] = useState(false);
     const [storedCoverStyle] = useUserPreference("musicDetailCoverStyle");
     const [storedVinylTonearm] = useUserPreference("musicDetailVinylTonearm");
     const [storedTonearmReach] = useUserPreference("musicDetailVinylTonearmReach");
@@ -37,9 +39,43 @@ function MusicDetail() {
     const reflowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isFullscreenRef = useRef(false);
     const lastF11ToggleAtRef = useRef(0);
+    const cursorHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         isFullscreenRef.current = isFullscreen;
+    }, [isFullscreen]);
+
+    useEffect(() => {
+        const clearCursorHideTimer = () => {
+            if (cursorHideTimerRef.current !== null) {
+                clearTimeout(cursorHideTimerRef.current);
+                cursorHideTimerRef.current = null;
+            }
+        };
+
+        if (!isFullscreen) {
+            clearCursorHideTimer();
+            setIsFullscreenCursorHidden(false);
+            return;
+        }
+
+        const revealAndScheduleCursor = () => {
+            setIsFullscreenCursorHidden(false);
+            clearCursorHideTimer();
+            cursorHideTimerRef.current = setTimeout(() => {
+                cursorHideTimerRef.current = null;
+                setIsFullscreenCursorHidden(true);
+            }, FULLSCREEN_CURSOR_IDLE_MS);
+        };
+
+        revealAndScheduleCursor();
+        window.addEventListener("pointermove", revealAndScheduleCursor, { passive: true });
+        window.addEventListener("pointerdown", revealAndScheduleCursor, { passive: true });
+        return () => {
+            window.removeEventListener("pointermove", revealAndScheduleCursor);
+            window.removeEventListener("pointerdown", revealAndScheduleCursor);
+            clearCursorHideTimer();
+        };
     }, [isFullscreen]);
 
     const toggleImmersiveFullScreen = () => {
@@ -180,6 +216,7 @@ function MusicDetail() {
             showIf={musicDetailShown}
             className="music-detail--container animate__animated"
             data-fullscreen={isFullscreen ? "true" : "false"}
+            data-cursor-hidden={isFullscreenCursorHidden ? "true" : "false"}
             mountClassName="animate__fadeInUp"
             unmountClassName="animate__fadeOutDown"
             onAnimationEnd={() => {

@@ -31,6 +31,11 @@ export interface IWindowManager {
     getAllWindows(): BrowserWindow[];
 
     /**
+     * 临时隐藏/恢复歌词、迷你模式等辅助窗口，不改变用户配置。
+     */
+    setAuxiliaryWindowsSuppressed(suppressed: boolean): void;
+
+    /**
      * 为特定事件类型注册监听器
      */
     on<T extends keyof IWindowEvents>(event: T, listener: (data: IWindowEvents[T]) => void): void;

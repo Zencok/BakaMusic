@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, screen, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, powerSaveBlocker, screen, shell } from "electron";
 import { IWindowManager } from "@/types/window-manager";
 import fs from "fs/promises";
 import fsSync from "fs";
@@ -189,6 +189,7 @@ class Utils {
     private readonly activeUpdateDownloads = new Map<number, IActiveUpdateDownload>();
     private readonly availableUpdateDownloads = new Map<number, string[]>();
     private readonly completedUpdateDownloads = new Map<number, ICompletedUpdateDownload>();
+    private displaySleepBlockerId: number | null = null;
     /**
      * Immersive fullscreen restore snapshot.
      * On Windows, frameless + maximized windows can fail native setFullScreen;
@@ -202,6 +203,26 @@ class Utils {
 
     public setup(windowManager: IWindowManager) {
         this.windowManager = windowManager;
+
+        this.windowManager.on("WindowCreated", ({ windowName, browserWindow }) => {
+            if (windowName !== "main") {
+                return;
+            }
+            browserWindow.on("enter-full-screen", () => {
+                this.setImmersiveSessionEffects(true);
+            });
+            browserWindow.on("leave-full-screen", () => {
+                // A delayed leave event can belong to the failed native attempt
+                // immediately before the display-bounds fallback takes over.
+                this.setImmersiveSessionEffects(
+                    this.immersiveRestore?.usedBoundsFallback === true,
+                );
+            });
+            browserWindow.on("closed", () => {
+                this.immersiveRestore = null;
+                this.setImmersiveSessionEffects(false);
+            });
+        });
 
         const grantConfiguredPaths = () => {
             const downloadPath = AppConfig.getConfig("download.path");
@@ -258,14 +279,39 @@ class Utils {
         }).__immersiveFullscreen = active;
     }
 
+    private setImmersiveSessionEffects(active: boolean) {
+        if (active) {
+            this.windowManager.setAuxiliaryWindowsSuppressed(true);
+            if (
+                this.displaySleepBlockerId === null
+                || !powerSaveBlocker.isStarted(this.displaySleepBlockerId)
+            ) {
+                this.displaySleepBlockerId = powerSaveBlocker.start("prevent-display-sleep");
+            }
+            return;
+        }
+
+        if (this.displaySleepBlockerId !== null) {
+            if (powerSaveBlocker.isStarted(this.displaySleepBlockerId)) {
+                powerSaveBlocker.stop(this.displaySleepBlockerId);
+            }
+            this.displaySleepBlockerId = null;
+        }
+        this.windowManager.setAuxiliaryWindowsSuppressed(false);
+    }
+
     private setImmersiveFullScreen(enabled: boolean): boolean {
         const mainWindow = this.getMainWindow();
         if (!mainWindow) {
+            if (!enabled) {
+                this.setImmersiveSessionEffects(false);
+            }
             return false;
         }
 
         if (enabled) {
             if (this.isImmersiveFullScreen(mainWindow)) {
+                this.setImmersiveSessionEffects(true);
                 return true;
             }
 
@@ -291,6 +337,7 @@ class Utils {
                     usedBoundsFallback: false,
                 };
                 this.markImmersiveSession(mainWindow, true);
+                this.setImmersiveSessionEffects(true);
                 this.notifyMainWindowFullScreen(true);
                 return true;
             }
@@ -312,6 +359,7 @@ class Utils {
                 usedBoundsFallback: true,
             };
             this.markImmersiveSession(mainWindow, true);
+            this.setImmersiveSessionEffects(true);
             this.notifyMainWindowFullScreen(true);
             return true;
         }
@@ -339,6 +387,7 @@ class Utils {
             }
         }
 
+        this.setImmersiveSessionEffects(false);
         this.notifyMainWindowFullScreen(false);
         return false;
     }

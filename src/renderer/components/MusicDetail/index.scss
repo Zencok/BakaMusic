@@ -42,6 +42,11 @@
         }
     }
 
+    &[data-fullscreen="true"][data-cursor-hidden="true"],
+    &[data-fullscreen="true"][data-cursor-hidden="true"] * {
+        cursor: none !important;
+    }
+
     & .music-detail-background,
     & .music-detail-overlay {
         position: absolute;
