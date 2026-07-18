@@ -110,6 +110,8 @@ undefinedelectron-log-preload.js
 
 # Markdown files (except README and changelog)
 *.md
+AGENTS.md
+CLAUDE.md
+UPSTREAM.md
 !README.md
 !changelog.md
-!src/amll-core/UPSTREAM.md

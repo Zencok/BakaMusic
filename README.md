@@ -1,122 +1,134 @@
 # BakaMusic
 
 [![Stars](https://badgen.net/github/stars/Zencok/BakaMusic)](https://github.com/Zencok/BakaMusic/stargazers)
-[![Forks](https://badgen.net/github/forks/Zencok/BakaMusic)](https://github.com/Zencok/BakaMusic/forks)
 [![Latest Release](https://badgen.net/github/release/Zencok/BakaMusic)](https://github.com/Zencok/BakaMusic/releases/latest)
 [![Downloads](https://badgen.net/github/assets-dl/Zencok/BakaMusic)](https://github.com/Zencok/BakaMusic/releases)
 [![Issues](https://badgen.net/github/issues/Zencok/BakaMusic)](https://github.com/Zencok/BakaMusic/issues)
 [![License](https://badgen.net/badge/license/AGPL-3.0-only/blue)](LICENSE)
 
----
+**无广告、无内置在线音源、由插件扩展。**
 
-**无广告。无内置音源。完全由你掌控。**
+BakaMusic 是基于 Electron、React 和 TypeScript 的跨平台桌面音乐播放器。它提供播放、歌词、歌单、本地音乐、下载与主题框架；在线搜索和媒体来源由用户安装的插件提供。
 
-BakaMusic 是一款基于插件的跨平台桌面音乐播放器，构建于 Electron 43 + React 19 + TypeScript 之上，支持 Windows、macOS 和 Linux。应用本身不绑定任何平台——通过插件，互联网上的任意音源均可接入。
+## 功能
 
-## 特性
-
-| | 功能 | 说明 |
-|---|---|---|
-| 🔌 | **插件化音源** | 不内置任何平台，通过插件扩展搜索、播放、歌词、歌单导入等能力 |
-| 🎤 | **逐字歌词** | 支持 word-level 逐字歌词、翻译歌词与罗马音注音 |
-| 🖥️ | **桌面歌词** | 独立悬浮歌词窗口，支持自定义字体与样式 |
-| 📦 | **迷你模式** | 紧凑型播放器，不占桌面空间 |
-| 🎨 | **V2 主题包系统** | `bakamusic-theme@2` 语义 Token + 沙箱动态背景 |
-| 🎵 | **多音质支持** | 128k / 320k / FLAC / Hi-Res / Dolby Atmos 等 |
-| ⬇️ | **下载管理** | 并发下载队列，支持音质选择与进度追踪 |
-| 📁 | **本地音乐** | 扫描本地目录，自动识别元信息，支持多种视图 |
-| 🌐 | **多语言** | 简体中文、繁体中文、英文 |
-| 🔒 | **隐私优先** | 所有数据存储在本地，不上传个人信息 |
-
-## 下载
-
-前往 [GitHub Releases](https://github.com/Zencok/BakaMusic/releases) 下载对应平台安装包：
-
-| 平台 | 格式 |
-|------|------|
-| Windows x64 | Setup 安装包 / Portable 免安装 |
-| macOS x64 | DMG |
-| macOS arm64 (Apple Silicon) | DMG |
-| Linux amd64 | DEB |
-
-## 快速开始
-
-```bash
-# 安装依赖
-npm install
-
-# 启动开发模式
-npm start
-
-# 带 Electron Inspector 启动
-npm run dev
-
-# 代码检查
-npm run lint
-
-# 打包（不含安装器）
-npm run package
-
-# 构建平台安装包
-npm run make
-```
-
-### 构建 Windows 安装包
-
-需要安装 [Inno Setup](https://jrsoftware.org/isinfo.php) 并将 `iscc` 加入 PATH：
-
-```bash
-npm run package
-MSYS_NO_PATHCONV=1 iscc /DMyAppVersion=1.2.6 /DMyAppId=BakaMusic "release/build-windows.iss"
-```
-
-## 插件
-
-插件协议与 [MusicFree 安卓版](https://github.com/maotoumao/MusicFree) 完全兼容，可实现搜索、播放、歌词获取、专辑/作者详情、歌单导入等。
-
-开发文档：[插件开发指南](https://musicfree.catcat.work/plugin/introduction.html)
+| 功能 | 说明 |
+|---|---|
+| 插件化音源 | 扩展搜索、播放、歌词、专辑、榜单和歌单导入 |
+| 多格式歌词 | 普通/逐字歌词、翻译、罗马音与独立桌面歌词窗口 |
+| 多窗口 | 主窗口、桌面歌词和紧凑迷你模式同步工作 |
+| 播放与音质 | 播放队列、输出设备、HLS 及插件声明的多档音质 |
+| 本地音乐 | 目录扫描、文件监听、元信息解析和分类浏览 |
+| 下载管理 | 并发任务、暂停/续传、完整性校验、元数据与歌词写入 |
+| 歌单与统计 | 本地/收藏歌单、备份恢复、最近播放和收听统计 |
+| V2 主题 | 语义 Token、受控本地资源和沙箱动态背景 |
+| 多语言 | 简体中文、繁体中文、English |
 
 ## 截图
 
-**主页** — 聚合推荐、听歌统计与快速入口
+| 主页 | 播放详情 |
+|---|---|
+| ![主页](./.imgs/home.png) | ![播放详情](./.imgs/player.png) |
 
-![主页](./.imgs/home.png)
+| 推荐歌单 | 主题市场 |
+|---|---|
+| ![推荐歌单](./.imgs/playlist.png) | ![主题市场](./.imgs/theme-market.png) |
 
-**播放详细页** — 流体云歌词面板，沉浸式封面背景
+| 设置 | 多窗口联动 |
+|---|---|
+| ![设置](./.imgs/settings.png) | ![多窗口联动](./.imgs/showcase.png) |
 
-![播放详细页](./.imgs/player.png)
+## 下载
 
-**推荐歌单 / 榜单** — 来自插件的聚合内容，支持一键导入
+从 [GitHub Releases](https://github.com/Zencok/BakaMusic/releases) 获取发布包：
 
-![推荐歌单](./.imgs/playlist.png)
+| 平台 | 产物 |
+|---|---|
+| Windows x64 | Setup / Portable ZIP |
+| macOS x64、arm64 | DMG |
+| Linux amd64 | DEB |
 
-![榜单](./.imgs/toplist.png)
+## 本地开发
 
-**主题市场** — 在线浏览、预览并安装社区主题包
+要求：Node.js `24.15.0`（见 `.node-version`）及 npm。只有重建 `native/` 时才需要对应平台的 C/C++ 工具链；Windows 手动生成安装器还需要 [Inno Setup](https://jrsoftware.org/isinfo.php)。
 
-![主题市场](./.imgs/theme-market.png)
+```bash
+npm install
+npm start
+```
 
-**设置** — 音源、音质、外观、快捷键等全局配置
+| 命令 | 用途 |
+|---|---|
+| `npm run dev` | 带 Electron Inspector 启动 |
+| `npm run lint` | ESLint 自动修复 `src/` |
+| `npm exec tsc -- --noEmit --pretty false` | TypeScript 校验 |
+| `npm test` | 运行聚合回归测试 |
+| `npm run package` | 构建 unpacked 应用 |
+| `npm run smoke:package` | 校验 ASAR/fuses、三窗口、插件/主题和后台服务 |
+| `npm run smoke:native` | 在 Electron ABI 下加载 `qmc2`、`ence` |
+| `npm run build:native` | 重建 `native/*` 并复制运行时模块 |
+| `npm run make` | 生成 macOS/Linux Forge 产物（Windows 使用 Inno Setup） |
+| `npm run sbom -- --output-file SBOM.cdx.json` | 生成可复现 CycloneDX 1.6 SBOM |
+| `npm run clean` | 删除 `.webpack/`、`out/`、`tmp/` |
 
-![设置](./.imgs/settings.png)
+提交前建议执行：
 
-**多窗口联动** — 播放详细页、桌面歌词悬浮窗与迷你模式同时使用
+```bash
+npm exec tsc -- --noEmit --pretty false
+npm exec eslint -- ./src
+npm test
+```
 
-![播放详细页、桌面歌词与迷你模式](./.imgs/showcase.png)
+窗口、IPC、服务、native 或打包相关变更再执行：
+
+```bash
+npm run package
+npm run smoke:package
+```
+
+Windows 本地安装器示例：
+
+```powershell
+npm run package
+iscc /DMyAppVersion=VERSION /DMyAppId=BakaMusic release/build-windows.iss
+```
+
+## 架构
+
+```text
+src/main/               Electron 主进程
+src/preload/            contextBridge 边界
+src/renderer/           主窗口 React 应用
+src/renderer-lrc/       桌面歌词窗口
+src/renderer-minimode/  迷你模式窗口
+src/shared/             跨进程配置、插件、IPC、主题、服务
+src/renderer/core/      播放、下载、歌单、本地音乐、统计、备份
+src/webworkers/         utilityProcess 下载与文件监听实现
+src/amll-core/          完整 AMLL 上游同步区
+res/                    语言、图标、后台服务和 native 运行时
+```
+
+Renderer 关闭 Node integration，通过不同权限的 preload 调用主进程。插件、下载/监听任务和本地代理服务运行在独立 `utilityProcess`；生产包启用 ASAR 完整性与 Electron fuses。
+
+## 插件
+
+插件接口延续 MusicFree 生态的数据模型，可提供搜索、媒体地址、歌词、专辑/歌单、艺人、榜单、推荐和导入能力。当前契约以 [`src/types/plugin.d.ts`](src/types/plugin.d.ts) 为准；插件在独立受控进程中运行，网络与存储能力经过宿主边界。
+
+参考：[MusicFree 插件开发文档](https://musicfree.catcat.work/plugin/introduction.html)。
 
 ## V2 主题包
 
-BakaMusic 仅加载契约 ID 为 `bakamusic-theme@2` 的 V2 主题。每个主题包必须包含 `config.json` 和 `index.css`，可选资源放在 `imgs/`，动态背景放在 `iframes/`：
+BakaMusic 接受 `bakamusic-theme@2` 主题。主题至少包含 `config.json` 和 `index.css`，可选资源位于 `imgs/`，动态背景位于 `iframes/`：
 
 ```text
 my-theme/
 ├── config.json
 ├── index.css
 ├── imgs/
-└── iframes/app.html     # 可选，仅用于背景
+└── iframes/app.html
 ```
 
-`config.json` 声明主题元数据和明暗模式：
+最小配置和 Token：
 
 ```json
 {
@@ -127,112 +139,23 @@ my-theme/
   "preview": "@/imgs/preview.jpg",
   "description": "一句话描述",
   "tags": ["暗色"],
-  "scheme": "dark",
-  "iframe": { "app": "@/iframes/app.html" }
+  "scheme": "dark"
 }
 ```
-
-`index.css` 只能包含一个 `:root` 规则。以下四个基础 Token 必填，其余区域通过 `--theme-*` 语义 Token 定制：
 
 ```css
 :root {
   --theme-primary: #5ee2d4;
-  --theme-bg: rgba(94, 226, 212, 0.12);
-  --theme-text: #111;
-  --theme-scheme: light;
+  --theme-bg: #151718;
+  --theme-text: #f5f7f8;
+  --theme-scheme: dark;
 }
 ```
 
-V2 主题负责颜色、表面、边框、阴影、模糊、背景与小圆角；客户端负责结构、布局、层级和行为。主题不能注入客户端选择器、`@import`、`!important`，动态背景仅允许沙箱化的本地 `iframe.app`。完整字段、Token 和发布规范见 [BakaMusic Theme Spec v2.1](https://github.com/Toskysun/BakaThemePacks/blob/v2/source/docs/theme-spec-v2.md)。
+`index.css` 只能包含一个 `:root` Token 块；布局、层级和行为由客户端管理。完整允许字段和 Token 以 [`src/shared/themepack/contract.ts`](src/shared/themepack/contract.ts) 为准。
 
-| 主题 | 预览 |
-|------|------|
-| 暗黑模式 | ![暗黑模式](./.imgs/darkmode.png) |
+## 第三方与许可
 
-## 架构
-
-```
-src/
-├── main/                 # Electron 主进程（窗口管理、托盘、深度链接）
-├── renderer/             # 主窗口（React）
-│   ├── components/       # 可复用 UI 组件
-│   ├── pages/            # 页面视图
-│   ├── core/             # 核心业务（播放器、下载器、歌单、本地音乐）
-│   └── utils/            # 工具函数
-├── renderer-lrc/         # 桌面歌词窗口
-├── renderer-minimode/    # 迷你模式窗口
-├── amll-core/            # 内置 Apple Music-like Lyrics 渲染核心
-├── preload/              # Electron preload 脚本
-├── shared/               # 跨进程共享模块（配置、插件、消息总线、快捷键、主题、i18n）
-├── common/               # 公共工具与常量
-├── types/                # TypeScript 类型定义
-├── hooks/                # React Hooks
-└── webworkers/           # Web Workers（下载、本地文件监听、数据库）
-```
-
-## 技术栈
-
-| 技术 | 用途 |
-|------|------|
-| Electron 43 | 桌面框架 |
-| React 19 | UI 框架 |
-| TypeScript 6 | 类型系统 |
-| Webpack (Electron Forge) | 构建打包 |
-| SCSS | 样式 |
-| i18next | 国际化 |
-| better-sqlite3 | 本地数据库 |
-| sharp | 图像处理 |
-| hls.js | HLS 流媒体播放 |
-
-## 第三方项目说明
-
-- 本项目基于 [applemusic-like-lyrics](https://github.com/amll-dev/applemusic-like-lyrics) Core 维护内置歌词渲染实现，源码及本地适配位于 `src/amll-core/`。
-- 该项目主要用于逐字歌词、翻译歌词、罗马音歌词及相关动画效果的渲染。
-- BakaMusic 在其基础上完成了适配、集成与界面层改造，以满足本项目的歌词显示需求。
-- 上述第三方项目使用 `AGPL-3.0-only`，相关版权与协议归原作者及原项目所有。
-
-## 法律声明与免责条款
-
-**重要提示：使用本项目前，请务必仔细阅读本条款，使用本项目即视为你已充分理解并同意本条款全部内容。**
-
-### 一、定义约定
-
-- "**本项目**"：指 BakaMusic 桌面播放器框架及源代码，不包含任何第三方插件或音乐数据。
-- "**用户**"：指下载、安装、使用本项目的个人或组织。
-- "**合规插件**"：指符合数据来源平台用户协议、不侵犯第三方版权、不获取非公开数据的插件。
-- "**版权内容**"：指包括但不限于音乐文件、歌词、专辑封面、艺人信息等受著作权法保护的内容。
-
-### 二、数据与内容责任
-
-1. 本项目**不直接获取、存储、传输任何音乐数据或版权内容**，仅提供插件运行框架。用户通过插件获取的所有数据，其合法性、准确性由插件提供者及用户**自行负责**，本项目不承担任何责任。
-2. 若用户使用的插件存在获取非公开数据、侵犯第三方版权等违规行为，相关法律责任由用户及插件提供者承担，与本项目无关。
-3. 本项目使用的字体、图片等素材，均来自开源社区或已获得合法授权，若存在侵权请联系项目维护者立即移除，本项目将积极配合处理。
-
-### 三、版权合规要求
-
-1. 用户承诺：使用本项目时，仅通过合规插件获取音乐相关信息，且获取、使用版权内容的行为符合**《中华人民共和国著作权法》**及相关法律法规，不侵犯**任何第三方**合法权益。
-2. 用户需知晓：任何未经授权下载、传播、使用受版权保护的音乐文件的行为，均可能构成侵权，需自行承担法律后果。
-3. 本项目倡导"尊重版权、支持正版"，提醒用户通过官方音乐平台获取授权音乐服务。
-
-### 四、免责声明
-
-1. 因用户使用非合规插件、违反法律法规或第三方协议导致的任何法律责任（包括但不限于侵权赔偿、行政处罚），均由用户自行承担，本项目不承担任何直接、间接、连带或衍生责任。
-2. 因本项目框架本身的 bug 导致的用户设备故障、数据丢失，本项目仅承担在合理范围内的技术修复责任，不承担由此产生的间接损失（如商誉损失、业务中断损失等）。
-3. 本项目为开源学习项目，不提供商业服务，对用户使用本项目的效果不做任何明示或暗示的保证。
-
-### 五、使用限制
-
-1. 本项目仅允许用于**非商业、纯技术学习目的**，禁止用于任何商业运营、盈利活动，禁止修改后用于侵犯第三方权益的场景。
-2. 禁止在违反当地法律法规、本声明或第三方协议的前提下使用本项目，若用户所在地区禁止此类工具的使用，应立即停止使用。
-3. 禁止将本项目源代码或构建后的应用，与违规插件捆绑传播，禁止利用本项目从事任何违法违规活动。
-
-### 六、其他
-
-1. 本声明的效力、解释及适用，均适用中华人民共和国法律（不含港澳台地区法律）。
-2. 若用户与本项目维护者就本声明产生争议，应首先通过友好协商解决；协商不成的，任何一方均有权向本项目维护者所在地有管辖权的人民法院提起诉讼。
-
-## 协议
-
-本项目基于 [AGPL-3.0](LICENSE) 协议开源。
-
-> 原始桌面项目致谢：[MusicFreeDesktop](https://github.com/maotoumao/MusicFreeDesktop) by [maotoumao](https://github.com/maotoumao)
+- `src/amll-core/` 基于 [applemusic-like-lyrics](https://github.com/amll-dev/applemusic-like-lyrics) Core，并作为完整上游同步边界保留。
+- BakaMusic 不附带在线音源或媒体内容。插件、数据来源和内容使用由其提供者与使用者负责，请遵守所在地区法律、服务条款与版权规则。
+- 软件按现状提供，详见 [AGPL-3.0-only](LICENSE)。
