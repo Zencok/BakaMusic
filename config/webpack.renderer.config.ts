@@ -6,19 +6,24 @@ import webpack from "webpack";
 const postcssNestingModule = require("postcss-nesting");
 const postcssNesting = postcssNestingModule.default ?? postcssNestingModule;
 
-import { rules } from "./webpack.rules";
+import { sourceRules } from "./webpack.rules";
 import { plugins } from "./webpack.plugins";
 
-rules.push(
+const isProduction = process.env.NODE_ENV === "production";
+const styleLoader = { loader: "style-loader" };
+
+const rendererRules: NonNullable<Configuration["module"]>["rules"] = [
+    ...sourceRules,
     {
         test: /\.module\.css$/,
         use: [
-            { loader: "style-loader" },
+            styleLoader,
             {
                 loader: "css-loader",
                 options: {
                     modules: {
                         localIdentName: "[name]__[local]--[hash:base64:5]",
+                        namedExport: false,
                     },
                 },
             },
@@ -36,7 +41,7 @@ rules.push(
         test: /\.css$/,
         exclude: /\.module\.css$/,
         use: [
-            { loader: "style-loader" },
+            styleLoader,
             { loader: "css-loader" },
             {
                 loader: "postcss-loader",
@@ -51,7 +56,7 @@ rules.push(
     {
         test: /\.scss$/,
         use: [
-            { loader: "style-loader" },
+            styleLoader,
             { loader: "css-loader" },
             { loader: "sass-loader" },
         ],
@@ -81,17 +86,28 @@ rules.push(
             },
         ],
     },
-);
+];
 
 export const rendererConfig: Configuration = {
-    devtool: process.env.NODE_ENV === "production"
+    // Forge's asset-relocator runtime computes an asset base with `__dirname`.
+    // Renderers no longer have Node globals, so Webpack must provide its inert
+    // web mock even though application code never consumes that base.
+    node: {
+        __dirname: true,
+    },
+    devtool: isProduction
         ? false
         : "inline-source-map",
     module: {
-        rules,
+        rules: rendererRules,
     },
     plugins: [
         ...plugins,
+        new webpack.BannerPlugin({
+            banner: "const __dirname = \"/\";",
+            entryOnly: true,
+            raw: true,
+        }),
         new webpack.DefinePlugin({
             "import.meta.env.DEV": JSON.stringify(process.env.NODE_ENV !== "production"),
         }),

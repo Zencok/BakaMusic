@@ -1,224 +1,270 @@
-import * as Comlink from "comlink";
 import * as chokidar from "chokidar";
 import path from "path";
 import { supportLocalMediaType } from "@/common/constant";
+import { mapWithConcurrency } from "@/common/concurrency-util";
+import {
+    getLocalPathComparisonKey,
+    normalizeLocalFilePath,
+    parseLocalMusicItem,
+} from "@/common/file-util";
 import debounce from "lodash.debounce";
-import { parseLocalMusicItem } from "@/common/file-util";
 
-let watcher: chokidar.FSWatcher;
+const LOCAL_METADATA_CONCURRENCY = 4;
 
-const addedMusicItems: IMusic.IMusicItem[] = [];
-const removedFilePaths: string[] = [];
-const knownLocalFilePaths = new Set<string>();
+type LocalMusicItem = IMusic.IMusicItem & { $$localPath: string };
+type AddCallback = (musicItems: LocalMusicItem[]) => void | Promise<void>;
+type RemoveCallback = (filePaths: string[]) => void | Promise<void>;
 
+let watcher: chokidar.FSWatcher | null = null;
+let watcherGeneration = 0;
 let initialScanCompleted = false;
+let onAddCallback: AddCallback | undefined;
+let onRemoveCallback: RemoveCallback | undefined;
+let incrementalTaskQueue: Promise<void> = Promise.resolve();
 
-let _onAdd: (musicItems: IMusic.IMusicItem[]) => void;
-let _onRemove: (filePaths: string[]) => void;
+const knownLocalFilePaths = new Map<string, string>();
+const liveLocalFileKeys = new Set<string>();
+const pendingAddedPaths = new Map<string, string>();
+const pendingRemovedPaths = new Map<string, string>();
 
 function isSupportedLocalMusicFile(filePath: string) {
-    return supportLocalMediaType.some((postfix) => filePath.endsWith(postfix));
+    const lowerFilePath = filePath.toLocaleLowerCase();
+    return supportLocalMediaType.some((postfix) =>
+        lowerFilePath.endsWith(postfix));
 }
 
-function getCurrentWatchedLocalMusicFiles() {
-    const watchedFiles = new Set<string>();
-    const watched = watcher?.getWatched?.() ?? {};
+function normalizePaths(paths: string[] = []) {
+    return Array.from(new Set(paths.filter(Boolean).map(normalizeLocalFilePath)));
+}
+
+function getCurrentWatchedLocalMusicFiles(currentWatcher: chokidar.FSWatcher) {
+    const watchedFiles = new Map<string, string>();
+    const watched = currentWatcher.getWatched();
 
     Object.entries(watched).forEach(([dirPath, entries]) => {
         entries.forEach((entryName) => {
-            const filePath = path.join(dirPath, entryName);
+            const filePath = normalizeLocalFilePath(path.join(dirPath, entryName));
             if (isSupportedLocalMusicFile(filePath)) {
-                watchedFiles.add(filePath);
+                watchedFiles.set(getLocalPathComparisonKey(filePath), filePath);
             }
         });
     });
-
     return watchedFiles;
 }
 
-function createParsedLocalMusicItem(filePath: string) {
-    return parseLocalMusicItem(filePath).then((musicItem) => {
-        musicItem.$$localPath = filePath;
-        return musicItem;
-    });
+async function createParsedLocalMusicItem(filePath: string) {
+    const normalizedPath = normalizeLocalFilePath(filePath);
+    const musicItem = await parseLocalMusicItem(normalizedPath) as LocalMusicItem;
+    musicItem.$$localPath = normalizedPath;
+    return musicItem;
 }
 
-async function setupWatcher(initPaths?: string[], knownPaths: string[] = []) {
-    initialScanCompleted = false;
-    knownLocalFilePaths.clear();
-    knownPaths.forEach((filePath) => {
-        if (filePath) {
-            knownLocalFilePaths.add(filePath);
-        }
-    });
+const flushAddedMusic = debounce(() => {
+    const paths = [...pendingAddedPaths.values()];
+    pendingAddedPaths.clear();
+    const generation = watcherGeneration;
 
-    watcher = chokidar.watch(initPaths ?? [], {
-        depth: 10,
-        persistent: true,
-        ignorePermissionErrors: true,
-    });
-
-    watcher.on("add", async (fp, stats) => {
-        if (!(stats?.isFile?.() ?? true) || !isSupportedLocalMusicFile(fp)) {
-            return;
-        }
-        if (!initialScanCompleted && knownLocalFilePaths.delete(fp)) {
-            return;
-        }
-
-        const musicItem = await createParsedLocalMusicItem(fp);
-        addedMusicItems.push(musicItem);
-        syncAddedMusic();
-    });
-
-    watcher.on("unlink", (fp) => {
-        knownLocalFilePaths.delete(fp);
-        if (isSupportedLocalMusicFile(fp)) {
-            removedFilePaths.push(fp);
-            syncRemovedFilePaths();
-        }
-    });
-
-    watcher.on("ready", () => {
-        const watchedLocalMusicFiles = getCurrentWatchedLocalMusicFiles();
-        const staleFilePaths = [...knownLocalFilePaths].filter(
-            (filePath) => !watchedLocalMusicFiles.has(filePath),
+    incrementalTaskQueue = incrementalTaskQueue.then(async () => {
+        const musicItems = await mapWithConcurrency(
+            paths,
+            LOCAL_METADATA_CONCURRENCY,
+            createParsedLocalMusicItem,
         );
-
-        initialScanCompleted = true;
-        knownLocalFilePaths.clear();
-
-        if (staleFilePaths.length) {
-            removedFilePaths.push(...staleFilePaths);
-            syncRemovedFilePaths();
+        if (generation !== watcherGeneration) {
+            return;
         }
-    });
+        const currentItems = musicItems.filter((musicItem) =>
+            liveLocalFileKeys.has(
+                getLocalPathComparisonKey(musicItem.$$localPath),
+            ));
+        if (currentItems.length) {
+            await onAddCallback?.(currentItems);
+        }
+    }).catch(() => undefined);
+}, 350, { leading: false, trailing: true });
+
+const flushRemovedMusic = debounce(() => {
+    const paths = [...pendingRemovedPaths.values()];
+    pendingRemovedPaths.clear();
+    if (paths.length) {
+        void onRemoveCallback?.(paths);
+    }
+}, 350, { leading: false, trailing: true });
+
+function queueAddedFile(filePath: string) {
+    const normalizedPath = normalizeLocalFilePath(filePath);
+    const key = getLocalPathComparisonKey(normalizedPath);
+    liveLocalFileKeys.add(key);
+    pendingRemovedPaths.delete(key);
+    pendingAddedPaths.set(key, normalizedPath);
+    flushAddedMusic();
 }
 
-const syncAddedMusic = debounce(
-    () => {
-        const copyOfAddedMusicItems = [...addedMusicItems];
-        addedMusicItems.length = 0;
-        _onAdd?.(copyOfAddedMusicItems);
-    },
-    500,
-    {
-        leading: false,
-        trailing: true,
-    },
-);
+function queueRemovedFile(filePath: string) {
+    const normalizedPath = normalizeLocalFilePath(filePath);
+    const key = getLocalPathComparisonKey(normalizedPath);
+    liveLocalFileKeys.delete(key);
+    knownLocalFilePaths.delete(key);
+    pendingAddedPaths.delete(key);
+    pendingRemovedPaths.set(key, normalizedPath);
+    flushRemovedMusic();
+}
 
-const syncRemovedFilePaths = debounce(
-    () => {
-        const copyOfRemovedFilePaths = [...removedFilePaths];
-        removedFilePaths.length = 0;
-        _onRemove?.(copyOfRemovedFilePaths);
-    },
-    500,
-    {
-        leading: false,
-        trailing: true,
-    },
-);
-
-async function changeWatchPath(addPaths?: string[], rmPaths?: string[]) {
-    try {
-        if (addPaths?.length) {
-            watcher.add(addPaths);
-        }
-        if (rmPaths?.length) {
-            watcher.unwatch(rmPaths);
-            /**
-       * chokidar的bug: https://github.com/paulmillr/chokidar/issues/1027
-       * unwatch之后重新watch不会触发文件更新
-       */
-            rmPaths.forEach((it) => {
-                // @ts-ignore
-                const watchedDirEntry = watcher._watched.get(it);
-                if (watchedDirEntry) {
-                    // 移除所有子节点的监听
-                    watchedDirEntry._removeWatcher(
-                        path.dirname(it),
-                        path.basename(it),
-                        true,
-                    );
-                }
-                // watcher._watched.delete(it);
-            });
-        }
-    // console.log("WATCH PATH CHANGED", addPaths, rmPaths, watcher);
-    } catch {
-        return;
+export async function closeWatcher() {
+    watcherGeneration++;
+    initialScanCompleted = false;
+    flushAddedMusic.cancel();
+    flushRemovedMusic.cancel();
+    pendingAddedPaths.clear();
+    pendingRemovedPaths.clear();
+    knownLocalFilePaths.clear();
+    liveLocalFileKeys.clear();
+    const currentWatcher = watcher;
+    watcher = null;
+    if (currentWatcher) {
+        await currentWatcher.close();
     }
 }
 
-async function onAdd(fn: (musicItems: IMusic.IMusicItem[]) => void) {
-    _onAdd = fn;
+export async function setupWatcher(initPaths: string[] = [], knownPaths: string[] = []) {
+    await closeWatcher();
+    const generation = watcherGeneration;
+    normalizePaths(knownPaths).forEach((filePath) => {
+        knownLocalFilePaths.set(getLocalPathComparisonKey(filePath), filePath);
+    });
+
+    const nextWatcher = chokidar.watch(normalizePaths(initPaths), {
+        depth: 10,
+        persistent: true,
+        ignorePermissionErrors: true,
+    });
+    watcher = nextWatcher;
+
+    nextWatcher.on("add", (filePath, stats) => {
+        if (
+            generation !== watcherGeneration
+            || !(stats?.isFile?.() ?? true)
+            || !isSupportedLocalMusicFile(filePath)
+        ) {
+            return;
+        }
+        const normalizedPath = normalizeLocalFilePath(filePath);
+        const key = getLocalPathComparisonKey(normalizedPath);
+        liveLocalFileKeys.add(key);
+        if (!initialScanCompleted && knownLocalFilePaths.delete(key)) {
+            return;
+        }
+        queueAddedFile(normalizedPath);
+    });
+
+    nextWatcher.on("change", (filePath) => {
+        if (
+            generation === watcherGeneration
+            && isSupportedLocalMusicFile(filePath)
+        ) {
+            queueAddedFile(filePath);
+        }
+    });
+
+    nextWatcher.on("unlink", (filePath) => {
+        if (
+            generation === watcherGeneration
+            && isSupportedLocalMusicFile(filePath)
+        ) {
+            queueRemovedFile(filePath);
+        }
+    });
+
+    nextWatcher.on("ready", () => {
+        if (generation !== watcherGeneration) {
+            return;
+        }
+        const watchedFiles = getCurrentWatchedLocalMusicFiles(nextWatcher);
+        const staleFilePaths = [...knownLocalFilePaths.entries()]
+            .filter(([key]) => !watchedFiles.has(key))
+            .map(([, filePath]) => filePath);
+        watchedFiles.forEach((_filePath, key) => liveLocalFileKeys.add(key));
+        initialScanCompleted = true;
+        knownLocalFilePaths.clear();
+        staleFilePaths.forEach(queueRemovedFile);
+    });
 }
 
-async function onRemove(fn: (filePaths: string[]) => void) {
-    _onRemove = fn;
+export async function changeWatchPath(addPaths: string[] = [], removePaths: string[] = []) {
+    if (!watcher) {
+        await setupWatcher(addPaths);
+        return;
+    }
+    const normalizedAddPaths = normalizePaths(addPaths);
+    const normalizedRemovePaths = normalizePaths(removePaths);
+    if (normalizedAddPaths.length) {
+        watcher.add(normalizedAddPaths);
+    }
+    if (normalizedRemovePaths.length) {
+        await watcher.unwatch(normalizedRemovePaths);
+    }
 }
 
-async function scanDirectories(initPaths: string[] = [], knownPaths: string[] = []) {
-    const scannedKnownPaths = new Set(knownPaths);
-    const watchedFiles = new Set<string>();
-    const nextMusicItems: IMusic.IMusicItem[] = [];
-    const pendingTasks = new Set<Promise<void>>();
+export async function onAdd(callback: AddCallback) {
+    onAddCallback = callback;
+}
 
-    const scanWatcher = chokidar.watch(initPaths, {
+export async function onRemove(callback: RemoveCallback) {
+    onRemoveCallback = callback;
+}
+
+export async function scanDirectories(initPaths: string[] = [], knownPaths: string[] = []) {
+    const normalizedKnownPaths = normalizePaths(knownPaths);
+    const knownPathMap = new Map(
+        normalizedKnownPaths.map((filePath) => [
+            getLocalPathComparisonKey(filePath),
+            filePath,
+        ]),
+    );
+    const watchedFiles = new Map<string, string>();
+    const scanWatcher = chokidar.watch(normalizePaths(initPaths), {
         depth: 10,
         persistent: true,
         ignorePermissionErrors: true,
     });
 
-    return await new Promise<{
-        musicItems: IMusic.IMusicItem[];
+    return new Promise<{
+        musicItems: LocalMusicItem[];
         removedFilePaths: string[];
     }>((resolve) => {
+        let finalized = false;
         const finalize = async () => {
-            await Promise.all([...pendingTasks]);
-            const removedFilePaths = [...scannedKnownPaths].filter(
-                (filePath) => !watchedFiles.has(filePath),
-            );
+            if (finalized) {
+                return;
+            }
+            finalized = true;
             await scanWatcher.close();
-            resolve({
-                musicItems: nextMusicItems,
-                removedFilePaths,
-            });
+            const newFilePaths = [...watchedFiles.entries()]
+                .filter(([key]) => !knownPathMap.has(key))
+                .map(([, filePath]) => filePath);
+            const musicItems = await mapWithConcurrency(
+                newFilePaths,
+                LOCAL_METADATA_CONCURRENCY,
+                createParsedLocalMusicItem,
+            );
+            const removedFilePaths = [...knownPathMap.entries()]
+                .filter(([key]) => !watchedFiles.has(key))
+                .map(([, filePath]) => filePath);
+            resolve({ musicItems, removedFilePaths });
         };
 
-        scanWatcher.on("add", (fp, stats) => {
-            if (!(stats?.isFile?.() ?? true) || !isSupportedLocalMusicFile(fp)) {
+        scanWatcher.on("add", (filePath, stats) => {
+            if (!(stats?.isFile?.() ?? true) || !isSupportedLocalMusicFile(filePath)) {
                 return;
             }
-
-            watchedFiles.add(fp);
-            if (scannedKnownPaths.delete(fp)) {
-                return;
-            }
-
-            const task = createParsedLocalMusicItem(fp)
-                .then((musicItem) => {
-                    nextMusicItems.push(musicItem);
-                })
-                .finally(() => {
-                    pendingTasks.delete(task);
-                });
-
-            pendingTasks.add(task);
+            const normalizedPath = normalizeLocalFilePath(filePath);
+            watchedFiles.set(getLocalPathComparisonKey(normalizedPath), normalizedPath);
         });
-
         scanWatcher.on("ready", () => {
+            void finalize();
+        });
+        scanWatcher.on("error", () => {
             void finalize();
         });
     });
 }
-
-Comlink.expose({
-    setupWatcher,
-    changeWatchPath,
-    onAdd,
-    onRemove,
-    scanDirectories,
-});

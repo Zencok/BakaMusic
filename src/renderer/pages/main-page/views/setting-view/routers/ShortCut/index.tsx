@@ -29,7 +29,7 @@ export default function ShortCut() {
     );
 }
 
-type IShortCutKeys = Extract<keyof IAppConfig["shortCut.shortcuts"], string>;
+type IShortCutKeys = Extract<keyof NonNullable<IAppConfig["shortCut.shortcuts"]>, string>;
 
 
 function ShortCutTable() {
@@ -60,7 +60,7 @@ function ShortCutTable() {
                             </div>
                             <ShortCutItem
                                 enabled={!!enableLocalShortCut}
-                                value={shortCuts?.[it]?.local}
+                                value={shortCuts?.[it]?.local ?? undefined}
                                 onChange={(val) => {
                                     if (val) {
                                         shortCut.registerLocalShortCut(it, val);
@@ -78,7 +78,7 @@ function ShortCutTable() {
                             </div>
                             <ShortCutItem
                                 enabled={!!enableGlobalShortCut}
-                                value={shortCuts?.[it]?.global}
+                                value={shortCuts?.[it]?.global ?? undefined}
                                 onChange={(val) => {
                                     if (val) {
                                         shortCut.registerGlobalShortCut(it, val);
@@ -135,87 +135,92 @@ function ShortCutItem(props: IShortCutItemProps) {
     const { t } = useTranslation();
 
     useEffect(() => {
+        const scope = scopeRef.current;
+        const handler = (evt: KeyboardEvent) => {
+            const type = evt.type;
+            let key = evt.key.toLowerCase();
+            if (evt.code === "Space") {
+                key = "Space";
+            }
+            if (type === "keydown") {
+                isRecordingRef.current = true;
+                if (key === "meta") {
+                    setTmpValue(null);
+                    isRecordingRef.current = false;
+                    recordedKeysRef.current.clear();
+                } else {
+                    if (!recordedKeysRef.current.has(key)) {
+                        recordedKeysRef.current.add(key);
+                        setTmpValue(
+                            [...recordedKeysRef.current].map((it) =>
+                                it.replace(/^(.)/, (_, $1: string) => $1.toUpperCase()),
+                            ),
+                        );
+                    }
+                }
+            } else if (type === "keyup" && isRecordingRef.current) {
+                isRecordingRef.current = false;
+                // 开始结算
+                const recordedSet = recordedKeysRef.current;
+                const _recordShortCutKey: string[] = [];
+
+                let statusCode = 0;
+                if (recordedSet.has("ctrl") || recordedSet.has("control")) {
+                    _recordShortCutKey.push("Ctrl");
+                    recordedSet.delete("ctrl");
+                    recordedSet.delete("control");
+                    statusCode |= 1;
+                }
+                if (recordedSet.has("command")) {
+                    _recordShortCutKey.push("Command");
+                    recordedSet.delete("command");
+                    statusCode |= 1;
+                }
+                if (recordedSet.has("option")) {
+                    _recordShortCutKey.push("Option");
+                    recordedSet.delete("option");
+                    statusCode |= 1;
+                }
+                if (recordedSet.has("shift")) {
+                    _recordShortCutKey.push("Shift");
+                    recordedSet.delete("shift");
+                    statusCode |= 1;
+                }
+
+                if (recordedSet.has("alt")) {
+                    _recordShortCutKey.push("Alt");
+                    recordedSet.delete("alt");
+                    statusCode |= 1;
+                }
+
+                if (recordedSet.size === 1 && (isGlobal ? statusCode : true)) {
+                    _recordShortCutKey.push(
+                        keyCodeMap([...recordedSet.values()][0] ?? "").replace(
+                            /^(.)/,
+                            (_, $1: string) => $1.toUpperCase(),
+                        ),
+                    );
+                    setTmpValue(_recordShortCutKey);
+                    onChange?.(_recordShortCutKey);
+                } else {
+                    setTmpValue(null);
+                }
+
+                recordedKeysRef.current.clear();
+            }
+        };
         hotkeys(
             "*",
             {
-                scope: scopeRef.current,
+                scope,
                 keyup: true,
             },
-            (evt) => {
-                const type = evt.type;
-                let key = evt.key.toLowerCase();
-                if (evt.code === "Space") {
-                    key = "Space";
-                }
-                if (type === "keydown") {
-                    isRecordingRef.current = true;
-                    if (key === "meta") {
-                        setTmpValue(null);
-                        isRecordingRef.current = false;
-                        recordedKeysRef.current.clear();
-                    } else {
-                        if (!recordedKeysRef.current.has(key)) {
-                            recordedKeysRef.current.add(key);
-                            setTmpValue(
-                                [...recordedKeysRef.current].map((it) =>
-                                    it.replace(/^(.)/, (_, $1: string) => $1.toUpperCase()),
-                                ),
-                            );
-                        }
-                    }
-                } else if (type === "keyup" && isRecordingRef.current) {
-                    isRecordingRef.current = false;
-                    // 开始结算
-                    const recordedSet = recordedKeysRef.current;
-                    const _recordShortCutKey: string[] = [];
-
-                    let statusCode = 0;
-                    if (recordedSet.has("ctrl") || recordedSet.has("control")) {
-                        _recordShortCutKey.push("Ctrl");
-                        recordedSet.delete("ctrl");
-                        recordedSet.delete("control");
-                        statusCode |= 1;
-                    }
-                    if (recordedSet.has("command")) {
-                        _recordShortCutKey.push("Command");
-                        recordedSet.delete("command");
-                        statusCode |= 1;
-                    }
-                    if (recordedSet.has("option")) {
-                        _recordShortCutKey.push("Option");
-                        recordedSet.delete("option");
-                        statusCode |= 1;
-                    }
-                    if (recordedSet.has("shift")) {
-                        _recordShortCutKey.push("Shift");
-                        recordedSet.delete("shift");
-                        statusCode |= 1;
-                    }
-
-                    if (recordedSet.has("alt")) {
-                        _recordShortCutKey.push("Alt");
-                        recordedSet.delete("alt");
-                        statusCode |= 1;
-                    }
-
-                    if (recordedSet.size === 1 && (isGlobal ? statusCode : true)) {
-                        _recordShortCutKey.push(
-                            keyCodeMap([...recordedSet.values()][0] ?? "").replace(
-                                /^(.)/,
-                                (_, $1: string) => $1.toUpperCase(),
-                            ),
-                        );
-                        setTmpValue(_recordShortCutKey);
-                        onChange?.(_recordShortCutKey);
-                    } else {
-                        setTmpValue(null);
-                    }
-
-                    recordedKeysRef.current.clear();
-                }
-            },
+            handler,
         );
-    }, []);
+        return () => {
+            hotkeys.unbind("*", scope, handler);
+        };
+    }, [isGlobal, onChange]);
 
     return (
         <div className="short-cut-item--container" data-disabled={!enabled}>

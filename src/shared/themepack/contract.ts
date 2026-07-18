@@ -1,6 +1,6 @@
 export const THEME_SPEC_V2 = "bakamusic-theme@2";
 
-export const REQUIRED_THEME_TOKENS = [
+const REQUIRED_THEME_TOKENS = [
     "--theme-primary",
     "--theme-bg",
     "--theme-text",
@@ -25,7 +25,7 @@ export const CLIENT_OWNED_COMPATIBILITY_TOKENS = [
  * deliberately absent: packs may paint every BakaMusic region, but may not
  * restructure it.
  */
-export const THEME_TOKENS = [
+const THEME_TOKENS = [
     ...REQUIRED_THEME_TOKENS,
     "--theme-primary-hover",
     "--theme-primary-active",

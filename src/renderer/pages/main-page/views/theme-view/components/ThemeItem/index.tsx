@@ -80,7 +80,7 @@ export default function ThemeItem(props: IProps) {
                         }}
                     ></div>
                 ) : (
-                    <img src={config.preview} className="theme-thumb"></img>
+                    <img src={config.preview} className="theme-thumb" alt={config.name}></img>
                 )}
                 <IfTruthy condition={selected}>
                     <div className="theme-selected"></div>

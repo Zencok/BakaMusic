@@ -8,7 +8,7 @@ function clampArtworkSize(size?: number) {
     return Math.min(960, Math.max(48, Math.round(size as number)));
 }
 
-export function getCompactRemoteArtworkSrc(src?: string | null, size?: number) {
+function getCompactRemoteArtworkSrc(src?: string | null, size?: number) {
     if (!src || typeof src !== "string") {
         return undefined;
     }

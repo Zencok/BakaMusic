@@ -17,12 +17,14 @@ import type { SvgAssetIconNames } from "@/renderer/components/SvgAsset";
 import Tag from "@/renderer/components/Tag";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
 import { getBestMusicQualityInfo } from "@/renderer/utils/music-quality-metadata";
-import { useMemo, useState } from "react";
+import useVirtualList from "@/hooks/useVirtualList";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import "./index.scss";
 
 type StatisticsTab = "recent" | "ranking";
+const STATISTICS_ROW_HEIGHT = 72;
 
 interface IStatisticsCard {
     icon: SvgAssetIconNames;
@@ -117,8 +119,11 @@ function StatisticsTrackRow(props: IStatisticsTrackRowProps) {
             </div>
             <div className="statistics-track-cover-wrap">
                 <img
+                    alt={entry.musicItem.title || t("media.unknown_title")}
                     className="statistics-track-cover"
                     draggable={false}
+                    loading="lazy"
+                    decoding="async"
                     src={artwork}
                     onError={setFallbackAlbum}
                 ></img>
@@ -172,6 +177,8 @@ export default function StatisticsView() {
     const { statistics, recentEntries, mostPlayedEntries } = useListeningStatistics();
     const [activeTab, setActiveTab] = useState<StatisticsTab>("recent");
     const [searchText, setSearchText] = useState("");
+    const pageRef = useRef<HTMLDivElement>(null);
+    const trackListRef = useRef<HTMLDivElement>(null);
     const topEntry = mostPlayedEntries[0];
     const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
     const currentEntries = activeTab === "recent" ? recentEntries : mostPlayedEntries;
@@ -186,6 +193,19 @@ export default function StatisticsView() {
                 .some((value) => value?.toLocaleLowerCase().includes(normalizedSearch)),
         );
     }, [currentEntries, normalizedSearch]);
+    const getScrollElement = useCallback(() => pageRef.current, []);
+    const getTrackListOffset = useCallback(
+        () => trackListRef.current?.offsetTop ?? 0,
+        [],
+    );
+    const virtualController = useVirtualList({
+        data: visibleEntries,
+        estimateItemHeight: STATISTICS_ROW_HEIGHT,
+        fallbackRenderCount: 40,
+        getScrollElement,
+        offsetHeight: getTrackListOffset,
+        overscan: 5,
+    });
     const cards: IStatisticsCard[] = [
         {
             icon: "motion-play",
@@ -232,7 +252,11 @@ export default function StatisticsView() {
     }
 
     return (
-        <div id="page-container" className="page-container statistics-page">
+        <div
+            id="page-container"
+            className="page-container statistics-page"
+            ref={pageRef}
+        >
             <header className="statistics-header">
                 <h1>{t("statistics_page.title")}</h1>
                 <button
@@ -302,17 +326,30 @@ export default function StatisticsView() {
                 </div>
 
                 {visibleEntries.length ? (
-                    <div className="statistics-track-list">
-                        {visibleEntries.map((entry, index) => (
-                            <StatisticsTrackRow
-                                currentMusic={currentMusic}
-                                entry={entry}
-                                index={index}
-                                key={getListeningStatisticsKey(entry.musicItem)}
-                                mode={activeTab}
-                                t={t}
-                            ></StatisticsTrackRow>
-                        ))}
+                    <div
+                        className="statistics-track-list"
+                        ref={trackListRef}
+                        style={{ height: virtualController.totalHeight }}
+                    >
+                        <div
+                            className="statistics-track-virtual-content"
+                            style={{
+                                transform: `translateY(${virtualController.startTop}px)`,
+                            }}
+                        >
+                            {virtualController.virtualItems.map((virtualItem) => (
+                                <StatisticsTrackRow
+                                    currentMusic={currentMusic}
+                                    entry={virtualItem.dataItem}
+                                    index={virtualItem.rowIndex}
+                                    key={getListeningStatisticsKey(
+                                        virtualItem.dataItem.musicItem,
+                                    )}
+                                    mode={activeTab}
+                                    t={t}
+                                ></StatisticsTrackRow>
+                            ))}
+                        </div>
                     </div>
                 ) : (
                     <div className="statistics-empty">

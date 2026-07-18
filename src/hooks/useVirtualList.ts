@@ -1,6 +1,7 @@
 import {
     useCallback,
     useEffect,
+    useMemo,
     useRef,
     useState,
 } from "react";
@@ -9,147 +10,193 @@ import throttle from "lodash.throttle";
 interface IVirtualListProps<T> {
     /** 滚动的容器 */
     getScrollElement?: () => HTMLElement | null;
-    /** 滚动容器的query */
+    /** 滚动容器的 query */
     scrollElementQuery?: string;
-    /** 元素高度和列表高度 */
+    /** 固定行高估值 */
     estimateItemHeight: number;
-
     /** 数据 */
     data: T[];
-    /** 渲染数目 */
+    /** 强制渲染数目 */
     renderCount?: number;
-    /** 虚拟列表失效时的渲染数目 */
+    /** 未绑定滚动容器时的渲染数目，-1 表示全部 */
     fallbackRenderCount?: number;
-    /** 偏移高度 */
+    /** 列表相对滚动容器顶部的偏移 */
     offsetHeight?: number | (() => number);
+    /** 可视区上下额外保留的行数 */
+    overscan?: number;
 }
 
 interface IVirtualItem<T> {
-    /** 偏移 */
     top: number;
-    /** 下标 */
     rowIndex: number;
-    /** 数据 */
     dataItem: T;
 }
 
+function resolveOffset(offsetHeight: number | (() => number)) {
+    return typeof offsetHeight === "number" ? offsetHeight : offsetHeight();
+}
+
 export default function useVirtualList<T>(props: IVirtualListProps<T>) {
-    const {
-        estimateItemHeight,
-        data,
-        renderCount,
-        fallbackRenderCount = -1,
-        getScrollElement,
-        scrollElementQuery,
-        offsetHeight = 0,
-    } = props;
-    const dataRef = useRef(data);
-    dataRef.current = data;
-
-    const [virtualItems, setVirtualItems] = useState<IVirtualItem<T>[]>([]);
-    const [totalHeight, setTotalHeight] = useState<number>(
-        data.length * estimateItemHeight,
-    );
-
+    const propsRef = useRef(props);
+    propsRef.current = props;
     const scrollElementRef = useRef<HTMLElement | null>(null);
+    const resizeObserverRef = useRef<ResizeObserver | null>(null);
+    const [virtualItems, setVirtualItems] = useState<IVirtualItem<T>[]>([]);
 
-    const scrollHandler = useCallback(
-        throttle(
-            () => {
-                const scrollTop =
-          (scrollElementRef.current?.scrollTop ?? 0) -
-          (typeof offsetHeight === "number" ? offsetHeight : offsetHeight());
-                const realData = dataRef.current;
-                const estimizeStartIndex = Math.floor(scrollTop / estimateItemHeight);
-                const startIndex = Math.max(
-                    estimizeStartIndex - (estimizeStartIndex % 2 === 1 ? 3 : 2),
-                    0,
-                );
+    const commitVirtualItems = useCallback((nextItems: IVirtualItem<T>[]) => {
+        setVirtualItems((previousItems) => {
+            if (
+                previousItems.length === nextItems.length
+                && previousItems.every((item, index) =>
+                    item.rowIndex === nextItems[index]?.rowIndex
+                    && item.dataItem === nextItems[index]?.dataItem)
+            ) {
+                return previousItems;
+            }
+            return nextItems;
+        });
+    }, []);
 
-                setVirtualItems(
-                    realData
-                        .slice(
-                            startIndex,
-                            startIndex +
-                (scrollElementRef.current
-                    ? (
-                        renderCount ??
-                        Math.max(
-                            12,
-                            Math.ceil(
-                                (scrollElementRef.current.clientHeight || 0) /
-                                estimateItemHeight,
-                            ) + 8,
-                        )
-                    )
-                    : fallbackRenderCount < 0
-                        ? realData.length
-                        : fallbackRenderCount),
-                        )
-                        .map((item, index) => ({
-                            rowIndex: startIndex + index,
-                            dataItem: item,
-                            top: (startIndex + index) * estimateItemHeight,
-                        })),
-                );
-            },
-            32,
-            {
-                trailing: true,
-                leading: true,
-            },
-        ),
-        [],
-    );
+    const calculateVirtualItems = useCallback(() => {
+        const {
+            data,
+            estimateItemHeight,
+            fallbackRenderCount = -1,
+            offsetHeight = 0,
+            overscan = 4,
+            renderCount,
+        } = propsRef.current;
+        const scrollElement = scrollElementRef.current;
 
-    useEffect(() => {
-        setTotalHeight(data.length * estimateItemHeight);
-        scrollHandler();
-    }, [data]);
-
-    useEffect(() => {
-        if (!scrollElementRef.current) {
-            scrollElementRef.current = getScrollElement
-                ? getScrollElement()
-                : scrollElementQuery
-                    ? document.querySelector(scrollElementQuery)
-                    : null;
+        if (!data.length || estimateItemHeight <= 0) {
+            commitVirtualItems([]);
+            return;
         }
-        if (scrollElementRef.current) {
-            scrollElementRef.current.addEventListener("scroll", scrollHandler);
+
+        if (!scrollElement) {
+            const count = fallbackRenderCount < 0
+                ? data.length
+                : Math.min(data.length, fallbackRenderCount);
+            commitVirtualItems(data.slice(0, count).map((dataItem, rowIndex) => ({
+                dataItem,
+                rowIndex,
+                top: rowIndex * estimateItemHeight,
+            })));
+            return;
+        }
+
+        const listScrollTop = Math.max(
+            0,
+            scrollElement.scrollTop - resolveOffset(offsetHeight),
+        );
+        const firstVisibleIndex = Math.floor(listScrollTop / estimateItemHeight);
+        const normalizedOverscan = Math.max(0, Math.floor(overscan));
+        const startIndex = Math.max(0, firstVisibleIndex - normalizedOverscan);
+        const visibleCount = renderCount ?? Math.max(
+            1,
+            Math.ceil(scrollElement.clientHeight / estimateItemHeight)
+                + normalizedOverscan * 2,
+        );
+        const endIndex = Math.min(data.length, startIndex + visibleCount);
+
+        commitVirtualItems(data.slice(startIndex, endIndex).map((dataItem, index) => {
+            const rowIndex = startIndex + index;
+            return {
+                dataItem,
+                rowIndex,
+                top: rowIndex * estimateItemHeight,
+            };
+        }));
+    }, [commitVirtualItems]);
+
+    const throttledCalculate = useMemo(() => throttle(
+        calculateVirtualItems,
+        32,
+        { leading: true, trailing: true },
+    ), [calculateVirtualItems]);
+
+    const detachScrollElement = useCallback(() => {
+        scrollElementRef.current?.removeEventListener("scroll", throttledCalculate);
+        resizeObserverRef.current?.disconnect();
+        resizeObserverRef.current = null;
+    }, [throttledCalculate]);
+
+    const setScrollElement = useCallback((scrollElement: HTMLElement | null) => {
+        if (scrollElementRef.current === scrollElement) {
+            calculateVirtualItems();
+            return;
+        }
+
+        detachScrollElement();
+        scrollElementRef.current = scrollElement;
+        if (scrollElement) {
+            scrollElement.addEventListener("scroll", throttledCalculate, {
+                passive: true,
+            });
+            if (typeof ResizeObserver !== "undefined") {
+                resizeObserverRef.current = new ResizeObserver(throttledCalculate);
+                resizeObserverRef.current.observe(scrollElement);
+            }
+        }
+        calculateVirtualItems();
+    }, [calculateVirtualItems, detachScrollElement, throttledCalculate]);
+
+    useEffect(() => {
+        calculateVirtualItems();
+    }, [
+        props.data,
+        props.estimateItemHeight,
+        props.fallbackRenderCount,
+        props.overscan,
+        props.renderCount,
+        calculateVirtualItems,
+    ]);
+
+    useEffect(() => {
+        const { getScrollElement, scrollElementQuery } = propsRef.current;
+        const discoveredElement = getScrollElement
+            ? getScrollElement()
+            : scrollElementQuery
+                ? document.querySelector<HTMLElement>(scrollElementQuery)
+                : null;
+        if (discoveredElement) {
+            setScrollElement(discoveredElement);
         }
 
         return () => {
-            scrollElementRef.current?.removeEventListener?.("scroll", scrollHandler);
-            scrollHandler.cancel();
+            detachScrollElement();
             scrollElementRef.current = null;
         };
-    }, []);
+    }, [
+        props.scrollElementQuery,
+        detachScrollElement,
+        setScrollElement,
+    ]);
 
-    function setScrollElement(scrollElement: HTMLElement | null) {
-        scrollElementRef.current?.removeEventListener("scroll", scrollHandler);
-        scrollElementRef.current = scrollElement;
-        if (scrollElement) {
-            scrollElement.addEventListener("scroll", scrollHandler);
-            scrollHandler();
-        }
-    }
+    useEffect(() => () => {
+        throttledCalculate.cancel();
+    }, [throttledCalculate]);
 
-    function scrollToIndex(index: number, behavior?: ScrollBehavior) {
-        if (!scrollElementRef.current) {
+    const scrollToIndex = useCallback((index: number, behavior?: ScrollBehavior) => {
+        const scrollElement = scrollElementRef.current;
+        if (!scrollElement) {
             return;
         }
-        scrollElementRef.current.scrollTo({
-            top:
-        (typeof offsetHeight === "number" ? offsetHeight : offsetHeight()) +
-        estimateItemHeight * index,
+        const {
+            data,
+            estimateItemHeight,
+            offsetHeight = 0,
+        } = propsRef.current;
+        const safeIndex = Math.min(Math.max(0, index), Math.max(0, data.length - 1));
+        scrollElement.scrollTo({
+            top: resolveOffset(offsetHeight) + estimateItemHeight * safeIndex,
             behavior,
         });
-    }
+    }, []);
 
     return {
         virtualItems,
-        totalHeight,
+        totalHeight: props.data.length * props.estimateItemHeight,
         startTop: virtualItems[0]?.top ?? 0,
         setScrollElement,
         scrollToIndex,

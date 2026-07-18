@@ -11,6 +11,7 @@ import messageBus, { useAppStatePartial } from "@shared/message-bus/renderer/ext
 import { appWindowUtil } from "@shared/utils/renderer";
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 const BASE_FONT_SIZE = 24;
 const MIN_DISPLAY_FONT_SIZE = 16;
@@ -29,6 +30,7 @@ interface IDragState {
 }
 
 export default function LyricWindowPage() {
+    const { t } = useTranslation();
     const currentMusic = useAppStatePartial("musicItem");
     const playerState = useAppStatePartial("playerState");
     const currentFullLyric = useAppStatePartial("fullLyric");
@@ -130,7 +132,7 @@ export default function LyricWindowPage() {
     const artist = currentMusic?.artist;
     const subtitle = [artist, currentMusic?.album]
         .filter(Boolean)
-        .join(" - ") || "Desktop Lyrics";
+        .join(" - ") || t("desktop_lyric.subtitle");
     const songInfo = subtitle ? `${title} - ${subtitle}` : title;
     const platform = currentMusic?.platform || currentMusic?._musicSheetPlatform;
     const displayTitle = artist ? `${title} - ${artist}` : title;
@@ -255,6 +257,7 @@ export default function LyricWindowPage() {
                 <div className="desktop-lyric-page--controls">
                     <DesktopActionButton
                         iconName="skip-left"
+                        label={t("main.previous_music")}
                         onClick={() => {
                             messageBus.sendCommand("SkipToPrevious");
                         }}
@@ -262,6 +265,9 @@ export default function LyricWindowPage() {
                     <DesktopActionButton
                         emphasis
                         iconName={isPlaybackActive(playerState) ? "pause" : "play"}
+                        label={t(isPlaybackActive(playerState)
+                            ? "media.music_state_pause"
+                            : "media.music_state_play")}
                         onClick={() => {
                             if (currentMusic) {
                                 messageBus.sendCommand("TogglePlayerState");
@@ -270,12 +276,16 @@ export default function LyricWindowPage() {
                     ></DesktopActionButton>
                     <DesktopActionButton
                         iconName="skip-right"
+                        label={t("main.next_music")}
                         onClick={() => {
                             messageBus.sendCommand("SkipToNext");
                         }}
                     ></DesktopActionButton>
                     <DesktopActionButton
                         iconName={lockLyric ? "lock-open" : "lock-closed"}
+                        label={t(lockLyric
+                            ? "main.unlock_desktop_lyric"
+                            : "main.lock_desktop_lyric")}
                         onClick={() => {
                             AppConfig.setConfig({
                                 "lyric.lockLyric": !lockLyric,
@@ -284,6 +294,7 @@ export default function LyricWindowPage() {
                     ></DesktopActionButton>
                     <DesktopActionButton
                         iconName="x-mark"
+                        label={t("common.close")}
                         onClick={() => {
                             appWindowUtil.setLyricWindow(false);
                         }}
@@ -359,21 +370,24 @@ export default function LyricWindowPage() {
 
 interface IDesktopActionButtonProps {
     iconName: SvgAssetIconNames;
+    label: string;
     onClick: () => void;
     emphasis?: boolean;
 }
 
-function DesktopActionButton({ iconName, onClick, emphasis }: IDesktopActionButtonProps) {
+function DesktopActionButton({ iconName, label, onClick, emphasis }: IDesktopActionButtonProps) {
     return (
-        <div
+        <button
+            type="button"
             className="desktop-lyric-page--action"
             data-emphasis={emphasis}
             data-no-drag="true"
-            role="button"
+            title={label}
+            aria-label={label}
             onClick={onClick}
         >
             <SvgAsset iconName={iconName}></SvgAsset>
-        </div>
+        </button>
     );
 }
 

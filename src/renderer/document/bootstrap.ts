@@ -16,14 +16,15 @@ import throttle from "lodash.throttle";
 import { IAppState } from "@shared/message-bus/type";
 import MusicDetail from "@renderer/components/MusicDetail";
 import shortCut from "@shared/short-cut/renderer";
-import * as Electron from "electron";
 import { applyUiStyle } from "@renderer/utils/ui-style";
 import { toast } from "react-toastify";
+import setupKeyboardAccessibility from "@renderer/utils/accessibility";
 
 
 setAutoFreeze(false);
 
 export default async function () {
+    setupKeyboardAccessibility();
     await Promise.all([
         AppConfig.setup(),
         PluginManager.setup(),
@@ -64,13 +65,7 @@ export default async function () {
 }
 
 function getDroppedFilePath(file: File) {
-    const webUtils = (Electron as typeof Electron & {
-        webUtils?: {
-            getPathForFile?: (target: File) => string;
-        };
-    }).webUtils;
-
-    return webUtils?.getPathForFile?.(file) || (file as File & { path?: string }).path || "";
+    return fsUtil.getPathForFile(file);
 }
 
 function dropHandler() {

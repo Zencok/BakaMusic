@@ -70,6 +70,10 @@ if (!bridge) {
 }
 
 const delegatePluginsStore = new Store<IPlugin.IPluginDelegate[]>([]);
+const emptyPluginMeta = Object.freeze({}) as Record<
+    string,
+    IPlugin.IPluginMeta | undefined
+>;
 
 function sortPluginsByMeta(
     plugins: IPlugin.IPluginDelegate[],
@@ -194,24 +198,11 @@ const PluginManager = {
 
 export default PluginManager;
 
-export function useSupportedPlugin(
-    featureMethod: keyof IPlugin.IPluginInstanceMethods,
-) {
-    const plugins = delegatePluginsStore.useValue();
-    const meta = useAppConfig("private.pluginMeta") ?? {};
-
-    return useMemo(() => {
-        return plugins.filter(
-            (_) => _.supportedMethod.includes(featureMethod) && isPluginEnabled(_.platform, meta),
-        );
-    }, [plugins, meta, featureMethod]);
-}
-
 export function useSortedSupportedPlugin(
     featureMethod: keyof IPlugin.IPluginInstanceMethods,
 ) {
     const plugins = delegatePluginsStore.useValue();
-    const meta = useAppConfig("private.pluginMeta") ?? {};
+    const meta = useAppConfig("private.pluginMeta") ?? emptyPluginMeta;
 
     return useMemo(() => {
         return sortPluginsByMeta(
@@ -225,10 +216,9 @@ export function useSortedSupportedPlugin(
 
 export function useSortedPlugins() {
     const plugins = delegatePluginsStore.useValue();
-    const meta = useAppConfig("private.pluginMeta") ?? {};
+    const meta = useAppConfig("private.pluginMeta") ?? emptyPluginMeta;
 
     return useMemo(() => {
         return sortPluginsByMeta(plugins, meta);
     }, [plugins, meta]);
 }
-

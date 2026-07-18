@@ -29,7 +29,7 @@ interface IContextMenuData {
     /** 设置子目录 */
     setSubMenu?: (
         subMenu?: Omit<IContextMenuData, "setSubMenu">,
-        menuItem?: IContextMenuItem
+        menuItem?: IContextMenuItem,
     ) => void;
     onItemClick?: (value: any) => void;
 
@@ -56,7 +56,7 @@ export function showCustomContextMenu(
     contextMenuDataStore.setValue(contextMenuData);
 }
 
-export function hideContextMenu() {
+function hideContextMenu() {
     contextMenuDataStore.setValue(null);
 }
 
@@ -72,6 +72,30 @@ function SingleColumnContextMenuComponent(props: IContextMenuData) {
     const { menuItems = [], x, y, setSubMenu, onItemClick } = props;
     const menuContainerRef = useRef<HTMLDivElement>(null);
 
+    useEffect(() => {
+        menuContainerRef.current?.querySelector<HTMLElement>("[role='menuitem']")?.focus();
+    }, []);
+
+    const moveFocus = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+        const items = [...event.currentTarget.parentElement
+            ?.querySelectorAll<HTMLButtonElement>("[role='menuitem']") ?? []];
+        const currentIndex = items.indexOf(event.currentTarget);
+        let nextIndex = currentIndex;
+        if (event.key === "ArrowDown") {
+            nextIndex = (currentIndex + 1) % items.length;
+        } else if (event.key === "ArrowUp") {
+            nextIndex = (currentIndex - 1 + items.length) % items.length;
+        } else if (event.key === "Home") {
+            nextIndex = 0;
+        } else if (event.key === "End") {
+            nextIndex = items.length - 1;
+        } else {
+            return;
+        }
+        event.preventDefault();
+        items[nextIndex]?.focus();
+    };
+
     return (
         <div
             className="context-menu--single-column-container shadow backdrop-color"
@@ -84,17 +108,21 @@ function SingleColumnContextMenuComponent(props: IContextMenuData) {
                 maxHeight: menuContainerMaxHeight,
             }}
             ref={menuContainerRef}
+            role="menu"
         >
             {menuItems.map((item, index) => (
                 <IfTruthy condition={item.show !== false} key={index}>
                     <If condition={!item.divider}>
                         <If.Falsy>
-                            <div className="divider"></div>
+                            <div className="divider" role="separator"></div>
                         </If.Falsy>
                         <If.Truthy>
-                            <div
+                            <button
+                                type="button"
                                 className="menu-item"
-                                role="button"
+                                role="menuitem"
+                                aria-haspopup={item.subMenu ? "menu" : undefined}
+                                onKeyDown={moveFocus}
                                 onClick={() => {
                                     item.onClick?.();
                                     onItemClick?.(item);
@@ -112,7 +140,7 @@ function SingleColumnContextMenuComponent(props: IContextMenuData) {
                                     }
 
                                     const realPos =
-                    y +
+                                        y +
                     (e.target as HTMLDivElement).offsetTop -
                     menuContainer.scrollTop;
                                     const realHeight = Math.min(
@@ -156,7 +184,7 @@ function SingleColumnContextMenuComponent(props: IContextMenuData) {
                                 <IfTruthy condition={item.subMenu}>
                                     <div className="menu-item-expand"></div>
                                 </IfTruthy>
-                            </div>
+                            </button>
                         </If.Truthy>
                     </If>
                 </IfTruthy>

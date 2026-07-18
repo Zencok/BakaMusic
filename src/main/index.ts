@@ -32,7 +32,6 @@ import ThumbBarUtil from "@/common/thumb-bar-util";
 import windowManager from "@main/window-manager";
 import AppConfig from "@shared/app-config/main";
 import TrayManager from "@main/tray-manager";
-import WindowDrag from "@shared/window-drag/main";
 import { IAppConfig } from "@/types/app-config";
 import axios from "axios";
 import { HttpsProxyAgent } from "https-proxy-agent";
@@ -43,6 +42,15 @@ import messageBus from "@shared/message-bus/main";
 import shortCut from "@shared/short-cut/main";
 import voidCallback from "@/common/void-callback";
 import { toError } from "@/common/error-util";
+import { setupIpcSecurity } from "@shared/ipc-security/main";
+import { setupSessionSecurity } from "./electron-security";
+import {
+    registerThemeProtocolScheme,
+    setupThemePackMain,
+} from "@shared/themepack/main";
+import NodeRuntimeManager from "@shared/node-runtime/main";
+
+registerThemeProtocolScheme();
 
 // portable
 if (process.platform === "win32") {
@@ -116,6 +124,9 @@ app.on("will-quit", () => {
 // code. You can also put them in separate files and import them here.
 app.whenReady().then(async () => {
     logger.logPerf("App Ready");
+    setupIpcSecurity(windowManager);
+    setupSessionSecurity();
+    await setupThemePackMain();
     setupGlobalContext();
     await AppConfig.setup(windowManager);
 
@@ -136,12 +147,13 @@ app.whenReady().then(async () => {
                     );
                 }
             }
+            TrayManager.refreshLocalization();
         },
     });
     utils.setup(windowManager);
+    NodeRuntimeManager.setup(windowManager);
     PluginManager.setup(windowManager);
     TrayManager.setup(windowManager);
-    WindowDrag.setup();
     shortCut.setup().then(voidCallback);
     logger.logPerf("Create Main Window");
     // Setup message bus & app state

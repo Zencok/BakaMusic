@@ -1,6 +1,6 @@
-import { compare } from "compare-versions";
 import { showModal } from "../components/Modal";
 import { getUserPreference } from "./user-perference";
+import { shouldShowAvailableUpdate } from "./update-version";
 import { appUtil } from "@shared/utils/renderer";
 
 export default async function checkUpdate(forceCheck?: boolean) {
@@ -8,11 +8,11 @@ export default async function checkUpdate(forceCheck?: boolean) {
     const updateInfo = await appUtil.checkUpdate();
     if (updateInfo.update) {
         const skipVersion = getUserPreference("skipVersion");
-        if (
-            !forceCheck &&
-      skipVersion &&
-      compare(updateInfo.version, skipVersion, "<=")
-        ) {
+        if (!shouldShowAvailableUpdate(
+            updateInfo.update.version,
+            skipVersion,
+            Boolean(forceCheck),
+        )) {
             return false;
         }
         showModal("Update", {

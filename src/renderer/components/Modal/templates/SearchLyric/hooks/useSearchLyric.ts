@@ -102,7 +102,7 @@ export default function () {
                 }
                 /** 切换到结果页 */
                 if (!result) {
-                    throw new Error(t("modal.serach_lyric_result_empty"));
+                    throw new Error(t("modal.search_lyric_result_empty"));
                 }
                 searchResultStore.setValue(
                     produce(draft => {
@@ -150,7 +150,7 @@ export default function () {
             }
         });
     },
-    []);
+    [t]);
 
     return search;
 }

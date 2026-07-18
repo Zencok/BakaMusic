@@ -5,6 +5,7 @@ import { hidePanel } from "../..";
 import { isModalOpen } from "@/renderer/components/Modal";
 import { isQualitySelectPopoverOpen } from "@/renderer/components/QualitySelectPopover";
 import { isContextMenuOpen } from "@/renderer/components/ContextMenu";
+import { useTranslation } from "react-i18next";
 
 interface IBaseModalProps {
     onDefaultClick?: () => void;
@@ -33,6 +34,7 @@ function Base(props: IBaseModalProps) {
     } = props;
 
     const trapCloseRef = useRef(false);
+    const { t } = useTranslation();
 
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
@@ -71,7 +73,7 @@ function Base(props: IBaseModalProps) {
             style={{
                 backgroundColor: maskColor,
             }}
-            role="button"
+            role="presentation"
             onMouseDown={(e) => {
                 if ((e.target as HTMLElement)?.id === baseId) {
                     trapCloseRef.current = true;
@@ -91,12 +93,13 @@ function Base(props: IBaseModalProps) {
             onMouseLeave={() => {
                 trapCloseRef.current = false;
             }}
-            onMouseOut={() => {
-                trapCloseRef.current = false;
-            }}
         >
             <div
                 className="components--panel-base-content animate__animated animate__slideInRight shadow"
+                role="dialog"
+                aria-modal="true"
+                aria-label={t("common.panel")}
+                tabIndex={-1}
                 style={{
                     width,
                     overflowY: scrollable ? "auto" : "initial",
@@ -114,21 +117,23 @@ interface IHeaderProps {
 }
 function Header(props: IHeaderProps) {
     const { children, right } = props;
+    const { t } = useTranslation();
 
     return (
         <div className="components--panel-base-header">
             <div className="components--panel-base-header-main">{children}</div>
             <div className="components--panel-base-header-right">
                 {right ?? (
-                    <div
-                        role="button"
+                    <button
+                        type="button"
+                        aria-label={t("common.close")}
                         className="components--panel-base-header-close opacity-button"
                         onClick={() => {
                             hidePanel();
                         }}
                     >
                         <SvgAsset iconName="x-mark"></SvgAsset>
-                    </div>
+                    </button>
                 )}
             </div>
         </div>

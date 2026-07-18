@@ -158,6 +158,7 @@ function ListBoxOptions<T extends keyof IAppConfig>(
         renderCount: 40,
         fallbackRenderCount: 20,
     });
+    const { setScrollElement } = virtualController;
 
     useLayoutEffect(() => {
         const button = buttonRef.current;
@@ -186,11 +187,11 @@ function ListBoxOptions<T extends keyof IAppConfig>(
             return;
         }
 
-        virtualController.setScrollElement(containerRef.current);
+        setScrollElement(containerRef.current);
         return () => {
-            virtualController.setScrollElement(null);
+            setScrollElement(null);
         };
-    }, [portalTarget]);
+    }, [portalTarget, setScrollElement]);
 
     if (!portalTarget) {
         return null;

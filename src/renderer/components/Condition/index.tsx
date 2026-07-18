@@ -59,10 +59,4 @@ function IfTruthy(props: IIfProps) {
     return condition ? children : null;
 }
 
-function IfFalsy(props: IIfProps) {
-    const { condition, children } = props;
-
-    return condition ? null : children;
-}
-
-export { If, IfTruthy, IfFalsy };
+export { If, IfTruthy };

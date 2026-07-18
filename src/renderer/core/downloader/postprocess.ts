@@ -76,7 +76,7 @@ async function resolveLyricSource(
     }
 }
 
-export function getDownloadTagWriteOptions(): IDownloadTagWriteOptions {
+function getDownloadTagWriteOptions(): IDownloadTagWriteOptions {
     const defaults = getDefaultDownloadTagWriteOptions();
 
     return {
@@ -118,4 +118,3 @@ export async function buildDownloadPostprocessPayload(
         options,
     };
 }
-

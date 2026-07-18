@@ -1,411 +1,470 @@
-/**
- * luna-proxy.cjs - Local CENC streaming-decryption proxy.
- *
- * Self-contained Node.js child process that decrypts CENC (cenc-aes-ctr)
- * protected m4a audio on the fly and serves plaintext over local HTTP with
- * full Range/seek support. Uses the native `ence.node` decryptor.
- *
- * IPC:
- *   Parent: { type: "register", requestId, src, cek, headers }
- *   Child:  { type: "registered", requestId, token, localUrl } | { type: "error", requestId, error }
- *
- * HTTP:
- *   HEAD /l/<token>  - content info (plaintext output length)
- *   GET  /l/<token>  - streamed decrypted m4a (Range supported)
- */
-
 const http = require("http");
-const https = require("https");
+const serviceIpc = require("./service-ipc.cjs");
 const crypto = require("crypto");
 const path = require("path");
+const { once } = require("events");
+const {
+    MAX_PROXY_RESPONSE_BYTES,
+    REQUEST_TIMEOUT_MS,
+    assertSafeTargetUrl,
+    createSessionStore,
+    requestUpstream,
+    writeProxyError,
+} = require("./proxy-common.cjs");
 
 const native = require(path.join(__dirname, "native", "ence.node"));
 console.log("[luna-proxy] Native CENC module loaded");
 
 const defaultPort = Number(process.env.LUNA_PROXY_PORT || 0);
+const PROBE_SIZE = 256 * 1024;
+const MAX_LAYOUT_FETCH_BYTES = 32 * 1024 * 1024;
 let currentPort = null;
 
-// token -> { handle, headerBuf, layout, src, headers }
-const sessions = new Map();
+function destroySession(session) {
+    if (!session.handle) return;
+    try { native.destroyDecoder(session.handle); } catch { /* already released */ }
+    session.handle = null;
+}
+
+const sessions = createSessionStore({
+    maxEntries: 128,
+    ttlMs: 30 * 60 * 1000,
+    dispose: destroySession,
+});
 
 function generateToken() {
     return crypto.randomBytes(16).toString("hex");
 }
 
-// =========================================================================
-// Upstream helpers
-// =========================================================================
-
-function getUrlHost(url) {
-    try {
-        return new URL(url).host;
-    } catch {
-        return undefined;
-    }
-}
-
-function buildUpstreamHeaders(url, headers, extraHeaders) {
-    const reqHeaders = { ...(headers || {}) };
-    delete reqHeaders.host;
-    delete reqHeaders.Host;
-    delete reqHeaders.range;
-    delete reqHeaders.Range;
-
-    const host = getUrlHost(url);
-    if (host) reqHeaders.host = host;
-    return { ...reqHeaders, ...(extraHeaders || {}) };
-}
-
-// GET a byte range; resolves with { status, headers, body }. Follows redirects.
-function httpGetRange(url, headers, start, end, redirects = 5) {
-    return new Promise((resolve, reject) => {
-        const rangeHeaders = {};
-        if (start != null) {
-            rangeHeaders.range = `bytes=${start}-${end != null ? end : ""}`;
-        }
-        const reqHeaders = buildUpstreamHeaders(url, headers, rangeHeaders);
-        const protocol = url.startsWith("https") ? https : http;
-        const req = protocol.request(url, { method: "GET", headers: reqHeaders }, (res) => {
-            if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && redirects > 0) {
-                res.resume();
-                resolve(httpGetRange(new URL(res.headers.location, url).href, headers, start, end, redirects - 1));
-                return;
-            }
-            const chunks = [];
-            res.on("data", (c) => chunks.push(c));
-            res.on("end", () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
-        });
-        req.on("error", reject);
-        req.end();
-    });
+function validHeaders(headers) {
+    return headers === undefined || (
+        headers
+        && typeof headers === "object"
+        && !Array.isArray(headers)
+        && Object.keys(headers).length <= 64
+    );
 }
 
 function parseTotalSize(headers, status) {
-    const cr = headers["content-range"];
-    if (cr) {
-        const m = cr.match(/\/(\d+)\s*$/);
-        if (m) return parseInt(m[1], 10);
+    const contentRange = headers["content-range"];
+    if (typeof contentRange === "string") {
+        const match = /\/(\d+)\s*$/.exec(contentRange);
+        if (match) return Number(match[1]);
     }
-    if (status === 200 && headers["content-length"]) {
-        return parseInt(headers["content-length"], 10);
-    }
-    return null;
+    const contentLength = Number(headers["content-length"]);
+    return status === 200 && Number.isSafeInteger(contentLength) ? contentLength : null;
 }
 
-// =========================================================================
-// moov / mdat discovery (handles moov at head or tail)
-// =========================================================================
+async function httpGetRange(url, headers, start, end) {
+    const requestedSize = end - start + 1;
+    if (
+        !Number.isSafeInteger(start)
+        || !Number.isSafeInteger(end)
+        || start < 0
+        || requestedSize <= 0
+        || requestedSize > MAX_LAYOUT_FETCH_BYTES
+    ) {
+        throw new Error("Invalid or oversized layout range");
+    }
 
-const PROBE_SIZE = 256 * 1024;
+    const upstream = await requestUpstream(url, {
+        method: "GET",
+        headers,
+        extraHeaders: {
+            "accept-encoding": "identity",
+            range: `bytes=${start}-${end}`,
+        },
+    });
+    if (![200, 206].includes(upstream.statusCode)) {
+        upstream.resume();
+        throw new Error(`Unexpected layout response: ${upstream.statusCode}`);
+    }
+    const responseStart = typeof upstream.headers["content-range"] === "string"
+        ? Number(/^bytes\s+(\d+)-/i.exec(upstream.headers["content-range"])?.[1])
+        : 0;
+    if (upstream.statusCode === 206 && responseStart !== start) {
+        upstream.destroy();
+        throw new Error("Layout Content-Range does not match request");
+    }
+
+    const chunks = [];
+    let skip = upstream.statusCode === 200 ? start : 0;
+    let remaining = requestedSize;
+    let collected = 0;
+    let upstreamBytes = 0;
+    for await (const chunk of upstream) {
+        upstreamBytes += chunk.length;
+        if (upstreamBytes > MAX_LAYOUT_FETCH_BYTES) {
+            upstream.destroy();
+            throw new Error("Layout response exceeds limit");
+        }
+        let buffer = Buffer.from(chunk);
+        if (skip > 0) {
+            const skipped = Math.min(skip, buffer.length);
+            skip -= skipped;
+            buffer = buffer.subarray(skipped);
+        }
+        if (!buffer.length) continue;
+        if (buffer.length > remaining) buffer = buffer.subarray(0, remaining);
+        chunks.push(buffer);
+        collected += buffer.length;
+        remaining -= buffer.length;
+        if (remaining === 0) {
+            upstream.destroy();
+            break;
+        }
+    }
+    return {
+        status: upstream.statusCode,
+        headers: upstream.headers,
+        body: Buffer.concat(chunks, collected),
+    };
+}
 
 async function readBoxHeaderAt(src, headers, offset, cache) {
-    let hdr;
-    if (cache && offset >= cache.start && offset + 16 <= cache.start + cache.buf.length) {
-        hdr = cache.buf.subarray(offset - cache.start, offset - cache.start + 16);
+    let header;
+    if (cache && offset >= cache.start && offset + 16 <= cache.start + cache.buffer.length) {
+        header = cache.buffer.subarray(offset - cache.start, offset - cache.start + 16);
     } else {
-        const r = await httpGetRange(src, headers, offset, offset + 15);
-        hdr = r.body;
+        header = (await httpGetRange(src, headers, offset, offset + 15)).body;
     }
-    if (hdr.length < 8) return null;
-    let size = hdr.readUInt32BE(0);
-    const type = hdr.toString("latin1", 4, 8);
+    if (header.length < 8) return null;
+    let size = header.readUInt32BE(0);
+    const type = header.toString("latin1", 4, 8);
     let headerSize = 8;
     if (size === 1) {
-        if (hdr.length < 16) return null;
-        size = Number(hdr.readBigUInt64BE(8));
+        if (header.length < 16) return null;
+        size = Number(header.readBigUInt64BE(8));
         headerSize = 16;
     }
+    if (!Number.isSafeInteger(size) || size < headerSize) return null;
     return { type, size, headerSize };
 }
 
-async function fetchRangeBuf(src, headers, offset, size, cache) {
-    if (cache && offset >= cache.start && offset + size <= cache.start + cache.buf.length) {
-        return cache.buf.subarray(offset - cache.start, offset - cache.start + size);
+async function fetchRangeBuffer(src, headers, offset, size, cache) {
+    if (size > MAX_LAYOUT_FETCH_BYTES) throw new Error("ISO box exceeds layout limit");
+    if (cache && offset >= cache.start && offset + size <= cache.start + cache.buffer.length) {
+        return cache.buffer.subarray(offset - cache.start, offset - cache.start + size);
     }
-    const r = await httpGetRange(src, headers, offset, offset + size - 1);
-    return r.body;
+    return (await httpGetRange(src, headers, offset, offset + size - 1)).body;
 }
 
 async function discoverLayout(src, headers) {
     const first = await httpGetRange(src, headers, 0, PROBE_SIZE - 1);
     const total = parseTotalSize(first.headers, first.status);
-    const cache = { start: 0, buf: first.body };
-
+    if (!Number.isSafeInteger(total) || total <= 0) {
+        throw new Error("Upstream media length is unavailable");
+    }
+    const cache = { start: 0, buffer: first.body };
     let ftyp = null;
     let moov = null;
     let mdatPayloadOffset = null;
     let mdatPayloadSize = null;
-
-    const fileEnd = total != null ? total : first.body.length;
     let offset = 0;
-    let guard = 0;
-    while (offset + 8 <= fileEnd && guard++ < 4096) {
-        const bh = await readBoxHeaderAt(src, headers, offset, cache);
-        if (!bh || bh.size <= 0) break;
-        if (bh.type === "ftyp") {
-            ftyp = await fetchRangeBuf(src, headers, offset, bh.size, cache);
-        } else if (bh.type === "moov") {
-            moov = await fetchRangeBuf(src, headers, offset, bh.size, cache);
-        } else if (bh.type === "mdat") {
-            mdatPayloadOffset = offset + bh.headerSize;
-            mdatPayloadSize = bh.size - bh.headerSize;
-        }
-        if (ftyp && moov && mdatPayloadOffset != null) break;
-        offset += bh.size;
-    }
 
+    for (let guard = 0; offset + 8 <= total && guard < 4096; guard++) {
+        const box = await readBoxHeaderAt(src, headers, offset, cache);
+        if (!box || offset + box.size > total) break;
+        if (box.type === "ftyp") {
+            ftyp = await fetchRangeBuffer(src, headers, offset, box.size, cache);
+        } else if (box.type === "moov") {
+            moov = await fetchRangeBuffer(src, headers, offset, box.size, cache);
+        } else if (box.type === "mdat") {
+            mdatPayloadOffset = offset + box.headerSize;
+            mdatPayloadSize = box.size - box.headerSize;
+        }
+        if (ftyp && moov && mdatPayloadOffset !== null) break;
+        offset += box.size;
+    }
     return { ftyp, moov, mdatPayloadOffset, mdatPayloadSize };
 }
 
-// =========================================================================
-// IPC: register a stream
-// =========================================================================
-
-process.on("message", async (msg) => {
-    if (!msg || msg.type !== "register") return;
-    const { requestId, src, cek, headers } = msg;
-    const reply = (payload) => process.send?.({ ...payload, requestId });
-
+serviceIpc.onMessage(async (message) => {
+    if (!message || message.type !== "register") return;
+    const { requestId, src, cek, headers } = message;
+    const reply = (payload) => serviceIpc.send({ ...payload, requestId });
+    if (
+        typeof requestId !== "string"
+        || requestId.length > 128
+        || typeof src !== "string"
+        || !validHeaders(headers)
+    ) {
+        reply({ type: "error", error: "Invalid registration payload" });
+        return;
+    }
     if (!currentPort) {
         reply({ type: "error", error: "luna-proxy is not listening" });
         return;
     }
 
+    let handle = null;
     try {
+        await assertSafeTargetUrl(src);
         const cekText = String(cek || "").trim();
         if (!/^[a-f0-9]{32}$/i.test(cekText)) {
-            reply({ type: "error", error: "invalid cek (need 32 hex chars)" });
-            return;
+            throw new Error("Invalid CENC key");
         }
-        const cekBuf = Buffer.from(cekText, "hex");
-
-        const layout = await discoverLayout(src, headers);
-        if (!layout.moov || layout.mdatPayloadOffset == null) {
-            reply({ type: "error", error: "failed to locate moov/mdat" });
-            return;
+        const layout = await discoverLayout(src, headers || {});
+        if (!layout.moov || layout.mdatPayloadOffset === null) {
+            throw new Error("Failed to locate moov/mdat");
         }
-
-        const ftypBuf = layout.ftyp || Buffer.alloc(0);
-        const handle = native.createDecoder(
-            ftypBuf,
+        handle = native.createDecoder(
+            layout.ftyp || Buffer.alloc(0),
             layout.moov,
-            cekBuf,
+            Buffer.from(cekText, "hex"),
             layout.mdatPayloadOffset,
             layout.mdatPayloadSize,
         );
-
         const info = native.getInfo(handle);
-        if (!info.ok) {
-            native.destroyDecoder(handle);
-            reply({ type: "error", error: info.error || "decoder init failed" });
-            return;
+        if (!info.ok || !Number.isSafeInteger(info.outputTotalSize) || info.outputTotalSize <= 0) {
+            throw new Error(info.error || "Decoder initialization failed");
         }
-
-        const headerBuf = native.getHeader(handle);
         const token = generateToken();
-        sessions.set(token, { handle, headerBuf, layout: info, src, headers: headers || {} });
-
-        const localUrl = `http://127.0.0.1:${currentPort}/l/${token}`;
-        reply({ type: "registered", token, localUrl });
-    } catch (e) {
-        reply({ type: "error", error: String((e && e.message) || e) });
+        sessions.set(token, {
+            handle,
+            headerBuffer: native.getHeader(handle),
+            layout: info,
+            src,
+            headers: headers || {},
+        });
+        handle = null;
+        reply({
+            type: "registered",
+            token,
+            localUrl: `http://127.0.0.1:${currentPort}/l/${token}`,
+        });
+    } catch (error) {
+        if (handle) {
+            try { native.destroyDecoder(handle); } catch { /* cleanup failure */ }
+        }
+        reply({ type: "error", error: String(error?.message || error) });
     }
 });
 
-// =========================================================================
-// HTTP serving (plaintext = [header][decrypted mdat payload])
-// =========================================================================
-
 function parseRange(rangeHeader, total) {
     if (!rangeHeader) return null;
-    const m = rangeHeader.match(/bytes=(\d*)-(\d*)/);
-    if (!m) return null;
-    let start = m[1] === "" ? null : parseInt(m[1], 10);
-    let end = m[2] === "" ? null : parseInt(m[2], 10);
-    if (start == null && end == null) return null;
-    if (start == null) {
-        start = Math.max(0, total - end);
+    const match = /^bytes=(\d*)-(\d*)$/i.exec(rangeHeader);
+    if (!match || (!match[1] && !match[2])) return false;
+    let start = match[1] ? Number(match[1]) : null;
+    let end = match[2] ? Number(match[2]) : null;
+    if (start === null) {
+        const suffixLength = end;
+        if (!Number.isSafeInteger(suffixLength) || suffixLength <= 0) return false;
+        start = Math.max(0, total - suffixLength);
         end = total - 1;
-    } else if (end == null) {
-        end = total - 1;
+    } else {
+        if (!Number.isSafeInteger(start) || start < 0) return false;
+        end = end === null ? total - 1 : Math.min(end, total - 1);
     }
-    if (end >= total) end = total - 1;
-    if (start < 0) start = 0;
-    if (start > end) return null;
+    if (!Number.isSafeInteger(end) || start >= total || start > end) return false;
     return { start, end };
 }
 
-// Stream-decrypt the mdat byte range [mdatStartRel, mdatEndRel] (inclusive,
-// relative to the mdat payload) into res.
-function streamDecryptMdat(res, session, mdatStartRel, mdatEndRel) {
+async function writeWithBackpressure(res, buffer) {
+    if (!buffer.length || res.writableEnded) return;
+    if (!res.write(buffer)) {
+        await Promise.race([
+            once(res, "drain"),
+            once(res, "close").then(() => {
+                throw new Error("Client disconnected");
+            }),
+        ]);
+    }
+}
+
+async function streamDecryptMdat(req, res, session, startRelative, endRelative, signal) {
+    const cdnStart = session.layout.mdatFileOffset + startRelative;
+    const cdnEnd = session.layout.mdatFileOffset + endRelative;
+    const upstream = await requestUpstream(session.src, {
+        method: "GET",
+        headers: session.headers,
+        extraHeaders: {
+            "accept-encoding": "identity",
+            range: `bytes=${cdnStart}-${cdnEnd}`,
+        },
+        signal,
+    });
+
     return new Promise((resolve, reject) => {
-        const { handle, src, headers, layout } = session;
-        const cdnStart = layout.mdatFileOffset + mdatStartRel;
-        const cdnEnd = layout.mdatFileOffset + mdatEndRel;
+        if (![200, 206].includes(upstream.statusCode)) {
+            upstream.resume();
+            reject(new Error(`Unexpected media response: ${upstream.statusCode}`));
+            return;
+        }
+        const responseStart = typeof upstream.headers["content-range"] === "string"
+            ? Number(/^bytes\s+(\d+)-/i.exec(upstream.headers["content-range"])?.[1])
+            : 0;
+        if (upstream.statusCode === 206 && responseStart !== cdnStart) {
+            upstream.destroy();
+            reject(new Error("Media Content-Range does not match request"));
+            return;
+        }
 
-        const doRequest = (url, redirects) => {
-            const reqHeaders = buildUpstreamHeaders(url, headers, {
-                range: `bytes=${cdnStart}-${cdnEnd}`,
-            });
-
-            const protocol = url.startsWith("https") ? https : http;
-            const upReq = protocol.request(url, { method: "GET", headers: reqHeaders }, (up) => {
-                if ([301, 302, 303, 307, 308].includes(up.statusCode) && up.headers.location && redirects > 0) {
-                    up.resume();
-                    return doRequest(new URL(up.headers.location, url).href, redirects - 1);
-                }
-
-                let skip = up.statusCode === 200 && cdnStart > 0 ? cdnStart : 0;
-                let curRel = mdatStartRel;
-                let remaining = mdatEndRel - mdatStartRel + 1;
-
-                up.on("data", (chunk) => {
-                    if (remaining <= 0) return;
-                    let buf = Buffer.from(chunk);
-                    if (skip > 0) {
-                        if (skip >= buf.length) {
-                            skip -= buf.length;
-                            return;
-                        }
-                        buf = buf.subarray(skip);
-                        skip = 0;
-                    }
-                    if (buf.length > remaining) {
-                        buf = buf.subarray(0, remaining);
-                    }
-                    native.decrypt(handle, curRel, buf);
-                    curRel += buf.length;
-                    remaining -= buf.length;
-                    if (!res.writableEnded) res.write(buf);
-                    if (remaining <= 0) {
-                        up.destroy();
-                        if (!res.writableEnded) res.end();
-                        resolve();
-                    }
-                });
-                up.on("end", () => {
-                    if (!res.writableEnded) res.end();
-                    resolve();
-                });
-                up.on("error", (err) => {
-                    if (!res.writableEnded) res.end();
-                    reject(err);
-                });
-            });
-            upReq.on("error", reject);
-            upReq.end();
+        let skip = upstream.statusCode === 200 ? cdnStart : 0;
+        let currentRelative = startRelative;
+        let remaining = endRelative - startRelative + 1;
+        let upstreamBytes = 0;
+        let settled = false;
+        const finish = (error) => {
+            if (settled) return;
+            settled = true;
+            req.removeListener("aborted", cancel);
+            res.removeListener("close", cancel);
+            error ? reject(error) : resolve();
         };
+        const cancel = () => {
+            upstream.destroy();
+            finish();
+        };
+        req.once("aborted", cancel);
+        res.once("close", cancel);
 
-        doRequest(src, 5);
+        upstream.on("data", (chunk) => {
+            upstreamBytes += chunk.length;
+            if (upstreamBytes > MAX_PROXY_RESPONSE_BYTES) {
+                upstream.destroy(new Error("Upstream response exceeds proxy limit"));
+                return;
+            }
+            let buffer = Buffer.from(chunk);
+            if (skip > 0) {
+                const skipped = Math.min(skip, buffer.length);
+                skip -= skipped;
+                buffer = buffer.subarray(skipped);
+            }
+            if (!buffer.length || remaining === 0) return;
+            if (buffer.length > remaining) buffer = buffer.subarray(0, remaining);
+            native.decrypt(session.handle, currentRelative, buffer);
+            currentRelative += buffer.length;
+            remaining -= buffer.length;
+            if (!res.write(buffer)) {
+                upstream.pause();
+                res.once("drain", () => upstream.resume());
+            }
+            if (remaining === 0) {
+                upstream.destroy();
+                if (!res.writableEnded) res.end();
+                finish();
+            }
+        });
+        upstream.once("end", () => {
+            if (remaining !== 0) {
+                finish(new Error("Upstream media response is truncated"));
+                return;
+            }
+            if (!res.writableEnded) res.end();
+            finish();
+        });
+        upstream.once("error", (error) => {
+            if (!settled) finish(error);
+        });
     });
 }
 
-async function serveRange(res, session, start, end) {
+async function serveRange(req, res, session, start, end, signal) {
     const headerSize = session.layout.headerSize;
-
-    // 1. header portion [start, min(end+1, headerSize))
     if (start < headerSize) {
-        const hEnd = Math.min(end + 1, headerSize);
-        if (!res.writableEnded) res.write(session.headerBuf.subarray(start, hEnd));
+        const headerEnd = Math.min(end + 1, headerSize);
+        await writeWithBackpressure(res, session.headerBuffer.subarray(start, headerEnd));
         if (end < headerSize) {
-            if (!res.writableEnded) res.end();
+            res.end();
             return;
         }
     }
-
-    // 2. mdat portion
-    const mdatStartRel = Math.max(start, headerSize) - headerSize;
-    const mdatEndRel = end - headerSize;
-    await streamDecryptMdat(res, session, mdatStartRel, mdatEndRel);
+    const mdatStart = Math.max(start, headerSize) - headerSize;
+    const mdatEnd = end - headerSize;
+    await streamDecryptMdat(req, res, session, mdatStart, mdatEnd, signal);
 }
 
-function handleRequest(req, res, session) {
+async function handleRequest(req, res, session) {
     const total = session.layout.outputTotalSize;
-    const range = parseRange(req.headers["range"], total);
-    const start = range ? range.start : 0;
-    const end = range ? range.end : total - 1;
+    const range = parseRange(req.headers.range, total);
+    if (range === false) {
+        res.writeHead(416, { "Content-Range": `bytes */${total}` });
+        res.end();
+        return;
+    }
+    const start = range?.start ?? 0;
+    const end = range?.end ?? total - 1;
+    const responseSize = end - start + 1;
+    if (responseSize > MAX_PROXY_RESPONSE_BYTES) {
+        writeProxyError(res, 413, "Requested range is too large");
+        return;
+    }
 
-    const respHeaders = {
+    res.writeHead(range ? 206 : 200, {
         "Content-Type": "audio/mp4",
         "Accept-Ranges": "bytes",
-        "Content-Length": String(end - start + 1),
+        "Content-Length": String(responseSize),
         "Access-Control-Allow-Origin": "*",
-    };
-    if (range) {
-        respHeaders["Content-Range"] = `bytes ${start}-${end}/${total}`;
-    }
-    res.writeHead(range ? 206 : 200, respHeaders);
-
+        ...(range ? { "Content-Range": `bytes ${start}-${end}/${total}` } : {}),
+    });
     if (req.method === "HEAD") {
         res.end();
         return;
     }
 
-    serveRange(res, session, start, end).catch((err) => {
-        console.error("[luna-proxy] serve error:", err && err.message);
-        if (!res.writableEnded) res.end();
+    const abortController = new AbortController();
+    const cancel = () => abortController.abort();
+    req.once("aborted", cancel);
+    res.once("close", () => {
+        if (!res.writableFinished) cancel();
     });
+    try {
+        await serveRange(req, res, session, start, end, abortController.signal);
+    } catch (error) {
+        if (!abortController.signal.aborted && !res.destroyed) {
+            res.destroy(error instanceof Error ? error : undefined);
+        }
+    }
 }
 
 function startServer(port) {
     const server = http.createServer((req, res) => {
         if (req.method === "OPTIONS") {
-            res.writeHead(200, {
+            res.writeHead(204, {
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
                 "Access-Control-Allow-Headers": "Range",
             });
-            return res.end();
+            res.end();
+            return;
         }
         if (req.url === "/heartbeat") {
             res.writeHead(200, { "Content-Type": "text/plain" });
-            return res.end("OK");
+            res.end("OK");
+            return;
         }
-
-        const match = req.url.match(/^\/l\/([a-f0-9]+)/);
+        const match = /^\/l\/([a-f0-9]{32})(?:\.[a-z0-9]+)?(?:\?.*)?$/i.exec(req.url || "");
         if (!match) {
-            res.writeHead(404);
-            return res.end("Not Found");
+            writeProxyError(res, 404, "Not Found");
+            return;
         }
-        const session = sessions.get(match[1]);
+        const token = match[1];
+        const session = sessions.acquire(token);
         if (!session) {
-            res.writeHead(404);
-            return res.end("Session Not Found");
+            writeProxyError(res, 404, "Session Not Found");
+            return;
         }
-        if (req.method === "GET" || req.method === "HEAD") {
-            handleRequest(req, res, session);
-        } else {
-            res.writeHead(405);
-            res.end("Method Not Allowed");
-        }
+        const operation = ["GET", "HEAD"].includes(req.method)
+            ? handleRequest(req, res, session)
+            : Promise.resolve(writeProxyError(res, 405, "Method Not Allowed"));
+        void operation.finally(() => sessions.release(token));
     });
-
+    server.requestTimeout = REQUEST_TIMEOUT_MS;
+    server.headersTimeout = REQUEST_TIMEOUT_MS;
     server.listen(port, "127.0.0.1", () => {
         const address = server.address();
         currentPort = typeof address === "object" && address ? address.port : port;
-        process.send?.({ type: "port", port: currentPort });
+        serviceIpc.send({ type: "port", port: currentPort });
         console.log(`luna-proxy is running on http://127.0.0.1:${currentPort}`);
     });
-
-    server.on("error", (err) => {
-        console.error("Server error:", err);
-        process.send?.({ type: "error", error: err.message });
-    });
+    server.on("error", (error) => serviceIpc.send({ type: "error", error: error.message }));
 }
 
-// Periodically drop stale sessions (and free native decoders).
-setInterval(() => {
-    if (sessions.size > 500) {
-        const keys = [...sessions.keys()];
-        const toRemove = keys.slice(0, keys.length - 250);
-        toRemove.forEach((k) => {
-            const s = sessions.get(k);
-            if (s && s.handle) {
-                try { native.destroyDecoder(s.handle); } catch { /* ignore */ }
-            }
-            sessions.delete(k);
-        });
-    }
-}, 30 * 60 * 1000);
+const sweepTimer = setInterval(() => sessions.sweep(), 60_000);
+sweepTimer.unref();
+const closeSessions = () => sessions.close();
+process.once("disconnect", closeSessions);
+process.once("exit", closeSessions);
 
 startServer(defaultPort);

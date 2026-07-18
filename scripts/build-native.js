@@ -11,7 +11,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { execSync } = require("child_process");
+const { execFileSync, execSync } = require("child_process");
 
 const root = path.resolve(__dirname, "..");
 const nativeDir = path.join(root, "native");
@@ -64,7 +64,7 @@ const builtModules = new Set();
 for (const mod of modules) {
     const modDir = path.join(nativeDir, mod);
     console.log(`[build-native] building ${mod} ...`);
-    execSync("npx node-gyp rebuild", { cwd: modDir, stdio: "inherit" });
+    execSync("npm exec node-gyp -- rebuild", { cwd: modDir, stdio: "inherit" });
 
     const releaseDir = path.join(modDir, "build", "Release");
     if (!fs.existsSync(releaseDir)) {
@@ -88,5 +88,17 @@ if (isCi) {
         throw new Error(`[build-native] required native outputs were not built: ${missingOutputs.join(", ")}`);
     }
 }
+
+execFileSync(process.execPath, [
+    path.join(__dirname, "native-smoke.cjs"),
+    "--dir",
+    outDir,
+    "--arch",
+    process.arch,
+    "--platform",
+    process.platform,
+    "--modules",
+    [...builtModules].join(","),
+], { cwd: root, stdio: "inherit" });
 
 console.log("[build-native] done");

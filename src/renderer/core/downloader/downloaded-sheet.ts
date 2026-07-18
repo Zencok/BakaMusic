@@ -9,7 +9,7 @@ import {
     getUserPreferenceIDB,
     setUserPreferenceIDB,
 } from "@/renderer/utils/user-perference";
-import musicSheetDB from "../db/music-sheet-db";
+import musicSheetDB from "../music-sheet/database";
 import { internalDataKey, musicRefSymbol } from "@/common/constant";
 import { useEffect, useState } from "react";
 import { DownloadEvts, ee } from "./ee";
@@ -93,9 +93,8 @@ export async function addDownloadedMusicToList(
     const _musicItems = Array.isArray(musicItems) ? musicItems : [musicItems];
     try {
         // 筛选出不在列表中的项目
-        const targetMusicList = downloadedMusicListStore.getValue();
         const validMusicItems = _musicItems.filter(
-            (item) => -1 === targetMusicList.findIndex((mi) => isSameMedia(mi, item)),
+            (item) => !downloadedSet.has(getMediaPrimaryKey(item)),
         );
 
         await musicSheetDB.transaction("rw", musicSheetDB.musicStore, async () => {
@@ -144,6 +143,9 @@ export async function removeDownloadedMusic(
     removeFile = false,
 ): Promise<ICommon.ICommonReturnType> {
     const _musicItems = Array.isArray(musicItems) ? musicItems : [musicItems];
+    const removedPrimaryKeys = new Set(
+        _musicItems.map((item) => getMediaPrimaryKey(item)),
+    );
 
     let message: string | null = null;
 
@@ -214,9 +216,8 @@ export async function removeDownloadedMusic(
             await musicSheetDB.musicStore.bulkPut(needUpdate);
 
             downloadedMusicListStore.setValue((prev) =>
-                prev.filter(
-                    (it) => -1 === _musicItems.findIndex((_) => isSameMedia(_, it)),
-                ),
+                prev.filter((item) =>
+                    !removedPrimaryKeys.has(getMediaPrimaryKey(item))),
             );
             // 触发事件
             ee.emit(DownloadEvts.RemoveDownload, _musicItems);

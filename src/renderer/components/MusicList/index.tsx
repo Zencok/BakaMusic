@@ -28,7 +28,7 @@ import MusicDownloaded from "../MusicDownloaded";
 import MusicFavorite from "../MusicFavorite";
 import SvgAsset from "../SvgAsset";
 import Tag from "../Tag";
-import musicSheetDB from "@/renderer/core/db/music-sheet-db";
+import musicSheetDB from "@/renderer/core/music-sheet/database";
 import Downloader from "@/renderer/core/downloader";
 import MusicSheet from "@/renderer/core/music-sheet";
 import trackPlayer from "@renderer/core/track-player";
@@ -39,7 +39,7 @@ import { promptDownloadWithQuality } from "@/renderer/utils/download-quality";
 import { getBestMusicQualityInfo } from "@/renderer/utils/music-quality-metadata";
 import LazyImage from "../LazyImage";
 import getCompactArtworkSrc from "@/renderer/utils/get-compact-artwork-src";
-import { getPlayCount } from "@/renderer/core/play-count";
+import { getPlayCount } from "@/renderer/core/listening-statistics";
 interface IMusicListProps {
     /** 音乐列表 */
     musicList: IMusic.IMusicItem[];
@@ -464,7 +464,7 @@ function playMusicFromList(
 }
 
 
-function _MusicList(props: IMusicListProps) {
+function MusicListComponent(props: IMusicListProps) {
     const {
         musicList,
         state = RequestStateCode.FINISHED,
@@ -1012,7 +1012,7 @@ function _MusicList(props: IMusicListProps) {
 }
 
 export default memo(
-    _MusicList,
+    MusicListComponent,
     (prev, curr) =>
         !!(
             prev.state === curr.state &&

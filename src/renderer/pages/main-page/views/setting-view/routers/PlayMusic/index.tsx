@@ -1,4 +1,3 @@
-import "./index.scss";
 import RadioGroupSettingItem from "../../components/RadioGroupSettingItem";
 import CheckBoxSettingItem from "../../components/CheckBoxSettingItem";
 import { useOutputAudioDevices } from "@/hooks/useMediaDevices";

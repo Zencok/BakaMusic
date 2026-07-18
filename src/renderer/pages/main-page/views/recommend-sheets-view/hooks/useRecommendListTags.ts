@@ -22,11 +22,11 @@ export default function (plugin: IPlugin.IPluginDelegate) {
                 data: [],
             });
         }
-    }, []);
+    }, [plugin]);
 
     useEffect(() => {
         query();
-    }, []);
+    }, [query]);
 
     return tags;
 }

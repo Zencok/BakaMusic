@@ -1,6 +1,6 @@
 import type { ModuleOptions } from "webpack";
 
-export const rules: Required<ModuleOptions>["rules"] = [
+export const nativeRules: Required<ModuleOptions>["rules"] = [
     // Add support for native node modules
     {
     // We're specifying native_modules in the test because the asset relocator loader generates a
@@ -18,6 +18,9 @@ export const rules: Required<ModuleOptions>["rules"] = [
             },
         },
     },
+];
+
+export const sourceRules: Required<ModuleOptions>["rules"] = [
     {
         test: /\.tsx?$/,
         include: /src[\\/]amll-core[\\/].+$/,
@@ -39,6 +42,7 @@ export const rules: Required<ModuleOptions>["rules"] = [
             options: {
                 transpileOnly: true,
                 compilerOptions: {
+                    module: "esnext",
                     outDir: undefined,
                 },
             },
@@ -54,4 +58,9 @@ export const rules: Required<ModuleOptions>["rules"] = [
             },
         },
     },
+];
+
+export const baseRules: Required<ModuleOptions>["rules"] = [
+    ...nativeRules,
+    ...sourceRules,
 ];

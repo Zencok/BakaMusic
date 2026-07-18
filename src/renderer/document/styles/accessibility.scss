@@ -1,0 +1,20 @@
+:where(button, a[href], input, select, textarea, [role="button"]):focus-visible {
+    outline: 2px solid var(--primaryColor, #4f8cff);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html:focus-within {
+        scroll-behavior: auto !important;
+    }
+
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0ms !important;
+    }
+}

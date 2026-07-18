@@ -226,7 +226,7 @@ export default function () {
                     setLoadingState(RequestStateCode.ERROR);
                 }
             });
-    }, []);
+    }, [isMounted]);
 
     return [themes, loadingState] as const;
 }

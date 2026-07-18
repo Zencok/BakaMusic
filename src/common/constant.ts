@@ -2,7 +2,6 @@ import { IAppConfig } from "@/types/app-config";
 import { ICommand } from "@shared/message-bus/type";
 
 export const internalDataKey = "$";
-export const internalDataSymbol = Symbol.for("internal");
 // 加入播放列表/歌单的时间
 export const timeStampSymbol = Symbol.for("time-stamp");
 // 加入播放列表的辅助顺序
@@ -13,8 +12,6 @@ export const sortIndexSymbol = Symbol.for("sort-index");
  */
 export const musicRefSymbol = "$$ref";
 
-/** 本地存储路径 */
-export const localFilePathSymbol = Symbol.for("local-file-path");
 export const localPluginName = "本地";
 export const localPluginHash = "本地";
 
@@ -68,14 +65,6 @@ export const qualityKeys: IMusic.IQualityKey[] = [
     "master",
 ];
 
-/** 旧音质键到新音质键的映射 */
-export const legacyQualityKeyMap: Record<string, IMusic.IQualityKey> = {
-    "low": "128k",
-    "standard": "192k",
-    "high": "320k",
-    "super": "flac",
-};
-
 /** 音质显示文本 */
 export const qualityText: Record<IMusic.IQualityKey, string> = {
     "mgg": "低音质 MGG",
@@ -119,7 +108,7 @@ export const defaultFont = {
     style: "",
 };
 
-type IShortCutKeys = keyof IAppConfig["shortCut.shortcuts"];
+type IShortCutKeys = keyof NonNullable<IAppConfig["shortCut.shortcuts"]>;
 export const shortCutKeys: IShortCutKeys[] = [
     "play/pause",
     "skip-next",
@@ -133,16 +122,16 @@ export const shortCutKeys: IShortCutKeys[] = [
 
 // 快捷键列表对应的指令
 export const shortCutKeysCommands: Record<IShortCutKeys, keyof ICommand> =
-{
-    "play/pause": "TogglePlayerState",
-    "skip-next": "SkipToNext",
-    "skip-previous": "SkipToPrevious",
-    "volume-down": "VolumeDown",
-    "volume-up": "VolumeUp",
-    "toggle-desktop-lyric": "ToggleDesktopLyric",
-    "like/dislike": "ToggleFavorite",
-    "toggle-main-window-visible": "ToggleMainWindowVisible",
-};
+    {
+        "play/pause": "TogglePlayerState",
+        "skip-next": "SkipToNext",
+        "skip-previous": "SkipToPrevious",
+        "volume-down": "VolumeDown",
+        "volume-up": "VolumeUp",
+        "toggle-desktop-lyric": "ToggleDesktopLyric",
+        "like/dislike": "ToggleFavorite",
+        "toggle-main-window-visible": "ToggleMainWindowVisible",
+    };
 
 // 主进程的Resource
 export enum ResourceName {
@@ -173,9 +162,6 @@ export enum DownloadState {
 
 // 主题市场源：BakaThemePacks v2/prod（bakamusic-theme@2 产物根目录）
 // 目录约定：publish.json、themes/*.mftheme、previews/*
-// Spec constant also lives in shared/themepack/default-theme.ts for the runtime pack system
-export const THEME_SPEC_V2 = "bakamusic-theme@2";
-
 export const themePackStoreBaseUrl = [
     "https://gh.xmly.dev/https://raw.githubusercontent.com/Toskysun/BakaThemePacks/v2/prod/",
     "https://gh-proxy.org/https://raw.githubusercontent.com/Toskysun/BakaThemePacks/v2/prod/",
@@ -196,16 +182,6 @@ export const githubDownloadMirrors = [
     "https://hub.gitmirror.com/",
     "",
 ];
-
-export enum TrackPlayerSyncType {
-    SyncPlayerState = "SyncPlayerState",
-    MusicChanged = "MusicChanged",
-    PlayerStateChanged = "PlayerStateChanged",
-    RepeatModeChanged = "RepeatModeChanged",
-    LyricChanged = "LyricChanged",
-    CurrentLyricChanged = "CurrentLyricChanged",
-    ProgressChanged = "ProgressChanged",
-}
 
 /** 播放器状态 */
 export enum PlayerState {
@@ -232,19 +208,6 @@ export enum RepeatMode {
     Queue = "queue-repeat",
     /** 单曲循环 */
     Loop = "loop",
-}
-
-
-/** 窗口类型 */
-export enum WindowType {
-    MAIN = "MAIN",
-    LYRIC = "LYRIC",
-    MINIMODE = "MINIMODE",
-}
-
-export enum WindowRole {
-    MAIN = "MAIN",
-    SLAVE = "SLAVE",
 }
 
 export const CommonConst = {

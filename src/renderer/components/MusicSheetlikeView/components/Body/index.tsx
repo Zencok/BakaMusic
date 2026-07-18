@@ -61,7 +61,7 @@ export default function Body(props: IProps) {
                 }
             });
         }
-    }, [inputSearch]);
+    }, [inputSearch, musicList]);
 
     useEffect(() => {
         setInputSearch("");

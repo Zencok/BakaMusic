@@ -1,5 +1,5 @@
-import * as frontend from "./frontend";
-import defaultSheet from "./common/default-sheet";
+import * as frontend from "./service";
+import defaultSheet from "./default-sheet";
 
 const MusicSheet = {
     // ...sheetsMethod,

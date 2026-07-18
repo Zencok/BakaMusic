@@ -1,22 +1,20 @@
-import type fs from "fs/promises";
-import type rimraf from "rimraf";
-
 interface IMod {
     fs: {
-        writeFile(...args: Parameters<typeof fs.writeFile>): ReturnType<typeof fs.writeFile>;
-        readFile(...args: Parameters<typeof fs.readFile>): ReturnType<typeof fs.readFile>;
+        writeFile(filePath: string, data: string, encoding?: "utf8" | "utf-8"): Promise<void>;
+        readFile(filePath: string, encoding?: "utf8" | "utf-8"): Promise<string>;
         isFile: (path: string) => Promise<boolean>;
         isFolder: (path: string) => Promise<boolean>;
-        rimraf: typeof rimraf.rimraf;
+        rimraf: (path: string) => Promise<boolean>;
         addFileScheme: (filePath: string) => string;
+        getPathForFile: (file: File) => string;
     },
     app: {
         exitApp: () => void;
         getPath: (pathName: "home" | "appData" | "userData" | "sessionData" | "temp" | "exe" | "module" | "desktop" | "documents" | "downloads" | "music" | "pictures" | "videos" | "recent" | "logs" | "crashDumps") => Promise<string>;
         checkUpdate: () => Promise<ICommon.IUpdateInfo>;
-        downloadUpdate: (urls: string[]) => Promise<string>;
+        downloadUpdate: () => Promise<void>;
         onUpdateDownloadProgress: (callback: (progress: { downloaded: number; total: number }) => void) => () => void;
-        installUpdate: (filePath: string) => void;
+        installUpdate: () => Promise<void>;
         cancelUpdateDownload: () => void;
         clearCache: () => void;
         getCacheSize: () => Promise<number>;
@@ -55,5 +53,4 @@ interface IMod {
 const utils = window["@shared/utils" as any] as unknown as IMod;
 
 
-export default utils;
 export const { fs: fsUtil, app: appUtil, appWindow: appWindowUtil, shell: shellUtil, dialog: dialogUtil } = utils;

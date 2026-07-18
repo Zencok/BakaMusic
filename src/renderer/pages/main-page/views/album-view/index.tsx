@@ -1,7 +1,6 @@
 import MusicSheetlikeView from "@/renderer/components/MusicSheetlikeView";
 import { useParams } from "react-router-dom";
 import { useMemo } from "react";
-import "./index.scss";
 import useAlbumDetail from "./hooks/useAlbumDetail";
 
 export default function AlbumView() {
@@ -18,7 +17,7 @@ export default function AlbumView() {
     }, [params?.platform, params?.id]);
 
     const [requestState, albumItem, musicList, getAlbumDetail] =
-    useAlbumDetail(originalAlbumItem);
+        useAlbumDetail(originalAlbumItem);
     const displayAlbumItem = albumItem ?? originalAlbumItem;
 
     return (

@@ -1,109 +1,142 @@
 const http = require("http");
-const https = require("https");
-
+const serviceIpc = require("./service-ipc.cjs");
+const { pipeline } = require("stream/promises");
+const {
+    MAX_PROXY_RESPONSE_BYTES,
+    REQUEST_TIMEOUT_MS,
+    createByteLimitTransform,
+    pickResponseHeaders,
+    requestUpstream,
+    writeProxyError,
+} = require("./proxy-common.cjs");
 
 const defaultPort = Number(process.env.REQUEST_FORWARDER_PORT || 0);
 
-function forwardRequest(clientRes, url, method, headers) {
-
-    // 确保 host 正确
-    let host = headers?.host;
-
-    if (!host || host.includes("localhost") || host.includes("127.0.0.1")) {
-        // 如果没有提供 host，且是本地请求，则使用目标 URL 的主机名
-        host = new URL(url).host;
-    }
-
-    const options = {
-        method: method,
-        headers: {
-            ...(headers || {}),
-            host, // 确保目标主机名正确
-        },
-    };
-
-    const protocol = url.startsWith("https") ? https : http;
-
-    const req = protocol.request(url, options, (targetRes) => {
-        // 将目标响应的状态码和头部转发到客户端
-        clientRes.writeHead(targetRes.statusCode, targetRes.headers);
-
-        // 将目标响应的数据流转发到客户端
-        targetRes.pipe(clientRes, {
-            end: true,
-        });
-    });
-
-    req.on("error", (error) => {
-        console.error("Error forwarding request:", error);
-        clientRes.writeHead(500, { "Content-Type": "text/plain" });
-        clientRes.end("Internal Server Error");
-    });
-
-    // 结束目标请求
-    req.end();
-}
-
-
-function safeParse(data) {
+function parseHeaders(value) {
+    if (!value || value.length > 32 * 1024) return {};
     try {
-        return JSON.parse(data) || {};
-    } catch (e) {
+        const parsed = JSON.parse(value);
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch {
         return {};
     }
 }
 
-
-function startServer(port) {
-
-    // 创建一个 HTTP 服务器
-    const server = http.createServer((req, res) => {
-        if (req.method !== "GET") {
-            res.writeHead(405, { "Content-Type": "text/plain" });
-            return res.end("Only GET requests are allowed");
-        }
-
-        if (req.url === "/heartbeat") {
-            res.writeHead(200, { "Content-Type": "text/plain" });
-            return res.end("OK");
-        }
-
-        const query = new URLSearchParams(req.url.slice(1));
-
-
-        const url = query.get("url");
-        const method = query.get("method") || "GET"; // 默认使用 GET 方法
-        const headers = safeParse(query.get("headers"));
-
-        res.setHeader("Access-Control-Allow-Origin", "*"); // 允许所有源
-        res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS"); // 允许的方法
-
-        if (!url) {
-            res.writeHead(400, { "Content-Type": "text/plain" });
-            return res.end("Bad Request: Missing URL");
-        }
-
-        forwardRequest(res, url, method, {
-            ...(req.headers || {}),
-            ...(headers || {})
-        });
+async function handleForwardRequest(req, res, targetUrl, method, configuredHeaders) {
+    const abortController = new AbortController();
+    const cancel = () => abortController.abort();
+    req.once("aborted", cancel);
+    res.once("close", () => {
+        if (!res.writableFinished) cancel();
     });
 
+    try {
+        const upstream = await requestUpstream(targetUrl, {
+            method,
+            headers: {
+                ...req.headers,
+                ...configuredHeaders,
+            },
+            signal: abortController.signal,
+        });
+        if (abortController.signal.aborted) {
+            upstream.destroy();
+            return;
+        }
+
+        const declaredLength = Number(upstream.headers["content-length"]);
+        if (Number.isFinite(declaredLength) && declaredLength > MAX_PROXY_RESPONSE_BYTES) {
+            upstream.destroy();
+            writeProxyError(res, 413, "Upstream response is too large");
+            return;
+        }
+
+        const responseHeaders = {
+            ...pickResponseHeaders(upstream.headers),
+            "access-control-allow-origin": "*",
+            "access-control-expose-headers": "Accept-Ranges, Content-Length, Content-Range, X-BakaMusic-Final-URL",
+            "x-bakamusic-final-url": upstream.__targetUrl,
+        };
+        res.writeHead(upstream.statusCode || 502, responseHeaders);
+        if (method === "HEAD") {
+            upstream.resume();
+            res.end();
+            return;
+        }
+
+        await pipeline(
+            upstream,
+            createByteLimitTransform(),
+            res,
+        );
+    } catch (error) {
+        if (abortController.signal.aborted) return;
+        console.error("[request-forwarder] request failed:", error?.message || error);
+        if (!res.headersSent) {
+            writeProxyError(res, 502, "Bad Gateway");
+        } else if (!res.destroyed) {
+            res.destroy(error instanceof Error ? error : undefined);
+        }
+    } finally {
+        req.removeListener("aborted", cancel);
+    }
+}
+
+function startServer(port) {
+    const server = http.createServer((req, res) => {
+        if (req.method === "OPTIONS") {
+            res.writeHead(204, {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+                "Access-Control-Allow-Headers": "Range",
+            });
+            res.end();
+            return;
+        }
+        if (req.url === "/heartbeat") {
+            res.writeHead(200, { "Content-Type": "text/plain" });
+            res.end("OK");
+            return;
+        }
+        if (!req.url || req.url.length > 64 * 1024) {
+            writeProxyError(res, 414, "URI Too Long");
+            return;
+        }
+        if (!new Set(["GET", "HEAD"]).has(req.method || "")) {
+            writeProxyError(res, 405, "Method Not Allowed");
+            return;
+        }
+
+        const query = new URL(req.url, "http://127.0.0.1").searchParams;
+        const targetUrl = query.get("url");
+        const requestedMethod = (query.get("method") || req.method || "GET").toUpperCase();
+        if (!targetUrl || !new Set(["GET", "HEAD"]).has(requestedMethod)) {
+            writeProxyError(res, 400, "Invalid proxy request");
+            return;
+        }
+
+        void handleForwardRequest(
+            req,
+            res,
+            targetUrl,
+            requestedMethod,
+            parseHeaders(query.get("headers")),
+        );
+    });
+
+    server.requestTimeout = REQUEST_TIMEOUT_MS;
+    server.headersTimeout = REQUEST_TIMEOUT_MS;
+    server.keepAliveTimeout = 5_000;
     server.listen(port, "127.0.0.1", () => {
         const address = server.address();
         const servicePort = typeof address === "object" && address ? address.port : port;
-        process.send?.({
-            type: "port",
-            port: servicePort
-        });
-        console.log(`Proxy server is running on http://127.0.0.1:${servicePort}`);
+        serviceIpc.send({ type: "port", port: servicePort });
+        console.log(`request-forwarder is running on http://127.0.0.1:${servicePort}`);
     });
-
-    server.on("error", (err) => {
-        console.error("Server error:", err);
-        process.send?.({ type: "error", error: err.message });
+    server.on("error", (error) => {
+        console.error("[request-forwarder] server error:", error);
+        serviceIpc.send({ type: "error", error: error.message });
     });
 }
-
 
 startServer(defaultPort);

@@ -7,6 +7,7 @@ import {
 } from "@/renderer/utils/music-quality";
 import { CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "./index.scss";
+import { useTranslation } from "react-i18next";
 
 interface IAnchorRect {
     left: number;
@@ -92,7 +93,7 @@ export function showQualitySelectPopover(payload: IShowQualitySelectPopoverPaylo
     });
 }
 
-export function hideQualitySelectPopover() {
+function hideQualitySelectPopover() {
     popoverStore.setValue(null);
 }
 
@@ -101,6 +102,7 @@ export function isQualitySelectPopoverOpen() {
 }
 
 export default function QualitySelectPopover() {
+    const { t } = useTranslation();
     const popoverState = popoverStore.useValue();
     const popoverRef = useRef<HTMLDivElement>(null);
     const [positionStyle, setPositionStyle] = useState<CSSProperties | null>(null);
@@ -213,7 +215,6 @@ export default function QualitySelectPopover() {
     return (
         <div
             className="quality-select-popover-layer"
-            role="button"
             onMouseDown={(event) => {
                 if (event.target === event.currentTarget) {
                     hideQualitySelectPopover();
@@ -226,9 +227,6 @@ export default function QualitySelectPopover() {
                 ref={popoverRef}
                 role="dialog"
                 style={positionStyle ?? undefined}
-                onMouseDown={(event) => {
-                    event.stopPropagation();
-                }}
             >
                 <div className="quality-select-popover-title">{popoverState.title}</div>
                 <div className="quality-select-popover-body">
@@ -240,7 +238,7 @@ export default function QualitySelectPopover() {
                             {group.key === "standard" && groupIndex > 0 ? (
                                 <div className="quality-select-popover-divider">
                                     <span></span>
-                                    <em>AI升频</em>
+                                    <em>{t("media.ai_upscale")}</em>
                                     <span></span>
                                 </div>
                             ) : null}

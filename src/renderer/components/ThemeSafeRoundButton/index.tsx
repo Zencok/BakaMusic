@@ -30,6 +30,7 @@ export default function ThemeSafeRoundButton(props: IProps) {
         <button
             type="button"
             title={props.title}
+            aria-label={props.title}
             onClick={props.onClick}
             onMouseEnter={() => {
                 setHovered(true);

@@ -1,11 +1,11 @@
 name: Build
 
-permissions:
-  actions: read
-  contents: write
+permissions: {}
 
 env:
-  NODE_VERSION: "22.12.0"
+  NODE_VERSION: "24.15.0"
+  NODE_GYP_VERSION: "13.0.1"
+  NATIVE_SOURCE_REF: "9fde96fa09badecb8ae82d80cde258491a6b07fd"
   WINDOWS_APP_ID: "BakaMusic"
 
 on:
@@ -16,14 +16,21 @@ on:
 
 jobs:
   validate-source:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          package-manager-cache: false
+          cache: npm
+          cache-dependency-path: package-lock.json
       - run: npm ci
+      - name: Verify node-gyp toolchain
+        run: test "$(npm exec node-gyp -- --version)" = "v${NODE_GYP_VERSION}"
       - name: Verify AMLL source integration
         run: |
           test -f src/amll-core/lyric-player/dom/index.ts
@@ -32,223 +39,248 @@ jobs:
         run: npm exec tsc -- --noEmit
       - name: Lint
         run: npm exec eslint -- ./src
+      - name: Run regression tests
+        run: npm test
 
-  build-windows:
+  build:
     needs: validate-source
-    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            runner: windows-2022
+            arch: x64
+            asset_suffix: win32-x64
+          - platform: macos
+            runner: macos-15-intel
+            arch: x64
+            asset_suffix: darwin-x64
+          - platform: macos
+            runner: macos-latest
+            arch: arm64
+            asset_suffix: darwin-arm64
+          - platform: linux
+            runner: ubuntu-latest
+            arch: x64
+            asset_suffix: linux-amd64
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      REQUIRE_RELEASE_SIGNING: ${{ startsWith(github.ref, 'refs/tags/v') }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.10"
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          package-manager-cache: false
-      - name: Print build environment
-        run: |
-          node -v
-          npm -v
-          node -e "const pkg=require('./package.json'); const lock=require('./package-lock.json'); console.log('electron='+pkg.devDependencies.electron); console.log('@electron/rebuild='+(lock.packages['node_modules/@electron/rebuild']?.version || 'missing')); console.log('better-sqlite3='+(lock.packages['node_modules/better-sqlite3']?.version || 'missing'));"
+          cache: npm
+          cache-dependency-path: package-lock.json
       - name: Set build version
+        shell: bash
         run: |
-          node -e "const fs=require('fs'); const pkg=require('./package.json'); const ref=process.env.GITHUB_REF||''; const refName=process.env.GITHUB_REF_NAME||''; const version=ref.startsWith('refs/tags/v') ? refName.slice(1) : pkg.version; fs.appendFileSync(process.env.GITHUB_ENV, 'VERSION='+version+'\nSYNC_PACKAGE_VERSION=' + String(pkg.version !== version) + '\n'); console.log('VERSION=' + version);"
-      - name: Sync package version
-        if: env.SYNC_PACKAGE_VERSION == 'true'
-        run: |
-          node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\n'); }"
-      - run: npm ci
-      - name: Clean build output
-        run: Remove-Item -Recurse -Force -ErrorAction SilentlyContinue ".webpack", "out"
-      - name: Checkout native sources (private repo)
-        uses: actions/checkout@v7
-        with:
-          repository: Zencok/baka-native
-          ssh-key: ${{ secrets.NATIVE_REPO_DEPLOY_KEY }}
-          path: native
-          persist-credentials: false
-      - name: Build native modules
-        run: npm run build:native
-      - run: npm run package
-      - name: Install Inno Setup
-        run: choco install innosetup -y
-      - name: Build Installer
-        run: iscc /DMyAppVersion=${{ env.VERSION }} /DMyAppId=${{ env.WINDOWS_APP_ID }} "./release/build-windows.iss"
-      - name: Rename Setup
-        run: Rename-Item -Path "./out/BakaMusicSetup.exe" -NewName "BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe"
-      - name: Generate Portable
-        run: New-Item -ItemType Directory -Force -Path "./out/BakaMusic-win32-x64/portable"
-      - name: Build Portable Zip
-        run: Compress-Archive -Path "./out/BakaMusic-win32-x64" -DestinationPath "BakaMusic-${{ env.VERSION }}-win32-x64-portable.zip" -Force
-      - uses: actions/upload-artifact@v7
-        with:
-          name: BakaMusic-${{ env.VERSION }}-win32-x64-setup
-          path: ./out/BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v7
-        with:
-          name: BakaMusic-${{ env.VERSION }}-win32-x64-portable
-          path: BakaMusic-${{ env.VERSION }}-win32-x64-portable.zip
-          if-no-files-found: error
-
-  build-macos-x64:
-    needs: validate-source
-    runs-on: macos-15-intel
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.10"
-      - uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          package-manager-cache: false
-      - name: Print build environment
-        run: |
-          node -v
-          npm -v
-          node -e "const pkg=require('./package.json'); const lock=require('./package-lock.json'); console.log('electron='+pkg.devDependencies.electron); console.log('@electron/rebuild='+(lock.packages['node_modules/@electron/rebuild']?.version || 'missing')); console.log('better-sqlite3='+(lock.packages['node_modules/better-sqlite3']?.version || 'missing'));"
-      - name: Set build version
-        run: |
-          node -e "const fs=require('fs'); const pkg=require('./package.json'); const ref=process.env.GITHUB_REF||''; const refName=process.env.GITHUB_REF_NAME||''; const version=ref.startsWith('refs/tags/v') ? refName.slice(1) : pkg.version; fs.appendFileSync(process.env.GITHUB_ENV, 'VERSION='+version+'\nSYNC_PACKAGE_VERSION=' + String(pkg.version !== version) + '\n'); console.log('VERSION=' + version);"
-      - name: Sync package version
-        if: env.SYNC_PACKAGE_VERSION == 'true'
-        run: |
-          node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\n'); }"
-      - run: npm ci
-      - name: Clean build output
-        run: rm -rf .webpack out
-      - name: Checkout native sources (private repo)
-        uses: actions/checkout@v7
-        with:
-          repository: Zencok/baka-native
-          ssh-key: ${{ secrets.NATIVE_REPO_DEPLOY_KEY }}
-          path: native
-          persist-credentials: false
-      - name: Build native modules
-        run: npm run build:native
-      - run: npm run make -- --arch="x64"
-      - name: Rename DMG
-        run: mv "./out/make/BakaMusic-${{ env.VERSION }}-x64.dmg" "./out/make/BakaMusic-${{ env.VERSION }}-darwin-x64.dmg"
-      - uses: actions/upload-artifact@v7
-        with:
-          name: BakaMusic-${{ env.VERSION }}-darwin-x64
-          path: ./out/make/BakaMusic-${{ env.VERSION }}-darwin-x64.dmg
-          if-no-files-found: error
-
-  build-macos-arm64:
-    needs: validate-source
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.10"
-      - uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          package-manager-cache: false
-      - name: Print build environment
-        run: |
-          node -v
-          npm -v
-          node -e "const pkg=require('./package.json'); const lock=require('./package-lock.json'); console.log('electron='+pkg.devDependencies.electron); console.log('@electron/rebuild='+(lock.packages['node_modules/@electron/rebuild']?.version || 'missing')); console.log('better-sqlite3='+(lock.packages['node_modules/better-sqlite3']?.version || 'missing'));"
-      - name: Set build version
-        run: |
-          node -e "const fs=require('fs'); const pkg=require('./package.json'); const ref=process.env.GITHUB_REF||''; const refName=process.env.GITHUB_REF_NAME||''; const version=ref.startsWith('refs/tags/v') ? refName.slice(1) : pkg.version; fs.appendFileSync(process.env.GITHUB_ENV, 'VERSION='+version+'\nSYNC_PACKAGE_VERSION=' + String(pkg.version !== version) + '\n'); console.log('VERSION=' + version);"
-      - name: Sync package version
-        if: env.SYNC_PACKAGE_VERSION == 'true'
-        run: |
-          node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\n'); }"
-      - run: npm ci
-      - name: Clean build output
-        run: rm -rf .webpack out
-      - name: Checkout native sources (private repo)
-        uses: actions/checkout@v7
-        with:
-          repository: Zencok/baka-native
-          ssh-key: ${{ secrets.NATIVE_REPO_DEPLOY_KEY }}
-          path: native
-          persist-credentials: false
-      - name: Build native modules
-        run: npm run build:native
-      - run: npm run make -- --arch="arm64"
-      - name: Rename DMG
-        run: mv "./out/make/BakaMusic-${{ env.VERSION }}-arm64.dmg" "./out/make/BakaMusic-${{ env.VERSION }}-darwin-arm64.dmg"
-      - uses: actions/upload-artifact@v7
-        with:
-          name: BakaMusic-${{ env.VERSION }}-darwin-arm64
-          path: ./out/make/BakaMusic-${{ env.VERSION }}-darwin-arm64.dmg
-          if-no-files-found: error
-
-  build-linux:
-    needs: validate-source
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.10"
-      - uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          package-manager-cache: false
-      - name: Print build environment
-        run: |
-          node -v
-          npm -v
-          node -e "const pkg=require('./package.json'); const lock=require('./package-lock.json'); console.log('electron='+pkg.devDependencies.electron); console.log('@electron/rebuild='+(lock.packages['node_modules/@electron/rebuild']?.version || 'missing')); console.log('better-sqlite3='+(lock.packages['node_modules/better-sqlite3']?.version || 'missing'));"
-      - name: Set build version
-        run: |
-          node -e "const fs=require('fs'); const pkg=require('./package.json'); const ref=process.env.GITHUB_REF||''; const refName=process.env.GITHUB_REF_NAME||''; const version=ref.startsWith('refs/tags/v') ? refName.slice(1) : pkg.version; fs.appendFileSync(process.env.GITHUB_ENV, 'VERSION='+version+'\nSYNC_PACKAGE_VERSION=' + String(pkg.version !== version) + '\n'); console.log('VERSION=' + version);"
-      - name: Sync package version
-        if: env.SYNC_PACKAGE_VERSION == 'true'
-        run: |
-          node -e "const fs=require('fs'); const version=process.env.VERSION; const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.version=version; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n'); if (fs.existsSync('package-lock.json')) { const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8')); lock.version=version; if (lock.packages && lock.packages['']) { lock.packages[''].version=version; } fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\n'); }"
-      - run: npm ci
-      - name: Clean build output
-        run: rm -rf .webpack out
-      - name: Checkout native sources (private repo)
-        uses: actions/checkout@v7
-        with:
-          repository: Zencok/baka-native
-          ssh-key: ${{ secrets.NATIVE_REPO_DEPLOY_KEY }}
-          path: native
-          persist-credentials: false
-      - name: Build native modules
-        run: npm run build:native
-      - run: npm run make
-      - name: Rename DEB
-        run: |
-          DEB_FILE=$(find ./out/make/deb/x64/ -name "*.deb" | head -1)
-          if [ -n "$DEB_FILE" ]; then
-            mv "$DEB_FILE" "./out/make/deb/x64/BakaMusic-${{ env.VERSION }}-linux-amd64.deb"
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ "$GITHUB_REF" != refs/tags/v* ]]; then
+            VERSION="$(node -p "require('./package.json').version")"
           fi
-      - uses: actions/upload-artifact@v7
+          export VERSION
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          node -e "const fs=require('fs');const version=process.env.VERSION;for(const file of ['package.json','package-lock.json']){const data=JSON.parse(fs.readFileSync(file,'utf8'));data.version=version;if(data.packages?.[''])data.packages[''].version=version;fs.writeFileSync(file,JSON.stringify(data,null,2)+'\n')}"
+      - run: npm ci
+      - name: Print build environment
+        run: |
+          node -v
+          npm -v
+          node -e "const pkg=require('./package.json'); const lock=require('./package-lock.json'); console.log('electron='+pkg.devDependencies.electron); console.log('@electron/rebuild='+(lock.packages['node_modules/@electron/rebuild']?.version || 'missing')); console.log('node-gyp='+(lock.packages['node_modules/node-gyp']?.version || 'missing'));"
+      - name: Checkout pinned native sources
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
-          name: BakaMusic-${{ env.VERSION }}-linux-amd64
-          path: ./out/make/deb/x64/BakaMusic-${{ env.VERSION }}-linux-amd64.deb
+          repository: Zencok/baka-native
+          ref: ${{ env.NATIVE_SOURCE_REF }}
+          ssh-key: ${{ secrets.NATIVE_REPO_DEPLOY_KEY }}
+          path: native
+          persist-credentials: false
+      - name: Verify native source revision
+        shell: bash
+        run: test "$(git -C native rev-parse HEAD)" = "$NATIVE_SOURCE_REF"
+      - name: Build and load native modules
+        run: npm run build:native
+      - name: Verify native modules in Electron ABI
+        run: npm run smoke:native
+
+      - name: Prepare Windows signing certificate
+        if: startsWith(github.ref, 'refs/tags/v') && matrix.platform == 'windows'
+        shell: pwsh
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          if (-not $env:CERTIFICATE_BASE64 -or -not $env:CERTIFICATE_PASSWORD) {
+            throw "Tagged Windows builds require WINDOWS_CERTIFICATE_BASE64 and WINDOWS_CERTIFICATE_PASSWORD"
+          }
+          $certificatePath = Join-Path $env:RUNNER_TEMP "bakamusic-code-signing.pfx"
+          [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:CERTIFICATE_BASE64))
+          "WINDOWS_CERTIFICATE_FILE=$certificatePath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "WINDOWS_CERTIFICATE_PASSWORD=$env:CERTIFICATE_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Prepare macOS signing and notarization
+        if: startsWith(github.ref, 'refs/tags/v') && matrix.platform == 'macos'
+        shell: bash
+        env:
+          MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGN_IDENTITY_SECRET: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY_ID_SECRET: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_SECRET: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          test -n "$MACOS_CERTIFICATE_BASE64"
+          test -n "$MACOS_CERTIFICATE_PASSWORD"
+          test -n "$MACOS_SIGN_IDENTITY_SECRET"
+          test -n "$APPLE_API_KEY_BASE64"
+          test -n "$APPLE_API_KEY_ID_SECRET"
+          test -n "$APPLE_API_ISSUER_SECRET"
+          CERTIFICATE_PATH="$RUNNER_TEMP/bakamusic-code-signing.p12"
+          API_KEY_PATH="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID_SECRET}.p8"
+          KEYCHAIN_PATH="$RUNNER_TEMP/bakamusic-signing.keychain-db"
+          echo "$MACOS_CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          echo "$APPLE_API_KEY_BASE64" | base64 --decode > "$API_KEY_PATH"
+          security create-keychain -p "$MACOS_CERTIFICATE_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$MACOS_CERTIFICATE_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$MACOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$MACOS_CERTIFICATE_PASSWORD" "$KEYCHAIN_PATH"
+          echo "MACOS_SIGN_IDENTITY=$MACOS_SIGN_IDENTITY_SECRET" >> "$GITHUB_ENV"
+          echo "APPLE_API_KEY=$API_KEY_PATH" >> "$GITHUB_ENV"
+          echo "APPLE_API_KEY_ID=$APPLE_API_KEY_ID_SECRET" >> "$GITHUB_ENV"
+          echo "APPLE_API_ISSUER=$APPLE_API_ISSUER_SECRET" >> "$GITHUB_ENV"
+
+      - name: Clean build output
+        run: npm run clean
+
+      - name: Package Windows application
+        if: matrix.platform == 'windows'
+        run: npm run package -- --arch="${{ matrix.arch }}"
+      - name: Verify Windows ASAR and fuses
+        if: matrix.platform == 'windows'
+        run: node scripts/package-security-smoke.cjs
+      - name: Build Windows installer and portable archive
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          choco install innosetup -y
+          iscc /DMyAppVersion=${{ env.VERSION }} /DMyAppId=${{ env.WINDOWS_APP_ID }} "./release/build-windows.iss"
+          Rename-Item "./out/BakaMusicSetup.exe" "BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe"
+          Compress-Archive -Path "./out/BakaMusic-win32-x64" -DestinationPath "BakaMusic-${{ env.VERSION }}-win32-x64-portable.zip" -Force
+      - name: Verify and sign Windows executables
+        if: startsWith(github.ref, 'refs/tags/v') && matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
+            Where-Object FullName -Match '\\x64\\signtool\.exe$' |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $signtool) { throw "signtool.exe not found" }
+          & $signtool verify /pa /all "./out/BakaMusic-win32-x64/BakaMusic.exe"
+          if ($LASTEXITCODE -ne 0) { throw "Packaged executable signature verification failed" }
+          & $signtool sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /f "$env:WINDOWS_CERTIFICATE_FILE" /p "$env:WINDOWS_CERTIFICATE_PASSWORD" "./out/BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe"
+          if ($LASTEXITCODE -ne 0) { throw "Installer signing failed" }
+          & $signtool verify /pa /all "./out/BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe"
+          if ($LASTEXITCODE -ne 0) { throw "Installer signature verification failed" }
+      - name: Stage Windows artifacts
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release-assets | Out-Null
+          Copy-Item "./out/BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe" release-assets/
+          Copy-Item "./BakaMusic-${{ env.VERSION }}-win32-x64-portable.zip" release-assets/
+
+      - name: Build macOS DMG
+        if: matrix.platform == 'macos'
+        run: npm run make -- --arch="${{ matrix.arch }}"
+      - name: Stage macOS artifact
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          mkdir -p release-assets
+          mv "./out/make/BakaMusic-${VERSION}-${{ matrix.arch }}.dmg" "./release-assets/BakaMusic-${VERSION}-${{ matrix.asset_suffix }}.dmg"
+      - name: Sign, notarize, and staple macOS DMG
+        if: startsWith(github.ref, 'refs/tags/v') && matrix.platform == 'macos'
+        shell: bash
+        run: |
+          DMG="./release-assets/BakaMusic-${VERSION}-${{ matrix.asset_suffix }}.dmg"
+          codesign --force --timestamp --sign "$MACOS_SIGN_IDENTITY" "$DMG"
+          codesign --verify --verbose=2 "$DMG"
+          xcrun notarytool submit "$DMG" --key "$APPLE_API_KEY" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" --wait
+          xcrun stapler staple "$DMG"
+          xcrun stapler validate "$DMG"
+
+      - name: Build Linux package
+        if: matrix.platform == 'linux'
+        run: npm run make -- --arch="${{ matrix.arch }}"
+      - name: Stage Linux artifact
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          mkdir -p release-assets
+          DEB_FILE="$(find ./out/make/deb/x64 -name '*.deb' -print -quit)"
+          test -n "$DEB_FILE"
+          mv "$DEB_FILE" "./release-assets/BakaMusic-${VERSION}-${{ matrix.asset_suffix }}.deb"
+
+      - name: Generate reproducible CycloneDX SBOM
+        run: npm run sbom -- --output-file "./release-assets/BakaMusic-${{ env.VERSION }}-${{ matrix.asset_suffix }}.cdx.json"
+      - name: Generate platform checksums
+        run: node scripts/generate-release-metadata.cjs ./release-assets --output "./release-assets/BakaMusic-${{ env.VERSION }}-${{ matrix.asset_suffix }}.sha256"
+      - name: Attest build provenance
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-path: ./release-assets/*
+      - name: Upload release bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: BakaMusic-${{ env.VERSION }}-${{ matrix.asset_suffix }}
+          path: ./release-assets/*
           if-no-files-found: error
 
   publish-release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs:
-      - build-windows
-      - build-macos-x64
-      - build-macos-arm64
-      - build-linux
+    needs: build
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+      attestations: write
     steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v8
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+      - name: Download release bundles
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           path: ./release-assets
           merge-multiple: true
-      - name: Publish GitHub release
-        uses: softprops/action-gh-release@v3
+      - name: Generate aggregate checksums
+        run: node scripts/generate-release-metadata.cjs ./release-assets
+      - name: Attest aggregate release bundle
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          generate_release_notes: true
-          files: ./release-assets/*
-          fail_on_unmatched_files: true
+          subject-path: ./release-assets/*
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" ./release-assets/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" ./release-assets/* --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
+          fi

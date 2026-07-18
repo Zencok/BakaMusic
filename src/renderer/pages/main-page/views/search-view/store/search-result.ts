@@ -3,7 +3,7 @@
 import { RequestStateCode } from "@/common/constant";
 import Store from "@/common/store";
 
-export interface ISearchResult<T extends IMedia.SupportMediaType> {
+interface ISearchResult<T extends IMedia.SupportMediaType> {
     /** 当前页码 */
     page?: number;
     /** 搜索词 */
@@ -21,7 +21,7 @@ type ISearchResults<
 };
 
 /** 初始值 */
-export const initSearchResults: ISearchResults = {
+const initSearchResults: ISearchResults = {
     music: {},
     album: {},
     artist: {},

@@ -1,70 +1,112 @@
-// 数据存储方案
-import { useEffect, useState } from "react";
-
-export class StateMapper<T> {
-    private getFun: () => T;
-    public cbs: Set<() => void> = new Set([]);
-    constructor(getFun: () => T) {
-        this.getFun = getFun;
-    }
-
-    notify = () => {
-        this.cbs.forEach((_) => _?.());
-    };
-
-    useMappedState = () => {
-        const [_state, _setState] = useState<T>(this.getFun);
-
-        const updateState = () => {
-            _setState(this.getFun());
-        };
-        useEffect(() => {
-            this.cbs.add(updateState);
-            return () => {
-                this.cbs.delete(updateState);
-            };
-        }, []);
-        return _state;
-    };
-}
+import { useRef, useSyncExternalStore } from "react";
 
 type UpdateFunc<T> = (prev: T) => T;
+type EqualityFn<T> = (left: T, right: T) => boolean;
 
+interface ISelectorCache<T, TSelected> {
+    hasSelection: boolean;
+    selector: (value: T) => TSelected;
+    equality: EqualityFn<TSelected>;
+    storeValue: T | typeof UNINITIALIZED;
+    selection?: TSelected;
+}
+
+const UNINITIALIZED = Symbol("store-uninitialized");
+
+/**
+ * A small external store that is safe with React concurrent rendering.
+ *
+ * `useSelector` keeps the previously selected snapshot when the configured
+ * equality function considers the result unchanged, avoiding broad rerenders
+ * for stores that contain several independent fields.
+ */
 export default class Store<T> {
     private value: T;
-    private stateMapper: StateMapper<T>;
-    private valueChangeCbs: Set<(newValue: T, oldValue: T) => void> = new Set([]);
+    private subscribers = new Set<() => void>();
+    private valueChangeCbs = new Set<(newValue: T, oldValue: T) => void>();
 
     constructor(initValue: T) {
         this.value = initValue;
-        this.stateMapper = new StateMapper(this.getValue);
     }
 
-    public getValue = () => {
-        return this.value;
+    public getValue = () => this.value;
+
+    public subscribe = (subscriber: () => void) => {
+        this.subscribers.add(subscriber);
+        return () => {
+            this.subscribers.delete(subscriber);
+        };
     };
 
-    public useValue = () => {
-        return this.stateMapper.useMappedState();
+    public useValue = () => useSyncExternalStore(
+        this.subscribe,
+        this.getValue,
+        this.getValue,
+    );
+
+    public useSelector = <TSelected>(
+        selector: (value: T) => TSelected,
+        equality: EqualityFn<TSelected> = Object.is,
+    ) => {
+        const cacheRef = useRef<ISelectorCache<T, TSelected>>({
+            hasSelection: false,
+            selector,
+            equality,
+            storeValue: UNINITIALIZED,
+        });
+        const cache = cacheRef.current;
+
+        if (cache.selector !== selector || cache.equality !== equality) {
+            cache.selector = selector;
+            cache.equality = equality;
+            cache.storeValue = UNINITIALIZED;
+        }
+
+        const getSelectedSnapshot = () => {
+            const storeValue = this.getValue();
+            if (cache.storeValue === storeValue && cache.hasSelection) {
+                return cache.selection as TSelected;
+            }
+
+            const nextSelection = cache.selector(storeValue);
+            cache.storeValue = storeValue;
+            if (
+                cache.hasSelection
+                && cache.equality(cache.selection as TSelected, nextSelection)
+            ) {
+                return cache.selection as TSelected;
+            }
+
+            cache.hasSelection = true;
+            cache.selection = nextSelection;
+            return nextSelection;
+        };
+
+        return useSyncExternalStore(
+            this.subscribe,
+            getSelectedSnapshot,
+            getSelectedSnapshot,
+        );
     };
 
     public setValue = (value: T | UpdateFunc<T>) => {
-        let newValue: T;
-        if (typeof value === "function") {
-            newValue = (value as UpdateFunc<T>)(this.value);
-        } else {
-            newValue = value;
+        const oldValue = this.value;
+        const newValue = typeof value === "function"
+            ? (value as UpdateFunc<T>)(oldValue)
+            : value;
+
+        if (Object.is(oldValue, newValue)) {
+            return oldValue;
         }
-        this.valueChangeCbs.forEach((cb) => {
-            cb(newValue, this.value);
-        });
+
         this.value = newValue;
-        this.stateMapper.notify();
+        this.valueChangeCbs.forEach((cb) => cb(newValue, oldValue));
+        this.subscribers.forEach((subscriber) => subscriber());
+        return newValue;
     };
 
     public onValueChange = (cb: (newValue: T, oldValue: T) => void) => {
         this.valueChangeCbs.add(cb);
-
         return () => {
             this.valueChangeCbs.delete(cb);
         };

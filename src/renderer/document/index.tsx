@@ -1,74 +1,110 @@
 import ReactDOM from "react-dom/client";
-import App from "../app";
-import "animate.css";
-import ModalComponent from "../components/Modal";
-import PanelComponent from "../components/Panel";
-import QualitySelectPopover from "../components/QualitySelectPopover";
-import bootstrap from "./bootstrap";
-import { HashRouter, Route, Routes } from "react-router-dom";
-import MainPage from "../pages/main-page";
-import { ContextMenuComponent } from "../components/ContextMenu";
-import { Bounce, ToastContainer } from "react-toastify";
+import { useEffect, useState, type ComponentType, type CSSProperties } from "react";
 
-import "rc-slider/assets/index.css";
-import "react-toastify/dist/ReactToastify.css";
-import "./styles/index.scss"; // 全局样式
-import { toastDuration } from "@/common/constant";
-import useBootstrap from "./useBootstrap";
-import logger from "@shared/logger/renderer";
-import { ErrorBoundary } from "react-error-boundary";
-import Fallback from "@renderer/document/fallback";
-import AppConfig from "@shared/app-config/renderer";
-import trackPlayer from "../core/track-player";
+const STARTUP_CONTAINER_STYLE: CSSProperties = {
+    alignItems: "center",
+    background: "#18181b",
+    color: "#f4f4f5",
+    display: "flex",
+    flexDirection: "column",
+    fontFamily: "system-ui, sans-serif",
+    gap: 12,
+    height: "100vh",
+    justifyContent: "center",
+    textAlign: "center",
+    width: "100vw",
+};
 
-logger.logPerf("Create Bundle");
-bootstrap().then(() => {
-    logger.logPerf("Bundle Bootstrap Ready");
-    const rootElement = document.getElementById("root");
-    if (!rootElement) {
-        throw new Error("Root element not found");
+const RETRY_BUTTON_STYLE: CSSProperties = {
+    background: "#0a95ff",
+    border: 0,
+    borderRadius: 8,
+    color: "#fff",
+    cursor: "pointer",
+    padding: "8px 18px",
+};
+
+const DEFAULT_STARTUP_COPY = {
+    failed: "BakaMusic failed to start",
+    loading: "Starting…",
+    reload: "Reload",
+};
+
+function StartupShell() {
+    const [RuntimeRoot, setRuntimeRoot] = useState<ComponentType | null>(null);
+    const [startupError, setStartupError] = useState<Error | null>(null);
+    const [startupCopy, setStartupCopy] = useState(DEFAULT_STARTUP_COPY);
+
+    useEffect(() => {
+        let active = true;
+        void import("@shared/i18n/renderer")
+            .then(async ({ i18n, setupI18n }) => {
+                await setupI18n();
+                if (active) {
+                    setStartupCopy({
+                        failed: i18n.t("startup.failed"),
+                        loading: i18n.t("startup.loading"),
+                        reload: i18n.t("startup.reload"),
+                    });
+                }
+            })
+            .catch(() => undefined);
+        const bootstrapPromise = import("./bootstrap")
+            .then((module) => module.default());
+        const runtimeRootPromise = import("./runtime-root");
+
+        Promise.all([bootstrapPromise, runtimeRootPromise])
+            .then(([, runtimeRootModule]) => {
+                if (!active) {
+                    return;
+                }
+                runtimeRootModule.markBootstrapReady();
+                setRuntimeRoot(() => runtimeRootModule.default);
+            })
+            .catch((error: unknown) => {
+                if (active) {
+                    setStartupError(
+                        error instanceof Error ? error : new Error(String(error)),
+                    );
+                }
+            });
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    if (RuntimeRoot) {
+        return <RuntimeRoot></RuntimeRoot>;
     }
 
-    ReactDOM.createRoot(rootElement).render(<ErrorBoundary
-        FallbackComponent={Fallback} onReset={() => {
-            // 删除软件配置
-            AppConfig.reset();
-            trackPlayer.reset();
-        }}><Root></Root></ErrorBoundary>);
-});
+    if (startupError) {
+        return (
+            <div style={STARTUP_CONTAINER_STYLE} role="alert">
+                <strong>{startupCopy.failed}</strong>
+                <span>{startupError.message}</span>
+                <button
+                    type="button"
+                    style={RETRY_BUTTON_STYLE}
+                    onClick={() => window.location.reload()}
+                >
+                    {startupCopy.reload}
+                </button>
+            </div>
+        );
+    }
 
-function Root() {
     return (
-        <>
-            <HashRouter>
-                <BootstrapComponent></BootstrapComponent>
-                <Routes>
-                    <Route path="/" element={<App></App>}>
-                        <Route path="main/*" element={<MainPage></MainPage>}></Route>
-                        <Route path="*" element={<MainPage></MainPage>}></Route>
-                    </Route>
-                </Routes>
-                <PanelComponent></PanelComponent>
-                <ModalComponent></ModalComponent>
-            </HashRouter>
-            <ContextMenuComponent></ContextMenuComponent>
-            <QualitySelectPopover></QualitySelectPopover>
-            <ToastContainer
-                draggable={false}
-                closeOnClick={false}
-                limit={5}
-                pauseOnFocusLoss={false}
-                hideProgressBar
-                autoClose={toastDuration.short}
-                newestOnTop
-                transition={Bounce}
-            ></ToastContainer>
-        </>
+        <div style={STARTUP_CONTAINER_STYLE} aria-busy="true" aria-live="polite">
+            <strong>BakaMusic</strong>
+            <span>{startupCopy.loading}</span>
+        </div>
     );
 }
 
-function BootstrapComponent(): null {
-    useBootstrap();
-
-    return null;
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+    throw new Error("Root element not found");
 }
+
+ReactDOM.createRoot(rootElement).render(<StartupShell></StartupShell>);

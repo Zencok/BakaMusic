@@ -1,7 +1,7 @@
 import { ipcRenderer } from "electron";
 import exposeInMainWorld from "@/preload/expose-in-main-world";
 import { IGlobalContext } from "./type";
-import { _IpcRendererEvt } from "./internal/common";
+import { _IpcRendererEvt } from "./ipc-channel";
 
 let globalContext: IGlobalContext;
 

@@ -1,4 +1,4 @@
-export function normalizeNumberCN(number: number): string {
+function normalizeNumberCN(number: number): string {
     if (number < 10000) {
         return `${number}`;
     }
@@ -10,7 +10,7 @@ export function normalizeNumberCN(number: number): string {
     return `${number.toFixed(number < 1000 ? 1 : 0)}亿`;
 }
 
-export function normalizeNumberEN(number: number): string {
+function normalizeNumberEN(number: number): string {
     if (number < 10000) {
         return `${number}`;
     }
@@ -60,13 +60,6 @@ export function encodeUrlHeaders(
         encodeURIComponent(JSON.stringify(_setHeaders)),
     );
     return encodedUrl.toString();
-}
-
-export function isBetween(target: number, a: number, b: number) {
-    if (a > b) {
-        return a >= target && target >= b;
-    }
-    return b >= target && target >= a;
 }
 
 export function isBasicType(val: unknown) {

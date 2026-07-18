@@ -4,20 +4,24 @@
 import { encodeUrlHeaders } from "@/common/normalize-util";
 import albumImg from "@/assets/imgs/album-cover.jpg";
 import getUrlExt from "@/renderer/utils/get-url-ext";
-import Hls, { Events as HlsEvents, HlsConfig } from "hls.js";
 import { PlayerState } from "@/common/constant";
 import ServiceManager from "@shared/service-manager/renderer";
 import ControllerBase from "@renderer/core/track-player/controller/controller-base";
 import { ErrorReason } from "@renderer/core/track-player/enum";
-import Dexie from "dexie";
 import voidCallback from "@/common/void-callback";
 import { IAudioController } from "@/types/audio-controller";
-import Promise = Dexie.Promise;
+import {
+    classifyHlsError,
+    IHlsRecoveryState,
+} from "../hls-error-policy";
 
 
 class AudioController extends ControllerBase implements IAudioController {
     private audio: HTMLAudioElement;
-    private hls: Hls | null = null;
+    private hls: import("hls.js").default | null = null;
+    private sourceGeneration = 0;
+    private sourceAbortController: AbortController | null = null;
+    private playRequested = false;
     private _playerState: PlayerState = PlayerState.None;
     get playerState() {
         return this._playerState;
@@ -44,6 +48,7 @@ class AudioController extends ControllerBase implements IAudioController {
 
         ////// events
         this.audio.onplaying = () => {
+            this.playRequested = true;
             this.playerState = PlayerState.Playing;
             navigator.mediaSession.playbackState = "playing";
         };
@@ -94,6 +99,7 @@ class AudioController extends ControllerBase implements IAudioController {
         this.audio.oncanplay = restorePlaybackState;
 
         this.audio.onended = () => {
+            this.playRequested = false;
             this.playerState = PlayerState.Paused;
             this.onEnded?.();
         };
@@ -111,26 +117,125 @@ class AudioController extends ControllerBase implements IAudioController {
         window.ad = this.audio;
     }
 
-    private initHls(config?: Partial<HlsConfig>) {
-        if (!this.hls) {
-            this.hls = new Hls(config);
-            this.hls.attachMedia(this.audio);
-            this.hls.on(HlsEvents.ERROR, (evt, error) => {
-                this.onError?.(ErrorReason.EmptyResource, error);
+    private async loadHlsSource(
+        url: string,
+        headers: Record<string, any> | null,
+        generation: number,
+        signal: AbortSignal,
+    ) {
+        try {
+            const {
+                default: Hls,
+                Events: HlsEvents,
+                XhrLoader,
+            } = await import("hls.js");
+            if (generation !== this.sourceGeneration || signal.aborted) {
+                return;
+            }
+            if (!Hls.isSupported()) {
+                this.onError?.(ErrorReason.UnsupportedResource);
+                return;
+            }
+
+            this.destroyHls();
+            const resolveRequestUrl = (requestUrl: string) =>
+                this.resolvePlayableUrl(requestUrl, headers);
+            class ForwardingHlsLoader extends XhrLoader {
+                private readonly abortOnSignal = () => this.abort();
+
+                constructor(config: any) {
+                    super(config);
+                    signal.addEventListener("abort", this.abortOnSignal, { once: true });
+                }
+
+                load(context: any, config: any, callbacks: any) {
+                    const originalContext = context;
+                    const forwardedContext = {
+                        ...context,
+                        url: resolveRequestUrl(context.url),
+                    };
+                    super.load(forwardedContext, config, {
+                        ...callbacks,
+                        onSuccess: (response: any, stats: any, _context: any, details: any) => {
+                            response.url = details?.getResponseHeader?.(
+                                "x-bakamusic-final-url",
+                            ) || originalContext.url;
+                            callbacks.onSuccess(response, stats, originalContext, details);
+                        },
+                        onError: (error: any, _context: any, details: any, stats: any) =>
+                            callbacks.onError(error, originalContext, details, stats),
+                        onTimeout: (stats: any, _context: any, details: any) =>
+                            callbacks.onTimeout(stats, originalContext, details),
+                        onProgress: (stats: any, _context: any, data: any, details: any) =>
+                            callbacks.onProgress(stats, originalContext, data, details),
+                    });
+                }
+
+                destroy() {
+                    signal.removeEventListener("abort", this.abortOnSignal);
+                    super.destroy();
+                }
+            }
+            const hls = new Hls({
+                loader: ForwardingHlsLoader,
             });
+            const recoveryState: IHlsRecoveryState = {
+                networkAttempts: 0,
+                mediaAttempts: 0,
+            };
+            this.hls = hls;
+            hls.attachMedia(this.audio);
+            hls.on(HlsEvents.ERROR, (_event, error) => {
+                if (generation !== this.sourceGeneration || signal.aborted) {
+                    return;
+                }
+                switch (classifyHlsError(error, recoveryState)) {
+                    case "ignore":
+                        return;
+                    case "restart-load":
+                        recoveryState.networkAttempts++;
+                        hls.startLoad();
+                        return;
+                    case "recover-media":
+                        recoveryState.mediaAttempts++;
+                        hls.recoverMediaError();
+                        return;
+                    case "fail":
+                        this.destroyHls();
+                        this.onError?.(ErrorReason.EmptyResource, error);
+                }
+            });
+            hls.on(HlsEvents.MANIFEST_PARSED, () => {
+                recoveryState.networkAttempts = 0;
+                if (this.playRequested && generation === this.sourceGeneration) {
+                    this.audio.play().catch(voidCallback);
+                }
+            });
+            hls.on(HlsEvents.FRAG_LOADED, () => {
+                recoveryState.networkAttempts = 0;
+                recoveryState.mediaAttempts = 0;
+            });
+            hls.loadSource(url);
+        } catch (error) {
+            if (generation === this.sourceGeneration && !signal.aborted) {
+                this.onError?.(ErrorReason.EmptyResource, error);
+            }
         }
     }
 
     private destroyHls() {
         if (this.hls) {
             this.hls.detachMedia();
-            this.hls.off(HlsEvents.ERROR);
             this.hls.destroy();
             this.hls = null;
         }
     }
 
     private clearTrackSource() {
+        this.playRequested = false;
+        this.sourceAbortController?.abort();
+        this.sourceAbortController = null;
+        this.sourceGeneration += 1;
         this.destroyHls();
         this.audio.pause();
         this.audio.src = "";
@@ -143,12 +248,14 @@ class AudioController extends ControllerBase implements IAudioController {
     }
 
     pause(): void {
+        this.playRequested = false;
         if (this.hasSource) {
             this.audio.pause();
         }
     }
 
     play(): void {
+        this.playRequested = true;
         if (this.hasSource) {
             this.audio.play().catch(voidCallback);
         }
@@ -236,6 +343,10 @@ class AudioController extends ControllerBase implements IAudioController {
             return;
         }
         this.musicItem = { ...musicItem };
+        this.sourceAbortController?.abort();
+        const sourceAbortController = new AbortController();
+        this.sourceAbortController = sourceAbortController;
+        const sourceGeneration = ++this.sourceGeneration;
 
         // 1. update metadata
         navigator.mediaSession.metadata = new MediaMetadata({
@@ -282,17 +393,12 @@ class AudioController extends ControllerBase implements IAudioController {
         // 2.3 hack url with headers
         // 3. set real source
         if (getUrlExt(trackSource.url) === ".m3u8") {
-            if (Hls.isSupported()) {
-                this.initHls();
-                try {
-                    this.hls?.loadSource(this.resolvePlayableUrl(url, headers));
-                } catch (error) {
-                    this.onError?.(ErrorReason.EmptyResource, error);
-                }
-            } else {
-                this.onError?.(ErrorReason.UnsupportedResource);
-                return;
-            }
+            void this.loadHlsSource(
+                url,
+                headers,
+                sourceGeneration,
+                sourceAbortController.signal,
+            );
         } else {
             this.destroyHls();
             try {

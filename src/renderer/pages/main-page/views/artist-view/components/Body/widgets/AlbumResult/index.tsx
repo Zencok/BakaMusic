@@ -21,7 +21,7 @@ export default function AlbumResult(props: IBodyProps) {
 
     useEffect(() => {
         queryArtist(artistItem, 1, "album");
-    }, [artistItem.platform, artistItem.id, queryArtist]);
+    }, [artistItem, queryArtist]);
 
     return (
         <div className="artist-view--album-result-container">

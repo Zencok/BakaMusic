@@ -4,7 +4,6 @@ import MultiRadioGroupSettingItem from "../../components/MultiRadioGroupSettingI
 import ListBoxSettingItem from "../../components/ListBoxSettingItem";
 import UiStyleSettingItem from "../../components/UiStyleSettingItem";
 
-import "./index.scss";
 import { changeLang, getLangList } from "@/shared/i18n/renderer";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";

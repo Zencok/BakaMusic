@@ -7,6 +7,7 @@ export default function useAppConfig<K extends keyof IAppConfig>(configKey: K): 
     const [state, setState] = useState<IAppConfig[K]>(AppConfig.getConfig(configKey));
 
     useEffect(() => {
+        setState(AppConfig.getConfig(configKey));
         const callback = (patch: IAppConfig, fullConfig: IAppConfig) => {
             if (configKey in patch) {
                 setState(fullConfig[configKey]);
@@ -18,7 +19,7 @@ export default function useAppConfig<K extends keyof IAppConfig>(configKey: K): 
         return () => {
             AppConfig.offConfigUpdate(callback);
         };
-    }, []);
+    }, [configKey]);
 
 
     return state;

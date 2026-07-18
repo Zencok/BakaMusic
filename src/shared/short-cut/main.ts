@@ -3,24 +3,51 @@ import AppConfig from "@shared/app-config/main";
 import { IAppConfig } from "@/types/app-config";
 import { shortCutKeys, shortCutKeysCommands } from "@/common/constant";
 import messageBus from "@shared/message-bus/main";
+import {
+    assertString,
+    isIpcSenderAllowed,
+} from "@shared/ipc-security/main";
 
-type IShortCutKeys = keyof IAppConfig["shortCut.shortcuts"];
+type IShortCutKeys = keyof NonNullable<IAppConfig["shortCut.shortcuts"]>;
 
 class ShortCut {
     async setup() {
         await this.registerAllGlobalShortCuts();
 
-        ipcMain.on("@shared/short-cut/register-global-short-cut", async (_, key, shortCut) => {
+        ipcMain.on("@shared/short-cut/register-global-short-cut", async (event, key, shortCut) => {
+            if (!isIpcSenderAllowed(event, ["main"]) || !this.isValidShortcut(key, shortCut)) {
+                return;
+            }
             await this.registerGlobalShortCut(key, shortCut);
         });
 
-        ipcMain.on("@shared/short-cut/unregister-global-short-cut", async (_, key) => {
+        ipcMain.on("@shared/short-cut/unregister-global-short-cut", async (event, key) => {
+            if (!isIpcSenderAllowed(event, ["main"]) || !shortCutKeys.includes(key)) {
+                return;
+            }
             await this.unregisterGlobalShortCut(key);
         });
     }
 
+    private isValidShortcut(key: unknown, shortCut: unknown): shortCut is string[] {
+        try {
+            assertString(key, "shortcut key", 64);
+            return shortCutKeys.includes(key as IShortCutKeys)
+                && Array.isArray(shortCut)
+                && shortCut.length > 0
+                && shortCut.length <= 8
+                && shortCut.every((part) => typeof part === "string" && part.length <= 32);
+        } catch {
+            return false;
+        }
+    }
+
     public async registerAllGlobalShortCuts() {
         try {
+            this.unregisterAllGlobalShortCuts();
+            if (!AppConfig.getConfig("shortCut.enableGlobal")) {
+                return;
+            }
             const shortCuts = AppConfig.getConfig("shortCut.shortcuts");
             for (const shortCutKey of shortCutKeys) {
                 const globalShortCutConfig = shortCuts?.[shortCutKey]?.global;
@@ -50,9 +77,10 @@ class ShortCut {
                 }
 
                 // 2. 注册新的快捷键
-                const reg = globalShortcut.register(shortCut.join("+"), () => {
-                    messageBus.sendCommand(shortCutKeysCommands[key]);
-                });
+                const reg = !AppConfig.getConfig("shortCut.enableGlobal")
+                    || globalShortcut.register(shortCut.join("+"), () => {
+                        messageBus.sendCommand(shortCutKeysCommands[key]);
+                    });
 
                 // 3. 合并配置
                 const newConfig = {

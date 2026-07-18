@@ -62,7 +62,7 @@ interface _IAppConfig {
         | "toggle-desktop-lyric"
         | "volume-up"
         | "volume-down"
-        | "like/dislike",
+        | "like/dislike"
         | "toggle-main-window-visible",
         {
             local?: string[] | null;

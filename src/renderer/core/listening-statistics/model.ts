@@ -1,5 +1,5 @@
-export const RECENT_TRACK_LIMIT = 500;
-export const STATISTICS_ENTRY_LIMIT = 2000;
+const RECENT_TRACK_LIMIT = 500;
+const STATISTICS_ENTRY_LIMIT = 2000;
 
 const SECOND = 1;
 const MINUTE = 60 * SECOND;
@@ -8,9 +8,9 @@ const DAY = 24 * HOUR;
 const MONTH = 30 * DAY;
 const YEAR = 365 * DAY;
 
-export type ListeningDurationUnit = "second" | "minute" | "hour" | "day" | "month" | "year";
+type ListeningDurationUnit = "second" | "minute" | "hour" | "day" | "month" | "year";
 
-export interface IListeningDurationPart {
+interface IListeningDurationPart {
     unit: ListeningDurationUnit;
     value: number;
 }
@@ -35,7 +35,7 @@ export interface IListeningStatisticsEntry {
 }
 
 export interface IListeningStatisticsState {
-    version: 2;
+    version: 3;
     entries: Record<string, IListeningStatisticsEntry>;
     recentKeys: string[];
     totalPlays: number;
@@ -48,7 +48,7 @@ export function getListeningStatisticsKey(musicItem: IMusic.IMusicItem) {
 
 export function createEmptyListeningStatistics(): IListeningStatisticsState {
     return {
-        version: 2,
+        version: 3,
         entries: {},
         recentKeys: [],
         totalPlays: 0,
@@ -112,7 +112,7 @@ export function normalizeListeningStatistics(
         .reduce((total, entry) => total + entry.playCount, 0);
 
     return pruneListeningStatistics({
-        version: 2,
+        version: 3,
         entries,
         recentKeys,
         totalPlays: Math.max(countedTotal, normalizeCount(candidate.totalPlays)),
@@ -180,7 +180,7 @@ export function recordListeningStatistics(
     ].slice(0, RECENT_TRACK_LIMIT);
 
     return pruneListeningStatistics({
-        version: 2,
+        version: 3,
         entries,
         recentKeys,
         totalPlays: state.totalPlays + 1,

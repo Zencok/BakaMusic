@@ -8,6 +8,12 @@ export default function (plugin: IPlugin.IPluginDelegate, tag: IMedia.IUnique | 
     const [status, setStatus] = useState<RequestStateCode>(RequestStateCode.IDLE);
     const currentTagRef = useRef<string | null>(null);
     const pageRef = useRef(0);
+    const statusRef = useRef(RequestStateCode.IDLE);
+
+    const setRequestStatus = useCallback((nextStatus: RequestStateCode) => {
+        statusRef.current = nextStatus;
+        setStatus(nextStatus);
+    }, []);
 
     const query = useCallback(async () => {
         if (!tag) {
@@ -16,9 +22,9 @@ export default function (plugin: IPlugin.IPluginDelegate, tag: IMedia.IUnique | 
         const tagId = tag.id ?? "";
         if (
             (
-                status === RequestStateCode.FINISHED ||
-                status === RequestStateCode.PENDING_FIRST_PAGE ||
-                status === RequestStateCode.PENDING_REST_PAGE
+                statusRef.current === RequestStateCode.FINISHED ||
+                statusRef.current === RequestStateCode.PENDING_FIRST_PAGE ||
+                statusRef.current === RequestStateCode.PENDING_REST_PAGE
             ) &&
             currentTagRef.current === tagId
         ) {
@@ -32,7 +38,7 @@ export default function (plugin: IPlugin.IPluginDelegate, tag: IMedia.IUnique | 
             pageRef.current++;
             currentTagRef.current = tagId;
 
-            setStatus(
+            setRequestStatus(
                 pageRef.current === 1
                     ? RequestStateCode.PENDING_FIRST_PAGE
                     : RequestStateCode.PENDING_REST_PAGE,
@@ -57,22 +63,22 @@ export default function (plugin: IPlugin.IPluginDelegate, tag: IMedia.IUnique | 
             ]);
 
             if (res.isEnd) {
-                setStatus(RequestStateCode.FINISHED);
+                setRequestStatus(RequestStateCode.FINISHED);
             } else {
-                setStatus(RequestStateCode.PARTLY_DONE);
+                setRequestStatus(RequestStateCode.PARTLY_DONE);
             }
         } catch {
             if (tagId === currentTagRef.current) {
-                setStatus(RequestStateCode.ERROR);
+                setRequestStatus(RequestStateCode.ERROR);
             }
         }
-    }, [plugin.hash, plugin.platform, status, tag]);
+    }, [plugin, setRequestStatus, tag]);
 
     useEffect(() => {
         if (tag) {
             query();
         }
-    }, [plugin.hash, tag?.id]);
+    }, [query, tag]);
 
     return [query, sheets, status] as const;
 }

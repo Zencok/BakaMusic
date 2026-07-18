@@ -3,8 +3,6 @@ import { localPluginName } from "@/common/constant";
 import LocalSheet from "./local-sheet";
 import RemoteSheet from "./remote-sheet";
 
-import "./index.scss";
-
 /**
  * path: /main/musicsheet/platform/id
  *

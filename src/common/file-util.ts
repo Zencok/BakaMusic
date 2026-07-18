@@ -1,4 +1,9 @@
-import { ICommonTagsResult, IPicture, parseFile } from "music-metadata";
+import {
+    ICommonTagsResult,
+    ILyricsTag,
+    IPicture,
+    parseFile,
+} from "music-metadata";
 import path from "path";
 import { localPluginName, supportLocalMediaType } from "./constant";
 import CryptoJS from "crypto-js";
@@ -6,16 +11,45 @@ import fs from "fs/promises";
 import url from "url";
 import type { BigIntStats, PathLike, StatOptions, Stats } from "original-fs";
 import { setInternalData } from "./media-util";
+import { mapWithConcurrency } from "./concurrency-util";
+
+const LOCAL_METADATA_CONCURRENCY = 4;
+
+export function normalizeLocalFilePath(filePath: string) {
+    const normalizedPath = path.normalize(path.resolve(filePath));
+    if (process.platform !== "win32") {
+        return normalizedPath;
+    }
+    return normalizedPath.replace(/^([a-z]):/, (_match, drive: string) =>
+        `${drive.toUpperCase()}:`);
+}
+
+export function getLocalPathComparisonKey(filePath: string) {
+    const normalizedPath = normalizeLocalFilePath(filePath);
+    return process.platform === "win32"
+        ? normalizedPath.toLocaleLowerCase("en-US")
+        : normalizedPath;
+}
 
 function getB64Picture(picture: IPicture) {
-    return `data:${picture.format};base64,${picture.data.toString("base64")}`;
+    return `data:${picture.format};base64,${Buffer.from(picture.data).toString("base64")}`;
 }
 
 const specialEncoding = ["GB2312"];
 
-function normalizeLocalLyricText(lyrics?: string[] | null) {
+function normalizeLocalLyricText(lyrics?: Array<string | ILyricsTag> | null) {
     const normalizedLyrics = lyrics
-        ?.map((lyric) => lyric?.trim?.() ?? "")
+        ?.flatMap((lyric) => {
+            if (typeof lyric === "string") {
+                return [lyric];
+            }
+
+            return [
+                lyric.text ?? "",
+                ...(lyric.syncText?.map((line) => line.text) ?? []),
+            ];
+        })
+        .map((lyric) => lyric.trim())
         .filter(Boolean);
 
     if (!normalizedLyrics?.length) {
@@ -94,13 +128,14 @@ function applyLocalQualityInfo(
 export async function parseLocalMusicItem(
     filePath: string,
 ): Promise<IMusic.IMusicItem> {
-    const hash = CryptoJS.MD5(filePath).toString();
-    const size = await getLocalFileSize(filePath);
+    const normalizedFilePath = normalizeLocalFilePath(filePath);
+    const hash = CryptoJS.MD5(getLocalPathComparisonKey(normalizedFilePath)).toString();
+    const size = await getLocalFileSize(normalizedFilePath);
     try {
         const {
             common = {} as ICommonTagsResult,
             format,
-        } = await parseFile(filePath);
+        } = await parseFile(normalizedFilePath);
         const duration =
             typeof format?.duration === "number" && isFinite(format.duration)
                 ? format.duration
@@ -133,56 +168,60 @@ export async function parseLocalMusicItem(
         if (encoding && specialEncoding.includes(encoding)) {
             const iconv = await import("iconv-lite");
 
+            const decodeLegacyText = (value: string) =>
+                iconv.decode(Buffer.from(value, "binary"), encoding);
+
             if (common.title) {
                 common.title = iconv.decode(
-                    common.title as unknown as Buffer,
+                    Buffer.from(common.title, "binary"),
                     encoding,
                 );
             }
             if (common.artist) {
-                common.artist = iconv.decode(
-                    common.artist as unknown as Buffer,
-                    encoding,
-                );
+                common.artist = decodeLegacyText(common.artist);
             }
             if (common.album) {
-                common.album = iconv.decode(
-                    common.album as unknown as Buffer,
-                    encoding,
-                );
+                common.album = decodeLegacyText(common.album);
             }
             if (common.lyrics) {
-                common.lyrics = common.lyrics.map((it) =>
-                    it ? iconv.decode(it as unknown as Buffer, encoding) : "",
-                );
+                common.lyrics = common.lyrics.map((lyric) => ({
+                    ...lyric,
+                    ...(lyric.text
+                        ? { text: decodeLegacyText(lyric.text) }
+                        : {}),
+                    syncText: lyric.syncText?.map((line) => ({
+                        ...line,
+                        text: decodeLegacyText(line.text),
+                    })) ?? [],
+                }));
             }
         }
 
         const quality = getLocalAudioQuality(format);
         return applyLocalQualityInfo({
-            title: common.title ?? path.parse(filePath).name,
+            title: common.title ?? path.parse(normalizedFilePath).name,
             duration,
             artist: common.artist ?? "未知作者",
             artwork: common.picture?.[0]
                 ? getB64Picture(common.picture[0])
                 : undefined,
             album: common.album ?? "未知专辑",
-            url: addFileScheme(filePath),
-            localPath: filePath,
+            url: addFileScheme(normalizedFilePath),
+            localPath: normalizedFilePath,
             platform: localPluginName,
             id: hash,
             rawLrc: normalizeLocalLyricText(common.lyrics),
-        }, filePath, quality, size);
+        }, normalizedFilePath, quality, size);
     } catch {
         return applyLocalQualityInfo({
-            title: path.parse(filePath).name || filePath,
+            title: path.parse(normalizedFilePath).name || normalizedFilePath,
             id: hash,
             platform: localPluginName,
-            localPath: filePath,
-            url: addFileScheme(filePath),
+            localPath: normalizedFilePath,
+            url: addFileScheme(normalizedFilePath),
             artist: "未知作者",
             album: "未知专辑",
-        }, filePath, "320k", size);
+        }, normalizedFilePath, "320k", size);
     }
 }
 
@@ -198,13 +237,13 @@ export async function parseLocalMusicItemFolder(
         if (folderStat.isDirectory()) {
             const files = await fs.readdir(folderPath);
             const validFiles = files.filter((fp) =>
-                supportLocalMediaType.some((postfix) => fp.endsWith(postfix)),
+                supportLocalMediaType.some((postfix) =>
+                    fp.toLocaleLowerCase().endsWith(postfix)),
             );
-            // TODO: 分片
-            return Promise.all(
-                validFiles.map((fp) =>
-                    parseLocalMusicItem(path.resolve(folderPath, fp)),
-                ),
+            return mapWithConcurrency(
+                validFiles,
+                LOCAL_METADATA_CONCURRENCY,
+                (fileName) => parseLocalMusicItem(path.resolve(folderPath, fileName)),
             );
         }
         throw new Error("Folder Not Found");
@@ -219,18 +258,15 @@ export function addFileScheme(filePath: string) {
         : url.pathToFileURL(filePath).toString();
 }
 
-export function addTailSlash(filePath: string) {
-    return filePath.endsWith("/") || filePath.endsWith("\\")
-        ? filePath
-        : filePath + "/";
-}
-
 export async function safeStat(
     path: PathLike,
     opts?: StatOptions,
 ): Promise<Stats | BigIntStats | null> {
     try {
-        return await fs.stat(path, opts);
+        const stat = opts === undefined
+            ? await fs.stat(path)
+            : await fs.stat(path, opts);
+        return stat ?? null;
     } catch {
         return null;
     }

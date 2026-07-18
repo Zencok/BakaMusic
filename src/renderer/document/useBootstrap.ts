@@ -37,5 +37,5 @@ export default function useBootstrap() {
             disposeNavigate?.();
             AppConfig.offConfigUpdate(onConfigUpdate);
         };
-    }, []);
+    }, [navigate]);
 }

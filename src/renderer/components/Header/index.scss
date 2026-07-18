@@ -118,6 +118,10 @@
         align-items: center;
         justify-content: center;
         border-radius: var(--iconButtonRadius, 50%);
+        padding: 0;
+        border: 0;
+        font: inherit;
+        background: transparent;
         transition:
           opacity 160ms ease,
           background-color 160ms ease,
@@ -172,6 +176,8 @@
       border: 1px solid var(--headerControlBorder, color-mix(in srgb, var(--textColor) 10%, transparent));
       background: var(--headerControlBg, color-mix(in srgb, var(--textColor) 7%, transparent));
       box-shadow: none;
+      padding: 0;
+      font: inherit;
       transition:
         opacity 160ms ease,
         transform 160ms ease,

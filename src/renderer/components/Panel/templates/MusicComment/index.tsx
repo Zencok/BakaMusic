@@ -33,6 +33,7 @@ export default function MusicComment(props: IProps) {
             </Base.Header>
             <div className="music-comment-panel--hero">
                 <img
+                    alt={musicTitle}
                     className="music-comment-panel--hero-cover"
                     src={musicItem?.artwork ?? albumImg}
                     onError={setFallbackAlbum}
@@ -76,7 +77,7 @@ function MusicCommentItem(props: IMusicCommentItemProps) {
         <div className="music-comment-panel--comment-item-container">
             <div className="comment-title-container">
                 {comment.avatar ? (
-                    <img className="avatar" src={comment.avatar}></img>
+                    <img className="avatar" src={comment.avatar} alt={comment.nickName}></img>
                 ) : (
                     <div className="avatar avatar-placeholder">
                         <SvgAsset iconName="user"></SvgAsset>

@@ -259,6 +259,7 @@ export default function MinimodePage() {
                     title={fullTitle}
                 >
                     <img
+                        alt={fullTitle}
                         draggable="false"
                         className="minimode-cover"
                         src={artwork}
@@ -308,6 +309,7 @@ export default function MinimodePage() {
                 >
                     <ThemeSafeRoundButton
                         iconName="x-mark"
+                        title={t("common.close")}
                         iconSize={16}
                         size={32}
                         color="rgba(255, 255, 255, 0.74)"
@@ -320,6 +322,7 @@ export default function MinimodePage() {
                     ></ThemeSafeRoundButton>
                     <ThemeSafeRoundButton
                         iconName="skip-left"
+                        title={t("main.previous_music")}
                         iconSize={18}
                         size={32}
                         color="rgba(255, 255, 255, 0.9)"
@@ -333,6 +336,7 @@ export default function MinimodePage() {
                     ></ThemeSafeRoundButton>
                     <ThemeSafeRoundButton
                         iconName={isPlaying ? "pause" : "play"}
+                        title={t(isPlaying ? "media.music_state_pause" : "media.music_state_play")}
                         iconSize={20}
                         size={38}
                         color="#0b0b0f"
@@ -346,6 +350,7 @@ export default function MinimodePage() {
                     ></ThemeSafeRoundButton>
                     <ThemeSafeRoundButton
                         iconName="skip-right"
+                        title={t("main.next_music")}
                         iconSize={18}
                         size={32}
                         color="rgba(255, 255, 255, 0.9)"

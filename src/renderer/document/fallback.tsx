@@ -1,36 +1,36 @@
 import trackPlayer from "../core/track-player";
 import "./styles/fallback.scss";
+import type { FallbackProps } from "react-error-boundary";
+import { toError } from "@/common/error-util";
+import { useTranslation } from "react-i18next";
 
-interface IProps {
-    error: Error,
-    resetErrorBoundary: (...args: any[]) => void,
-}
-
-export default function Fallback(props: IProps) {
-    const { error, resetErrorBoundary } = props;
+export default function Fallback({ error, resetErrorBoundary }: FallbackProps) {
+    const normalizedError = toError(error);
+    const { t } = useTranslation();
 
     return (
         <div className="fallback-container" role="alert">
             <div className="fallback-content">
                 <div className="fallback-title">
-                    出现问题啦...
+                    {t("fallback.title")}
                 </div>
 
                 <div className="fallback-actions">
                     <button
+                        type="button"
                         className="reset-button"
-                        onClick={resetErrorBoundary}
+                        onClick={() => resetErrorBoundary()}
                     >
-                        重置配置项和播放器状态
+                        {t("fallback.reset")}
                     </button>
                 </div>
 
                 <div className="fallback-description">
-                    请点击上方【重置配置项】按钮尝试修复，如果还有问题请将错误信息反馈到 BakaMusic GitHub 仓库
+                    {t("fallback.description")}
                 </div>
 
                 <div className="fallback-section">
-                    <div className="section-title">歌曲信息</div>
+                    <div className="section-title">{t("fallback.music_info")}</div>
                     <div className="section-content">
                         <pre className="music-info">
                             {JSON.stringify(trackPlayer.currentMusic, null, 2)}
@@ -39,14 +39,14 @@ export default function Fallback(props: IProps) {
                 </div>
 
                 <div className="fallback-section">
-                    <div className="section-title">错误信息</div>
+                    <div className="section-title">{t("fallback.error_info")}</div>
                     <div className="section-content">
                         <pre className="error-message">
-                            {error.message}
+                            {normalizedError.message}
                         </pre>
-                        {error.stack && (
+                        {normalizedError.stack && (
                             <pre className="error-message" style={{ marginTop: 8 }}>
-                                {error.stack}
+                                {normalizedError.stack}
                             </pre>
                         )}
                     </div>

@@ -35,7 +35,7 @@ function normalizeExt(ext?: string | null) {
 
 function getPathExt(value: string) {
     const sanitizedValue = decodeURIComponent(value.split(/[?#]/)[0] ?? "");
-    return normalizeExt(window.path.extname(sanitizedValue));
+    return normalizeExt(extnameFilePath(sanitizedValue));
 }
 
 function getUrlExtImpl(url: string, visited = new Set<string>()): string | undefined {
@@ -74,3 +74,4 @@ export default function getUrlExt(url?: string) {
 
     return getUrlExtImpl(url);
 }
+import { extnameFilePath } from "@/common/path-util";

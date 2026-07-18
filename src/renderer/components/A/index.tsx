@@ -6,11 +6,11 @@ export default function A(
         HTMLAnchorElement
     >,
 ) {
-    const { href, onClick, ...rest } = props;
+    const { children, href, onClick, ...rest } = props;
     return (
         <a
             {...rest}
-            role="button"
+            href={href}
             onClick={(e) => {
                 e.preventDefault();
                 if (href) {
@@ -18,6 +18,6 @@ export default function A(
                 }
                 onClick?.(e);
             }}
-        ></a>
+        >{children}</a>
     );
 }

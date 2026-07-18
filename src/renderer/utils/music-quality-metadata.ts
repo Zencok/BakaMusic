@@ -7,13 +7,13 @@ type MusicQualitySource = Partial<Record<
     { size?: string | number; url?: string }
 >>;
 
-export interface IMusicQualityInfo {
+interface IMusicQualityInfo {
     quality: IMusic.IQualityKey;
     label: string;
     sizeText: string;
 }
 
-export const qualityAbbr: Record<IMusic.IQualityKey, string> = {
+const qualityAbbr: Record<IMusic.IQualityKey, string> = {
     "mgg": "MG",
     "128k": "LQ",
     "192k": "MQ",

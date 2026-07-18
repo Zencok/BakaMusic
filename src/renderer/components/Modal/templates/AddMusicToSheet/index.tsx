@@ -44,7 +44,7 @@ export default function AddMusicToSheet(props: IAddMusicToSheetProps) {
                             });
                         }}
                     >
-                        <img src={addImg}></img>
+                        <img src={addImg} alt=""></img>
                         <span>{t("modal.create_local_sheet")}</span>
                     </div>
                     {allSheets.map((sheet) => (
@@ -58,6 +58,7 @@ export default function AddMusicToSheet(props: IAddMusicToSheetProps) {
                             }}
                         >
                             <img
+                                alt={sheet.title}
                                 src={sheet.artwork ?? albumImg}
                                 onError={setFallbackAlbum}
                             ></img>

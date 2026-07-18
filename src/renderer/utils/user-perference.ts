@@ -94,7 +94,7 @@ export function useUserPreference<K extends keyof IUserPreference.IType>(
             ee.off(EvtNames.USER_PREFERENCE_UPDATE, updateFn);
             window.removeEventListener("storage", updateFnStorage);
         };
-    }, []);
+    }, [key]);
 
     return [state, setState] as const;
 }
@@ -154,38 +154,15 @@ export async function getUserPreferenceIDB<
     }
 }
 
-export function useUserPreferenceIDBValue<
+export async function removeUserPreferenceIDB<
     K extends keyof IUserPreference.IDBType,
 >(key: K) {
-    const [state, setState] = useState<IUserPreference.IDBType[K] | null>(null);
-
-    useEffect(() => {
-        let disposed = false;
-        let currentSet: Set<(...args: any) => void> | null = null;
-
-        (async () => {
-            try {
-                const result = await getUserPreferenceIDB(key);
-                if (!disposed) {
-                    setState(result);
-                }
-            } finally {
-                if (!disposed) {
-                    currentSet = dbKeyUpdateCbs.get(key) ?? new Set();
-                    currentSet.add(setState);
-                    dbKeyUpdateCbs.set(key, currentSet);
-                }
-            }
-        })();
-
-        return () => {
-            disposed = true;
-            currentSet?.delete(setState);
-            if (currentSet && currentSet.size === 0) {
-                dbKeyUpdateCbs.delete(key);
-            }
-        };
-    }, []);
-
-    return state;
+    try {
+        await upDB.perference.delete(key);
+        const cb = dbKeyUpdateCbs.get(key);
+        cb?.forEach((it) => it?.(null));
+        return true;
+    } catch {
+        return false;
+    }
 }

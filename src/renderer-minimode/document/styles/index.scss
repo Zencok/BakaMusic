@@ -111,3 +111,19 @@ div[role="button"] {
     margin-top: 12px;
     margin-bottom: 12px;
 }
+
+:where(button, a[href], input, [role="button"]):focus-visible {
+    outline: 2px solid var(--primaryColor, #4f8cff);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0ms !important;
+    }
+}

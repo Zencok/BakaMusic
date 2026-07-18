@@ -16,6 +16,7 @@ export default function Header(props: IProps) {
     return (
         <div className="artist-view--header-container">
             <img
+                alt={artistItem?.name ?? t("media.unknown_artist")}
                 draggable={false}
                 src={artistItem?.avatar ?? albumImg}
                 onError={setFallbackAlbum}

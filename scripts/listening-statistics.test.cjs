@@ -109,12 +109,12 @@ function testActualListeningDuration() {
 
     const normalizedStatistics = normalizeListeningStatistics(statistics);
     assert.ok(normalizedStatistics);
-    assert.equal(normalizedStatistics.version, 2);
+    assert.equal(normalizedStatistics.version, 3);
     assert.equal(normalizedStatistics.totalListeningSeconds, 65);
 
     const oldStatistics = normalizeListeningStatistics({
         ...statistics,
-        version: 1,
+        version: 2,
         totalListeningSeconds: undefined,
     });
     assert.ok(oldStatistics);

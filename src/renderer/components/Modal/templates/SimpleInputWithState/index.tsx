@@ -51,7 +51,6 @@ export default function SimpleInputWithState<PromiseItem>(
                 >
                     <div className="input-area">
                         <input
-                            autoFocus
                             placeholder={placeholder}
                             onChange={(e) => {
                                 setInputText(e.target.value.slice(0, maxLength));

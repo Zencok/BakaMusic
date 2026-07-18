@@ -4,40 +4,26 @@ import { useEffect, useState } from "react";
 interface IMod {
     sendCommand: <K extends keyof ICommand>(
         command: K,
-        data?: ICommand[K]
+        data?: ICommand[K],
     ) => void;
     getAppState: () => IAppState;
     subscribeAppState: (keys: (keyof IAppState)[]) => void;
     onStateChange: (
-        cb: (appState: IAppState, changedAppState: IAppState) => void
+        cb: (appState: IAppState, changedAppState: IAppState) => void,
     ) => void;
     offStateChange: (
-        cb: (appState: IAppState, changedAppState: IAppState) => void
+        cb: (appState: IAppState, changedAppState: IAppState) => void,
     ) => void;
 }
 
 const mod = window["@shared/message-bus/extension" as any] as unknown as IMod;
-
-export function useAppState() {
-    const [appState, setAppState] = useState(mod.getAppState);
-
-    useEffect(() => {
-        mod.onStateChange(setAppState);
-        setAppState(mod.getAppState);
-        return () => {
-            mod.offStateChange(setAppState);
-        };
-    }, []);
-
-    return appState;
-}
 
 export function useAppStatePartial<K extends keyof IAppState>(key: K) {
     const [appState, setAppState] = useState<IAppState[K]>(
         mod.getAppState()?.[key],
     );
     useEffect(() => {
-        const cb = (appState: IAppState, changedAppState: IAppState) => {
+        const cb = (_appState: IAppState, changedAppState: IAppState) => {
             if (key in changedAppState) {
                 setAppState(mod.getAppState()[key]);
             }
@@ -48,7 +34,7 @@ export function useAppStatePartial<K extends keyof IAppState>(key: K) {
         return () => {
             mod.offStateChange(cb);
         };
-    }, []);
+    }, [key]);
 
     return appState;
 }

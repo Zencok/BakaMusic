@@ -516,7 +516,7 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
     async importMusicSheet(urlLike: string): Promise<IMusic.IMusicItem[]> {
         try {
             const result =
-        (await this.plugin.instance?.importMusicSheet?.(urlLike)) ?? [];
+                (await this.plugin.instance?.importMusicSheet?.(urlLike)) ?? [];
             result.forEach((_) => resetMediaItem(_, this.plugin.name));
             return result;
         } catch {

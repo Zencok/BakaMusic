@@ -48,6 +48,9 @@ import {
     matchesMusicIdentifier,
     IPluginDelegateReference,
 } from "./plugin-media";
+import { shouldPersistPlaybackProgress } from "./progress-persistence";
+
+const PROGRESS_PERSIST_INTERVAL_MS = 3_000;
 
 const {
     musicQueueStore,
@@ -170,10 +173,91 @@ class TrackPlayer {
 
     private listeningProgressAnchor: IListeningProgressAnchor | null = null;
 
+    private lastProgressPersistedAt = Number.NEGATIVE_INFINITY;
+
+    private pendingProgressTime: number | null = null;
+
+    private mediaLoadGeneration = 0;
+
+    private mediaLoadAbortController: AbortController | null = null;
+
+    private lyricLoadGeneration = 0;
+
+    private lyricLoadAbortController: AbortController | null = null;
+
     constructor() {
         this.indexMap = createIndexMap();
         this.ee = new EventEmitter();
         this.audioController = new AudioController();
+    }
+
+    private beginMediaLoad() {
+        this.mediaLoadAbortController?.abort();
+        const controller = new AbortController();
+        this.mediaLoadAbortController = controller;
+        return {
+            generation: ++this.mediaLoadGeneration,
+            signal: controller.signal,
+        };
+    }
+
+    private cancelMediaLoad() {
+        this.mediaLoadAbortController?.abort();
+        this.mediaLoadAbortController = null;
+        this.mediaLoadGeneration++;
+    }
+
+    private isCurrentMediaLoad(generation: number, signal: AbortSignal) {
+        return generation === this.mediaLoadGeneration && !signal.aborted;
+    }
+
+    private beginLyricLoad() {
+        this.lyricLoadAbortController?.abort();
+        const controller = new AbortController();
+        this.lyricLoadAbortController = controller;
+        return {
+            generation: ++this.lyricLoadGeneration,
+            signal: controller.signal,
+        };
+    }
+
+    private cancelLyricLoad() {
+        this.lyricLoadAbortController?.abort();
+        this.lyricLoadAbortController = null;
+        this.lyricLoadGeneration++;
+    }
+
+    private isCurrentLyricLoad(generation: number, signal: AbortSignal) {
+        return generation === this.lyricLoadGeneration && !signal.aborted;
+    }
+
+    private withAbort<T>(promise: PromiseLike<T>, signal: AbortSignal): Promise<T> {
+        if (signal.aborted) {
+            return Promise.reject(signal.reason);
+        }
+
+        return new Promise<T>((resolve, reject) => {
+            const abort = () => {
+                cleanup();
+                reject(signal.reason ?? new DOMException("Load aborted", "AbortError"));
+            };
+            const cleanup = () => signal.removeEventListener("abort", abort);
+            signal.addEventListener("abort", abort, { once: true });
+            Promise.resolve(promise).then(
+                (value) => {
+                    cleanup();
+                    if (signal.aborted) {
+                        reject(signal.reason ?? new DOMException("Load aborted", "AbortError"));
+                    } else {
+                        resolve(value);
+                    }
+                },
+                (error) => {
+                    cleanup();
+                    reject(error);
+                },
+            );
+        });
     }
 
     on<T extends keyof InternalPlayerEvents>(event: T, callback: InternalPlayerEvents[T]) {
@@ -272,7 +356,7 @@ class TrackPlayer {
             this.setPlayerState(state);
         };
 
-        audioController.onError = async (type, reason) => {
+        audioController.onError = async (_type, reason) => {
             this.ee.emit(PlayerEvents.Error, audioController.musicItem, reason);
         };
 
@@ -299,6 +383,7 @@ class TrackPlayer {
         // 2. init audio controller
         this.createAudioController();
         this.setupEvents();
+        window.addEventListener("pagehide", this.flushProgressPreference);
 
         // 3. resume state
         musicQueueStore.setValue(playList);
@@ -343,8 +428,12 @@ class TrackPlayer {
         if (!currentMusic) {
             return;
         }
-        this.fetchMediaSource(currentMusic, defaultQuality ?? undefined).then(({ mediaSource, quality }) => {
-            if (this.isCurrentMusic(currentMusic)) {
+        const { generation, signal } = this.beginMediaLoad();
+        this.fetchMediaSource(currentMusic, defaultQuality ?? undefined, signal).then(({ mediaSource, quality }) => {
+            if (
+                this.isCurrentMediaLoad(generation, signal)
+                && this.isCurrentMusic(currentMusic)
+            ) {
                 if (!this.hasPlayableMediaSource(mediaSource)) {
                     logger.logError(
                         "restore media source is empty",
@@ -404,6 +493,8 @@ class TrackPlayer {
             return;
         }
 
+        const { generation, signal } = this.beginMediaLoad();
+
         // update music
         const nextMusicItem = this.musicQueue[index];
         this.setCurrentMusic(nextMusicItem);
@@ -413,14 +504,20 @@ class TrackPlayer {
         this.audioController.prepareTrack?.(nextMusicItem);
 
         try {
-            const { mediaSource, quality } = await this.fetchMediaSource(nextMusicItem, intendedQuality);
+            const { mediaSource, quality } = await this.fetchMediaSource(
+                nextMusicItem,
+                intendedQuality,
+                signal,
+            );
 
             if (!this.hasPlayableMediaSource(mediaSource)) {
                 throw new Error("mediaSource.url is empty");
             }
 
-            if (!this.isCurrentMusic(nextMusicItem)) {
-                // should be aborted
+            if (
+                !this.isCurrentMediaLoad(generation, signal)
+                || !this.isCurrentMusic(nextMusicItem)
+            ) {
                 return;
             }
 
@@ -432,13 +529,21 @@ class TrackPlayer {
             recordPlayback(nextMusicItem);
 
             // extra information
-            const musicInfo = await PluginManager.callPluginDelegateMethod(
-                getMediaPluginDelegate(nextMusicItem),
-                "getMusicInfo",
-                nextMusicItem,
-            ).catch(voidCallback);
+            const musicInfo = await this.withAbort(
+                PluginManager.callPluginDelegateMethod(
+                    getMediaPluginDelegate(nextMusicItem),
+                    "getMusicInfo",
+                    nextMusicItem,
+                ).catch(voidCallback),
+                signal,
+            );
 
-            if (!(musicInfo && this.isCurrentMusic(nextMusicItem) && typeof musicInfo === "object")) {
+            if (!(
+                musicInfo
+                && this.isCurrentMediaLoad(generation, signal)
+                && this.isCurrentMusic(nextMusicItem)
+                && typeof musicInfo === "object"
+            )) {
                 return;
             }
 
@@ -450,6 +555,9 @@ class TrackPlayer {
             });
 
         } catch (e) {
+            if (!this.isCurrentMediaLoad(generation, signal)) {
+                return;
+            }
             // 播放失败
             this.setCurrentQuality(AppConfig.getConfig("playMusic.defaultQuality") ?? "128k");
             this.audioController.reset();
@@ -566,6 +674,8 @@ class TrackPlayer {
 
     // 重置播放状态
     public reset() {
+        this.cancelMediaLoad();
+        this.cancelLyricLoad();
         this.audioController.reset();
         this.setMusicQueue([]);
         this.setCurrentMusic(null);
@@ -584,7 +694,7 @@ class TrackPlayer {
             this.setProgress({
                 currentTime: nextCurrentTime,
                 duration,
-            });
+            }, true);
             this.syncCurrentLyric(nextCurrentTime);
         }
     }
@@ -737,6 +847,7 @@ class TrackPlayer {
                 return;
             }
             if (musicIndex === this.currentIndex) {
+                this.cancelMediaLoad();
                 this.audioController.reset();
                 this.currentIndex = -1;
                 resetProgress();
@@ -765,6 +876,8 @@ class TrackPlayer {
             return false;
         }
 
+        const { generation, signal } = this.beginMediaLoad();
+
         try {
             let mediaSource: IPlugin.IMediaSourceResult | null = null;
             let realQuality = quality;
@@ -773,21 +886,30 @@ class TrackPlayer {
                 currentMusic,
                 "downloadData",
             );
-            if (downloadedData && await fsUtil.isFile(downloadedData.path)) {
+            if (
+                downloadedData
+                && await this.withAbort(fsUtil.isFile(downloadedData.path), signal)
+            ) {
                 realQuality = downloadedData.quality;
                 mediaSource = {
                     url: fsUtil.addFileScheme(downloadedData.path),
                 };
             } else {
-                mediaSource = await PluginManager.callPluginDelegateMethod(
-                    getMediaPluginDelegate(currentMusic),
-                    "getMediaSource",
-                    currentMusic,
-                    quality,
+                mediaSource = await this.withAbort(
+                    PluginManager.callPluginDelegateMethod(
+                        getMediaPluginDelegate(currentMusic),
+                        "getMediaSource",
+                        currentMusic,
+                        quality,
+                    ),
+                    signal,
                 );
             }
 
-            if (!this.isCurrentMusic(currentMusic)) {
+            if (
+                !this.isCurrentMediaLoad(generation, signal)
+                || !this.isCurrentMusic(currentMusic)
+            ) {
                 return false;
             }
 
@@ -810,6 +932,9 @@ class TrackPlayer {
             this.setCurrentQuality(realQuality);
             return true;
         } catch (e) {
+            if (!this.isCurrentMediaLoad(generation, signal)) {
+                return false;
+            }
             logger.logError("set quality failed", toError(e));
             return false;
         }
@@ -846,6 +971,7 @@ class TrackPlayer {
         const currentMusic = this.currentMusic;
 
         if (!currentMusic) {
+            this.cancelLyricLoad();
             this.setCurrentLyric(null);
             return;
         }
@@ -859,27 +985,44 @@ class TrackPlayer {
         ) {
             return;
         }
+        const { generation, signal } = this.beginLyricLoad();
         try {
             // 获取被关联的歌词
-            const linkedLyricItem = await getLinkedLyric(currentMusic);
+            const linkedLyricItem = await this.withAbort(
+                getLinkedLyric(currentMusic),
+                signal,
+            );
             let lyricSource: ILyric.ILyricSource | null = null;
 
             if (linkedLyricItem) {
-                lyricSource = await PluginManager.callPluginDelegateMethod(
-                    getMediaPluginDelegate(linkedLyricItem),
-                    "getLyric",
-                    linkedLyricItem,
+                lyricSource = await this.withAbort(
+                    PluginManager.callPluginDelegateMethod(
+                        getMediaPluginDelegate(linkedLyricItem),
+                        "getLyric",
+                        linkedLyricItem,
+                    ),
+                    signal,
                 );
             }
-            if (!lyricSource && this.isCurrentMusic(currentMusic)) {
-                lyricSource = await PluginManager.callPluginDelegateMethod(
-                    getMediaPluginDelegate(currentMusic),
-                    "getLyric",
-                    currentMusic,
+            if (
+                !lyricSource
+                && this.isCurrentLyricLoad(generation, signal)
+                && this.isCurrentMusic(currentMusic)
+            ) {
+                lyricSource = await this.withAbort(
+                    PluginManager.callPluginDelegateMethod(
+                        getMediaPluginDelegate(currentMusic),
+                        "getLyric",
+                        currentMusic,
+                    ),
+                    signal,
                 );
             }
 
-            if (!this.isCurrentMusic(currentMusic)) {
+            if (
+                !this.isCurrentLyricLoad(generation, signal)
+                || !this.isCurrentMusic(currentMusic)
+            ) {
                 return;
             }
 
@@ -898,6 +1041,9 @@ class TrackPlayer {
                 currentLrc: parser.getPosition(this.progress.currentTime || 0),
             });
         } catch (e) {
+            if (!this.isCurrentLyricLoad(generation, signal)) {
+                return;
+            }
             logger.logError("歌词解析失败", toError(e));
             // Do not clear lyrics of a newer track if this request is stale
             if (this.isCurrentMusic(currentMusic)) {
@@ -909,7 +1055,11 @@ class TrackPlayer {
     }
 
 
-    private async fetchMediaSource(musicItem: IMusic.IMusicItem, quality?: IMusic.IQualityKey) {
+    private async fetchMediaSource(
+        musicItem: IMusic.IMusicItem,
+        quality: IMusic.IQualityKey | undefined,
+        signal: AbortSignal,
+    ) {
         const defaultQuality = AppConfig.getConfig("playMusic.defaultQuality") ?? "128k";
         const whenQualityMissing = AppConfig.getConfig("playMusic.whenQualityMissing") ?? "lower";
 
@@ -928,7 +1078,7 @@ class TrackPlayer {
         );
         if (downloadedData) {
             const { quality, path: _path } = downloadedData;
-            if (await fsUtil.isFile(_path)) {
+            if (await this.withAbort(fsUtil.isFile(_path), signal)) {
                 return {
                     quality,
                     mediaSource: {
@@ -942,21 +1092,33 @@ class TrackPlayer {
 
         // 2. 如果没有下载
         for (const quality of qualityOrder) {
+            if (signal.aborted) {
+                throw signal.reason;
+            }
             try {
-                mediaSource = await PluginManager.callPluginDelegateMethod(
-                    getMediaPluginDelegate(musicItem),
-                    "getMediaSource",
-                    musicItem,
-                    quality,
+                mediaSource = await this.withAbort(
+                    PluginManager.callPluginDelegateMethod(
+                        getMediaPluginDelegate(musicItem),
+                        "getMediaSource",
+                        musicItem,
+                        quality,
+                    ),
+                    signal,
                 );
                 if (!mediaSource?.url) {
                     continue;
                 }
                 realQuality = quality;
                 break;
-            } catch {
+            } catch (error) {
+                if (signal.aborted) {
+                    throw error;
+                }
                 // pass
             }
+        }
+        if (signal.aborted) {
+            throw signal.reason;
         }
         return {
             quality: realQuality,
@@ -968,6 +1130,7 @@ class TrackPlayer {
     // 只读数据的设置
     private setCurrentMusic(musicItem: IMusic.IMusicItem | null) {
         if (!musicItem || !this.isCurrentMusic(musicItem)) {
+            this.flushProgressPreference();
             currentMusicStore.setValue(musicItem);
             this.ee.emit(PlayerEvents.MusicChanged, musicItem);
             this.fetchCurrentLyric();
@@ -984,9 +1147,33 @@ class TrackPlayer {
         }
     }
 
-    private setProgress(progress: CurrentTime) {
+    private persistProgressPreference(currentTime: number, force = false): void {
+        this.pendingProgressTime = currentTime;
+        const now = performance.now();
+        if (!shouldPersistPlaybackProgress(
+            this.lastProgressPersistedAt,
+            now,
+            force,
+            PROGRESS_PERSIST_INTERVAL_MS,
+        )) {
+            return;
+        }
+
+        setUserPreference("currentProgress", currentTime);
+        this.pendingProgressTime = null;
+        this.lastProgressPersistedAt = now;
+    }
+
+    private flushProgressPreference = (): void => {
+        if (this.pendingProgressTime === null) {
+            return;
+        }
+        this.persistProgressPreference(this.pendingProgressTime, true);
+    };
+
+    private setProgress(progress: CurrentTime, persistImmediately = false) {
         progressStore.setValue(progress);
-        setUserPreference("currentProgress", progress.currentTime);
+        this.persistProgressPreference(progress.currentTime, persistImmediately);
         this.ee.emit(PlayerEvents.ProgressChanged, progress);
     }
 
@@ -1072,6 +1259,12 @@ class TrackPlayer {
     }
 
     private setPlayerState(playerState: PlayerState) {
+        if (
+            this.playerState === PlayerState.Playing &&
+            playerState !== PlayerState.Playing
+        ) {
+            this.flushProgressPreference();
+        }
         if (playerState === PlayerState.Playing && this.playerState !== PlayerState.Playing) {
             const musicItem = this.currentMusic;
             this.listeningProgressAnchor = musicItem
@@ -1099,6 +1292,8 @@ class TrackPlayer {
 
 
     private resetProgress() {
+        this.pendingProgressTime = null;
+        this.lastProgressPersistedAt = Number.NEGATIVE_INFINITY;
         resetProgress();
         removeUserPreference("currentProgress");
     }

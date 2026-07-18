@@ -283,9 +283,13 @@
 }
 
 .statistics-track-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  position: relative;
+  display: block;
+}
+
+.statistics-track-virtual-content {
+  width: 100%;
+  will-change: transform;
 }
 
 .statistics-track-row {
@@ -294,8 +298,10 @@
   grid-template-columns: 36px 50px minmax(0, 1fr) minmax(104px, 0.25fr) 74px 32px;
   align-items: center;
   gap: 0.75rem;
-  min-height: 66px;
+  height: 68px;
+  margin-bottom: 4px;
   padding: 0.42rem 0.62rem;
+  box-sizing: border-box;
   border: 1px solid transparent;
   border-radius: 16px;
   cursor: pointer;

@@ -1,6 +1,5 @@
 import { useParams } from "react-router-dom";
 import Header from "./components/Header";
-import "./index.scss";
 import { useEffect, useMemo } from "react";
 import Body from "./components/Body";
 import { initQueryResult, queryResultStore } from "./store";

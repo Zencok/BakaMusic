@@ -9,6 +9,11 @@ import {
     createBuiltinDefaultThemePack,
     isBuiltinDefaultTheme,
 } from "./default-theme";
+import {
+    applyTheme,
+    replaceThemeAlias,
+    themePathKey,
+} from "./renderer-runtime";
 
 const mod = window["@shared/themepack" as any] as unknown as IMod;
 
@@ -59,7 +64,7 @@ async function selectTheme(themePack: ICommon.IThemePack | null) {
         );
     }
 
-    await mod.selectTheme(resolved);
+    await applyTheme(mod, resolved);
     // Always keep a concrete pack in store (never null) so UI selection works
     currentThemePackStore.setValue(
         isBuiltinDefaultTheme(resolved)
@@ -86,7 +91,9 @@ async function selectThemeByHash(hash: string) {
 let themePacksLoaded = false;
 async function setupThemePacks(): Promise<void> {
     try {
-        const currentTheme = await mod.initCurrentTheme();
+        const currentTheme = await mod.initCurrentTheme(
+            localStorage.getItem(themePathKey),
+        );
         if (currentTheme && (isBuiltinDefaultTheme(currentTheme) || currentTheme.spec === THEME_SPEC_V2)) {
             await selectTheme(currentTheme);
         } else {
@@ -199,7 +206,7 @@ const ThemePack = {
     installThemePack,
     installRemoteThemePack,
     uninstallThemePack,
-    replaceAlias: mod.replaceAlias,
+    replaceAlias: replaceThemeAlias,
     useLocalThemePacks,
     useCurrentThemePack: currentThemePackStore.useValue,
     THEME_SPEC_V2,

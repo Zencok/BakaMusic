@@ -1,8 +1,13 @@
 import { IAppState, ICommand } from "@shared/message-bus/type";
-import { IWindowManager } from "@/types/main/window-manager";
+import { IWindowManager } from "@/types/window-manager";
 import { BrowserWindow, ipcMain, MessageChannelMain } from "electron";
 import { PlayerState, RepeatMode } from "@/common/constant";
 import EventEmitter from "eventemitter3";
+import {
+    assertIpcPayload,
+    assertPlainObject,
+    isIpcSenderAllowed,
+} from "@shared/ipc-security/main";
 
 /**
  * 消息总线
@@ -36,7 +41,30 @@ class MessageBus {
             }
         });
 
-        ipcMain.on("@shared/message-bus/sync-app-state", (_, data: IAppState) => {
+        ipcMain.on("@shared/message-bus/sync-app-state", (event, data: IAppState) => {
+            if (!isIpcSenderAllowed(event, ["main"])) {
+                return;
+            }
+            try {
+                assertIpcPayload(data, 2 * 1024 * 1024);
+                assertPlainObject(data, "app state");
+                const allowedKeys = new Set([
+                    "musicItem",
+                    "playerState",
+                    "repeatMode",
+                    "lyricText",
+                    "parsedLrc",
+                    "fullLyric",
+                    "progress",
+                    "duration",
+                    "lyricClock",
+                ]);
+                if (Object.keys(data).some((key) => !allowedKeys.has(key))) {
+                    throw new Error("App state contains an unknown key");
+                }
+            } catch {
+                return;
+            }
             this.appState = {
                 ...this.appState,
                 ...data,

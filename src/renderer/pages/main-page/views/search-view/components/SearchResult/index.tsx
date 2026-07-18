@@ -28,9 +28,9 @@ export default function SearchResult(props: ISearchResultProps) {
     const search = useSearch();
     const searchResults = searchResultsStore.useValue();
     const [selectedPlugin, setSelectedPlugin] =
-    useState<IPlugin.IPluginDelegate | null>(
-        history.state?.usr?.plugin ?? null,
-    );
+        useState<IPlugin.IPluginDelegate | null>(
+            history.state?.usr?.plugin ?? null,
+        );
     const currentResult = selectedPlugin?.hash
         ? searchResults[type][selectedPlugin.hash]
         : undefined;
@@ -121,7 +121,7 @@ interface ISearchResultBodyProps {
     query: string;
     search: SearchAction;
 }
-function _SearchResultBody(props: ISearchResultBodyProps) {
+function SearchResultBodyComponent(props: ISearchResultBodyProps) {
     const { type, pluginHash, query, search } = props;
     const searchResults = searchResultsStore.useValue();
     const currentResult = pluginHash
@@ -180,7 +180,7 @@ function _SearchResultBody(props: ISearchResultBodyProps) {
 }
 
 const SearchResultBody = memo(
-    _SearchResultBody,
+    SearchResultBodyComponent,
     (prev, curr) =>
         prev.pluginHash === curr.pluginHash &&
         prev.type === curr.type &&

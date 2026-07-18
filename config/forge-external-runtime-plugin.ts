@@ -5,9 +5,26 @@ import type { ForgeConfig } from "@electron-forge/shared-types";
 interface IPackageMetadata {
     name?: string;
     dependencies?: Record<string, string>;
+    optionalDependencies?: Record<string, string>;
 }
 
-function findPackageDirectory(packageName: string, searchDirectory: string) {
+const runtimeDependencyAllowlists = new Map<string, ReadonlySet<string>>([
+    ["get-windows", new Set([
+        "@mapbox/node-pre-gyp",
+    ])],
+    ["@mapbox/node-pre-gyp", new Set([
+        "consola",
+        "detect-libc",
+        "nopt",
+        "semver",
+    ])],
+]);
+
+function findPackageDirectory(
+    packageName: string,
+    searchDirectory: string,
+    optional = false,
+) {
     let currentDirectory = searchDirectory;
 
     while (true) {
@@ -27,6 +44,9 @@ function findPackageDirectory(packageName: string, searchDirectory: string) {
 
         const parentDirectory = path.dirname(currentDirectory);
         if (parentDirectory === currentDirectory) {
+            if (optional) {
+                return null;
+            }
             throw new Error(`Failed to locate package root for ${packageName}`);
         }
         currentDirectory = parentDirectory;
@@ -40,16 +60,39 @@ function collectRuntimePackageNames(
     const packageNames = new Set<string>();
     const visitedDirectories = new Set<string>();
 
-    const visitPackage = (packageName: string, searchDirectory: string) => {
-        const { directory, metadata } = findPackageDirectory(packageName, searchDirectory);
+    const visitPackage = (
+        packageName: string,
+        searchDirectory: string,
+        optional = false,
+    ) => {
+        const packageInfo = findPackageDirectory(
+            packageName,
+            searchDirectory,
+            optional,
+        );
+        if (!packageInfo) {
+            return;
+        }
+
+        const { directory, metadata } = packageInfo;
         if (visitedDirectories.has(directory)) {
             return;
         }
 
         visitedDirectories.add(directory);
         packageNames.add(packageName);
+        const dependencyAllowlist = runtimeDependencyAllowlists.get(packageName);
         for (const dependencyName of Object.keys(metadata.dependencies ?? {})) {
-            visitPackage(dependencyName, directory);
+            if (!dependencyAllowlist || dependencyAllowlist.has(dependencyName)) {
+                visitPackage(dependencyName, directory);
+            }
+        }
+        for (const dependencyName of Object.keys(
+            metadata.optionalDependencies ?? {},
+        )) {
+            if (!dependencyAllowlist || dependencyAllowlist.has(dependencyName)) {
+                visitPackage(dependencyName, directory, true);
+            }
         }
     };
 
@@ -83,6 +126,46 @@ function shouldIncludePackagePath(file: string, packageNames: Set<string>) {
     return false;
 }
 
+function getPackageRelativePath(file: string, packageName: string) {
+    const normalizedFile = file.replaceAll("\\", "/");
+    const packagePrefix = `/node_modules/${packageName}`;
+    if (
+        normalizedFile !== packagePrefix
+        && !normalizedFile.startsWith(`${packagePrefix}/`)
+    ) {
+        return null;
+    }
+
+    return normalizedFile.slice(packagePrefix.length);
+}
+
+function isSharpRuntimePath(file: string) {
+    const runtimePath = getPackageRelativePath(file, "sharp");
+    if (runtimePath === null) {
+        return null;
+    }
+
+    return runtimePath === ""
+        || runtimePath === "/package.json"
+        || runtimePath === "/LICENSE"
+        || runtimePath === "/dist"
+        || /^\/dist\/[^/]+\.cjs$/.test(runtimePath);
+}
+
+function isGetWindowsRuntimePath(file: string) {
+    const runtimePath = getPackageRelativePath(file, "get-windows");
+    if (runtimePath === null) {
+        return null;
+    }
+
+    return runtimePath === ""
+        || runtimePath === "/package.json"
+        || runtimePath === "/index.js"
+        || runtimePath === "/main"
+        || runtimePath === "/lib"
+        || runtimePath.startsWith("/lib/");
+}
+
 export function createExternalRuntimePlugin(rootPackageNames: string[]) {
     let projectDirectory = "";
 
@@ -103,6 +186,15 @@ export function createExternalRuntimePlugin(rootPackageNames: string[]) {
                     const existingIgnore = forgeConfig.packagerConfig.ignore;
 
                     forgeConfig.packagerConfig.ignore = (file: string) => {
+                        for (const runtimePathFilter of [
+                            isSharpRuntimePath,
+                            isGetWindowsRuntimePath,
+                        ]) {
+                            const includeRuntimePath = runtimePathFilter(file);
+                            if (includeRuntimePath !== null) {
+                                return !includeRuntimePath;
+                            }
+                        }
                         if (shouldIncludePackagePath(file, packageNames)) {
                             return false;
                         }

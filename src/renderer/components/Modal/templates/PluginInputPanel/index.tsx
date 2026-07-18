@@ -206,7 +206,6 @@ export default function PluginInputPanel(props: IPluginInputPanelProps) {
                                     <SvgAsset iconName={iconName}></SvgAsset>
                                     <input
                                         aria-describedby={`${variant}-hints`}
-                                        autoFocus
                                         disabled={loading}
                                         id={`${variant}-input`}
                                         maxLength={maxLength}

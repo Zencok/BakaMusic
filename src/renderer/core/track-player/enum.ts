@@ -29,10 +29,6 @@ export enum PlayerEvents {
     ProgressChanged = "time-updated",
     /** 音乐改变 */
     MusicChanged = "music-changed",
-    /** 音量改变 */
-    VolumeChanged = "volume-changed",
-    /** 速度改变 */
-    SpeedChanged = "speed-changed",
     /** 播放结束 */
     // PlayEnd = "play-end",
     /** modechange */

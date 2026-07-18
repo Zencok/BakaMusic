@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import { memo } from "react";
 import MusicList from "@/renderer/components/MusicList";
 import { RequestStateCode } from "@/common/constant";
 import useSearch from "../../../hooks/useSearch";

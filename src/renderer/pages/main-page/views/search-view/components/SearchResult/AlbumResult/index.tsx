@@ -1,5 +1,5 @@
 import { RequestStateCode } from "@/common/constant";
-import React, { memo } from "react";
+import { memo } from "react";
 import "./index.scss";
 import useSearch from "../../../hooks/useSearch";
 import { useNavigate } from "react-router-dom";

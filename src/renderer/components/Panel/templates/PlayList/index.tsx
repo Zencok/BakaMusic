@@ -42,6 +42,7 @@ export default function PlayList(props: IProps) {
         },
         fallbackRenderCount: 0,
     });
+    const { scrollToIndex, setScrollElement } = virtualController;
 
     const scrollToCurrentMusic = (behavior: ScrollBehavior = "smooth") => {
         if (!currentMusic) {
@@ -53,18 +54,18 @@ export default function PlayList(props: IProps) {
         }
         lastActiveIndexRef.current = index;
         setActiveItems(new Set([index]));
-        virtualController.scrollToIndex(Math.max(index - 2, 0), behavior);
+        scrollToIndex(Math.max(index - 2, 0), behavior);
     };
 
     useEffect(() => {
-        virtualController.setScrollElement(scrollElementRef.current);
+        setScrollElement(scrollElementRef.current);
         const currentQueueMusic = trackPlayer.currentMusic;
         if (currentQueueMusic) {
             const index = trackPlayer.musicQueue.findIndex((it) =>
                 isSameMedia(it, currentQueueMusic),
             );
             if (index >= 0) {
-                virtualController.scrollToIndex(Math.max(index - 2, 0));
+                scrollToIndex(Math.max(index - 2, 0));
             }
         }
 
@@ -78,7 +79,7 @@ export default function PlayList(props: IProps) {
         return () => {
             hotkeys.unbind("Ctrl+A", ctrlAHandler);
         };
-    }, []);
+    }, [scrollToIndex, setScrollElement]);
 
     const onDrop = (fromIndex: number, toIndex: number) => {
         if (fromIndex === toIndex) {

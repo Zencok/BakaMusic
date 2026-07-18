@@ -14,7 +14,6 @@ import AppConfig from "@shared/app-config/renderer";
 import { getGlobalContext } from "@shared/global-context/renderer";
 import logger from "@shared/logger/renderer";
 import PluginManager from "@shared/plugin-manager/renderer";
-import * as Comlink from "comlink";
 import PQueue from "p-queue";
 import { useEffect, useState } from "react";
 import {
@@ -27,8 +26,10 @@ import {
 } from "./downloaded-sheet";
 import { DownloadEvts, ee } from "./ee";
 import { buildDownloadPostprocessPayload } from "./postprocess";
+import { resolveFilePath } from "@/common/path-util";
+import nodeRuntime from "@shared/node-runtime/renderer";
 
-export interface IDownloadStatus {
+interface IDownloadStatus {
     state: DownloadState;
     downloaded?: number;
     total?: number;
@@ -49,7 +50,6 @@ interface IDownloadTaskControl {
     release?: () => void;
 }
 
-type ProxyMarkedFunction<T extends (...args: any) => void> = T & Comlink.ProxyMarked;
 type IOnStateChangeFunc = (data: IDownloadStatus) => void;
 
 interface IDownloaderWorker {
@@ -57,7 +57,7 @@ interface IDownloaderWorker {
         taskId: string,
         mediaSource: IMusic.IMusicSource,
         filePath: string,
-        onStateChange: ProxyMarkedFunction<IOnStateChangeFunc>,
+        onStateChange: IOnStateChangeFunc,
     ) => Promise<void>;
     abortDownload: (taskId: string, removePartial?: boolean) => Promise<void>;
     postprocessDownloadedFile: (
@@ -72,7 +72,8 @@ const downloadingProgress = new Map<string, IDownloadStatus>();
 const taskControls = new Map<string, IDownloadTaskControl>();
 const downloadingQueue = new PQueue({ concurrency: 5 });
 const concurrencyLimit = 20;
-let downloaderWorker: IDownloaderWorker;
+let downloaderWorker: IDownloaderWorker | undefined;
+let downloaderWorkerRecovering = false;
 let lastDownloadCompletedAt = 0;
 
 function getNextDownloadCompletedAt() {
@@ -87,12 +88,60 @@ async function setupDownloader() {
 }
 
 function setupDownloaderWorker() {
-    const downloaderWorkerPath = getGlobalContext().workersPath.downloader;
-    if (downloaderWorkerPath) {
-        const worker = new Worker(downloaderWorkerPath);
-        downloaderWorker = Comlink.wrap(worker);
+    if (downloaderWorker) {
+        return;
     }
+    downloaderWorker = nodeRuntime as unknown as IDownloaderWorker;
     setDownloadingConcurrency(AppConfig.getConfig("download.concurrency") ?? 5);
+}
+
+function recoverDownloaderWorker(reason: unknown) {
+    if (downloaderWorkerRecovering) {
+        return;
+    }
+    downloaderWorkerRecovering = true;
+
+    logger.logError(
+        "下载 Worker 异常，正在恢复任务",
+        reason instanceof ErrorEvent && reason.error instanceof Error
+            ? reason.error
+            : reason instanceof Error
+                ? reason
+                : new Error(reason instanceof Event ? reason.type : "worker failure"),
+    );
+    downloaderWorker = undefined;
+
+    const interruptedTasks = downloadingTaskStore.getValue().filter(
+        ({ status }) => status.state === DownloadState.DOWNLOADING,
+    );
+    interruptedTasks.forEach(({ musicItem }) => {
+        const taskControl = taskControls.get(getMediaPrimaryKey(musicItem));
+        if (!taskControl) {
+            return;
+        }
+        taskControl.runId++;
+        taskControl.release?.();
+        updateTaskStatus(musicItem, { state: DownloadState.WAITING });
+    });
+
+    try {
+        setupDownloaderWorker();
+        interruptedTasks.forEach(({ musicItem }) => {
+            const taskControl = taskControls.get(getMediaPrimaryKey(musicItem));
+            if (taskControl) {
+                queueTask(taskControl);
+            }
+        });
+    } catch (error) {
+        interruptedTasks.forEach(({ musicItem }) => {
+            updateTaskStatus(musicItem, {
+                state: DownloadState.ERROR,
+                msg: toError(error).message,
+            });
+        });
+    } finally {
+        downloaderWorkerRecovering = false;
+    }
 }
 
 function setDownloadingConcurrency(concurrency: number) {
@@ -259,7 +308,7 @@ async function setTaskPaused(musicItem: IMusic.IMusicItem) {
 
     taskControl.runId++;
     taskControl.release?.();
-    await downloaderWorker?.abortDownload(taskId, false);
+    await downloaderWorker?.abortDownload(taskId, false).catch(() => undefined);
     updateTaskStatus(musicItem, {
         ...status,
         state: DownloadState.PAUSED,
@@ -296,7 +345,7 @@ async function removeTask(musicItem: IMusic.IMusicItem) {
         previous.filter((item) => !isSameMedia(item, musicItem)),
     );
     syncTaskStore();
-    await downloaderWorker?.abortDownload(taskId);
+    await downloaderWorker?.abortDownload(taskId).catch(() => undefined);
 }
 
 async function pauseAllTasks() {
@@ -363,6 +412,7 @@ async function downloadMusicImpl(
         return;
     }
 
+    const worker = downloaderWorker;
     try {
         if (!mediaSource?.url) {
             throw new Error("Invalid Source");
@@ -372,13 +422,16 @@ async function downloadMusicImpl(
             ?? getGlobalContext().appPath.downloads;
         const fileName = `${musicItem.title}-${musicItem.artist}`
             .replace(/[/|\\?*"<>:]/g, "_");
-        const downloadPath = window.path.resolve(downloadBasePath, `./${fileName}.${ext}`);
+        const downloadPath = resolveFilePath(downloadBasePath, `./${fileName}.${ext}`);
 
-        await downloaderWorker.downloadFile(
+        if (!worker) {
+            throw new Error("Downloader worker is unavailable");
+        }
+        await worker.downloadFile(
             taskId,
             mediaSource,
             downloadPath,
-            Comlink.proxy((dataState) => {
+            (dataState) => {
                 if (isCancelled()) {
                     return;
                 }
@@ -392,9 +445,12 @@ async function downloadMusicImpl(
                         state: DownloadState.ERROR,
                         msg: toError(error).message,
                     }));
-            }),
+            },
         );
     } catch (error) {
+        if (worker === downloaderWorker) {
+            recoverDownloaderWorker(toError(error));
+        }
         if (!isCancelled()) {
             onStateChange({
                 state: DownloadState.ERROR,
@@ -423,7 +479,11 @@ async function finalizeDownloadedMusic(
     try {
         const payload = await buildDownloadPostprocessPayload(musicItem);
         if (payload) {
-            await downloaderWorker.postprocessDownloadedFile(downloadPath, payload);
+            const worker = downloaderWorker;
+            if (!worker) {
+                throw new Error("Downloader worker is unavailable");
+            }
+            await worker.postprocessDownloadedFile(downloadPath, payload);
         }
     } catch (error) {
         logger.logError("下载后写入标签失败", error as Error, {

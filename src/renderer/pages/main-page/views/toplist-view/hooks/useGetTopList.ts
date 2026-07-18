@@ -48,7 +48,7 @@ export default function useGetTopList() {
                 );
             }
         },
-        [pluginsTopList],
+        [pluginsTopList, setPluginsTopList],
     );
 
     return getTopList;

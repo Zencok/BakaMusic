@@ -51,7 +51,7 @@ export default function AnimatedDiv(props: IProps) {
         } else if (!unmountClassName) {
             setShouldMount(false);
         }
-    }, [showIf]);
+    }, [showIf, unmountClassName]);
 
     return shouldMount ? (
         <div

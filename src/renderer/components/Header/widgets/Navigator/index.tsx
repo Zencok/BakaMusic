@@ -14,11 +14,13 @@ export default function HeaderNavigator() {
 
     return (
         <div className="header-navigator">
-            <div
+            <button
+                type="button"
                 className="navigator-btn"
                 data-disabled={!canBack}
+                disabled={!canBack}
                 title={canBack ? t("app_header.nav_back") : undefined}
-                role="button"
+                aria-label={t("app_header.nav_back")}
                 onClick={() => {
                     if (isMusicDetailShown()) {
                         MusicDetail.hide();
@@ -28,11 +30,14 @@ export default function HeaderNavigator() {
                 }}
             >
                 <SvgAsset iconName="chevron-left"></SvgAsset>
-            </div>
-            <div
+            </button>
+            <button
+                type="button"
                 className="navigator-btn"
                 data-disabled={!canGo}
+                disabled={!canGo}
                 title={canGo ? t("app_header.nav_forward") : undefined}
+                aria-label={t("app_header.nav_forward")}
                 onClick={() => {
                     if (isMusicDetailShown()) {
                         MusicDetail.hide();
@@ -42,7 +47,7 @@ export default function HeaderNavigator() {
                 }}
             >
                 <SvgAsset iconName="chevron-right"></SvgAsset>
-            </div>
+            </button>
         </div>
     );
 }

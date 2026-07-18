@@ -4,7 +4,7 @@ import {
     setInternalData,
 } from "@/common/media-util";
 import { LRUCache } from "lru-cache";
-import musicSheetDB from "../db/music-sheet-db";
+import musicSheetDB from "../music-sheet/database";
 import PluginManager from "@shared/plugin-manager/renderer";
 
 const linkLyricCache = new LRUCache({

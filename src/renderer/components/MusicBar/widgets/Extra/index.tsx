@@ -387,6 +387,7 @@ function VolumeBtn() {
     useEffect(() => {
         const el = volumeBtnRef.current;
         if (!el) return;
+        const flushWheel = flushWheelRef.current;
 
         const handleWheel = (e: WheelEvent) => {
             e.preventDefault();
@@ -399,13 +400,13 @@ function VolumeBtn() {
             if (!stepCount) return;
             wheelDeltaRef.current -= stepCount * WHEEL_DELTA_UNIT;
             wheelStepRef.current += stepCount;
-            flushWheelRef.current();
+            flushWheel();
         };
 
         el.addEventListener("wheel", handleWheel, { passive: false });
         return () => {
             el.removeEventListener("wheel", handleWheel);
-            flushWheelRef.current.cancel();
+            flushWheel.cancel();
         };
     }, []);
 
@@ -515,6 +516,7 @@ function SpeedBtn() {
     useEffect(() => {
         const el = speedBtnRef.current;
         if (!el) return;
+        const flushWheel = flushWheelRef.current;
 
         const handleWheel = (e: WheelEvent) => {
             e.preventDefault();
@@ -527,13 +529,13 @@ function SpeedBtn() {
             if (!stepCount) return;
             wheelDeltaRef.current -= stepCount * WHEEL_DELTA_UNIT;
             wheelStepRef.current += stepCount;
-            flushWheelRef.current();
+            flushWheel();
         };
 
         el.addEventListener("wheel", handleWheel, { passive: false });
         return () => {
             el.removeEventListener("wheel", handleWheel);
-            flushWheelRef.current.cancel();
+            flushWheel.cancel();
         };
     }, []);
 

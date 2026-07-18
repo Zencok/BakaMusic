@@ -109,7 +109,7 @@ export default function useAlbumDetail(
 
         // Initial load for this album identity
         void getAlbumDetail();
-    }, [originalAlbumItem?.platform, originalAlbumItem?.id]);
+    }, [getAlbumDetail, originalAlbumItem, setState]);
 
     return [requestState, albumItem, musicList, getAlbumDetail] as const;
 }

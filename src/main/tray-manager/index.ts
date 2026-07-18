@@ -1,6 +1,6 @@
 import { app, Menu, MenuItem, MenuItemConstructorOptions, nativeImage, Tray } from "electron";
 import { t } from "@shared/i18n/main";
-import { IWindowManager } from "@/types/main/window-manager";
+import { IWindowManager } from "@/types/window-manager";
 import getResourcePath from "@/common/get-resource-path";
 import { isPlaybackActive, RepeatMode, ResourceName } from "@/common/constant";
 import AppConfig from "@shared/app-config/main";
@@ -8,53 +8,43 @@ import windowManager from "@main/window-manager";
 import { IAppConfig } from "@/types/app-config";
 import messageBus from "@shared/message-bus/main";
 
-if (process.platform === "darwin") {
-    Menu.setApplicationMenu(
-        Menu.buildFromTemplate([
-            {
-                label: app.getName(),
-                submenu: [
-                    {
-                        label: t("common.about"),
-                        role: "about",
-                    },
-                    {
-                        label: t("common.exit"),
-                        click() {
-                            app.quit();
-                        },
-                    },
-                ],
-            },
-            {
-                label: t("common.edit"),
-                submenu: [
-                    {
-                        label: t("common.undo"),
-                        accelerator: "Command+Z",
-                        role: "undo",
-                    },
-                    {
-                        label: t("common.redo"),
-                        accelerator: "Shift+Command+Z",
-                        role: "redo",
-                    },
-                    { type: "separator" },
-                    { label: t("common.cut"), accelerator: "Command+X", role: "cut" },
-                    { label: t("common.copy"), accelerator: "Command+C", role: "copy" },
-                    { label: t("common.cut"), accelerator: "Command+V", role: "paste" },
-                    { type: "separator" },
-                    {
-                        label: t("common.select_all"),
-                        accelerator: "Command+A",
-                        role: "selectAll",
-                    },
-                ],
-            },
-        ]),
-    );
-} else {
-    Menu.setApplicationMenu(null);
+function buildApplicationMenu() {
+    if (process.platform !== "darwin") {
+        Menu.setApplicationMenu(null);
+        return;
+    }
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+        {
+            label: app.getName(),
+            submenu: [
+                { label: t("common.about"), role: "about" },
+                { type: "separator" },
+                { role: "services" },
+                { type: "separator" },
+                { role: "hide" },
+                { role: "hideOthers" },
+                { role: "unhide" },
+                { type: "separator" },
+                { label: t("common.exit"), role: "quit" },
+            ],
+        },
+        {
+            label: t("common.edit"),
+            submenu: [
+                { label: t("common.undo"), role: "undo" },
+                { label: t("common.redo"), role: "redo" },
+                { type: "separator" },
+                { label: t("common.cut"), role: "cut" },
+                { label: t("common.copy"), role: "copy" },
+                { label: t("common.paste"), role: "paste" },
+                { type: "separator" },
+                { label: t("common.select_all"), role: "selectAll" },
+            ],
+        },
+        {
+            role: "windowMenu",
+        },
+    ]));
 }
 
 class TrayManager {
@@ -120,7 +110,13 @@ class TrayManager {
         });
 
         TrayManager.trayInstance = tray;
+        buildApplicationMenu();
         this.buildTrayMenu();
+    }
+
+    public refreshLocalization() {
+        buildApplicationMenu();
+        void this.buildTrayMenu();
     }
 
     private openMusicDetail() {
@@ -278,7 +274,7 @@ class TrayManager {
             role: process.platform === "win32" ? undefined : "quit",
             click() {
                 windowManager.mainWindow?.removeAllListeners?.();
-                app.exit(0);
+                app.quit();
             },
         });
 
@@ -291,7 +287,7 @@ class TrayManager {
             return;
         }
         if (title.length > 7) {
-            TrayManager.trayInstance?.setTitle(" " + title.slice(0) + "...");
+            TrayManager.trayInstance?.setTitle(" " + title.slice(0, 7) + "...");
         } else {
             TrayManager.trayInstance?.setTitle(" " + title);
         }

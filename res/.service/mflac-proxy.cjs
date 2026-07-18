@@ -1,321 +1,349 @@
-/**
- * mflac-proxy.js — Local Decryption Proxy Service
- *
- * Self-contained Node.js child process that decrypts QMC2 encrypted audio
- * (mflac/mgg/mmp4) on-the-fly and serves it via HTTP.
- *
- * Uses native C++ N-API module for high-performance decryption.
- *
- * IPC API:
- *   Parent sends: { type: "register", src, ekey, headers }
- *   Child replies: { type: "registered", token, localUrl }
- *
- * HTTP endpoints:
- *   HEAD /m/<token> — Content info
- *   GET  /m/<token> — Streamed decrypted audio (Range supported)
- */
-
 const http = require("http");
-const https = require("https");
+const serviceIpc = require("./service-ipc.cjs");
 const crypto = require("crypto");
 const path = require("path");
+const {
+    MAX_PROXY_RESPONSE_BYTES,
+    REQUEST_TIMEOUT_MS,
+    assertSafeTargetUrl,
+    createSessionStore,
+    requestUpstream,
+    writeProxyError,
+} = require("./proxy-common.cjs");
 
-// --- Native QMC2 module (C++ N-API) ---
 const nativeQmc2 = require(path.join(__dirname, "native", "qmc2.node"));
 console.log("[mflac-proxy] Native QMC2 module loaded");
 
 const defaultPort = Number(process.env.MFLAC_PROXY_PORT || 0);
 let currentPort = null;
 
-// =========================================================================
-// EKey normalization (kept in JS — trivial string op)
-// =========================================================================
-
 function normalizeEkey(input) {
-    const s = input.trim();
-    return s.length > 704 ? s.slice(s.length - 704) : s;
+    const value = input.trim();
+    return value.length > 704 ? value.slice(value.length - 704) : value;
 }
 
-// =========================================================================
-// Session Management
-// =========================================================================
-
-const sessions = new Map(); // token -> { src, headers, nativeHandle, contentLength, mimeType }
-
 function getMimeType(url) {
-    const lower = url.split("?")[0].toLowerCase();
+    const lower = url.split("?", 1)[0].toLowerCase();
     if (lower.endsWith(".mgg")) return "audio/ogg";
     if (lower.endsWith(".mmp4")) return "audio/mp4";
     return "audio/flac";
 }
 
+function destroySession(session) {
+    if (!session.nativeHandle) return;
+    try { nativeQmc2.destroyDecoder(session.nativeHandle); } catch { /* already released */ }
+    session.nativeHandle = null;
+}
+
+const sessions = createSessionStore({
+    maxEntries: 256,
+    ttlMs: 30 * 60 * 1000,
+    dispose: destroySession,
+});
+
 function generateToken() {
     return crypto.randomBytes(16).toString("hex");
 }
 
-// =========================================================================
-// IPC: Register stream from parent process
-// =========================================================================
+function validHeaders(headers) {
+    return headers === undefined || (
+        headers
+        && typeof headers === "object"
+        && !Array.isArray(headers)
+        && Object.keys(headers).length <= 64
+    );
+}
 
-process.on("message", (msg) => {
-    if (msg && msg.type === "register") {
-        const { src, ekey, headers } = msg;
-        if (!currentPort) {
-            process.send({ type: "error", error: "mflac-proxy is not listening" });
-            return;
+serviceIpc.onMessage(async (message) => {
+    if (!message || message.type !== "register") return;
+    const { requestId, src, ekey, headers } = message;
+    const reply = (payload) => serviceIpc.send({ ...payload, requestId });
+    if (
+        typeof requestId !== "string"
+        || requestId.length > 128
+        || typeof src !== "string"
+        || typeof ekey !== "string"
+        || !validHeaders(headers)
+    ) {
+        reply({ type: "error", error: "Invalid registration payload" });
+        return;
+    }
+    if (!currentPort) {
+        reply({ type: "error", error: "mflac-proxy is not listening" });
+        return;
+    }
+
+    try {
+        await assertSafeTargetUrl(src);
+        const keyBuffer = nativeQmc2.decryptEKey(normalizeEkey(ekey));
+        if (!keyBuffer?.length) {
+            throw new Error("Failed to decrypt ekey");
         }
-
-        const normalizedEkey = normalizeEkey(ekey);
-
-        let keyBuf = null;
-        try {
-            keyBuf = nativeQmc2.decryptEKey(normalizedEkey);
-        } catch (e) {
-            console.error("[mflac-proxy] decryptEKey threw:", e.message);
-        }
-
-        if (!keyBuf || keyBuf.length === 0) {
-            console.log("[mflac-proxy] Failed to decrypt ekey");
-            process.send({ type: "error", error: "Failed to decrypt ekey" });
-            return;
-        }
-
-        console.log("[mflac-proxy] Decoded key length:", keyBuf.length,
-            "mode:", keyBuf.length <= 300 ? "MapL" : "RC4");
-
-        const nativeHandle = nativeQmc2.createDecoder(keyBuf);
         const token = generateToken();
-        const mimeType = getMimeType(src);
-
         sessions.set(token, {
             src,
             headers: headers || {},
-            nativeHandle,
-            mimeType,
+            nativeHandle: nativeQmc2.createDecoder(keyBuffer),
+            mimeType: getMimeType(src),
             contentLength: null,
         });
-
-        const localUrl = `http://127.0.0.1:${currentPort}/m/${token}`;
-        process.send({ type: "registered", token, localUrl });
+        reply({
+            type: "registered",
+            token,
+            localUrl: `http://127.0.0.1:${currentPort}/m/${token}`,
+        });
+    } catch (error) {
+        reply({ type: "error", error: String(error?.message || error) });
     }
 });
 
-// =========================================================================
-// HTTP Proxy Server
-// =========================================================================
+function parseRangeStart(rangeHeader) {
+    const match = /^bytes=(\d+)-(\d*)$/i.exec(rangeHeader || "");
+    if (!match) return { start: 0, end: null };
+    const start = Number(match[1]);
+    const end = match[2] ? Number(match[2]) : null;
+    if (!Number.isSafeInteger(start) || start < 0 || (end !== null && end < start)) {
+        return { start: 0, end: null };
+    }
+    return { start, end };
+}
 
-function fetchUpstream(url, headers, rangeHeader) {
+function streamDecrypted(upstream, req, res, session, options) {
     return new Promise((resolve, reject) => {
-        let host = headers?.host;
-        if (!host || host.includes("localhost") || host.includes("127.0.0.1")) {
-            host = new URL(url).host;
-        }
+        let currentOffset = options.dataOffset;
+        let skipBytes = options.skipBytes;
+        let remaining = options.remaining;
+        let upstreamBytes = 0;
+        let settled = false;
 
-        const reqHeaders = { ...(headers || {}), host };
-        if (rangeHeader) {
-            reqHeaders["range"] = rangeHeader;
-        }
+        const finish = (error) => {
+            if (settled) return;
+            settled = true;
+            res.removeListener("close", cancel);
+            req.removeListener("aborted", cancel);
+            error ? reject(error) : resolve();
+        };
+        const cancel = () => {
+            upstream.destroy();
+            finish();
+        };
+        req.once("aborted", cancel);
+        res.once("close", cancel);
 
-        const protocol = url.startsWith("https") ? https : http;
-        const req = protocol.request(url, { method: "GET", headers: reqHeaders }, (res) => {
-            resolve(res);
+        upstream.on("data", (chunk) => {
+            upstreamBytes += chunk.length;
+            if (upstreamBytes > MAX_PROXY_RESPONSE_BYTES) {
+                upstream.destroy(new Error("Upstream response exceeds proxy limit"));
+                return;
+            }
+
+            let buffer = Buffer.from(chunk);
+            if (skipBytes > 0) {
+                const skipped = Math.min(skipBytes, buffer.length);
+                skipBytes -= skipped;
+                currentOffset += skipped;
+                buffer = buffer.subarray(skipped);
+            }
+            if (!buffer.length || remaining === 0) return;
+            if (remaining !== null && buffer.length > remaining) {
+                buffer = buffer.subarray(0, remaining);
+            }
+
+            nativeQmc2.decrypt(session.nativeHandle, currentOffset, buffer);
+            currentOffset += buffer.length;
+            if (remaining !== null) remaining -= buffer.length;
+            if (!res.write(buffer)) {
+                upstream.pause();
+                res.once("drain", () => upstream.resume());
+            }
+            if (remaining === 0) {
+                upstream.destroy();
+                if (!res.writableEnded) res.end();
+                finish();
+            }
         });
-        req.on("error", reject);
-        req.end();
+        upstream.once("end", () => {
+            if (!res.writableEnded) res.end();
+            finish();
+        });
+        upstream.once("error", (error) => {
+            if (!settled) finish(error);
+        });
     });
 }
 
-function handleHead(req, res, session) {
-    const url = session.src;
-    let host = session.headers?.host;
-    if (!host || host.includes("localhost") || host.includes("127.0.0.1")) {
-        try { host = new URL(url).host; } catch { host = undefined; }
-    }
-    const reqHeaders = { ...(session.headers || {}), host };
-
-    const protocol = url.startsWith("https") ? https : http;
-    const headReq = protocol.request(url, { method: "HEAD", headers: reqHeaders }, (upstream) => {
+async function handleHead(req, res, session) {
+    const abortController = new AbortController();
+    const cancel = () => abortController.abort();
+    req.once("aborted", cancel);
+    res.once("close", cancel);
+    try {
+        const upstream = await requestUpstream(session.src, {
+            method: "HEAD",
+            headers: session.headers,
+            extraHeaders: { "accept-encoding": "identity" },
+            signal: abortController.signal,
+        });
         const contentLength = upstream.headers["content-length"];
-        if (contentLength) {
-            session.contentLength = parseInt(contentLength, 10);
-        }
-        res.writeHead(200, {
+        if (contentLength) session.contentLength = Number(contentLength);
+        upstream.resume();
+        res.writeHead(upstream.statusCode || 200, {
             "Content-Type": session.mimeType,
-            "Content-Length": contentLength || "",
+            ...(contentLength ? { "Content-Length": contentLength } : {}),
             "Accept-Ranges": "bytes",
             "Access-Control-Allow-Origin": "*",
         });
         res.end();
-    });
-    headReq.on("error", (err) => {
-        console.error("[mflac-proxy] HEAD upstream error:", err.message);
-        res.writeHead(502);
-        res.end("Bad Gateway");
-    });
-    headReq.end();
+    } catch (error) {
+        if (!abortController.signal.aborted) writeProxyError(res, 502, "Bad Gateway");
+    }
 }
 
-function handleGet(req, res, session) {
-    const rangeHeader = req.headers["range"] || null;
-    let rangeStart = 0;
+async function handleGet(req, res, session) {
+    const rangeHeader = typeof req.headers.range === "string" ? req.headers.range : null;
+    const requestedRange = parseRangeStart(rangeHeader);
+    const abortController = new AbortController();
+    const cancel = () => abortController.abort();
+    req.once("aborted", cancel);
+    res.once("close", () => {
+        if (!res.writableFinished) cancel();
+    });
 
-    if (rangeHeader) {
-        const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
-        if (match) {
-            rangeStart = parseInt(match[1], 10);
-        }
-    }
-
-    fetchUpstream(session.src, session.headers, rangeHeader)
-        .then((upstream) => {
-            const statusCode = upstream.statusCode;
-            const contentLength = upstream.headers["content-length"];
-            const contentRange = upstream.headers["content-range"];
-
-            // Determine the actual byte offset of the data we're receiving
-            let dataOffset = 0;
-            if (contentRange) {
-                const crMatch = contentRange.match(/bytes (\d+)-/);
-                if (crMatch) {
-                    dataOffset = parseInt(crMatch[1], 10);
-                }
-            } else if (rangeHeader && (statusCode === 200)) {
-                // Upstream ignored Range, we need to skip bytes
-                dataOffset = 0;
-            } else {
-                dataOffset = rangeStart;
-            }
-
-            // Build response headers
-            const resHeaders = {
-                "Content-Type": session.mimeType,
-                "Access-Control-Allow-Origin": "*",
-                "Accept-Ranges": "bytes",
-            };
-
-            if (contentLength) {
-                resHeaders["Content-Length"] = contentLength;
-            }
-            if (contentRange) {
-                resHeaders["Content-Range"] = contentRange;
-            }
-
-            const resStatus = (statusCode === 206) ? 206 : 200;
-            res.writeHead(resStatus, resHeaders);
-
-            // Stream and decrypt
-            let currentOffset = dataOffset;
-            let skipBytes = 0;
-
-            // If upstream returned 200 but we requested a range, skip bytes
-            if (rangeHeader && statusCode === 200 && rangeStart > 0) {
-                skipBytes = rangeStart;
-            }
-
-            upstream.on("data", (chunk) => {
-                let buf = Buffer.from(chunk);
-
-                if (skipBytes > 0) {
-                    if (skipBytes >= buf.length) {
-                        skipBytes -= buf.length;
-                        currentOffset += buf.length;
-                        return;
-                    }
-                    buf = buf.subarray(skipBytes);
-                    currentOffset += skipBytes;
-                    skipBytes = 0;
-                }
-
-                // Decrypt in-place (native C++)
-                nativeQmc2.decrypt(session.nativeHandle, currentOffset, buf);
-                currentOffset += buf.length;
-
-                if (!res.writableEnded) {
-                    res.write(buf);
-                }
-            });
-
-            upstream.on("end", () => {
-                if (!res.writableEnded) {
-                    res.end();
-                }
-            });
-
-            upstream.on("error", (err) => {
-                console.error("[mflac-proxy] Upstream stream error:", err.message);
-                if (!res.writableEnded) {
-                    res.end();
-                }
-            });
-        })
-        .catch((err) => {
-            console.error("[mflac-proxy] Fetch upstream error:", err.message);
-            res.writeHead(502);
-            res.end("Bad Gateway");
+    try {
+        const upstream = await requestUpstream(session.src, {
+            method: "GET",
+            headers: session.headers,
+            extraHeaders: {
+                "accept-encoding": "identity",
+                ...(rangeHeader ? { range: rangeHeader } : {}),
+            },
+            signal: abortController.signal,
         });
+        if ((upstream.statusCode || 500) >= 400) {
+            upstream.resume();
+            writeProxyError(res, upstream.statusCode || 502, "Upstream request failed");
+            return;
+        }
+
+        const contentRange = upstream.headers["content-range"];
+        const rangeMatch = typeof contentRange === "string"
+            ? /^bytes\s+(\d+)-(\d+)\/(\d+)$/i.exec(contentRange)
+            : null;
+        if (
+            upstream.statusCode === 206
+            && (!rangeMatch || (rangeHeader && Number(rangeMatch[1]) !== requestedRange.start))
+        ) {
+            upstream.destroy();
+            writeProxyError(res, 502, "Invalid upstream Content-Range");
+            return;
+        }
+        const declaredLength = Number(upstream.headers["content-length"]);
+        if (Number.isFinite(declaredLength) && declaredLength > MAX_PROXY_RESPONSE_BYTES) {
+            upstream.destroy();
+            writeProxyError(res, 413, "Upstream response is too large");
+            return;
+        }
+
+        let responseStatus = upstream.statusCode === 206 ? 206 : 200;
+        let responseLength = Number.isFinite(declaredLength) ? declaredLength : null;
+        let responseRange = rangeMatch ? contentRange : null;
+        let dataOffset = rangeMatch ? Number(rangeMatch[1]) : 0;
+        let skipBytes = 0;
+        let remaining = responseLength;
+
+        if (rangeHeader && upstream.statusCode === 200 && !Number.isFinite(declaredLength)) {
+            upstream.destroy();
+            writeProxyError(res, 502, "Upstream ignored Range without a known length");
+            return;
+        }
+        if (rangeHeader && upstream.statusCode === 200 && Number.isFinite(declaredLength)) {
+            const end = Math.min(
+                requestedRange.end ?? declaredLength - 1,
+                declaredLength - 1,
+            );
+            if (requestedRange.start > end) {
+                upstream.destroy();
+                res.writeHead(416, { "Content-Range": `bytes */${declaredLength}` });
+                res.end();
+                return;
+            }
+            responseStatus = 206;
+            responseLength = end - requestedRange.start + 1;
+            responseRange = `bytes ${requestedRange.start}-${end}/${declaredLength}`;
+            skipBytes = requestedRange.start;
+            remaining = responseLength;
+        }
+
+        res.writeHead(responseStatus, {
+            "Content-Type": session.mimeType,
+            "Accept-Ranges": "bytes",
+            "Access-Control-Allow-Origin": "*",
+            ...(responseLength !== null ? { "Content-Length": String(responseLength) } : {}),
+            ...(responseRange ? { "Content-Range": responseRange } : {}),
+        });
+        await streamDecrypted(upstream, req, res, session, {
+            dataOffset,
+            skipBytes,
+            remaining,
+        });
+    } catch (error) {
+        if (abortController.signal.aborted) return;
+        console.error("[mflac-proxy] stream failed:", error?.message || error);
+        if (!res.headersSent) writeProxyError(res, 502, "Bad Gateway");
+        else if (!res.destroyed) res.destroy(error instanceof Error ? error : undefined);
+    }
 }
 
 function startServer(port) {
     const server = http.createServer((req, res) => {
-        // CORS preflight
         if (req.method === "OPTIONS") {
-            res.writeHead(200, {
+            res.writeHead(204, {
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
                 "Access-Control-Allow-Headers": "Range",
             });
-            return res.end();
+            res.end();
+            return;
         }
-
         if (req.url === "/heartbeat") {
             res.writeHead(200, { "Content-Type": "text/plain" });
-            return res.end("OK");
+            res.end("OK");
+            return;
         }
-
-        // Parse /m/<token>
-        const match = req.url.match(/^\/m\/([a-f0-9]+)/);
+        const match = /^\/m\/([a-f0-9]{32})(?:\.[a-z0-9]+)?(?:\?.*)?$/i.exec(req.url || "");
         if (!match) {
-            res.writeHead(404);
-            return res.end("Not Found");
+            writeProxyError(res, 404, "Not Found");
+            return;
         }
-
         const token = match[1];
-        const session = sessions.get(token);
+        const session = sessions.acquire(token);
         if (!session) {
-            res.writeHead(404);
-            return res.end("Session Not Found");
+            writeProxyError(res, 404, "Session Not Found");
+            return;
         }
-
-        if (req.method === "HEAD") {
-            handleHead(req, res, session);
-        } else if (req.method === "GET") {
-            handleGet(req, res, session);
-        } else {
-            res.writeHead(405);
-            res.end("Method Not Allowed");
-        }
+        const release = () => sessions.release(token);
+        const operation = req.method === "HEAD"
+            ? handleHead(req, res, session)
+            : req.method === "GET"
+                ? handleGet(req, res, session)
+                : Promise.resolve(writeProxyError(res, 405, "Method Not Allowed"));
+        void operation.finally(release);
     });
-
+    server.requestTimeout = REQUEST_TIMEOUT_MS;
+    server.headersTimeout = REQUEST_TIMEOUT_MS;
     server.listen(port, "127.0.0.1", () => {
         const address = server.address();
         currentPort = typeof address === "object" && address ? address.port : port;
-        process.send?.({ type: "port", port: currentPort });
+        serviceIpc.send({ type: "port", port: currentPort });
         console.log(`mflac-proxy is running on http://127.0.0.1:${currentPort}`);
     });
-
-    server.on("error", (err) => {
-        console.error("Server error:", err);
-        process.send?.({ type: "error", error: err.message });
-    });
+    server.on("error", (error) => serviceIpc.send({ type: "error", error: error.message }));
 }
 
-// Clean up stale sessions periodically (every 30 minutes)
-setInterval(() => {
-    if (sessions.size > 1000) {
-        const keys = [...sessions.keys()];
-        const toRemove = keys.slice(0, keys.length - 500);
-        toRemove.forEach((k) => sessions.delete(k));
-    }
-}, 30 * 60 * 1000);
+const sweepTimer = setInterval(() => sessions.sweep(), 60_000);
+sweepTimer.unref();
+const closeSessions = () => sessions.close();
+process.once("disconnect", closeSessions);
+process.once("exit", closeSessions);
 
 startServer(defaultPort);

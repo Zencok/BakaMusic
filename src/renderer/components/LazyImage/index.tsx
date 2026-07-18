@@ -28,6 +28,7 @@ export default function LazyImage(props: ILazyImageProps) {
         releaseWhenHidden = true,
         loading = "lazy",
         decoding = "async",
+        alt = "",
         ...restProps
     } = props;
     const imageRef = useRef<HTMLImageElement | null>(null);
@@ -80,6 +81,7 @@ export default function LazyImage(props: ILazyImageProps) {
     return (
         <img
             {...restProps}
+            alt={alt}
             ref={imageRef}
             src={displaySrc}
             loading={loading}

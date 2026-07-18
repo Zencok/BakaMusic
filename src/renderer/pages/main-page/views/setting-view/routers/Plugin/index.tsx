@@ -1,4 +1,3 @@
-import "./index.scss";
 import CheckBoxSettingItem from "../../components/CheckBoxSettingItem";
 import { useTranslation } from "react-i18next";
 

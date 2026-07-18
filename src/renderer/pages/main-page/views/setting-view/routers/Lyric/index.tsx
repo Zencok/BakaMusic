@@ -1,5 +1,4 @@
 import CheckBoxSettingItem from "../../components/CheckBoxSettingItem";
-import "./index.scss";
 import ColorInputSettingItem from "../../components/ColorInputSettingItem";
 import ListBoxSettingItem from "../../components/ListBoxSettingItem";
 import SliderSettingItem from "../../components/SliderSettingItem";

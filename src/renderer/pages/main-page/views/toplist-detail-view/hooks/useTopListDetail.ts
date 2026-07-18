@@ -97,7 +97,7 @@ export default function useTopListDetail(
         }
 
         void loadMore();
-    }, [topListItem?.id, platform]);
+    }, [loadMore, platform, topListItem]);
 
     return [mergedTopListItem, requestState, loadMore] as const;
 }

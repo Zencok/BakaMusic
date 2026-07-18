@@ -28,7 +28,15 @@
     "save": "Save",
     "clear": "Clear",
     "open": "Open",
-    "status": "Status"
+    "status": "Status",
+    "close": "Close",
+    "dialog": "Dialog",
+    "panel": "Side panel"
+  },
+  "startup": {
+    "failed": "BakaMusic failed to start",
+    "loading": "Starting…",
+    "reload": "Reload"
   },
   "media": {
     "unknown_title": "Untitled",
@@ -81,7 +89,8 @@
     "sort_asc": "Ascending",
     "sort_desc": "Descending",
     "sort_by": "Sort",
-    "sort_custom": "Custom"
+    "sort_custom": "Custom",
+    "ai_upscale": "AI Upscaling"
   },
   "plugin": {
     "prop_user_variable": "User Variable",
@@ -286,7 +295,10 @@
     "minimize": "Minimize",
     "minimode": "Minimode",
     "exit": "Exit",
-    "theme": "Theme"
+    "theme": "Theme",
+    "search": "Search",
+    "maximize": "Maximize or restore",
+    "developer_message": "Developer message"
   },
   "music_bar": {
     "open_music_detail_page": "Open Song Details",
@@ -359,7 +371,14 @@
     "scan_local_music_hint": "Manually scan selected folders",
     "add_folder": "Add Folder",
     "clear_and_rescan_local_music": "Clear and Rescan",
-    "clear_and_rescan_local_music_success": "Local music has been cleared and rescanned"
+    "clear_and_rescan_local_music_success": "Local music has been cleared and rescanned",
+    "sparkles_title": "A Note from the Developer",
+    "sparkles_thanks": "Thank you for using <product>BakaMusic</product>.",
+    "sparkles_intro": "This desktop music player is maintained by <maintainer>Zencok</maintainer>. It is designed to make playback, lyrics, desktop interaction, local library management, and visual details feel focused and dependable.",
+    "sparkles_future": "Future development will keep improving the core experience, interface details, and desktop capabilities so every update delivers a noticeable improvement.",
+    "sparkles_feedback": "Visit GitHub to follow progress, report issues, or share an idea.",
+    "sparkles_repo": "GitHub repository",
+    "sparkles_secret": "The goal is to shape BakaMusic into a carefully maintained app worth using for the long term."
   },
   "panel": {
     "play_list_song_num": "Playlist ({{number}} songs)",
@@ -538,6 +557,13 @@
       "telegram_group_name": "Music Club"
     }
   },
+  "fallback": {
+    "title": "Something went wrong",
+    "reset": "Reset settings and player state",
+    "description": "Try the reset button above. If the issue continues, include the error details in a BakaMusic GitHub report.",
+    "music_info": "Track information",
+    "error_info": "Error details"
+  },
   "main": {
     "previous_music": "Previous Song",
     "next_music": "Next Song",
@@ -546,6 +572,9 @@
     "unlock_desktop_lyric": "Unlock Desktop Lyrics",
     "lock_desktop_lyric": "Lock Desktop Lyrics",
     "no_playing_music": "No Music Playing"
+  },
+  "desktop_lyric": {
+    "subtitle": "Desktop Lyrics"
   },
   "theme": {
     "tab_local": "Local Theme",

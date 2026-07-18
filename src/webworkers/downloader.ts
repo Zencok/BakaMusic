@@ -1,9 +1,9 @@
-import * as Comlink from "comlink";
 import fs from "fs";
 import fsPromises from "fs/promises";
 import path from "path";
-import { Readable } from "stream";
-import { encodeUrlHeaders } from "@/common/normalize-util";
+import { randomUUID } from "crypto";
+import { Readable, Transform } from "stream";
+import { pipeline } from "stream/promises";
 import throttle from "lodash.throttle";
 import { DownloadState as DownloadState } from "@/common/constant";
 import {
@@ -12,22 +12,44 @@ import {
 } from "@/common/download-postprocess";
 import { toError } from "@/common/error-util";
 import {
-    File as TagLibFile,
-    Id3v2Settings,
-    Picture,
-} from "node-taglib-sharp";
-import { rimraf } from "rimraf";
+    createDownloadPartPath,
+    createDownloadResponsePlan,
+    DownloadIntegrityError,
+    validateCompletedDownload,
+    validateMediaFileSignature,
+} from "./download-integrity";
 
 async function cleanFile(filePath: string) {
     try {
-        if ((await fsPromises.stat(filePath)).isFile()) {
-            await rimraf(filePath);
-        }
+        await fsPromises.rm(filePath, { force: true });
         return true;
     } catch {
         return false;
     }
 }
+
+class Semaphore {
+    private active = 0;
+    private readonly waiters: Array<() => void> = [];
+
+    constructor(private readonly limit: number) {}
+
+    async run<T>(callback: () => Promise<T>): Promise<T> {
+        if (this.active >= this.limit) {
+            await new Promise<void>((resolve) => this.waiters.push(resolve));
+        }
+        this.active++;
+        try {
+            return await callback();
+        } finally {
+            this.active--;
+            this.waiters.shift()?.();
+        }
+    }
+}
+
+const coverDownloadSemaphore = new Semaphore(3);
+const coverDownloadTimeoutMs = 15_000;
 
 function isAudioFile(filePath: string) {
     return [
@@ -43,64 +65,81 @@ function isAudioFile(filePath: string) {
     ].includes(path.extname(filePath).toLowerCase());
 }
 
-function resolveCoverExt(imgUrl: string, contentType?: string) {
-    const validExts = new Set([".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"]);
-    let urlExt: string | undefined;
-
-    try {
-        const pathname = new URL(imgUrl).pathname;
-        const index = pathname.lastIndexOf(".");
-        if (index >= 0) {
-            urlExt = pathname.slice(index).toLowerCase();
-        }
-    } catch {
-        urlExt = undefined;
-    }
-
-    if (urlExt && validExts.has(urlExt)) {
-        return urlExt === ".jpeg" ? ".jpg" : urlExt;
-    }
-
-    if (!contentType) {
-        return ".jpg";
-    }
-
-    if (contentType.includes("image/png")) {
-        return ".png";
-    }
-    if (contentType.includes("image/webp")) {
-        return ".webp";
-    }
-    if (contentType.includes("image/bmp")) {
-        return ".bmp";
-    }
-    if (contentType.includes("image/gif")) {
-        return ".gif";
-    }
-
-    return ".jpg";
-}
-
 async function downloadCoverTempFile(
     filePath: string,
     coverUrl: string,
 ) {
-    const response = await fetch(coverUrl);
-    if (!response.ok) {
-        throw new Error(`download cover failed: ${response.status}`);
-    }
+    return coverDownloadSemaphore.run(async () => {
+        const abortController = new AbortController();
+        const timeout = setTimeout(() => abortController.abort(), coverDownloadTimeoutMs);
+        const tempBasePath = path.join(
+            path.dirname(filePath),
+            `.${path.basename(filePath, path.extname(filePath))}.cover-${randomUUID()}`,
+        );
+        const partPath = `${tempBasePath}.part`;
 
-    const ext = resolveCoverExt(
-        coverUrl,
-        response.headers.get("content-type") ?? undefined,
-    );
-    const coverPath = path.join(
-        path.dirname(filePath),
-        `.${path.basename(filePath, path.extname(filePath))}.cover-${Date.now()}${ext}`,
-    );
-    const bytes = Buffer.from(await response.arrayBuffer());
-    await fsPromises.writeFile(coverPath, bytes);
-    return coverPath;
+        try {
+            const response = await fetch(coverUrl, {
+                signal: abortController.signal,
+            });
+            if (!response.ok || !response.body) {
+                throw new Error(`download cover failed: ${response.status}`);
+            }
+
+            const contentType = response.headers.get("content-type");
+            if (contentType && !contentType.toLowerCase().startsWith("image/")) {
+                throw new Error(`unexpected cover type: ${contentType}`);
+            }
+
+            await pipeline(
+                Readable.fromWeb(response.body as any),
+                fs.createWriteStream(partPath, { flags: "wx" }),
+            );
+            const signature = Buffer.alloc(16);
+            const handle = await fsPromises.open(partPath, "r");
+            let bytesRead = 0;
+            try {
+                ({ bytesRead } = await handle.read(signature, 0, signature.length, 0));
+            } finally {
+                await handle.close();
+            }
+            const actualExt = detectCoverExt(signature.subarray(0, bytesRead));
+            if (!actualExt) {
+                throw new Error("invalid cover file signature");
+            }
+            const coverPath = `${tempBasePath}${actualExt}`;
+            await fsPromises.rename(partPath, coverPath);
+            return coverPath;
+        } finally {
+            clearTimeout(timeout);
+            await cleanFile(partPath);
+        }
+    });
+}
+
+function detectCoverExt(bytes: Uint8Array) {
+    if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+        return ".jpg";
+    }
+    if (Buffer.from(bytes.subarray(0, 8)).equals(Buffer.from([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ]))) {
+        return ".png";
+    }
+    if (
+        Buffer.from(bytes.subarray(0, 4)).toString("ascii") === "RIFF"
+        && Buffer.from(bytes.subarray(8, 12)).toString("ascii") === "WEBP"
+    ) {
+        return ".webp";
+    }
+    const prefix = Buffer.from(bytes.subarray(0, 6)).toString("ascii");
+    if (prefix === "GIF87a" || prefix === "GIF89a") {
+        return ".gif";
+    }
+    if (bytes[0] === 0x42 && bytes[1] === 0x4d) {
+        return ".bmp";
+    }
+    return null;
 }
 
 function buildLyricContent(payload: IDownloadPostprocessPayload) {
@@ -137,6 +176,11 @@ async function writeMetadata(
     payload: IDownloadPostprocessPayload,
     lyricContent: string,
 ) {
+    const {
+        File: TagLibFile,
+        Id3v2Settings,
+        Picture,
+    } = await import("node-taglib-sharp");
     const ext = path.extname(filePath).toLowerCase();
     let coverTempFilePath: string | undefined;
     const artists = payload.musicItem.artist
@@ -187,7 +231,7 @@ async function writeMetadata(
     }
 }
 
-async function postprocessDownloadedFile(
+export async function postprocessDownloadedFile(
     filePath: string,
     payload?: IDownloadPostprocessPayload | null,
 ) {
@@ -212,47 +256,6 @@ async function postprocessDownloadedFile(
     await writeMetadata(filePath, payload, lyricContent);
 }
 
-const responseToReadable = (
-    response: Response,
-    options?: {
-        onRead?: (size: number) => void;
-        onDone?: () => void;
-        onError?: (e: Error) => void;
-    },
-) => {
-    if (!response.body) {
-        throw new Error("Response body is empty");
-    }
-    const reader = response.body.getReader();
-    const rs = new Readable();
-    let size = 0;
-    const tOnRead = options?.onRead
-        ? throttle(options.onRead, 64, {
-            leading: true,
-            trailing: true,
-        })
-        : undefined;
-    rs._read = async () => {
-        try {
-            const result = await reader.read();
-            if (!result.done) {
-                rs.push(Buffer.from(result.value));
-                size += result.value.byteLength;
-                tOnRead?.(size);
-            } else {
-                rs.push(null);
-                options?.onDone?.();
-            }
-        } catch (error) {
-            rs.destroy(toError(error));
-        }
-    };
-    if (options?.onError) {
-        rs.on("error", options.onError);
-    }
-    return rs;
-};
-
 type IOnStateChangeFunc = (data: {
     state: DownloadState;
     downloaded?: number;
@@ -262,7 +265,7 @@ type IOnStateChangeFunc = (data: {
 
 interface IActiveDownload {
     abortController: AbortController;
-    filePath: string;
+    partPath: string;
     readable?: Readable;
     writeStream?: fs.WriteStream;
     cancelled: boolean;
@@ -272,7 +275,7 @@ interface IActiveDownload {
 const activeDownloads = new Map<string, IActiveDownload>();
 const downloadPaths = new Map<string, string>();
 
-async function abortDownload(taskId: string, removePartial = true) {
+export async function abortDownload(taskId: string, removePartial = true) {
     const activeDownload = activeDownloads.get(taskId);
     if (activeDownload) {
         activeDownload.cancelled = true;
@@ -290,7 +293,7 @@ async function abortDownload(taskId: string, removePartial = true) {
     }
 
     if (removePartial) {
-        const filePath = activeDownload?.filePath ?? downloadPaths.get(taskId);
+        const filePath = activeDownload?.partPath ?? downloadPaths.get(taskId);
         downloadPaths.delete(taskId);
         if (filePath) {
             await cleanFile(filePath);
@@ -298,56 +301,49 @@ async function abortDownload(taskId: string, removePartial = true) {
     }
 }
 
-async function downloadFile(
+export async function downloadFile(
     taskId: string,
     mediaSource: IMusic.IMusicSource,
     filePath: string,
     onStateChange: IOnStateChangeFunc,
 ) {
     await abortDownload(taskId, false);
+    const partPath = createDownloadPartPath(filePath, taskId);
     const activeDownload: IActiveDownload = {
         abortController: new AbortController(),
-        filePath,
+        partPath,
         cancelled: false,
         failed: false,
     };
     activeDownloads.set(taskId, activeDownload);
-    downloadPaths.set(taskId, filePath);
+    downloadPaths.set(taskId, partPath);
     let state = DownloadState.DOWNLOADING;
     let existingSize = 0;
     try {
-        const stat = fs.statSync(filePath);
-        // if (stat.isFile()) {
-        //   state = DownloadState.ERROR;
-        //   onStateChange?.({
-        //     state,
-        //     msg: "File Exist",
-        //   });
-        //   return;
-        // }
-        if (stat.isDirectory()) {
-            state = DownloadState.ERROR;
-            onStateChange?.({
-                state,
-                msg: "Filepath is a directory",
-            });
-            return;
+        await fsPromises.mkdir(path.dirname(filePath), { recursive: true });
+        let partialStat: fs.Stats | undefined;
+        try {
+            partialStat = await fsPromises.stat(partPath);
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+                throw error;
+            }
         }
-        existingSize = stat.size;
-    } catch {
-        state = DownloadState.DOWNLOADING;
-    }
-    const _headers: Record<string, string> = {
-        ...(mediaSource.headers ?? {}),
-    };
-    if (mediaSource.userAgent) {
-        _headers["user-agent"] = mediaSource.userAgent;
-    }
-    if (existingSize > 0) {
-        _headers.Range = `bytes=${existingSize}-`;
-    }
+        if (partialStat?.isDirectory()) {
+            throw new DownloadIntegrityError("Partial filepath is a directory");
+        }
+        existingSize = partialStat?.size ?? 0;
+        const _headers: Record<string, string> = {
+            ...(mediaSource.headers ?? {}),
+            "accept-encoding": "identity",
+        };
+        if (mediaSource.userAgent) {
+            _headers["user-agent"] = mediaSource.userAgent;
+        }
+        if (existingSize > 0) {
+            _headers.Range = `bytes=${existingSize}-`;
+        }
 
-    try {
         if (!mediaSource.url) {
             throw new Error("mediaSource.url is empty");
         }
@@ -366,200 +362,88 @@ async function downloadFile(
                 signal: activeDownload.abortController.signal,
             });
         } else {
-            res = await fetch(encodeUrlHeaders(mediaSource.url, _headers), {
+            res = await fetch(mediaSource.url, {
+                headers: _headers,
                 signal: activeDownload.abortController.signal,
             });
         }
 
-        if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
+        if (!res.body) {
+            throw new DownloadIntegrityError("Response body is empty");
         }
-
-        const isPartialResponse = res.status === 206 && existingSize > 0;
-        const contentLength = +(res.headers.get("content-length") ?? 0);
-        const rangeTotal = res.headers.get("content-range")?.match(/\/(\d+)$/)?.[1];
-        const startSize = isPartialResponse ? existingSize : 0;
-        const totalSize = rangeTotal ? +rangeTotal : contentLength + startSize;
+        const responsePlan = createDownloadResponsePlan(res.status, res.headers, existingSize);
+        const { startSize, totalSize } = responsePlan;
         onStateChange({
             state,
             downloaded: startSize,
             total: totalSize,
         });
-        const readable = responseToReadable(res, {
-            onRead(size) {
-                if (state !== DownloadState.DOWNLOADING) {
-                    return;
-                }
-                state = DownloadState.DOWNLOADING;
-                onStateChange({
-                    state,
-                    downloaded: startSize + size,
-                    total: totalSize,
-                });
-            },
-            onError: (e) => {
-                if (activeDownload.cancelled) {
-                    return;
-                }
-                activeDownload.failed = true;
-                state = DownloadState.ERROR;
-                onStateChange({
-                    state,
-                    msg: e?.message,
-                });
-                activeDownload.writeStream?.destroy();
+        let receivedBytes = 0;
+        const notifyProgress = throttle(() => {
+            onStateChange({
+                state: DownloadState.DOWNLOADING,
+                downloaded: startSize + receivedBytes,
+                total: totalSize,
+            });
+        }, 64, {
+            leading: true,
+            trailing: true,
+        });
+        const readable = Readable.fromWeb(res.body as any);
+        const progressTransform = new Transform({
+            transform(chunk: Buffer, _encoding, callback) {
+                receivedBytes += chunk.length;
+                notifyProgress();
+                callback(null, chunk);
             },
         });
-        const writeStream = fs.createWriteStream(filePath, {
-            flags: isPartialResponse ? "a" : "w",
+        const writeStream = fs.createWriteStream(partPath, {
+            flags: responsePlan.append ? "a" : "w",
         });
         activeDownload.readable = readable;
         activeDownload.writeStream = writeStream;
-        const stm = readable.pipe(writeStream);
-
-        stm.on("close", () => {
-            activeDownloads.delete(taskId);
-            if (activeDownload.cancelled || activeDownload.failed) {
-                return;
-            }
-            downloadPaths.delete(taskId);
-            state = DownloadState.DONE;
-            onStateChange({
-                state,
-            });
-        });
-
-        stm.on("error", (error) => {
-            activeDownloads.delete(taskId);
-            if (!activeDownload.cancelled && !activeDownload.failed) {
-                activeDownload.failed = true;
-                state = DownloadState.ERROR;
-                onStateChange({
-                    state,
-                    msg: toError(error).message,
-                });
-            }
-            // 清理文件
-            void cleanFile(filePath);
-        });
-    } catch (e) {
-        activeDownloads.delete(taskId);
+        try {
+            await pipeline(readable, progressTransform, writeStream);
+        } finally {
+            notifyProgress.flush();
+            notifyProgress.cancel();
+        }
         if (activeDownload.cancelled) {
             return;
+        }
+
+        const completedStat = await fsPromises.stat(partPath);
+        validateCompletedDownload(responsePlan, receivedBytes, completedStat.size);
+        const signature = Buffer.alloc(Math.min(128 * 1024, completedStat.size));
+        const handle = await fsPromises.open(partPath, "r");
+        let bytesRead = 0;
+        try {
+            ({ bytesRead } = await handle.read(signature, 0, signature.length, 0));
+        } finally {
+            await handle.close();
+        }
+        validateMediaFileSignature(signature.subarray(0, bytesRead), filePath);
+        await fsPromises.rename(partPath, filePath);
+        downloadPaths.delete(taskId);
+        state = DownloadState.DONE;
+        onStateChange({ state });
+    } catch (e) {
+        if (activeDownload.cancelled) {
+            return;
+        }
+        activeDownload.failed = true;
+        if (e instanceof DownloadIntegrityError) {
+            await cleanFile(partPath);
+            downloadPaths.delete(taskId);
         }
         state = DownloadState.ERROR;
         onStateChange({
             state,
             msg: toError(e).message,
         });
+    } finally {
+        if (activeDownloads.get(taskId) === activeDownload) {
+            activeDownloads.delete(taskId);
+        }
     }
 }
-
-
-interface IOptions {
-    onProgress?: (progress: ICommon.IDownloadFileSize) => Promise<void>;
-    onEnded?: () => Promise<void>;
-    onError?: (reason: Error) => Promise<void>;
-}
-async function downloadFileNew(
-    mediaSource: IMusic.IMusicSource,
-    filePath: string,
-    options?: IOptions,
-) {
-    let hasError = false;
-    const { onProgress: onProgressCallback, onEnded: onEndedCallback, onError: onErrorCallback } = options ?? {};
-    try {
-        const stat = fs.statSync(filePath);
-
-        if (stat.isDirectory()) {
-            hasError = true;
-            onErrorCallback?.(new Error("Filepath is a directory"));
-            return;
-        }
-    } catch {
-        hasError = false;
-    }
-
-    const headers: Record<string, string> = {
-        ...(mediaSource.headers ?? {}),
-    };
-    if (mediaSource.userAgent) {
-        headers["user-agent"] = mediaSource.userAgent;
-    }
-
-    try {
-        if (!mediaSource.url) {
-            throw new Error("mediaSource.url is empty");
-        }
-        const urlObj = new URL(mediaSource.url);
-        let res: Response;
-        if (urlObj.username && urlObj.password) {
-            headers["Authorization"] = `Basic ${btoa(
-                `${decodeURIComponent(urlObj.username)}:${decodeURIComponent(
-                    urlObj.password,
-                )}`,
-            )}`;
-            urlObj.username = "";
-            urlObj.password = "";
-            res = await fetch(urlObj.toString(), {
-                headers: headers,
-            });
-        } else {
-            res = await fetch(encodeUrlHeaders(mediaSource.url, headers));
-        }
-
-        const totalSize = +(res.headers.get("content-length") ?? 0);
-        onProgressCallback?.({
-            currentSize: 0,
-            totalSize: totalSize,
-        });
-
-
-        const stm = responseToReadable(res, {
-            onRead(size) {
-                if (hasError) {
-                    // todo abort
-                    return;
-                }
-                onProgressCallback?.({
-                    currentSize: size,
-                    totalSize: totalSize,
-                });
-            },
-            onError: (e) => {
-                if (!hasError) {
-                    hasError = true;
-                    onErrorCallback?.(toError(e));
-                }
-            },
-        }).pipe(fs.createWriteStream(filePath));
-
-        stm.on("close", () => {
-            onEndedCallback?.();
-        });
-
-        stm.on("error", (e) => {
-            if (!hasError) {
-                hasError = true;
-                onErrorCallback?.(toError(e));
-            }
-            // 清理文件
-            cleanFile(filePath);
-        });
-    } catch (e) {
-        if (!hasError) {
-            hasError = true;
-            onErrorCallback?.(toError(e));
-        }
-        cleanFile(filePath);
-    }
-}
-
-
-
-Comlink.expose({
-    downloadFile,
-    abortDownload,
-    downloadFileNew,
-    postprocessDownloadedFile,
-});

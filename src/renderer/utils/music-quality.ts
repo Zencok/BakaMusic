@@ -7,13 +7,8 @@ import {
 } from "./music-quality-metadata";
 
 export {
-    formatQualitySize,
-    getBestMusicQualityInfo,
-    getMusicQualitySize,
     getQualityAbbr,
-    qualityAbbr,
 } from "./music-quality-metadata";
-export type { IMusicQualityInfo } from "./music-quality-metadata";
 
 export interface IMusicQualityChoice {
     value: IMusic.IQualityKey;
@@ -27,7 +22,7 @@ interface IResolvedMusicQualityChoices {
     choices: IMusicQualityChoice[];
 }
 
-export const aiUpscaleQualityKeys: IMusic.IQualityKey[] = [
+const aiUpscaleQualityKeys: IMusic.IQualityKey[] = [
     "master",
     "atmos_plus",
     "atmos",
@@ -63,7 +58,7 @@ function createMusicQualityChoice(
     };
 }
 
-export function getAvailableQualityChoices(
+function getAvailableQualityChoices(
     musicItem: IMusic.IMusicItem,
     t: (key: string) => string,
 ): IMusicQualityChoice[] {

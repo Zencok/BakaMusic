@@ -3,7 +3,7 @@ import { CSSProperties } from "react";
 
 import "./app.scss";
 import MusicBar from "./components/MusicBar";
-import { Outlet } from "react-router";
+import { Outlet } from "react-router-dom";
 import MusicDetail from "@renderer/components/MusicDetail";
 
 const APP_CONTAINER_STYLE: CSSProperties = {

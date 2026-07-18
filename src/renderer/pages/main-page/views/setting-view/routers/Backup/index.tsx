@@ -1,14 +1,12 @@
 import "./index.scss";
-import MusicSheet from "@/renderer/core/music-sheet";
 import { toast } from "react-toastify";
 import RadioGroupSettingItem from "../../components/RadioGroupSettingItem";
 import InputSettingItem from "../../components/InputSettingItem";
-import { AuthType, createClient } from "webdav";
-import BackupResume from "@/renderer/core/backup-resume";
 import { useTranslation } from "react-i18next";
 import AppConfig from "@shared/app-config/renderer";
 import { dialogUtil, fsUtil } from "@shared/utils/renderer";
 import SvgAsset, { type SvgAssetIconNames } from "@renderer/components/SvgAsset";
+import { getErrorMessage } from "@/common/error-util";
 
 interface IBackupActionButtonProps {
     iconName: SvgAssetIconNames;
@@ -35,8 +33,25 @@ function BackupActionButton(props: IBackupActionButtonProps) {
     );
 }
 
-function getErrorMessage(error: unknown) {
-    return error instanceof Error ? error.message : String(error);
+async function resumeSheetBackup(data: unknown, overwrite: boolean) {
+    if (typeof data !== "string") {
+        throw new Error("Invalid backup payload");
+    }
+    const { default: BackupResume } = await import("@/renderer/core/backup-resume");
+    await BackupResume.resume(data, overwrite);
+}
+
+async function createWebdavClient(
+    url: string,
+    username: string,
+    password: string,
+) {
+    const { AuthType, createClient } = await import("webdav");
+    return createClient(url, {
+        authType: AuthType.Password,
+        username,
+        password,
+    });
 }
 
 export default function Backup() {
@@ -46,11 +61,12 @@ export default function Backup() {
     const legacyWebdavBackupFile = "/MusicFree/MusicFreeBackup.json";
 
     async function exportSheetBackup() {
+        const { default: MusicSheet } = await import("@/renderer/core/music-sheet");
+        const { createBackupPayload } = await import(
+            "@/renderer/core/backup-resume",
+        );
         const sheetDetails = await MusicSheet.frontend.exportAllSheetDetails();
-
-        return JSON.stringify({
-            musicSheets: sheetDetails,
-        });
+        return createBackupPayload(sheetDetails);
     }
 
     async function onFileBackupClick() {
@@ -90,7 +106,7 @@ export default function Backup() {
                     "utf-8",
                 )) as string;
 
-                await BackupResume.resume(
+                await resumeSheetBackup(
                     rawSheets,
                     AppConfig.getConfig("backup.resumeBehavior") === "overwrite",
                 );
@@ -113,11 +129,7 @@ export default function Backup() {
 
         try {
             if (url && username && password) {
-                const client = createClient(url, {
-                    authType: AuthType.Password,
-                    username: username,
-                    password: password,
-                });
+                const client = await createWebdavClient(url, username, password);
 
                 if (!(await client.exists(webdavBackupDir))) {
                     await client.createDirectory(webdavBackupDir);
@@ -150,11 +162,7 @@ export default function Backup() {
 
         try {
             if (url && username && password) {
-                const client = createClient(url, {
-                    authType: AuthType.Password,
-                    username: username,
-                    password: password,
-                });
+                const client = await createWebdavClient(url, username, password);
 
                 const restoreSource =
                     (await client.exists(webdavBackupFile))
@@ -175,7 +183,7 @@ export default function Backup() {
                         format: "text",
                     },
                 );
-                await BackupResume.resume(
+                await resumeSheetBackup(
                     resumeData,
                     AppConfig.getConfig("backup.resumeBehavior") === "overwrite",
                 );

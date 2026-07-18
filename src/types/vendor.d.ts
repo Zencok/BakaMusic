@@ -14,6 +14,14 @@ declare module "bezier-easing" {
   ): BezierEasingFn;
 }
 
+declare module "unzipper/lib/parse" {
+  import type { ParseOptions, ParseStream } from "unzipper";
+
+  function createUnzipParser(options?: ParseOptions): ParseStream;
+
+  export = createUnzipParser;
+}
+
 declare module "@amll-core/interfaces" {
   export interface LyricWordBase {
     startTime: number;

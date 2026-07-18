@@ -1,14 +1,194 @@
 import { app, BrowserWindow, dialog, ipcMain, screen, shell } from "electron";
-import { IWindowManager } from "@/types/main/window-manager";
+import { IWindowManager } from "@/types/window-manager";
 import fs from "fs/promises";
 import fsSync from "fs";
 import path from "path";
 import { appUpdateApiSources, githubDownloadMirrors } from "@/common/constant";
 import axios from "axios";
 import { compare } from "compare-versions";
+import type { Readable } from "stream";
+import { pipeline } from "stream/promises";
+import AppConfig from "@shared/app-config/main";
+import {
+    assertBoolean,
+    assertFiniteNumber,
+    assertIpcPayload,
+    assertIpcSender,
+    assertPathAccess,
+    assertPlainObject,
+    assertString,
+    assertUrl,
+    grantPathAccess,
+    isIpcSenderAllowed,
+} from "@shared/ipc-security/main";
+
+const UPDATE_PROGRESS_INTERVAL_MS = 150;
+const UPDATE_DOWNLOAD_TIMEOUT_MS = 30_000;
+const MAX_RENDERER_FILE_BYTES = 64 * 1024 * 1024;
+type AppPathName = Parameters<typeof app.getPath>[0];
+type OpenDialogProperty = NonNullable<Electron.OpenDialogOptions["properties"]>[number];
+type SaveDialogProperty = NonNullable<Electron.SaveDialogOptions["properties"]>[number];
+const allowedAppPathNames = new Set<AppPathName>([
+    "home",
+    "appData",
+    "userData",
+    "sessionData",
+    "temp",
+    "desktop",
+    "documents",
+    "downloads",
+    "music",
+    "pictures",
+    "videos",
+    "recent",
+    "logs",
+    "crashDumps",
+]);
+
+interface IActiveUpdateDownload {
+    controller: AbortController;
+    fileStream: fsSync.WriteStream | null;
+    responseStream: Readable | null;
+    tempDirectory: string;
+}
+
+interface ICompletedUpdateDownload {
+    filePath: string;
+    tempDirectory: string;
+}
+
+function sanitizeUpdateFileName(fileName: string): string {
+    const withoutControlCharacters = Array.from(fileName, (character) =>
+        character.charCodeAt(0) < 32 ? "_" : character,
+    ).join("");
+    return withoutControlCharacters
+        .replace(/[<>:"/\\|?*]/g, "_")
+        .slice(-180) || "bakamusic-update";
+}
+
+function sanitizeDialogFilters(filters: unknown): Electron.FileFilter[] | undefined {
+    if (!Array.isArray(filters)) {
+        return undefined;
+    }
+    return filters.slice(0, 20).flatMap((filter) => {
+        if (!filter || typeof filter !== "object" || Array.isArray(filter)) {
+            return [];
+        }
+        const candidate = filter as { name?: unknown; extensions?: unknown };
+        if (
+            typeof candidate.name !== "string"
+            || candidate.name.length > 128
+            || !Array.isArray(candidate.extensions)
+        ) {
+            return [];
+        }
+        const extensions = candidate.extensions.filter((extension): extension is string =>
+            typeof extension === "string"
+            && /^[A-Za-z0-9*+_-]{1,20}$/.test(extension),
+        ).slice(0, 32);
+        return extensions.length ? [{ name: candidate.name, extensions }] : [];
+    });
+}
+
+function optionalDialogString(value: unknown, maxLength: number) {
+    return typeof value === "string" && value.length <= maxLength ? value : undefined;
+}
+
+function assertExternalUrl(value: unknown) {
+    assertString(value, "external URL", 8192);
+    const parsed = new URL(value);
+    if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+        return assertUrl(value, ["https:", "http:"], 8192);
+    }
+    if (
+        parsed.protocol === "mailto:"
+        && parsed.pathname.length <= 320
+        && /^[^\s@]+@[^\s@]+$/.test(decodeURIComponent(parsed.pathname))
+        && !/%0[ad]/i.test(parsed.toString())
+    ) {
+        return parsed;
+    }
+    throw new Error("External URL protocol is not accepted");
+}
+
+function sanitizeOpenDialogOptions(value: unknown): Electron.OpenDialogOptions {
+    assertIpcPayload(value, 64 * 1024);
+    assertPlainObject(value, "dialog options");
+    const allowedProperties = new Set<OpenDialogProperty>([
+        "openFile",
+        "openDirectory",
+        "multiSelections",
+        "showHiddenFiles",
+        "createDirectory",
+        "promptToCreate",
+        "noResolveAliases",
+        "treatPackageAsDirectory",
+        "dontAddToRecent",
+    ]);
+    const properties = Array.isArray(value.properties)
+        ? value.properties.filter((property): property is OpenDialogProperty =>
+            typeof property === "string"
+            && allowedProperties.has(property as OpenDialogProperty),
+        )
+        : undefined;
+    let defaultPath: string | undefined;
+    if (typeof value.defaultPath === "string") {
+        try {
+            defaultPath = assertPathAccess(value.defaultPath, { allowMissing: true });
+        } catch {
+            defaultPath = undefined;
+        }
+    }
+    return {
+        title: optionalDialogString(value.title, 256),
+        buttonLabel: optionalDialogString(value.buttonLabel, 128),
+        message: optionalDialogString(value.message, 1024),
+        defaultPath,
+        filters: sanitizeDialogFilters(value.filters),
+        properties,
+    };
+}
+
+function sanitizeSaveDialogOptions(value: unknown): Electron.SaveDialogOptions {
+    assertIpcPayload(value, 64 * 1024);
+    assertPlainObject(value, "dialog options");
+    let defaultPath: string | undefined;
+    if (typeof value.defaultPath === "string") {
+        try {
+            defaultPath = assertPathAccess(value.defaultPath, { allowMissing: true });
+        } catch {
+            defaultPath = undefined;
+        }
+    }
+    const allowedProperties = new Set<SaveDialogProperty>([
+        "showHiddenFiles",
+        "createDirectory",
+        "treatPackageAsDirectory",
+        "showOverwriteConfirmation",
+        "dontAddToRecent",
+    ]);
+    const properties = Array.isArray(value.properties)
+        ? value.properties.filter((property): property is SaveDialogProperty =>
+            typeof property === "string" && allowedProperties.has(property as SaveDialogProperty),
+        )
+        : undefined;
+    return {
+        title: optionalDialogString(value.title, 256),
+        buttonLabel: optionalDialogString(value.buttonLabel, 128),
+        message: optionalDialogString(value.message, 1024),
+        nameFieldLabel: optionalDialogString(value.nameFieldLabel, 128),
+        defaultPath,
+        filters: sanitizeDialogFilters(value.filters),
+        showsTagField: value.showsTagField === true,
+        properties,
+    };
+}
 
 class Utils {
     private windowManager!: IWindowManager;
+    private readonly activeUpdateDownloads = new Map<number, IActiveUpdateDownload>();
+    private readonly availableUpdateDownloads = new Map<number, string[]>();
+    private readonly completedUpdateDownloads = new Map<number, ICompletedUpdateDownload>();
     /**
      * Immersive fullscreen restore snapshot.
      * On Windows, frameless + maximized windows can fail native setFullScreen;
@@ -23,6 +203,25 @@ class Utils {
     public setup(windowManager: IWindowManager) {
         this.windowManager = windowManager;
 
+        const grantConfiguredPaths = () => {
+            const downloadPath = AppConfig.getConfig("download.path");
+            if (downloadPath) {
+                grantPathAccess(downloadPath, true);
+            }
+            for (const watchPath of AppConfig.getConfig("localMusic.watchDir") ?? []) {
+                if (watchPath) {
+                    grantPathAccess(watchPath, true);
+                }
+            }
+        };
+        grantConfiguredPaths();
+        AppConfig.onConfigUpdated((patch) => {
+            if ("download.path" in patch || "localMusic.watchDir" in patch) {
+                grantConfiguredPaths();
+            }
+        });
+
+        this.setupFsUtil();
         this.setupAppUtil();
         this.setupWindowUtil();
         this.setupShellUtil();
@@ -152,21 +351,271 @@ class Utils {
         return this.setImmersiveFullScreen(!this.isImmersiveFullScreen(mainWindow));
     }
 
+    private setupFsUtil() {
+        ipcMain.on("@shared/utils/grant-dropped-path", (event, filePath) => {
+            if (!isIpcSenderAllowed(event, ["main"])) {
+                return;
+            }
+            try {
+                assertString(filePath, "dropped path", 32768);
+                const stat = fsSync.statSync(filePath);
+                grantPathAccess(filePath, stat.isDirectory());
+            } catch {
+                // Ignore malformed drag-and-drop paths.
+            }
+        });
+
+        ipcMain.handle("@shared/utils/fs-write-file", async (event, filePath, data, encoding) => {
+            assertIpcSender(event, ["main"]);
+            assertString(filePath, "path", 32768);
+            assertString(data, "data", MAX_RENDERER_FILE_BYTES, true);
+            if (encoding !== undefined && encoding !== "utf8" && encoding !== "utf-8") {
+                throw new Error("File encoding is not accepted");
+            }
+            const targetPath = assertPathAccess(filePath, { allowMissing: true });
+            const temporaryPath = `${targetPath}.${process.pid}.${Date.now()}.tmp`;
+            try {
+                await fs.writeFile(temporaryPath, data, "utf8");
+                await fs.rename(temporaryPath, targetPath);
+            } finally {
+                await fs.rm(temporaryPath, { force: true }).catch((): undefined => undefined);
+            }
+        });
+
+        ipcMain.handle("@shared/utils/fs-read-file", async (event, filePath, encoding) => {
+            assertIpcSender(event, ["main"]);
+            if (encoding !== undefined && encoding !== "utf8" && encoding !== "utf-8") {
+                throw new Error("File encoding is not accepted");
+            }
+            const targetPath = assertPathAccess(filePath);
+            const stat = await fs.stat(targetPath);
+            if (!stat.isFile() || stat.size > MAX_RENDERER_FILE_BYTES) {
+                throw new Error("File is not readable through this bridge");
+            }
+            return fs.readFile(targetPath, "utf8");
+        });
+
+        ipcMain.handle("@shared/utils/fs-is-file", async (event, filePath) => {
+            assertIpcSender(event, ["main"]);
+            try {
+                return (await fs.stat(assertPathAccess(filePath))).isFile();
+            } catch {
+                return false;
+            }
+        });
+
+        ipcMain.handle("@shared/utils/fs-is-folder", async (event, filePath) => {
+            assertIpcSender(event, ["main"]);
+            try {
+                return (await fs.stat(assertPathAccess(filePath))).isDirectory();
+            } catch {
+                return false;
+            }
+        });
+
+        ipcMain.handle("@shared/utils/fs-remove-file", async (event, filePath) => {
+            assertIpcSender(event, ["main"]);
+            const targetPath = assertPathAccess(filePath);
+            const stat = await fs.stat(targetPath);
+            if (!stat.isFile()) {
+                throw new Error("Only files may be removed through this bridge");
+            }
+            await fs.rm(targetPath, { force: true });
+        });
+    }
+
+    private abortUpdateDownload(senderId: number): void {
+        const downloadState = this.activeUpdateDownloads.get(senderId);
+        if (!downloadState) {
+            return;
+        }
+
+        this.activeUpdateDownloads.delete(senderId);
+        downloadState.controller.abort();
+        downloadState.responseStream?.destroy();
+        downloadState.fileStream?.destroy();
+    }
+
+    private async removeCompletedUpdateDownload(senderId: number): Promise<void> {
+        const completedDownload = this.completedUpdateDownloads.get(senderId);
+        if (!completedDownload) {
+            return;
+        }
+
+        this.completedUpdateDownloads.delete(senderId);
+        await fs.rm(completedDownload.tempDirectory, {
+            force: true,
+            recursive: true,
+        }).catch((): undefined => undefined);
+    }
+
+    private sendUpdateDownloadProgress(
+        sender: Electron.WebContents,
+        downloaded: number,
+        total: number,
+    ): void {
+        if (sender.isDestroyed()) {
+            return;
+        }
+
+        sender.send("@shared/utils/update-download-progress", {
+            downloaded,
+            total,
+        });
+    }
+
+    private async downloadUpdateUrl(
+        sender: Electron.WebContents,
+        url: string,
+        downloadState: IActiveUpdateDownload,
+    ): Promise<string> {
+        const rawFileName = path.basename(new URL(url).pathname) || "bakamusic-update";
+        const fileName = sanitizeUpdateFileName(rawFileName);
+        const filePath = path.join(downloadState.tempDirectory, fileName);
+        const response = await axios.get<Readable>(url, {
+            maxRedirects: 5,
+            responseType: "stream",
+            signal: downloadState.controller.signal,
+            timeout: UPDATE_DOWNLOAD_TIMEOUT_MS,
+        });
+
+        if (response.status < 200 || response.status >= 300) {
+            response.data.destroy();
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const contentLengthHeader = response.headers["content-length"];
+        const contentLength = typeof contentLengthHeader === "string" || typeof contentLengthHeader === "number"
+            ? contentLengthHeader
+            : undefined;
+        const total = typeof contentLength === "string" || typeof contentLength === "number"
+            ? Number.parseInt(String(contentLength), 10)
+            : 0;
+        let downloaded = 0;
+        let lastProgressAt = 0;
+        const currentStream = fsSync.createWriteStream(filePath, { flags: "wx" });
+        downloadState.fileStream = currentStream;
+        downloadState.responseStream = response.data;
+
+        response.data.on("data", (chunk: Buffer) => {
+            downloaded += chunk.length;
+            const now = Date.now();
+            if (
+                now - lastProgressAt >= UPDATE_PROGRESS_INTERVAL_MS ||
+                (total > 0 && downloaded >= total)
+            ) {
+                lastProgressAt = now;
+                this.sendUpdateDownloadProgress(sender, downloaded, total);
+            }
+        });
+
+        try {
+            await pipeline(response.data, currentStream, {
+                signal: downloadState.controller.signal,
+            });
+            this.sendUpdateDownloadProgress(sender, downloaded, total);
+            const stat = await fs.stat(filePath);
+            if (stat.size < 512 * 1024) {
+                throw new Error(`File too small (${stat.size} bytes), likely an error page`);
+            }
+
+            return filePath;
+        } catch (error) {
+            response.data.destroy();
+            currentStream.destroy();
+            await fs.unlink(filePath).catch((): undefined => undefined);
+            throw error;
+        } finally {
+            if (downloadState.fileStream === currentStream) {
+                downloadState.fileStream = null;
+            }
+            if (downloadState.responseStream === response.data) {
+                downloadState.responseStream = null;
+            }
+        }
+    }
+
+    private async downloadUpdate(sender: Electron.WebContents): Promise<void> {
+        if (sender.isDestroyed()) {
+            throw new Error("Update download sender was destroyed");
+        }
+        const senderId = sender.id;
+        const urls = this.availableUpdateDownloads.get(senderId);
+        if (!urls?.length) {
+            throw new Error("No update download is available");
+        }
+
+        this.abortUpdateDownload(senderId);
+        await this.removeCompletedUpdateDownload(senderId);
+        const tempDirectory = await fs.mkdtemp(path.join(app.getPath("temp"), "bakamusic-update-"));
+        const downloadState: IActiveUpdateDownload = {
+            controller: new AbortController(),
+            fileStream: null,
+            responseStream: null,
+            tempDirectory,
+        };
+        this.activeUpdateDownloads.set(senderId, downloadState);
+        const abortOnSenderDestroyed = () => this.abortUpdateDownload(senderId);
+        sender.once("destroyed", abortOnSenderDestroyed);
+        let lastError: unknown;
+
+        try {
+            for (const url of urls) {
+                try {
+                    const filePath = await this.downloadUpdateUrl(sender, url, downloadState);
+                    this.completedUpdateDownloads.set(senderId, {
+                        filePath,
+                        tempDirectory,
+                    });
+                    return;
+                } catch (error) {
+                    if (downloadState.controller.signal.aborted) {
+                        throw new Error("Download cancelled");
+                    }
+                    lastError = error;
+                }
+            }
+            throw lastError ?? new Error("All download sources failed");
+        } finally {
+            sender.removeListener("destroyed", abortOnSenderDestroyed);
+            if (this.activeUpdateDownloads.get(senderId) === downloadState) {
+                this.activeUpdateDownloads.delete(senderId);
+            }
+            const completedDownload = this.completedUpdateDownloads.get(senderId);
+            if (completedDownload?.tempDirectory !== tempDirectory) {
+                await fs.rm(tempDirectory, {
+                    force: true,
+                    recursive: true,
+                }).catch((): undefined => undefined);
+            }
+        }
+    }
+
 
     private setupAppUtil() {
-        ipcMain.on("@shared/utils/exit-app", () => {
-            app.exit(0);
+        ipcMain.on("@shared/utils/exit-app", (event) => {
+            if (!isIpcSenderAllowed(event, ["main"])) {
+                return;
+            }
+            app.quit();
         });
 
-        ipcMain.handle("@shared/utils/app-get-path", (_, pathName) => {
-            return app.getPath(pathName);
+        ipcMain.handle("@shared/utils/app-get-path", (event, pathName) => {
+            assertIpcSender(event, ["main"]);
+            assertString(pathName, "pathName", 32);
+            if (!allowedAppPathNames.has(pathName as AppPathName)) {
+                throw new Error("Application path name is not accepted");
+            }
+            return app.getPath(pathName as AppPathName);
         });
 
-        ipcMain.handle("@shared/utils/check-update", async () => {
+        ipcMain.handle("@shared/utils/check-update", async (evt) => {
+            assertIpcSender(evt, ["main"]);
             const currentVersion = app.getVersion();
             const updateInfo: ICommon.IUpdateInfo = {
                 version: currentVersion,
             };
+            this.availableUpdateDownloads.delete(evt.sender.id);
 
             for (const apiUrl of appUpdateApiSources) {
                 try {
@@ -188,6 +637,7 @@ class Utils {
                             changeLog: parseReleaseBody(release.body as string),
                             download: downloadUrls,
                         };
+                        this.availableUpdateDownloads.set(evt.sender.id, downloadUrls);
                     }
                     return updateInfo;
                 } catch {
@@ -197,14 +647,18 @@ class Utils {
             return updateInfo;
         });
 
-        ipcMain.on("@shared/utils/clear-cache", () => {
+        ipcMain.on("@shared/utils/clear-cache", (event) => {
+            if (!isIpcSenderAllowed(event, ["main"])) {
+                return;
+            }
             const mainWindow = this.windowManager.mainWindow;
             if (mainWindow) {
                 mainWindow.webContents.session.clearCache?.();
             }
         });
 
-        ipcMain.handle("@shared/utils/get-cache-size", async () => {
+        ipcMain.handle("@shared/utils/get-cache-size", async (event) => {
+            assertIpcSender(event, ["main"]);
             const mainWindow = this.windowManager.mainWindow;
             if (mainWindow) {
                 return mainWindow.webContents.session.getCacheSize?.();
@@ -212,79 +666,46 @@ class Utils {
             return NaN;
         });
 
-        // 下载更新文件，通过 IPC 事件推送进度
-        ipcMain.handle("@shared/utils/download-update", async (evt, urls: string[]) => {
-            const tempDir = app.getPath("temp");
-            let lastError: unknown;
+        ipcMain.handle("@shared/utils/download-update", async (evt) => {
+            assertIpcSender(evt, ["main"]);
+            await this.downloadUpdate(evt.sender);
+        });
 
-            for (const url of urls) {
-                let filePath = "";
-                let fileStream: fsSync.WriteStream | null = null;
-                try {
-                    const fileName = path.basename(new URL(url).pathname) || "bakamusic-update";
-                    filePath = path.join(tempDir, `bakamusic-update-${fileName}`);
-
-                    const response = await axios.get<NodeJS.ReadableStream>(url, {
-                        responseType: "stream",
-                        maxRedirects: 5,
-                    });
-
-                    if (response.status < 200 || response.status >= 300) {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-
-                    const total = parseInt(response.headers["content-length"] || "0", 10);
-                    let downloaded = 0;
-
-                    const currentStream = fsSync.createWriteStream(filePath);
-                    fileStream = currentStream;
-
-                    await new Promise<void>((res, rej): void => {
-                        response.data.on("data", (chunk: Buffer) => {
-                            downloaded += chunk.length;
-                            if (!evt.sender.isDestroyed()) {
-                                evt.sender.send("@shared/utils/update-download-progress", { downloaded, total });
-                            }
-                        });
-                        response.data.on("error", rej);
-                        response.data.pipe(currentStream);
-                        currentStream.on("finish", res);
-                        currentStream.on("error", rej);
-                    });
-                    fileStream = null;
-
-                    // 校验文件大小，防止下载到错误页
-                    const stat = await fs.stat(filePath);
-                    if (stat.size < 512 * 1024) {
-                        throw new Error(`File too small (${stat.size} bytes), likely an error page`);
-                    }
-
-                    return filePath;
-                } catch (e) {
-                    fileStream?.destroy();
-                    if (filePath) {
-                        await fs.unlink(filePath).catch((): undefined => undefined);
-                    }
-                    lastError = e;
-                    // 尝试下一个镜像
-                }
+        ipcMain.on("@shared/utils/cancel-update-download", (evt) => {
+            if (!isIpcSenderAllowed(evt, ["main"])) {
+                return;
             }
-            throw lastError ?? new Error("All download sources failed");
+            this.abortUpdateDownload(evt.sender.id);
         });
 
-        ipcMain.on("@shared/utils/cancel-update-download", () => {
-            // net.fetch 不支持 abort，取消由 renderer 侧忽略结果实现
-        });
-
-        ipcMain.on("@shared/utils/install-update", (_, filePath: string) => {
-            shell.openPath(filePath).then(() => {
-                app.quit();
-            });
+        ipcMain.handle("@shared/utils/install-update", async (evt) => {
+            assertIpcSender(evt, ["main"]);
+            const completedDownload = this.completedUpdateDownloads.get(evt.sender.id);
+            if (!completedDownload) {
+                throw new Error("No completed update download is available");
+            }
+            const openError = await shell.openPath(completedDownload.filePath);
+            if (openError) {
+                throw new Error(openError);
+            }
+            app.quit();
         });
     }
 
     private setupWindowUtil() {
-        ipcMain.on("@shared/utils/min-main-window", (_, { skipTaskBar }) => {
+        ipcMain.on("@shared/utils/min-main-window", (event, data) => {
+            if (!isIpcSenderAllowed(event, ["main", "lyric", "minimode"])) {
+                return;
+            }
+            try {
+                assertPlainObject(data, "window options");
+                if (data.skipTaskBar !== undefined) {
+                    assertBoolean(data.skipTaskBar, "skipTaskBar");
+                }
+            } catch {
+                return;
+            }
+            const skipTaskBar = data.skipTaskBar === true;
             const mainWindow = this.windowManager.mainWindow;
             if (mainWindow) {
                 if (skipTaskBar) {
@@ -296,11 +717,22 @@ class Utils {
             }
         });
 
-        ipcMain.on("@shared/utils/show-main-window", () => {
+        ipcMain.on("@shared/utils/show-main-window", (event) => {
+            if (!isIpcSenderAllowed(event, ["main", "lyric", "minimode"])) {
+                return;
+            }
             this.windowManager.showMainWindow();
         });
 
-        ipcMain.on("@shared/utils/set-lyric-window", (_, enabled) => {
+        ipcMain.on("@shared/utils/set-lyric-window", (event, enabled) => {
+            if (!isIpcSenderAllowed(event, ["main", "lyric", "minimode"])) {
+                return;
+            }
+            try {
+                assertBoolean(enabled, "enabled");
+            } catch {
+                return;
+            }
             if (enabled) {
                 this.windowManager.showLyricWindow();
             } else {
@@ -308,7 +740,15 @@ class Utils {
             }
         });
 
-        ipcMain.on("@shared/utils/set-minimode-window", (_, enabled) => {
+        ipcMain.on("@shared/utils/set-minimode-window", (event, enabled) => {
+            if (!isIpcSenderAllowed(event, ["main", "lyric", "minimode"])) {
+                return;
+            }
+            try {
+                assertBoolean(enabled, "enabled");
+            } catch {
+                return;
+            }
             if (enabled) {
                 this.windowManager.showMiniModeWindow();
             } else {
@@ -317,16 +757,26 @@ class Utils {
         });
 
         ipcMain.handle("@shared/utils/get-current-window-bounds", (evt) => {
+            assertIpcSender(evt, ["main", "lyric", "minimode"]);
             const targetWindow = BrowserWindow.fromWebContents(evt.sender);
             return targetWindow?.getBounds() ?? null;
         });
 
-        ipcMain.handle("@shared/utils/get-all-work-areas", () => {
+        ipcMain.handle("@shared/utils/get-all-work-areas", (event) => {
+            assertIpcSender(event, ["main", "lyric", "minimode"]);
             return screen.getAllDisplays().map((display) => display.workArea);
         });
 
 
         ipcMain.on("@shared/utils/ignore-mouse-event", (evt, ignore) => {
+            if (!isIpcSenderAllowed(evt, ["main", "lyric", "minimode"])) {
+                return;
+            }
+            try {
+                assertBoolean(ignore, "ignore");
+            } catch {
+                return;
+            }
             const targetWindow = BrowserWindow.fromWebContents(evt.sender);
             if (!targetWindow) {
                 return;
@@ -337,6 +787,23 @@ class Utils {
         });
 
         ipcMain.on("@shared/utils/set-current-window-bounds", (evt, bounds: Electron.Rectangle) => {
+            if (!isIpcSenderAllowed(evt, ["main", "lyric", "minimode"])) {
+                return;
+            }
+            try {
+                assertIpcPayload(bounds, 1024);
+                assertPlainObject(bounds, "bounds");
+                assertFiniteNumber(bounds.width, "bounds.width", 1, 32768);
+                assertFiniteNumber(bounds.height, "bounds.height", 1, 32768);
+                if (bounds.x !== undefined) {
+                    assertFiniteNumber(bounds.x, "bounds.x", -100000, 100000);
+                }
+                if (bounds.y !== undefined) {
+                    assertFiniteNumber(bounds.y, "bounds.y", -100000, 100000);
+                }
+            } catch {
+                return;
+            }
             const targetWindow = BrowserWindow.fromWebContents(evt.sender);
             if (!targetWindow || !Number.isFinite(bounds?.width) || !Number.isFinite(bounds?.height)) {
                 return;
@@ -364,7 +831,10 @@ class Utils {
             }, false);
         });
 
-        ipcMain.on("@shared/utils/toggle-maximize-main-window", () => {
+        ipcMain.on("@shared/utils/toggle-maximize-main-window", (event) => {
+            if (!isIpcSenderAllowed(event, ["main"])) {
+                return;
+            }
             const mainWindow = this.windowManager.mainWindow;
 
             if (mainWindow) {
@@ -376,15 +846,25 @@ class Utils {
             }
         });
 
-        ipcMain.on("@shared/utils/set-main-window-fullscreen", (_, enabled: boolean) => {
+        ipcMain.on("@shared/utils/set-main-window-fullscreen", (event, enabled: boolean) => {
+            if (!isIpcSenderAllowed(event, ["main"])) {
+                return;
+            }
+            try {
+                assertBoolean(enabled, "enabled");
+            } catch {
+                return;
+            }
             this.setImmersiveFullScreen(Boolean(enabled));
         });
 
-        ipcMain.handle("@shared/utils/toggle-main-window-fullscreen", () => {
+        ipcMain.handle("@shared/utils/toggle-main-window-fullscreen", (event) => {
+            assertIpcSender(event, ["main"]);
             return this.toggleImmersiveFullScreen();
         });
 
-        ipcMain.handle("@shared/utils/is-main-window-fullscreen", () => {
+        ipcMain.handle("@shared/utils/is-main-window-fullscreen", (event) => {
+            assertIpcSender(event, ["main"]);
             const mainWindow = this.getMainWindow();
             if (!mainWindow) {
                 return false;
@@ -392,7 +872,10 @@ class Utils {
             return this.isImmersiveFullScreen(mainWindow);
         });
 
-        ipcMain.on("@shared/utils/toggle-main-window-visible", () => {
+        ipcMain.on("@shared/utils/toggle-main-window-visible", (event) => {
+            if (!isIpcSenderAllowed(event, ["main", "lyric", "minimode"])) {
+                return;
+            }
             const mainWindow = this.windowManager.mainWindow;
             if (!mainWindow) {
                 this.windowManager.showMainWindow();
@@ -410,18 +893,35 @@ class Utils {
     }
 
     private setupShellUtil() {
-        ipcMain.on("@shared/utils/open-url", (_, url) => {
-            shell.openExternal(url);
-        });
-
-        ipcMain.on("@shared/utils/open-path", (_, path) => {
-            shell.openPath(path);
-        });
-
-        ipcMain.handle("@shared/utils/show-item-in-folder", async (_, path) => {
+        ipcMain.on("@shared/utils/open-url", (event, url) => {
+            if (!isIpcSenderAllowed(event, ["main"])) {
+                return;
+            }
             try {
-                await fs.stat(path);
-                shell.showItemInFolder(path);
+                const target = assertExternalUrl(url);
+                void shell.openExternal(target.toString());
+            } catch {
+                // Ignore rejected shell requests.
+            }
+        });
+
+        ipcMain.on("@shared/utils/open-path", (event, filePath) => {
+            if (!isIpcSenderAllowed(event, ["main"])) {
+                return;
+            }
+            try {
+                void shell.openPath(assertPathAccess(filePath));
+            } catch {
+                // Ignore rejected shell requests.
+            }
+        });
+
+        ipcMain.handle("@shared/utils/show-item-in-folder", async (event, filePath) => {
+            assertIpcSender(event, ["main"]);
+            try {
+                const targetPath = assertPathAccess(filePath);
+                await fs.stat(targetPath);
+                shell.showItemInFolder(targetPath);
                 return true;
             } catch {
                 return false;
@@ -430,20 +930,42 @@ class Utils {
     }
 
     private setupDialogUtil() {
-        ipcMain.handle("@shared/utils/show-open-dialog", async (_, options) => {
-            const mainWindow = this.windowManager.mainWindow;
-            if (!mainWindow) {
+        ipcMain.handle("@shared/utils/show-open-dialog", async (event, options) => {
+            assertIpcSender(event, ["main"]);
+            const ownerWindow = BrowserWindow.fromWebContents(event.sender);
+            if (!ownerWindow) {
                 throw new Error("Invalid Window");
             }
-            return dialog.showOpenDialog(options);
+            const sanitizedOptions = sanitizeOpenDialogOptions(options);
+            const result = await dialog.showOpenDialog(ownerWindow, sanitizedOptions);
+            if (!result.canceled) {
+                for (const filePath of result.filePaths) {
+                    let recursive = sanitizedOptions.properties?.includes("openDirectory") ?? false;
+                    try {
+                        recursive = (await fs.stat(filePath)).isDirectory();
+                    } catch {
+                        // Keep the requested selection type.
+                    }
+                    grantPathAccess(filePath, recursive);
+                }
+            }
+            return result;
         });
 
-        ipcMain.handle("@shared/utils/show-save-dialog", async (_, options) => {
-            const mainWindow = this.windowManager.mainWindow;
-            if (!mainWindow) {
+        ipcMain.handle("@shared/utils/show-save-dialog", async (event, options) => {
+            assertIpcSender(event, ["main"]);
+            const ownerWindow = BrowserWindow.fromWebContents(event.sender);
+            if (!ownerWindow) {
                 throw new Error("Invalid Window");
             }
-            return dialog.showSaveDialog(options);
+            const result = await dialog.showSaveDialog(
+                ownerWindow,
+                sanitizeSaveDialogOptions(options),
+            );
+            if (!result.canceled && result.filePath) {
+                grantPathAccess(result.filePath, false);
+            }
+            return result;
         });
     }
 

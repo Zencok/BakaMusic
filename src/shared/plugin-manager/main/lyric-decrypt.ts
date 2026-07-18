@@ -311,7 +311,7 @@ function safeInflate(data: Uint8Array): Uint8Array {
 
 // ============ QRC Public API ============
 
-export function isQRCEncrypted(lyrics: string): boolean {
+function isQRCEncrypted(lyrics: string): boolean {
     if (!lyrics) return false;
     const trimmed = lyrics.trim();
     if (trimmed.length < 32) return false;
@@ -321,7 +321,7 @@ export function isQRCEncrypted(lyrics: string): boolean {
     return true;
 }
 
-export function decryptQRCLyric(encryptedHex: string): string {
+function decryptQRCLyric(encryptedHex: string): string {
     const trimmed = encryptedHex.trim();
     // Hex string to Uint8Array
     const bytes = new Uint8Array(trimmed.length / 2);
@@ -337,40 +337,16 @@ export function decryptQRCLyric(encryptedHex: string): string {
 
 // ============ QRC XML to LRC Conversion ============
 
-export function isQrcXml(text: string): boolean {
+function isQrcXml(text: string): boolean {
     if (!text) return false;
     return text.includes("<?xml") && text.includes("LyricContent");
-}
-
-export function convertQrcXmlToLrc(xml: string): string {
-    const lines: string[] = [];
-    const lineRegex = /\[(\d+),\d+\](.*?)(?=\[\d+,\d+\]|$)/gs;
-    let match: RegExpExecArray | null;
-
-    while ((match = lineRegex.exec(xml)) !== null) {
-        const startMs = parseInt(match[1]);
-        const text = match[2]
-            .replace(/\(\d+(?:,\d+)?\)/g, "")
-            .replace(/\[kana:.*?\]/g, "")
-            .trim();
-        if (!text) continue;
-
-        const minutes = Math.floor(startMs / 60000);
-        const seconds = Math.floor((startMs % 60000) / 1000);
-        const ms = Math.floor((startMs % 1000) / 10);
-
-        lines.push(
-            `[${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(ms).padStart(2, "0")}]${text}`,
-        );
-    }
-    return lines.join("\n");
 }
 
 /**
  * QRC XML → 保留逐字时间轴的富格式
  * 输出格式: [lineStartMs,lineDurMs]text(wordStartMs,wordDurMs)text(wordStartMs,wordDurMs)...
  */
-export function convertQrcXmlToRichQrc(xml: string): string {
+function convertQrcXmlToRichQrc(xml: string): string {
     const lines: string[] = [];
     const lineRegex = /\[(\d+),(\d+)\]([\s\S]*?)(?=\[\d+,\d+\]|$)/g;
     const wordRegex = /([^()]*?)\((\d+),(\d+)\)/g;

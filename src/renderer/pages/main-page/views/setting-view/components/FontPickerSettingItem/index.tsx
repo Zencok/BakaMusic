@@ -15,14 +15,12 @@ function useFonts() {
     const allLocalFonts = useLocalFonts();
     const { t } = useTranslation();
 
-    const defaultFont = {
-        ..._defaultFont,
-        fullName: t("common.default"),
-    };
-
     const fonts = useMemo(
-        () => (allLocalFonts ? [defaultFont, ...allLocalFonts] : null),
-        [allLocalFonts],
+        () => (allLocalFonts ? [{
+            ..._defaultFont,
+            fullName: t("common.default"),
+        }, ...allLocalFonts] : null),
+        [allLocalFonts, t],
     );
 
     return fonts;

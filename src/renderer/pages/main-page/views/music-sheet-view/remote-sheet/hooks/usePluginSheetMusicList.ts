@@ -1,6 +1,6 @@
 import { RequestStateCode } from "@/common/constant";
 import { isSameMedia } from "@/common/media-util";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import PluginManager from "@shared/plugin-manager/renderer";
 
 export default function usePluginSheetMusicList(
@@ -20,37 +20,46 @@ export default function usePluginSheetMusicList(
     const [musicList, setMusicList] = useState<IMusic.IMusicItem[]>(
         originalSheetItem?.musicList ?? [],
     );
+    const originalSheetItemRef = useRef(originalSheetItem);
+    const requestStateRef = useRef(RequestStateCode.IDLE);
+    originalSheetItemRef.current = originalSheetItem;
+
+    const updateRequestState = useCallback((nextState: RequestStateCode) => {
+        requestStateRef.current = nextState;
+        setRequestState(nextState);
+    }, []);
 
     // 当前正在搜索的信息
     const currentSheetItemRef = useRef<IMusic.IMusicSheetItem | null>(null);
     // 页码
     const currentPageRef = useRef(1);
 
-    const getSheetDetail = async () => {
+    const getSheetDetail = useCallback(async () => {
         if (!platform || !id) {
             return;
         }
+        const sourceSheetItem = originalSheetItemRef.current;
 
-        if (!isSameMedia(currentSheetItemRef.current, originalSheetItem)) {
+        if (!isSameMedia(currentSheetItemRef.current, sourceSheetItem)) {
             // 1.1 如果是切换了新的歌单
             // 恢复初始状态 并设置当前的歌曲项
             currentSheetItemRef.current = {
-                ...(originalSheetItem ?? {}),
+                ...(sourceSheetItem ?? {}),
                 platform,
                 id,
-                title: originalSheetItem?.title ?? "",
+                title: sourceSheetItem?.title ?? "",
             };
             setSheetItem(currentSheetItemRef.current);
-            setMusicList(originalSheetItem?.musicList ?? []);
+            setMusicList(sourceSheetItem?.musicList ?? []);
             currentPageRef.current = 1;
-        } else if (requestState & RequestStateCode.PENDING_FIRST_PAGE) {
+        } else if (requestStateRef.current & RequestStateCode.PENDING_FIRST_PAGE) {
             // 1.2 如果是原有歌单，并且在loading中，返回
             return;
         }
 
         try {
             // 2. 设置初始状态
-            setRequestState(
+            updateRequestState(
                 currentPageRef.current === 1
                     ? RequestStateCode.PENDING_FIRST_PAGE
                     : RequestStateCode.PENDING_REST_PAGE,
@@ -93,24 +102,24 @@ export default function usePluginSheetMusicList(
                     }
                 });
             }
-            setRequestState(
+            updateRequestState(
                 result.isEnd ? RequestStateCode.FINISHED : RequestStateCode.PARTLY_DONE,
             );
             currentPageRef.current += 1;
         } catch {
-            setRequestState(
+            updateRequestState(
                 currentPageRef.current === 1
                     ? RequestStateCode.FINISHED
                     : RequestStateCode.PARTLY_DONE,
             );
         }
-    };
+    }, [id, platform, updateRequestState]);
 
     useEffect(() => {
         if (platform && id) {
-            getSheetDetail();
+            void getSheetDetail();
         }
-    }, [platform, id]);
+    }, [getSheetDetail, id, platform]);
 
     return [requestState, sheetItem, musicList, getSheetDetail] as const;
 }

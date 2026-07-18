@@ -1,20 +1,16 @@
 import { app, ipcMain } from "electron";
-import { _IpcRendererEvt } from "./internal/common";
+import { _IpcRendererEvt } from "./ipc-channel";
 import path from "path";
-
-declare const WORKER_DOWNLOADER_WEBPACK_ENTRY: string;
-declare const LOCAL_FILE_WATCHER_WEBPACK_ENTRY: string;
-declare const DB_WEBPACK_ENTRY: string;
+import { isIpcSenderAllowed } from "@shared/ipc-security/main";
 
 export function setupGlobalContext() {
     ipcMain.on(_IpcRendererEvt.GET_GLOBAL_DATA, (evt) => {
+        if (!isIpcSenderAllowed(evt, ["main"])) {
+            evt.returnValue = null;
+            return;
+        }
         evt.returnValue = {
             appVersion: app.getVersion(),
-            workersPath: {
-                downloader: WORKER_DOWNLOADER_WEBPACK_ENTRY,
-                localFileWatcher: LOCAL_FILE_WATCHER_WEBPACK_ENTRY,
-                db: DB_WEBPACK_ENTRY,
-            },
             appPath: {
                 downloads: app.getPath("downloads"),
                 temp: app.getPath("temp"),

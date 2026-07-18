@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { isPlaybackActive } from "@/common/constant";
 import { usePlayerState } from "@renderer/core/track-player/hooks";
 import { musicDetailShownStore } from "@renderer/components/MusicDetail/store";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 function isFlatUiStyleActive() {
     return typeof document !== "undefined"
@@ -35,7 +35,7 @@ export default function Controller() {
     const isPlaying = isPlaybackActive(playerState);
     const musicDetailShown = musicDetailShownStore.useValue();
     const [isFlat, setIsFlat] = useState(isFlatUiStyleActive);
-    const [themeTick, setThemeTick] = useState(0);
+    const [, setThemeTick] = useState(0);
 
     useEffect(() => {
         const root = document.documentElement;
@@ -56,7 +56,7 @@ export default function Controller() {
     // Flat + detail remaps --textColor / --musicBarText to white on the bar shell.
     // Resolve dock colors from documentElement so prev/next stay identical to collapsed.
     const matchDockButtons = isFlat && musicDetailShown;
-    const rootTheme = useMemo(() => readRootThemeColors(), [themeTick, matchDockButtons]);
+    const rootTheme = readRootThemeColors();
 
     const skipColor = matchDockButtons ? rootTheme.text : "var(--musicBarText)";
     const skipBackground = matchDockButtons

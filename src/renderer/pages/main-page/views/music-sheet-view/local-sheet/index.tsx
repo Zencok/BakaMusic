@@ -9,18 +9,18 @@ export default function LocalSheet() {
     const { t } = useTranslation();
 
     const _musicSheet: IMusic.IMusicSheetItem =
-    id === defaultSheet.id
-        ? {
-            ...musicSheet,
-            id,
-            platform: defaultSheet.platform,
-            title: t("media.default_favorite_sheet_name"),
-        }
-        : musicSheet ?? {
-            id: id ?? "",
-            platform: defaultSheet.platform,
-            title: "",
-        };
+        id === defaultSheet.id
+            ? {
+                ...musicSheet,
+                id,
+                platform: defaultSheet.platform,
+                title: t("media.default_favorite_sheet_name"),
+            }
+            : musicSheet ?? {
+                id: id ?? "",
+                platform: defaultSheet.platform,
+                title: "",
+            };
 
     return (
         <MusicSheetlikeView

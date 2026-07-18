@@ -27,10 +27,10 @@ export default function SearchLyric(props: IProps) {
     const availablePlugins = PluginManager.getSortedSearchablePlugins("lyric");
 
     useEffect(() => {
-        if (inputSearch) {
-            searchLyric(inputSearch);
+        if (defaultTitle) {
+            searchLyric(defaultTitle);
         }
-    }, []);
+    }, [defaultTitle, searchLyric]);
 
     return (
         <Base defaultClose withBlur={false}>

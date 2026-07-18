@@ -1,7 +1,7 @@
 import type { Configuration } from "webpack";
 import path from "path";
 
-import { rules } from "./webpack.rules";
+import { baseRules } from "./webpack.rules";
 
 export const mainConfig: Configuration = {
     /**
@@ -10,10 +10,12 @@ export const mainConfig: Configuration = {
      */
     entry: {
         index: "./src/main/index.ts",
+        plugin_host: "./src/shared/plugin-manager/utility/plugin-host.ts",
+        node_runtime_host: "./src/shared/node-runtime/utility/node-runtime-host.ts",
     },
     // Put your normal webpack config below here
     module: {
-        rules,
+        rules: [...baseRules],
     },
     resolve: {
         extensions: [".js", ".ts", ".jsx", ".tsx", ".css", ".json", ".node"],

@@ -3,11 +3,37 @@ import { MakerZIP } from "@electron-forge/maker-zip";
 import { MakerDeb } from "@electron-forge/maker-deb";
 import { MakerDMG } from "@electron-forge/maker-dmg";
 import { WebpackPlugin } from "@electron-forge/plugin-webpack";
+import { AutoUnpackNativesPlugin } from "@electron-forge/plugin-auto-unpack-natives";
+import { FuseV1Options, FuseVersion } from "@electron/fuses";
 
 import { mainConfig } from "./config/webpack.main.config";
 import { rendererConfig } from "./config/webpack.renderer.config";
 import { createExternalRuntimePlugin } from "./config/forge-external-runtime-plugin";
+import { createFusesPlugin } from "./config/forge-fuses-plugin";
 import path from "path";
+
+const requireReleaseSigning = process.env.REQUIRE_RELEASE_SIGNING === "true";
+const windowsSigningConfigured = !!(
+    process.env.WINDOWS_CERTIFICATE_FILE
+    && process.env.WINDOWS_CERTIFICATE_PASSWORD
+);
+const macSigningConfigured = !!process.env.MACOS_SIGN_IDENTITY;
+const macNotarizationConfigured = !!(
+    process.env.APPLE_API_KEY
+    && process.env.APPLE_API_KEY_ID
+    && process.env.APPLE_API_ISSUER
+);
+
+if (requireReleaseSigning && process.platform === "win32" && !windowsSigningConfigured) {
+    throw new Error("Tagged Windows builds require code-signing credentials");
+}
+if (
+    requireReleaseSigning
+    && process.platform === "darwin"
+    && (!macSigningConfigured || !macNotarizationConfigured)
+) {
+    throw new Error("Tagged macOS builds require signing and notarization credentials");
+}
 
 const nativeSourceIgnorePlugin = {
     __isElectronForgePlugin: true,
@@ -36,6 +62,7 @@ const nativeSourceIgnorePlugin = {
 const config: ForgeConfig = {
     packagerConfig: {
         appBundleId: "com.zencok.bakamusic",
+        asar: true,
         icon: path.resolve(__dirname, "res/logo"),
         executableName: "BakaMusic",
         extraResource: [path.resolve(__dirname, "res")],
@@ -45,6 +72,21 @@ const config: ForgeConfig = {
                 schemes: ["bakamusic"],
             },
         ],
+        windowsSign: windowsSigningConfigured ? {
+            certificateFile: process.env.WINDOWS_CERTIFICATE_FILE,
+            certificatePassword: process.env.WINDOWS_CERTIFICATE_PASSWORD,
+            description: "BakaMusic",
+            website: "https://github.com/Zencok/BakaMusic",
+        } : undefined,
+        osxSign: macSigningConfigured ? {
+            identity: process.env.MACOS_SIGN_IDENTITY,
+            hardenedRuntime: true,
+        } : undefined,
+        osxNotarize: macNotarizationConfigured ? {
+            appleApiKey: process.env.APPLE_API_KEY,
+            appleApiKeyId: process.env.APPLE_API_KEY_ID,
+            appleApiIssuer: process.env.APPLE_API_ISSUER,
+        } : undefined,
     },
     rebuildConfig: {},
     makers: [
@@ -73,7 +115,7 @@ const config: ForgeConfig = {
     plugins: [
         new WebpackPlugin({
             loggerPort: 9200,
-            devContentSecurityPolicy: "default-src * self blob: data: gap: file:; style-src * self 'unsafe-inline' blob: data: gap: file:; script-src * 'self' 'unsafe-inline' blob: data: gap: file:; object-src * 'self' blob: data: gap:; img-src * self 'unsafe-inline' blob: data: gap: file:; connect-src self * 'unsafe-inline' blob: data: gap: ws: wss:; frame-src * self blob: data: gap:;",
+            devContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: file: bakamusic-theme: https: http:; media-src 'self' data: blob: file: https: http:; font-src 'self' data: file: bakamusic-theme:; connect-src 'self' https: http: ws: wss:; worker-src 'self' blob:; frame-src 'self' data: blob: bakamusic-theme:; object-src 'none'; base-uri 'none'; form-action 'none';",
             devServer: {
                 // Electron renderer cannot use the web overlay reload path reliably.
                 liveReload: false,
@@ -93,7 +135,7 @@ const config: ForgeConfig = {
                         html: "./src/renderer/document/index.html",
                         js: "./src/renderer/document/index.tsx",
                         name: "main_window",
-                        nodeIntegration: true,
+                        nodeIntegration: false,
                         preload: {
                             js: "./src/preload/index.ts",
                         },
@@ -102,7 +144,7 @@ const config: ForgeConfig = {
                         html: "./src/renderer-lrc/document/index.html",
                         js: "./src/renderer-lrc/document/index.tsx",
                         name: "lrc_window",
-                        nodeIntegration: true,
+                        nodeIntegration: false,
                         preload: {
                             js: "./src/preload/extension.ts",
                         },
@@ -111,42 +153,38 @@ const config: ForgeConfig = {
                         html: "./src/renderer-minimode/document/index.html",
                         js: "./src/renderer-minimode/document/index.tsx",
                         name: "minimode_window",
-                        nodeIntegration: true,
+                        nodeIntegration: false,
                         preload: {
                             js: "./src/preload/extension.ts",
                         },
-                    },
-                    /** webworkers */
-                    {
-                        js: "./src/webworkers/downloader.ts",
-                        name: "worker_downloader",
-                        nodeIntegration: true,
-                    },
-                    {
-                        js: "./src/webworkers/local-file-watcher.ts",
-                        name: "local_file_watcher",
-                        nodeIntegration: true,
-                    },
-                    {
-                        js: "./src/webworkers/db-worker.ts",
-                        name: "db",
-                        nodeIntegration: true,
                     },
                 ],
             },
         }),
         nativeSourceIgnorePlugin,
-        {
-            name: "@timfish/forge-externals-plugin",
-            config: {
-                externals: ["sharp"],
-                includeDeps: true,
-            },
-        },
-        // get-windows does not export package.json, which the legacy externals
-        // plugin needs in order to discover dependencies. Include its runtime
-        // resolver and dependency tree with an exports-compatible plugin.
-        createExternalRuntimePlugin(["get-windows", "@mapbox/node-pre-gyp"]),
+        new AutoUnpackNativesPlugin({}),
+        // Include external packages through their filesystem metadata so package
+        // exports cannot hide package.json from Forge's runtime dependency scan.
+        createExternalRuntimePlugin([
+            "sharp",
+            "get-windows",
+        ]),
+        // Keep fuses last: they are flipped after the app copy and before code signing.
+        createFusesPlugin({
+            version: FuseVersion.V1,
+            strictlyRequireAllFuses: true,
+            [FuseV1Options.RunAsNode]: false,
+            [FuseV1Options.EnableCookieEncryption]: true,
+            [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
+            [FuseV1Options.EnableNodeCliInspectArguments]: false,
+            [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
+            [FuseV1Options.OnlyLoadAppFromAsar]: true,
+            [FuseV1Options.LoadBrowserProcessSpecificV8Snapshot]: false,
+            // Renderer entry points are currently served from file:// inside
+            // app.asar, so Electron requires the file-protocol privileges.
+            [FuseV1Options.GrantFileProtocolExtraPrivileges]: true,
+            [FuseV1Options.WasmTrapHandlers]: true,
+        }),
     ],
 };
 

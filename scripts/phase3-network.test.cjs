@@ -1,0 +1,328 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const http = require("node:http");
+const path = require("node:path");
+const { fork } = require("node:child_process");
+const { Readable, Writable } = require("node:stream");
+const { pipeline } = require("node:stream/promises");
+const {
+    createDownloadPartPath,
+    createDownloadResponsePlan,
+    validateCompletedDownload,
+    validateMediaFileSignature,
+} = require("../src/webworkers/download-integrity");
+const { classifyHlsError } = require(
+    "../src/renderer/core/track-player/hls-error-policy",
+);
+const {
+    assertSafeTargetUrlSync,
+    createByteLimitTransform,
+    createSessionStore,
+    requestUpstream,
+    sanitizeHeaders,
+} = require("../res/.service/proxy-common.cjs");
+
+function headers(values) {
+    const normalized = Object.fromEntries(
+        Object.entries(values).map(([key, value]) => [key.toLowerCase(), String(value)]),
+    );
+    return {
+        get(name) {
+            return normalized[name.toLowerCase()] ?? null;
+        },
+    };
+}
+
+function readSource(relativePath) {
+    return fs.readFileSync(path.join(__dirname, "..", relativePath), "utf8");
+}
+
+function request(port, pathname) {
+    return new Promise((resolve, reject) => {
+        const req = http.get({ hostname: "127.0.0.1", port, path: pathname }, (res) => {
+            const chunks = [];
+            res.on("data", (chunk) => chunks.push(chunk));
+            res.on("end", () => resolve({
+                status: res.statusCode,
+                body: Buffer.concat(chunks).toString("utf8"),
+            }));
+        });
+        req.on("error", reject);
+    });
+}
+
+async function startRequestForwarder() {
+    const child = fork(path.join(__dirname, "../res/.service/request-forwarder.cjs"), [], {
+        env: { ...process.env, REQUEST_FORWARDER_PORT: "0" },
+        silent: true,
+    });
+    const port = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("request-forwarder start timeout")), 5_000);
+        child.once("error", reject);
+        child.on("message", (message) => {
+            if (message?.type === "port") {
+                clearTimeout(timeout);
+                resolve(message.port);
+            }
+        });
+    });
+    return { child, port };
+}
+
+async function startNativeProxy(fileName, envKey) {
+    const child = fork(path.join(__dirname, `../res/.service/${fileName}`), [], {
+        env: { ...process.env, [envKey]: "0" },
+        silent: true,
+    });
+    const port = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error(`${fileName} start timeout`)), 5_000);
+        child.once("error", reject);
+        child.on("message", (message) => {
+            if (message?.type === "port") {
+                clearTimeout(timeout);
+                resolve(message.port);
+            }
+        });
+    });
+    return { child, port };
+}
+
+function waitForRpcReply(child, requestId) {
+    return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error(`RPC ${requestId} timeout`)), 5_000);
+        const handler = (message) => {
+            if (message?.requestId === requestId) {
+                clearTimeout(timeout);
+                child.removeListener("message", handler);
+                resolve(message);
+            }
+        };
+        child.on("message", handler);
+    });
+}
+
+async function run() {
+    const firstPart = createDownloadPartPath("C:/Music/song.mp3", "platform@track-1");
+    const samePart = createDownloadPartPath("C:/Music/song.mp3", "platform@track-1");
+    const secondPart = createDownloadPartPath("C:/Music/song.mp3", "platform@track-2");
+    assert.equal(firstPart, samePart);
+    assert.notEqual(firstPart, secondPart);
+    assert.match(firstPart, /\.part$/);
+
+    const resumed = createDownloadResponsePlan(206, headers({
+        "content-type": "audio/mpeg",
+        "content-length": "100",
+        "content-range": "bytes 100-199/200",
+    }), 100);
+    assert.deepEqual(resumed, {
+        append: true,
+        startSize: 100,
+        expectedBodySize: 100,
+        totalSize: 200,
+    });
+    validateCompletedDownload(resumed, 100, 200);
+    assert.throws(
+        () => validateCompletedDownload(resumed, 99, 199),
+        /Received 99 bytes/,
+    );
+    assert.throws(
+        () => createDownloadResponsePlan(206, headers({
+            "content-type": "audio/mpeg",
+            "content-length": "100",
+            "content-range": "bytes 99-198/200",
+        }), 100),
+        /expected 100/,
+    );
+    const restarted = createDownloadResponsePlan(200, headers({
+        "content-type": "application/octet-stream",
+        "content-length": "200",
+    }), 100);
+    assert.equal(restarted.append, false);
+    assert.equal(restarted.startSize, 0);
+    assert.throws(
+        () => createDownloadResponsePlan(200, headers({
+            "content-type": "text/html",
+            "content-length": "20",
+        }), 0),
+        /Unexpected media type/,
+    );
+
+    validateMediaFileSignature(Buffer.from("49443304000000000000", "hex"), "song.mp3");
+    validateMediaFileSignature(Buffer.from("664c614300000000", "hex"), "song.flac");
+    validateMediaFileSignature(Buffer.from("4f67675300000000", "hex"), "song.ogg");
+    validateMediaFileSignature(Buffer.from("00000018667479704d344120", "hex"), "song.m4a");
+    assert.throws(
+        () => validateMediaFileSignature(Buffer.from("3c68746d6c3e", "hex"), "song.mp3"),
+        /Media signature/,
+    );
+
+    assert.equal(classifyHlsError({ fatal: false, type: "networkError" }, {
+        networkAttempts: 0,
+        mediaAttempts: 0,
+    }), "ignore");
+    assert.equal(classifyHlsError({ fatal: true, type: "networkError" }, {
+        networkAttempts: 0,
+        mediaAttempts: 0,
+    }), "restart-load");
+    assert.equal(classifyHlsError({ fatal: true, type: "mediaError" }, {
+        networkAttempts: 0,
+        mediaAttempts: 0,
+    }), "recover-media");
+    assert.equal(classifyHlsError({ fatal: true, type: "networkError" }, {
+        networkAttempts: 2,
+        mediaAttempts: 0,
+    }), "fail");
+
+    assert.throws(() => assertSafeTargetUrlSync("file:///tmp/music"), /HTTP/);
+    assert.throws(() => assertSafeTargetUrlSync("http://127.0.0.1/music"), /Private/);
+    assert.throws(() => assertSafeTargetUrlSync("http://localhost/music"), /Private/);
+    await assert.rejects(requestUpstream("http://127.0.0.1/music"), /Private/);
+    const sanitized = sanitizeHeaders({
+        authorization: "Bearer token",
+        connection: "keep-alive",
+        cookie: "session=value",
+        "x-unbounded-plugin-header": "drop-me",
+    }, new URL("https://example.com/music"), { range: "bytes=0-9" });
+    assert.equal(sanitized.authorization, "Bearer token");
+    assert.equal(sanitized.cookie, "session=value");
+    assert.equal(sanitized.range, "bytes=0-9");
+    assert.equal(sanitized.connection, undefined);
+    assert.equal(sanitized["x-unbounded-plugin-header"], undefined);
+
+    const disposed = [];
+    const store = createSessionStore({
+        maxEntries: 2,
+        ttlMs: 10,
+        dispose: (session) => disposed.push(session.id),
+    });
+    const originalNow = Date.now;
+    let now = 1_000;
+    Date.now = () => now;
+    try {
+        store.set("a", { id: "a" });
+        now++;
+        store.set("b", { id: "b" });
+        store.get("a");
+        now++;
+        store.set("c", { id: "c" });
+        assert.equal(store.get("b"), undefined);
+        assert.deepEqual(disposed, ["b"]);
+        now += 20;
+        store.sweep();
+        assert.equal(store.size, 0);
+        assert.deepEqual(new Set(disposed), new Set(["a", "b", "c"]));
+    } finally {
+        Date.now = originalNow;
+        store.close();
+    }
+
+    await assert.rejects(
+        pipeline(
+            Readable.from([Buffer.alloc(3), Buffer.alloc(3)]),
+            createByteLimitTransform(5),
+            new Writable({ write(_chunk, _encoding, callback) { callback(); } }),
+        ),
+        /exceeds proxy limit/,
+    );
+
+    const workerSource = readSource("src/webworkers/downloader.ts");
+    assert.match(workerSource, /createDownloadPartPath\(filePath, taskId\)/);
+    assert.match(workerSource, /createWriteStream\(partPath/);
+    assert.match(workerSource, /fsPromises\.rename\(partPath, filePath\)/);
+    assert.match(workerSource, /coverDownloadSemaphore = new Semaphore\(3\)/);
+    assert.match(workerSource, /coverDownloadTimeoutMs = 15_000/);
+    assert.doesNotMatch(workerSource, /MAX_COVER|cover.*size.*limit/i);
+
+    const downloaderSource = readSource("src/renderer/core/downloader/index.ts");
+    assert.match(downloaderSource, /@shared\/node-runtime\/renderer/);
+    assert.match(downloaderSource, /recoverDownloaderWorker/);
+    assert.match(downloaderSource, /recoverDownloaderWorker\(toError\(error\)\)/);
+    assert.match(downloaderSource, /queueTask\(taskControl\)/);
+
+    const nodeRuntimeSource = readSource("src/shared/node-runtime/main.ts");
+    assert.match(nodeRuntimeSource, /utilityProcess\.fork/);
+    assert.match(nodeRuntimeSource, /child\.on\("exit"/);
+    assert.match(nodeRuntimeSource, /this\.rejectPending/);
+    assert.match(nodeRuntimeSource, /child\.kill\(\)/);
+    assert.match(nodeRuntimeSource, /if \(this\.watcherState\)/);
+    assert.match(nodeRuntimeSource, /"watcher-setup", this\.watcherState/);
+
+    const audioControllerSource = readSource(
+        "src/renderer/core/track-player/controller/audio-controller.ts",
+    );
+    assert.match(audioControllerSource, /class ForwardingHlsLoader extends XhrLoader/);
+    assert.match(audioControllerSource, /x-bakamusic-final-url/);
+    assert.match(audioControllerSource, /\|\| originalContext\.url/);
+    assert.match(audioControllerSource, /sourceAbortController\?\.abort\(\)/);
+    assert.match(audioControllerSource, /classifyHlsError/);
+
+    for (const servicePath of [
+        "res/.service/mflac-proxy.cjs",
+        "res/.service/luna-proxy.cjs",
+    ]) {
+        const serviceSource = readSource(servicePath);
+        assert.match(serviceSource, /createSessionStore/);
+        assert.match(serviceSource, /destroyDecoder/);
+        assert.match(serviceSource, /requestId/);
+        assert.match(serviceSource, /req\.once\("aborted", cancel\)/);
+        assert.match(serviceSource, /upstream\.pause\(\)/);
+        assert.match(serviceSource, /res\.once\("drain"/);
+    }
+
+    const { child, port } = await startRequestForwarder();
+    try {
+        assert.deepEqual(await request(port, "/heartbeat"), { status: 200, body: "OK" });
+        const blocked = await request(
+            port,
+            `/?url=${encodeURIComponent("http://127.0.0.1/private")}`,
+        );
+        assert.equal(blocked.status, 502);
+    } finally {
+        child.kill();
+    }
+
+    for (const proxy of [
+        {
+            fileName: "mflac-proxy.cjs",
+            envKey: "MFLAC_PROXY_PORT",
+            message: {
+                type: "register",
+                requestId: "mflac-test-1",
+                src: "http://127.0.0.1/private.mflac",
+                ekey: "placeholder",
+            },
+        },
+        {
+            fileName: "luna-proxy.cjs",
+            envKey: "LUNA_PROXY_PORT",
+            message: {
+                type: "register",
+                requestId: "luna-test-1",
+                src: "http://127.0.0.1/private.m4a",
+                cek: "00000000000000000000000000000000",
+            },
+        },
+    ]) {
+        const service = await startNativeProxy(proxy.fileName, proxy.envKey);
+        try {
+            assert.deepEqual(await request(service.port, "/heartbeat"), {
+                status: 200,
+                body: "OK",
+            });
+            const replyPromise = waitForRpcReply(service.child, proxy.message.requestId);
+            service.child.send(proxy.message);
+            const reply = await replyPromise;
+            assert.equal(reply.type, "error");
+            assert.equal(reply.requestId, proxy.message.requestId);
+        } finally {
+            service.child.kill();
+        }
+    }
+
+    console.log("phase3-network: all assertions passed");
+}
+
+run().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

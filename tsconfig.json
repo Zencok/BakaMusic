@@ -3,27 +3,34 @@
     "jsx": "react-jsx",
     "target": "ES2021",
     "allowJs": true,
-    "module": "commonjs",
+    "module": "preserve",
     "skipLibCheck": true,
     "esModuleInterop": true,
     "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "sourceMap": true,
     "baseUrl": ".",
     "rootDir": "src",
     "outDir": "dist",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "ignoreDeprecations": "6.0",
     "strict": true,
     "noUncheckedSideEffectImports": true,
     "paths": {
-      "*": ["node_modules/*"],
       "@/*": ["src/*"],
       "@main/*": ["src/main/*"],
       "@shared/*": ["src/shared/*"],
       "@native/*": ["src/main/native_modules/*"],
       "@renderer/*": ["src/renderer/*"],
       "@renderer-lrc/*": ["src/renderer-lrc/*"]
+    }
+  },
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs",
+      "moduleResolution": "node10"
     }
   },
   "include": ["src/**/*"],

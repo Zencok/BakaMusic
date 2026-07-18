@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useEffect, useMemo } from "react";
 import MusicSheet from "@/renderer/core/music-sheet";
 import debounce from "@/common/debounce";
 import { hideModal } from "../..";
@@ -13,8 +13,8 @@ interface IProps {
 export default function AddNewSheet(props: IProps) {
     const { t } = useTranslation();
 
-    const onCreateNewSheetClick = useCallback(
-        debounce(async (newSheetName) => {
+    const onCreateNewSheetClick = useMemo(
+        () => debounce(async (newSheetName) => {
             try {
                 const newSheet = await MusicSheet.frontend.addSheet(newSheetName);
                 if (!newSheet) {
@@ -28,8 +28,12 @@ export default function AddNewSheet(props: IProps) {
                 return;
             }
         }, 500),
-        [],
+        [props.initMusicItems],
     );
+
+    useEffect(() => () => {
+        onCreateNewSheetClick.cancel();
+    }, [onCreateNewSheetClick]);
 
     return (
         <SimpleInputWithState

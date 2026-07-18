@@ -4,7 +4,7 @@ import { shortCutKeys, shortCutKeysCommands } from "@/common/constant";
 import hotkeys from "hotkeys-js";
 import messageBus from "@shared/message-bus/renderer/main";
 
-type IShortCutKeys = keyof IAppConfig["shortCut.shortcuts"];
+type IShortCutKeys = keyof NonNullable<IAppConfig["shortCut.shortcuts"]>;
 
 interface IMod {
     registerGlobalShortCut: (key: IShortCutKeys, shortCut: string[]) => void;
@@ -81,7 +81,7 @@ class ShortCut {
                 "shortCut.shortcuts": {
                     ...(shortCuts || {} as any),
                     [key]: {
-                        ...(shortCuts[key] || {}),
+                        ...(shortCuts?.[key] || {}),
                         local: null,
                     },
                 },

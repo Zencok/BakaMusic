@@ -218,6 +218,7 @@ function MusicDetail() {
 
                         <div className="music-detail-info-bar">
                             <img
+                                alt={title}
                                 className="music-detail-info-artwork"
                                 onError={setFallbackAlbum}
                                 src={artwork}
@@ -296,6 +297,7 @@ function MusicDetail() {
                                         <div className="music-detail-vinyl-record"></div>
                                         <div className="music-detail-vinyl-label">
                                             <img
+                                                alt={title}
                                                 className="music-detail-vinyl-artwork"
                                                 onError={setFallbackAlbum}
                                                 src={artwork}
@@ -307,6 +309,7 @@ function MusicDetail() {
                                 </div>
                             ) : (
                                 <img
+                                    alt={title}
                                     className="music-detail-artwork"
                                     onError={setFallbackAlbum}
                                     src={artwork}

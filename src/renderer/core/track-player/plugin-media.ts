@@ -9,7 +9,7 @@ export interface IPluginMediaReference {
     [key: string]: unknown;
 }
 
-export const pluginDelegateHashKey = "$pluginDelegateHash";
+const pluginDelegateHashKey = "$pluginDelegateHash";
 
 const IDENTIFIER_ALIAS_KEYS = [
     "songid",
@@ -59,7 +59,7 @@ export function resolveMusicItemId(
  * Keep mid/hash/etc. aliases available for getMediaSource even after the
  * canonical id is replaced by the plugin response.
  */
-export function pickMusicIdentifierAliases(
+function pickMusicIdentifierAliases(
     input: string,
     musicInfo?: Record<string, unknown> | null,
 ): Record<IdentifierAliasKey, string> {

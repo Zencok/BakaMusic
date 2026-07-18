@@ -1,0 +1,101 @@
+import {
+    app,
+    BrowserWindow,
+    session,
+} from "electron";
+
+const productionCsp = [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: file: bakamusic-theme: https: http:",
+    "media-src 'self' data: blob: file: https: http:",
+    "font-src 'self' data: file: bakamusic-theme:",
+    "connect-src 'self' https: http: ws: wss:",
+    "worker-src 'self' blob:",
+    "frame-src 'self' data: blob: bakamusic-theme:",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'none'",
+].join("; ");
+
+const developmentCsp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-eval'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: file: bakamusic-theme: https: http:",
+    "media-src 'self' data: blob: file: https: http:",
+    "font-src 'self' data: file: bakamusic-theme:",
+    "connect-src 'self' https: http: ws: wss:",
+    "worker-src 'self' blob:",
+    "frame-src 'self' data: blob: bakamusic-theme:",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'none'",
+].join("; ");
+
+let sessionSecurityConfigured = false;
+
+function isSameApplicationDocument(targetUrl: string, entryUrl: string) {
+    try {
+        const target = new URL(targetUrl);
+        const entry = new URL(entryUrl);
+        if (target.protocol !== entry.protocol) {
+            return false;
+        }
+        if (entry.protocol === "file:") {
+            return target.hostname === entry.hostname
+                && target.pathname === entry.pathname
+                && target.search === entry.search;
+        }
+        return target.origin === entry.origin
+            && target.pathname === entry.pathname
+            && target.search === entry.search;
+    } catch {
+        return false;
+    }
+}
+
+export function setupSessionSecurity() {
+    if (sessionSecurityConfigured) {
+        return;
+    }
+    sessionSecurityConfigured = true;
+
+    const appSession = session.defaultSession;
+    appSession.setPermissionCheckHandler(() => false);
+    appSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
+        callback(false);
+    });
+    appSession.webRequest.onHeadersReceived((details, callback) => {
+        if (details.resourceType !== "mainFrame" && details.resourceType !== "subFrame") {
+            callback({ responseHeaders: details.responseHeaders });
+            return;
+        }
+        const responseHeaders = { ...details.responseHeaders };
+        for (const key of Object.keys(responseHeaders)) {
+            if (key.toLocaleLowerCase() === "content-security-policy") {
+                delete responseHeaders[key];
+            }
+        }
+        responseHeaders["Content-Security-Policy"] = [
+            app.isPackaged ? productionCsp : developmentCsp,
+        ];
+        callback({ responseHeaders });
+    });
+}
+
+export function hardenWindow(window: BrowserWindow, entryUrl: string) {
+    window.webContents.setWindowOpenHandler(() => {
+        return { action: "deny" };
+    });
+
+    window.webContents.on("will-navigate", (event, url) => {
+        if (!isSameApplicationDocument(url, entryUrl)) {
+            event.preventDefault();
+        }
+    });
+    window.webContents.on("will-attach-webview", (event) => {
+        event.preventDefault();
+    });
+}

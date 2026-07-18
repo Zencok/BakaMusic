@@ -78,7 +78,7 @@ function ToplistBody(props: IToplistBodyProps) {
 
     useEffect(() => {
         getTopList(plugin.hash);
-    }, []);
+    }, [getTopList, plugin.hash]);
 
     return (
         <Condition

@@ -47,7 +47,6 @@ export type SvgAssetIconNames =
     | "play"
     | "playlist"
     | "plus"
-    | "plus-circle"
     | "question-mark-circle"
     | "repeat-song-1"
     | "repeat-song"
@@ -55,7 +54,6 @@ export type SvgAssetIconNames =
     | "shuffle"
     | "skip-left"
     | "skip-right"
-    | "sort"
     | "sort-asc"
     | "sort-desc"
     | "sparkles"
@@ -67,7 +65,6 @@ export type SvgAssetIconNames =
     | "t-shirt-line"
     | "user"
     | "lq"
-    | "sd"
     | "hq"
     | "sq"
     | "x-mark";

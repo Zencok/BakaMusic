@@ -1,8 +1,9 @@
-import { app, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import path from "path";
 import fs from "fs/promises";
 import i18n from "i18next";
 import logger from "@shared/logger/main";
+import { assertIpcSender, assertString } from "@shared/ipc-security/main";
 
 const ns = "translation";
 
@@ -10,7 +11,7 @@ const resPath = app.isPackaged
     ? path.resolve(process.resourcesPath, "res")
     : path.resolve(__dirname, "../../res");
 
-export const getResPath = (resourceName: string) => {
+const getResPath = (resourceName: string) => {
     return path.resolve(resPath, resourceName);
 };
 
@@ -53,7 +54,8 @@ export async function setupI18n(options?: ISetupI18nOptions) {
 
         allLangs = dirContents
             .filter((it) => it.isFile() && it.name.endsWith(".json"))
-            .map((it) => it.name.slice(0, -5));
+            .map((it) => it.name.slice(0, -5))
+            .sort((left, right) => left.localeCompare(right, "en"));
 
         let defaultLang = getDefaultLang?.();
         if (defaultLang && !allLangs.includes(defaultLang)) {
@@ -79,7 +81,8 @@ export async function setupI18n(options?: ISetupI18nOptions) {
             i18n.changeLanguage(defaultLang);
         }
 
-        ipcMain.handle("shared/i18n/setup", async () => {
+        ipcMain.handle("shared/i18n/setup", async (event) => {
+            assertIpcSender(event, ["main", "lyric", "minimode"]);
             const currentLang = i18n.language;
             const langContent = await readLangContent(currentLang);
             if (langContent) {
@@ -92,24 +95,41 @@ export async function setupI18n(options?: ISetupI18nOptions) {
             return null;
         });
 
-        ipcMain.handle("shared/i18n/changeLang", async (_, lang: string) => {
+        ipcMain.handle("shared/i18n/changeLang", async (event, lang: string) => {
+            assertIpcSender(event, ["main"]);
+            assertString(lang, "language", 32);
+            if (!allLangs.includes(lang)) {
+                return null;
+            }
             if (i18n.hasResourceBundle(lang, ns)) {
                 await i18n.changeLanguage(lang);
                 onLanguageChanged?.(lang);
-                return {
+                const data = {
                     lang,
                     content: i18n.getResourceBundle(lang, ns),
                 };
+                BrowserWindow.getAllWindows()
+                    .filter((window) => window.webContents !== event.sender)
+                    .forEach((window) => {
+                        window.webContents.send("shared/i18n/languageChanged", data);
+                    });
+                return data;
             } else {
                 const langContent = await readLangContent(lang);
                 if (langContent) {
                     i18n.addResourceBundle(lang, ns, langContent);
                     await i18n.changeLanguage(lang);
                     onLanguageChanged?.(lang);
-                    return {
+                    const data = {
                         lang,
                         content: langContent,
                     };
+                    BrowserWindow.getAllWindows()
+                        .filter((window) => window.webContents !== event.sender)
+                        .forEach((window) => {
+                            window.webContents.send("shared/i18n/languageChanged", data);
+                        });
+                    return data;
                 }
             }
 
@@ -121,8 +141,3 @@ export async function setupI18n(options?: ISetupI18nOptions) {
 }
 
 export const t = i18n.t.bind(i18n);
-
-export default {
-    setup: setupI18n,
-    t: i18n.t,
-};

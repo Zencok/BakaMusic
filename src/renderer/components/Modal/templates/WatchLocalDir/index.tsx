@@ -14,6 +14,7 @@ import localMusic from "@/renderer/core/local-music";
 import { useTranslation } from "react-i18next";
 import { dialogUtil } from "@shared/utils/renderer";
 import { toast } from "react-toastify";
+import AppConfig from "@shared/app-config/renderer";
 
 
 export default function WatchLocalDir() {
@@ -27,9 +28,14 @@ export default function WatchLocalDir() {
 
     useEffect(() => {
         (async () => {
-            const allDirs = (await getUserPreferenceIDB("localWatchDir")) ?? [];
-            const checked =
-                (await getUserPreferenceIDB("localWatchDirChecked")) ?? [];
+            const [savedDirs, savedCheckedDirs] = await Promise.all([
+                getUserPreferenceIDB("localWatchDir"),
+                getUserPreferenceIDB("localWatchDirChecked"),
+            ]);
+            const allDirs = savedDirs ?? [];
+            const checked = AppConfig.getConfig("localMusic.watchDir")
+                ?? savedCheckedDirs
+                ?? [];
             const allDirsSet = new Set(allDirs);
             const validChecked = checked.filter((it) => allDirsSet.has(it));
             setLocalDirs([...allDirsSet]);
@@ -160,8 +166,13 @@ export default function WatchLocalDir() {
                             }
                             setIsRescanning(true);
                             try {
-                                await setUserPreferenceIDB("localWatchDir", localDirs);
-                                await setUserPreferenceIDB("localWatchDirChecked", [...checkedDirs]);
+                                await Promise.all([
+                                    setUserPreferenceIDB("localWatchDir", localDirs),
+                                    setUserPreferenceIDB("localWatchDirChecked", [...checkedDirs]),
+                                ]);
+                                AppConfig.setConfig({
+                                    "localMusic.watchDir": [...checkedDirs],
+                                });
                                 await localMusic.clearAndRescanLocalMusic();
                                 changeLogRef.current.clear();
                                 toast.success(t("modal.clear_and_rescan_local_music_success"));
@@ -182,10 +193,20 @@ export default function WatchLocalDir() {
                             if (isRescanning) {
                                 return;
                             }
-                            setUserPreferenceIDB("localWatchDir", localDirs);
-                            setUserPreferenceIDB("localWatchDirChecked", [...checkedDirs]);
-                            await localMusic.changeWatchPath(changeLogRef.current);
-                            hideModal();
+                            setIsRescanning(true);
+                            try {
+                                await Promise.all([
+                                    setUserPreferenceIDB("localWatchDir", localDirs),
+                                    setUserPreferenceIDB("localWatchDirChecked", [...checkedDirs]),
+                                ]);
+                                AppConfig.setConfig({
+                                    "localMusic.watchDir": [...checkedDirs],
+                                });
+                                await localMusic.changeWatchPath(changeLogRef.current);
+                                hideModal();
+                            } finally {
+                                setIsRescanning(false);
+                            }
                         }}
                     >
                         {t("common.confirm")}

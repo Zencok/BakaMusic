@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import groupBy from "@/renderer/utils/groupBy";
 import MusicList from "@/renderer/components/MusicList";
 import { Trans } from "react-i18next";
+import { dirnameFilePath } from "@/common/path-util";
 
 interface IProps {
     localMusicList: IMusic.IMusicItem[];
@@ -13,7 +14,7 @@ export default function FolderView(props: IProps) {
 
     const [keys, allMusic] = useMemo(() => {
         const grouped = groupBy(localMusicList ?? [], (it) =>
-            window.path.dirname(it.$$localPath),
+            dirnameFilePath(it.$$localPath),
         );
         return [Object.keys(grouped).sort((a, b) => a.localeCompare(b)), grouped];
     }, [localMusicList]);

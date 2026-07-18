@@ -5,47 +5,7 @@ import "./index.scss";
 import { hideModal } from "../..";
 import { useTranslation } from "react-i18next";
 import { appUtil, shellUtil } from "@shared/utils/renderer";
-
-function escapeHtml(s: string) {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function renderMd(lines: string[]): string {
-    return lines.join("\n")
-        .split("\n")
-        .map(rawLine => {
-            const line = rawLine.trim();
-            if (!line) return "";
-
-            // split line into link vs non-link segments, escape only non-link parts
-            const segments: string[] = [];
-            const linkRe = /\[(.+?)\]\((https?:\/\/[^)]+)\)|(https?:\/\/\S+)/g;
-            let last = 0, m: RegExpExecArray | null;
-            while ((m = linkRe.exec(line)) !== null) {
-                if (m.index > last) segments.push(escapeHtml(line.slice(last, m.index)));
-                const url = m[2] ?? m[3];
-                const label = m[1] ?? m[3];
-                segments.push(`<a href="${url}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`);
-                last = m.index + m[0].length;
-            }
-            if (last < line.length) segments.push(escapeHtml(line.slice(last)));
-            let out = segments.join("");
-
-            // block-level
-            if (/^#{1,6}\s/.test(line)) return `<strong>${out.replace(/^#+\s+/, "")}</strong>`;
-            if (/^[*+-]\s/.test(line)) return `<li>${out.replace(/^[*+-]\s+/, "")}</li>`;
-
-            // inline formatting
-            out = out
-                .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
-                .replace(/\*(.+?)\*/g, "<em>$1</em>")
-                .replace(/`(.+?)`/g, "<code>$1</code>");
-
-            return `<p>${out}</p>`;
-        })
-        .join("\n")
-        .replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`);
-}
+import { renderUpdateChangelog } from "@/renderer/utils/update-changelog";
 
 interface IUpdateProps {
     currentVersion: string;
@@ -62,12 +22,16 @@ export default function Update(props: IUpdateProps) {
     const [downloaded, setDownloaded] = useState(0);
     const [total, setTotal] = useState(0);
     const [errorMsg, setErrorMsg] = useState("");
-    const filePathRef = useRef<string>("");
+    const downloadAttemptRef = useRef(0);
+    const isDownloadingRef = useRef(false);
     const unsubRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
         return () => {
             unsubRef.current?.();
+            if (isDownloadingRef.current) {
+                appUtil.cancelUpdateDownload();
+            }
         };
     }, []);
 
@@ -89,37 +53,58 @@ export default function Update(props: IUpdateProps) {
         setDownloaded(0);
         setTotal(0);
         setErrorMsg("");
+        isDownloadingRef.current = true;
+        const attempt = ++downloadAttemptRef.current;
 
-        unsubRef.current = appUtil.onUpdateDownloadProgress(({ downloaded: dl, total: tot }) => {
+        const unsubscribe = appUtil.onUpdateDownloadProgress(({ downloaded: dl, total: tot }) => {
             setDownloaded(dl);
             setTotal(tot);
         });
+        unsubRef.current = unsubscribe;
 
         try {
-            const filePath = await appUtil.downloadUpdate(update.download);
-            unsubRef.current?.();
-            unsubRef.current = null;
-            filePathRef.current = filePath;
+            await appUtil.downloadUpdate();
+            if (attempt !== downloadAttemptRef.current) {
+                return;
+            }
             setPhase("downloaded");
-        } catch (e: any) {
-            unsubRef.current?.();
-            unsubRef.current = null;
-            if (e?.message === "Download cancelled") {
+        } catch (error: unknown) {
+            if (attempt !== downloadAttemptRef.current) {
+                return;
+            }
+            const message = error instanceof Error ? error.message : String(error);
+            if (message.includes("Download cancelled")) {
                 setPhase("idle");
             } else {
-                setErrorMsg(e?.message || "下载失败");
+                setErrorMsg(`下载失败：${message || "未知错误"}`);
                 setPhase("error");
+            }
+        } finally {
+            unsubscribe();
+            if (attempt === downloadAttemptRef.current) {
+                isDownloadingRef.current = false;
+                unsubRef.current = null;
             }
         }
     }
 
     function handleCancel() {
+        downloadAttemptRef.current += 1;
+        isDownloadingRef.current = false;
+        unsubRef.current?.();
+        unsubRef.current = null;
         appUtil.cancelUpdateDownload();
         setPhase("idle");
     }
 
-    function handleInstall() {
-        appUtil.installUpdate(filePathRef.current);
+    async function handleInstall() {
+        try {
+            await appUtil.installUpdate();
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            setErrorMsg(`安装失败：${message || "未知错误"}`);
+            setPhase("error");
+        }
     }
 
     return (
@@ -137,7 +122,9 @@ export default function Update(props: IUpdateProps) {
                     </div>
                     <div className="divider"></div>
                     <div
-                        dangerouslySetInnerHTML={{ __html: renderMd(update?.changeLog ?? []) }}
+                        dangerouslySetInnerHTML={{
+                            __html: renderUpdateChangelog(update?.changeLog ?? []),
+                        }}
                         onClick={(e) => {
                             const a = (e.target as HTMLElement).closest("a");
                             const href = a?.getAttribute("href");
@@ -170,7 +157,7 @@ export default function Update(props: IUpdateProps) {
 
                 {phase === "error" && (
                     <div className="update-error-area">
-                        <span>下载失败：{errorMsg}</span>
+                        <span>{errorMsg}</span>
                     </div>
                 )}
 

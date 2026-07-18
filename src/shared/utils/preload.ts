@@ -1,44 +1,42 @@
-import { ipcRenderer } from "electron";
-import fs from "fs/promises";
-import { rimraf } from "rimraf";
-import url from "url";
+import { ipcRenderer, webUtils } from "electron";
+import { pathToFileURL } from "url";
 import exposeInMainWorld from "@/preload/expose-in-main-world";
 
 
 /****** fs utils ******/
-const originalFsWriteFile = fs.writeFile;
-const originalFsReadFile = fs.readFile;
-
-function writeFile(...args: Parameters<typeof originalFsWriteFile>): ReturnType<typeof originalFsWriteFile> {
-    return originalFsWriteFile(...args);
+async function writeFile(filePath: string, data: string, encoding: "utf8" | "utf-8" = "utf8") {
+    await ipcRenderer.invoke("@shared/utils/fs-write-file", filePath, data, encoding);
 }
 
-function readFile(...args: Parameters<typeof originalFsReadFile>): ReturnType<typeof originalFsReadFile> {
-    return originalFsReadFile(...args);
+async function readFile(filePath: string, encoding: "utf8" | "utf-8" = "utf8") {
+    return await ipcRenderer.invoke("@shared/utils/fs-read-file", filePath, encoding) as string;
 }
 
 async function isFile(path: string) {
-    try {
-        const stat = await fs.stat(path);
-        return stat.isFile();
-    } catch {
-        return false;
-    }
+    return await ipcRenderer.invoke("@shared/utils/fs-is-file", path) as boolean;
 }
 
 async function isFolder(path: string) {
-    try {
-        const stat = await fs.stat(path);
-        return stat.isDirectory();
-    } catch {
-        return false;
+    return await ipcRenderer.invoke("@shared/utils/fs-is-folder", path) as boolean;
+}
+
+async function removeFile(path: string) {
+    await ipcRenderer.invoke("@shared/utils/fs-remove-file", path);
+    return true;
+}
+
+function getPathForFile(file: File) {
+    const filePath = webUtils.getPathForFile(file);
+    if (filePath) {
+        ipcRenderer.send("@shared/utils/grant-dropped-path", filePath);
     }
+    return filePath;
 }
 
 function addFileScheme(filePath: string) {
     return filePath.startsWith("file:")
         ? filePath
-        : url.pathToFileURL(filePath).toString();
+        : pathToFileURL(filePath).toString();
 }
 
 const fsUtil = {
@@ -46,8 +44,9 @@ const fsUtil = {
     readFile,
     isFile,
     isFolder,
-    rimraf,
+    rimraf: removeFile,
     addFileScheme,
+    getPathForFile,
 };
 
 /****** app utils *****/
@@ -63,8 +62,8 @@ async function checkUpdate() {
     return await ipcRenderer.invoke("@shared/utils/check-update");
 }
 
-async function downloadUpdate(urls: string[]): Promise<string> {
-    return await ipcRenderer.invoke("@shared/utils/download-update", urls);
+async function downloadUpdate(): Promise<void> {
+    await ipcRenderer.invoke("@shared/utils/download-update");
 }
 
 function onUpdateDownloadProgress(
@@ -76,8 +75,8 @@ function onUpdateDownloadProgress(
     return () => ipcRenderer.off("@shared/utils/update-download-progress", handler);
 }
 
-function installUpdate(filePath: string): void {
-    ipcRenderer.send("@shared/utils/install-update", filePath);
+async function installUpdate(): Promise<void> {
+    await ipcRenderer.invoke("@shared/utils/install-update");
 }
 
 function cancelUpdateDownload(): void {

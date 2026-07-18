@@ -2,7 +2,7 @@ import { RequestStateCode } from "@/common/constant";
 import Store from "@/common/store";
 
 
-export interface IQueryResult<
+interface IQueryResult<
     T extends IArtist.ArtistMediaType = IArtist.ArtistMediaType,
 > {
     state?: RequestStateCode;

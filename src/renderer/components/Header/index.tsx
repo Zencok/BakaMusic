@@ -74,9 +74,15 @@ export default function AppHeader() {
                             }, 0);
                         }}
                     ></input>
-                    <div className="search-submit" role="button" onClick={onSearchSubmit}>
+                    <button
+                        type="button"
+                        className="search-submit"
+                        aria-label={t("app_header.search")}
+                        title={t("app_header.search")}
+                        onClick={onSearchSubmit}
+                    >
                         <SvgAsset iconName="magnifying-glass"></SvgAsset>
-                    </div>
+                    </button>
                     <Condition condition={showSearchHistory}>
                         <SearchHistory
                             onHistoryClick={(item) => {
@@ -99,41 +105,46 @@ export default function AppHeader() {
             </div>
 
             <div className="right-part">
-                <div
-                    role="button"
+                <button
+                    type="button"
                     className="header-button sparkles-icon"
+                    title={t("app_header.developer_message")}
+                    aria-label={t("app_header.developer_message")}
                     onClick={() => {
                         showModal("Sparkles");
                     }}
                 >
                     <SvgAsset iconName="sparkles"></SvgAsset>
-                </div>
-                <div
-                    role="button"
+                </button>
+                <button
+                    type="button"
                     className="header-button"
                     title={t("app_header.theme")}
+                    aria-label={t("app_header.theme")}
                     onClick={() => {
                         navigate("/main/theme");
                         MusicDetail.hide();
                     }}
                 >
                     <SvgAsset iconName="t-shirt-line"></SvgAsset>
-                </div>
-                <div
-                    role="button"
+                </button>
+                <button
+                    type="button"
                     className="header-button"
                     title={t("app_header.settings")}
+                    aria-label={t("app_header.settings")}
                     onClick={() => {
                         navigate("/main/setting");
                         MusicDetail.hide();
                     }}
                 >
                     <SvgAsset iconName="cog-8-tooth"></SvgAsset>
-                </div>
-                <div className="header-divider"></div>
-                <div
-                    role="button"
+                </button>
+                <div className="header-divider" role="separator" aria-orientation="vertical"></div>
+                <button
+                    type="button"
                     title={t("app_header.minimode")}
+                    aria-label={t("app_header.minimode")}
                     className="header-button"
                     onClick={() => {
                         appWindowUtil.setMinimodeWindow(!isMiniMode);
@@ -143,25 +154,33 @@ export default function AppHeader() {
                     }}
                 >
                     <SvgAsset iconName="picture-in-picture-line"></SvgAsset>
-                </div>
-                <div
-                    role="button"
+                </button>
+                <button
+                    type="button"
                     title={t("app_header.minimize")}
+                    aria-label={t("app_header.minimize")}
                     className="header-button"
                     onClick={() => {
                         appWindowUtil.minMainWindow();
                     }}
                 >
                     <SvgAsset iconName="minus"></SvgAsset>
-                </div>
-                <div role="button" className="header-button" onClick={() => {
-                    appWindowUtil.toggleMainWindowMaximize();
-                }}>
+                </button>
+                <button
+                    type="button"
+                    className="header-button"
+                    title={t("app_header.maximize")}
+                    aria-label={t("app_header.maximize")}
+                    onClick={() => {
+                        appWindowUtil.toggleMainWindowMaximize();
+                    }}
+                >
                     <SvgAsset iconName="square"></SvgAsset>
-                </div>
-                <div
-                    role="button"
+                </button>
+                <button
+                    type="button"
                     title={t("app_header.exit")}
+                    aria-label={t("app_header.exit")}
                     className="header-button"
                     onClick={() => {
                         const exitBehavior = AppConfig.getConfig("normal.closeBehavior");
@@ -173,7 +192,7 @@ export default function AppHeader() {
                     }}
                 >
                     <SvgAsset iconName="x-mark"></SvgAsset>
-                </div>
+                </button>
             </div>
         </div>
     );

@@ -28,7 +28,15 @@
     "save": "保存",
     "clear": "清空",
     "open": "打开",
-    "status": "状态"
+    "status": "状态",
+    "close": "关闭",
+    "dialog": "对话框",
+    "panel": "侧边面板"
+  },
+  "startup": {
+    "failed": "BakaMusic 启动失败",
+    "loading": "正在启动…",
+    "reload": "重新加载"
   },
   "media": {
     "unknown_title": "未命名",
@@ -81,7 +89,8 @@
     "sort_asc": "升序",
     "sort_desc": "降序",
     "sort_by": "排序",
-    "sort_custom": "自定义"
+    "sort_custom": "自定义",
+    "ai_upscale": "AI 升频"
   },
   "plugin": {
     "prop_user_variable": "用户变量",
@@ -286,7 +295,10 @@
     "minimize": "最小化",
     "minimode": "迷你模式",
     "exit": "退出",
-    "theme": "主题"
+    "theme": "主题",
+    "search": "搜索",
+    "maximize": "最大化或还原",
+    "developer_message": "开发者寄语"
   },
   "music_bar": {
     "open_music_detail_page": "打开歌曲详情页",
@@ -359,7 +371,14 @@
     "scan_local_music_hint": "将手动扫描勾选的文件夹",
     "add_folder": "添加文件夹",
     "clear_and_rescan_local_music": "清空并重新扫描",
-    "clear_and_rescan_local_music_success": "已清空并重新扫描本地音乐"
+    "clear_and_rescan_local_music_success": "已清空并重新扫描本地音乐",
+    "sparkles_title": "开发者的话",
+    "sparkles_thanks": "感谢你使用 <product>BakaMusic</product>。",
+    "sparkles_intro": "这是由 <maintainer>Zencok</maintainer> 持续维护的桌面音乐播放器。希望它不仅能播放音乐，也能在歌词展示、桌面交互、本地管理和视觉体验上保持顺手、克制且可靠。",
+    "sparkles_future": "后续开发会继续优化核心体验、整理界面细节、完善桌面端能力，让每次更新都带来可感知的改进。",
+    "sparkles_feedback": "欢迎在 GitHub 查看进展、反馈问题或提出想法。",
+    "sparkles_repo": "GitHub 仓库",
+    "sparkles_secret": "希望 BakaMusic 能逐渐成为一个值得长期使用、认真打磨的作品。"
   },
   "panel": {
     "play_list_song_num": "播放列表 ({{number}}首)",
@@ -538,6 +557,13 @@
       "telegram_group_name": "Music Club"
     }
   },
+  "fallback": {
+    "title": "出现问题了",
+    "reset": "重置配置项和播放器状态",
+    "description": "请点击上方重置按钮尝试修复；问题持续时，请将错误信息反馈至 BakaMusic GitHub 仓库。",
+    "music_info": "歌曲信息",
+    "error_info": "错误信息"
+  },
   "main": {
     "previous_music": "上一首",
     "next_music": "下一首",
@@ -546,6 +572,9 @@
     "unlock_desktop_lyric": "解锁桌面歌词",
     "lock_desktop_lyric": "锁定桌面歌词",
     "no_playing_music": "当前无正在播放的音乐"
+  },
+  "desktop_lyric": {
+    "subtitle": "桌面歌词"
   },
   "theme": {
     "tab_local": "本地主题",

@@ -12,9 +12,20 @@ async function changeLang(lang: string) {
     return data;
 }
 
+function onLanguageChanged(callback: (data: IChangeLangData) => void) {
+    const listener = (_event: Electron.IpcRendererEvent, data: IChangeLangData) => {
+        callback(data);
+    };
+    ipcRenderer.on("shared/i18n/languageChanged", listener);
+    return () => {
+        ipcRenderer.removeListener("shared/i18n/languageChanged", listener);
+    };
+}
+
 const mod = {
     setupLang,
     changeLang,
+    onLanguageChanged,
 };
 
 exposeInMainWorld("@shared/i18n", mod);

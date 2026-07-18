@@ -5,11 +5,3 @@ export function safeStringify(object: object) {
         return "";
     }
 }
-
-export function safeParse(str: string) {
-    try {
-        return JSON.parse(str);
-    } catch {
-        return null;
-    }
-}
