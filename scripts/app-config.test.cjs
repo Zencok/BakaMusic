@@ -33,6 +33,9 @@ assert.match(mainSource, /originalFs\.renameSync\(temporaryPath, this\.configPat
 assert.match(mainSource, /createResetConfigUpdate/);
 assert.match(mainSource, /catch \(error\) \{[\s\S]*?配置更新回调执行失败/);
 assert.match(mainSource, /ipcMain\.handle\("@shared\/app-config\/set-app-config"/);
+assert.match(mainSource, /lyricWritableConfigKeys/);
+assert.match(mainSource, /assertIpcSender\(event, \["main", "lyric"\]\)/);
+assert.match(mainSource, /senderRole === "lyric"/);
 assert.match(mainSource, /@shared\/app-config\/migrate-local-watch-dirs/);
 assert.match(mainSource, /grantPathAccess\(directory, true\)/);
 

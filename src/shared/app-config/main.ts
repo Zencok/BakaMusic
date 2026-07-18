@@ -85,6 +85,10 @@ const rendererWritableConfigKeys = new Set<keyof IAppConfig>([
     "private.minimode",
 ]);
 
+const lyricWritableConfigKeys = new Set<keyof IAppConfig>([
+    "lyric.lockLyric",
+]);
+
 const booleanConfigKeys = new Set<keyof IAppConfig>([
     "normal.checkUpdate",
     "normal.autoLoadMore",
@@ -333,12 +337,17 @@ class AppConfig {
         });
 
         ipcMain.handle("@shared/app-config/set-app-config", (event, data: IAppConfig) => {
-            assertIpcSender(event, ["main"]);
+            const senderRole = assertIpcSender(event, ["main", "lyric"]);
             /**
              * data: {key: value}
              */
             try {
-                this.validateRendererUpdate(data);
+                this.validateRendererUpdate(
+                    data,
+                    senderRole === "lyric"
+                        ? lyricWritableConfigKeys
+                        : rendererWritableConfigKeys,
+                );
             } catch {
                 return false;
             }
@@ -399,11 +408,14 @@ class AppConfig {
         this.onAppConfigUpdatedCallbacks.delete(callback);
     }
 
-    private validateRendererUpdate(data: IAppConfig) {
+    private validateRendererUpdate(
+        data: IAppConfig,
+        writableKeys: ReadonlySet<keyof IAppConfig> = rendererWritableConfigKeys,
+    ) {
         assertIpcPayload(data, 512 * 1024);
         assertPlainObject(data, "app config update");
         if (Object.keys(data).some((key) =>
-            !rendererWritableConfigKeys.has(key as keyof IAppConfig),
+            !writableKeys.has(key as keyof IAppConfig),
         )) {
             throw new Error("App config update contains an unknown key");
         }
