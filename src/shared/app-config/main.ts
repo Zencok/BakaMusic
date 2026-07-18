@@ -18,6 +18,7 @@ import {
     assertIpcSender,
     assertPathAccess,
     assertPlainObject,
+    grantPathAccess,
     isIpcSenderAllowed,
 } from "@shared/ipc-security/main";
 
@@ -331,28 +332,43 @@ class AppConfig {
             return this.config;
         });
 
-        ipcMain.on("@shared/app-config/set-app-config", (event, data: IAppConfig) => {
-            if (!isIpcSenderAllowed(event, ["main"])) {
-                return;
-            }
+        ipcMain.handle("@shared/app-config/set-app-config", (event, data: IAppConfig) => {
+            assertIpcSender(event, ["main"]);
             /**
              * data: {key: value}
              */
             try {
-                assertIpcPayload(data, 512 * 1024);
-                assertPlainObject(data, "app config update");
-                if (Object.keys(data).some((key) =>
-                    !rendererWritableConfigKeys.has(key as keyof IAppConfig),
-                )) {
-                    throw new Error("App config update contains an unknown key");
-                }
-                for (const [key, value] of Object.entries(data)) {
-                    validateRendererConfigValue(key as keyof IAppConfig, value);
-                }
+                this.validateRendererUpdate(data);
             } catch {
-                return;
+                return false;
             }
             this._setConfig(data, "renderer");
+            return true;
+        });
+
+        ipcMain.handle("@shared/app-config/migrate-local-watch-dirs", (event, value) => {
+            assertIpcSender(event, ["main"]);
+            const configured = this.getConfig("localMusic.watchDir") ?? [];
+            if (configured.length) {
+                return configured;
+            }
+            assertIpcPayload(value, 4 * 1024 * 1024);
+            if (!isStringArray(value, 128)) {
+                throw new Error("Legacy watch directories are not a valid path list");
+            }
+            const legacyDirectories = value as string[];
+            const directories = Array.from(new Set(legacyDirectories.map((directory) => {
+                const resolved = path.resolve(directory);
+                if (!originalFs.statSync(resolved).isDirectory()) {
+                    throw new Error("Legacy watch path is not a directory");
+                }
+                return originalFs.realpathSync.native(resolved);
+            })));
+            for (const directory of directories) {
+                grantPathAccess(directory, true);
+            }
+            this._setConfig({ "localMusic.watchDir": directories }, "renderer");
+            return directories;
         });
 
         ipcMain.on("@shared/app-config/reset", (event) => {
@@ -381,6 +397,19 @@ class AppConfig {
         ) => void,
     ) {
         this.onAppConfigUpdatedCallbacks.delete(callback);
+    }
+
+    private validateRendererUpdate(data: IAppConfig) {
+        assertIpcPayload(data, 512 * 1024);
+        assertPlainObject(data, "app config update");
+        if (Object.keys(data).some((key) =>
+            !rendererWritableConfigKeys.has(key as keyof IAppConfig),
+        )) {
+            throw new Error("App config update contains an unknown key");
+        }
+        for (const [key, value] of Object.entries(data)) {
+            validateRendererConfigValue(key as keyof IAppConfig, value);
+        }
     }
 
     async migrateOldVersionConfig() {

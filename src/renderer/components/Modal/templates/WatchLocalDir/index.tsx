@@ -170,7 +170,7 @@ export default function WatchLocalDir() {
                                     setUserPreferenceIDB("localWatchDir", localDirs),
                                     setUserPreferenceIDB("localWatchDirChecked", [...checkedDirs]),
                                 ]);
-                                AppConfig.setConfig({
+                                await AppConfig.setConfig({
                                     "localMusic.watchDir": [...checkedDirs],
                                 });
                                 await localMusic.clearAndRescanLocalMusic();
@@ -199,7 +199,7 @@ export default function WatchLocalDir() {
                                     setUserPreferenceIDB("localWatchDir", localDirs),
                                     setUserPreferenceIDB("localWatchDirChecked", [...checkedDirs]),
                                 ]);
-                                AppConfig.setConfig({
+                                await AppConfig.setConfig({
                                     "localMusic.watchDir": [...checkedDirs],
                                 });
                                 await localMusic.changeWatchPath(changeLogRef.current);

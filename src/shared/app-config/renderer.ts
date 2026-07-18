@@ -11,7 +11,9 @@ import { toError } from "@/common/error-util";
 interface IMod {
     syncConfig(): Promise<IAppConfig>;
 
-    setConfig(config: IAppConfig): void;
+    setConfig(config: IAppConfig): Promise<boolean>;
+
+    migrateLocalWatchDirectories(directories: string[]): Promise<string[]>;
 
     onConfigUpdate(callback: (update: IAppConfigUpdate) => void): void;
 
@@ -115,11 +117,16 @@ class AppConfig {
         return this.config[key];
     }
 
-    public setConfig(data: IAppConfig) {
+    public async setConfig(data: IAppConfig) {
         const changedPatch = createChangedConfigPatch(this.config, data);
         if (Object.keys(changedPatch).length > 0) {
-            mod.setConfig(changedPatch);
+            return await mod.setConfig(changedPatch);
         }
+        return true;
+    }
+
+    public async migrateLocalWatchDirectories(directories: string[]) {
+        return await mod.migrateLocalWatchDirectories(directories);
     }
 
     public reset() {

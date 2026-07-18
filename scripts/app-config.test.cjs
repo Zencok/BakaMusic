@@ -32,6 +32,9 @@ assert.match(mainSource, /CONFIG_WRITE_DEBOUNCE_MS/);
 assert.match(mainSource, /originalFs\.renameSync\(temporaryPath, this\.configPath\)/);
 assert.match(mainSource, /createResetConfigUpdate/);
 assert.match(mainSource, /catch \(error\) \{[\s\S]*?配置更新回调执行失败/);
+assert.match(mainSource, /ipcMain\.handle\("@shared\/app-config\/set-app-config"/);
+assert.match(mainSource, /@shared\/app-config\/migrate-local-watch-dirs/);
+assert.match(mainSource, /grantPathAccess\(directory, true\)/);
 
 const rendererSource = fs.readFileSync(path.join(
     __dirname,
@@ -39,5 +42,16 @@ const rendererSource = fs.readFileSync(path.join(
 ), "utf8");
 assert.match(rendererSource, /private setupPromise: Promise<void> \| null = null/);
 assert.match(rendererSource, /update\.replace/);
+assert.match(rendererSource, /public async setConfig/);
+
+const localMusicSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/core/local-music/index.ts",
+), "utf8");
+assert.match(localMusicSource, /await AppConfig\.migrateLocalWatchDirectories/);
+assert.match(
+    localMusicSource,
+    /filter\(\(item\) => isInSelectedDirs\(item\.\$\$localPath, selectedDirectories\)\)/,
+);
 
 console.log("app-config: all assertions passed");

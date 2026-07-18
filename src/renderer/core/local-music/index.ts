@@ -226,17 +226,17 @@ function isInSelectedDirs(filePath: string, selectedDirs: string[]) {
 }
 
 async function getSelectedDirectories() {
-    const selectedDirectories = ((await getUserPreferenceIDB("localWatchDirChecked")) ?? [])
-        .map(normalizeRendererPath);
     const configuredDirectories = (AppConfig.getConfig("localMusic.watchDir") ?? [])
         .map(normalizeRendererPath);
-    if (
-        selectedDirectories.length !== configuredDirectories.length
-        || selectedDirectories.some((value, index) => value !== configuredDirectories[index])
-    ) {
-        AppConfig.setConfig({ "localMusic.watchDir": selectedDirectories });
+    if (configuredDirectories.length) {
+        return configuredDirectories;
     }
-    return selectedDirectories;
+    const legacyDirectories = ((await getUserPreferenceIDB("localWatchDirChecked")) ?? [])
+        .map(normalizeRendererPath);
+    if (!legacyDirectories.length) {
+        return [];
+    }
+    return await AppConfig.migrateLocalWatchDirectories(legacyDirectories);
 }
 
 async function setupLocalMusic() {
@@ -264,9 +264,12 @@ async function setupLocalMusic() {
         if (setupToken !== localMusicSetupToken || !localMusicActive) {
             return;
         }
+        const knownPaths = optimized.optimizedMusicItems
+            .filter((item) => isInSelectedDirs(item.$$localPath, selectedDirectories))
+            .map((item) => item.$$localPath);
         await worker.setupWatcher(
             selectedDirectories,
-            optimized.optimizedMusicItems.map((item) => item.$$localPath),
+            knownPaths,
         );
     } catch {
         return;

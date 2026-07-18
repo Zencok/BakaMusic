@@ -8,8 +8,15 @@ async function syncConfig() {
     return await ipcRenderer.invoke("@shared/app-config/sync-app-config");
 }
 
-function setConfig(config: IAppConfig) {
-    return ipcRenderer.send("@shared/app-config/set-app-config", config);
+async function setConfig(config: IAppConfig) {
+    return await ipcRenderer.invoke("@shared/app-config/set-app-config", config) as boolean;
+}
+
+async function migrateLocalWatchDirectories(directories: string[]) {
+    return await ipcRenderer.invoke(
+        "@shared/app-config/migrate-local-watch-dirs",
+        directories,
+    ) as string[];
 }
 
 function reset() {
@@ -26,6 +33,7 @@ function onConfigUpdate(callback: (update: IAppConfigUpdate) => void) {
 const mod = {
     syncConfig,
     setConfig,
+    migrateLocalWatchDirectories,
     onConfigUpdate,
     reset,
 };
