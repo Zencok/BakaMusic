@@ -117,7 +117,11 @@
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        position: relative;
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 50%;
+        background: rgba(255, 255, 255, 0.16);
         color: rgba(255, 255, 255, 0.94);
         cursor: pointer;
         transition: transform 140ms ease, background-color 140ms ease, opacity 140ms ease;
@@ -133,12 +137,42 @@
         &[data-emphasis="true"] {
             width: 34px;
             height: 34px;
-            background: rgba(255, 255, 255, 0.16);
+            border-color: transparent;
         }
 
-        & svg {
+        & > svg:not(.desktop-lyric-page--action-progress) {
+            position: relative;
+            z-index: 1;
             width: 17px;
             height: 17px;
+        }
+
+        & .desktop-lyric-page--action-progress {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 34px;
+            height: 34px;
+            overflow: visible;
+            pointer-events: none;
+            transform: translate(-50%, -50%) rotate(-90deg);
+        }
+
+        & .desktop-lyric-page--action-progress-track,
+        & .desktop-lyric-page--action-progress-value {
+            fill: none;
+            stroke-width: 2;
+        }
+
+        & .desktop-lyric-page--action-progress-track {
+            stroke: rgba(255, 255, 255, 0.22);
+        }
+
+        & .desktop-lyric-page--action-progress-value {
+            stroke: rgba(255, 255, 255, 0.96);
+            stroke-linecap: round;
+            stroke-dasharray: 100;
+            transition: stroke-dashoffset 250ms linear;
         }
     }
 

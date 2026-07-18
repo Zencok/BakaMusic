@@ -34,6 +34,8 @@ export default function LyricWindowPage() {
     const currentMusic = useAppStatePartial("musicItem");
     const playerState = useAppStatePartial("playerState");
     const currentFullLyric = useAppStatePartial("fullLyric");
+    const progress = useAppStatePartial("progress");
+    const duration = useAppStatePartial("duration");
     const lyricClock = useAppStatePartial("lyricClock");
     const lockLyric = useAppConfig("lyric.lockLyric");
     const fontDataConfig = useAppConfig("lyric.fontData");
@@ -143,6 +145,9 @@ export default function LyricWindowPage() {
     const lyricFontFamily = fontDataConfig?.family ? String(fontDataConfig.family) : undefined;
     const lineWidthAspect = Math.max(0.86, Math.min(viewportWidth / 900, 1.22));
     const wordTimedInactiveBrightness = inactiveBrightnessConfig ?? 0.35;
+    const playbackProgress = duration && duration > 0
+        ? Math.min(1, Math.max(0, (progress ?? 0) / duration))
+        : 0;
 
     const startDrag = async (event: ReactPointerEvent<HTMLDivElement>) => {
         if (lockLyric || event.button !== 0) {
@@ -268,6 +273,7 @@ export default function LyricWindowPage() {
                         label={t(isPlaybackActive(playerState)
                             ? "media.music_state_pause"
                             : "media.music_state_play")}
+                        progress={playbackProgress}
                         onClick={() => {
                             if (currentMusic) {
                                 messageBus.sendCommand("TogglePlayerState");
@@ -373,9 +379,20 @@ interface IDesktopActionButtonProps {
     label: string;
     onClick: () => void;
     emphasis?: boolean;
+    progress?: number;
 }
 
-function DesktopActionButton({ iconName, label, onClick, emphasis }: IDesktopActionButtonProps) {
+function DesktopActionButton({
+    iconName,
+    label,
+    onClick,
+    emphasis,
+    progress,
+}: IDesktopActionButtonProps) {
+    const progressOffset = progress === undefined
+        ? undefined
+        : 100 - Math.min(1, Math.max(0, progress)) * 100;
+
     return (
         <button
             type="button"
@@ -386,6 +403,29 @@ function DesktopActionButton({ iconName, label, onClick, emphasis }: IDesktopAct
             aria-label={label}
             onClick={onClick}
         >
+            {progressOffset === undefined ? null : (
+                <svg
+                    className="desktop-lyric-page--action-progress"
+                    viewBox="0 0 34 34"
+                    aria-hidden="true"
+                    focusable="false"
+                >
+                    <circle
+                        className="desktop-lyric-page--action-progress-track"
+                        cx="17"
+                        cy="17"
+                        r="15.5"
+                    ></circle>
+                    <circle
+                        className="desktop-lyric-page--action-progress-value"
+                        cx="17"
+                        cy="17"
+                        r="15.5"
+                        pathLength="100"
+                        style={{ strokeDashoffset: progressOffset }}
+                    ></circle>
+                </svg>
+            )}
             <SvgAsset iconName={iconName}></SvgAsset>
         </button>
     );

@@ -7,6 +7,13 @@ export default async function () {
     setupKeyboardAccessibility();
     await AppConfig.setup();
     await setupI18n();
-    messageBus.subscribeAppState(["playerState", "musicItem", "fullLyric", "lyricClock"]);
+    messageBus.subscribeAppState([
+        "playerState",
+        "musicItem",
+        "fullLyric",
+        "progress",
+        "duration",
+        "lyricClock",
+    ]);
     messageBus.sendCommand("SyncAppState");
 }
