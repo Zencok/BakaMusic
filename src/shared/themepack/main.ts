@@ -22,6 +22,7 @@ import {
     assertString,
     assertUrl,
 } from "@shared/ipc-security/main";
+import { resolveLocalMediaByteRange } from "@shared/local-media/common";
 import { parseThemeCss, validateThemePackConfig } from "./contract";
 import {
     BUILTIN_DEFAULT_THEME_PATH,
@@ -37,6 +38,21 @@ const MAX_ENTRY_BYTES = 64 * 1024 * 1024;
 const MAX_ARCHIVE_ENTRIES = 2048;
 const MAX_THEME_TEXT_BYTES = 2 * 1024 * 1024;
 const REQUIRED_FILES = ["config.json", "index.css"] as const;
+
+const themeAssetContentTypes: Readonly<Record<string, string>> = {
+    ".css": "text/css",
+    ".gif": "image/gif",
+    ".html": "text/html; charset=utf-8",
+    ".jpeg": "image/jpeg",
+    ".jpg": "image/jpeg",
+    ".m4v": "video/mp4",
+    ".mp4": "video/mp4",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+    ".webm": "video/webm",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+};
 
 const themeRootsByToken = new Map<string, string>();
 let protocolSchemeRegistered = false;
@@ -409,6 +425,103 @@ function resolveRegisteredRoot(themeUrl: string) {
     return root;
 }
 
+function themeAssetHeaders(
+    assetPath: string,
+    fileSize: number,
+    modifiedAt: Date,
+    byteRange: { start: number; end: number } | null,
+) {
+    const headers = new Headers({
+        "Accept-Ranges": "bytes",
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "private, no-cache",
+        "Content-Length": String(
+            byteRange ? byteRange.end - byteRange.start + 1 : fileSize,
+        ),
+        "Content-Type": themeAssetContentTypes[path.extname(assetPath).toLowerCase()]
+            ?? "application/octet-stream",
+        "Last-Modified": modifiedAt.toUTCString(),
+    });
+    if (byteRange) {
+        headers.set(
+            "Content-Range",
+            `bytes ${byteRange.start}-${byteRange.end}/${fileSize}`,
+        );
+    }
+    return headers;
+}
+
+async function handleThemeAssetRequest(request: Request) {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+        return new Response("Method not allowed", {
+            status: 405,
+            headers: { Allow: "GET, HEAD" },
+        });
+    }
+
+    try {
+        const parsed = new URL(request.url);
+        const root = themeRootsByToken.get(parsed.hostname);
+        if (!root) {
+            return new Response("Theme pack not found", { status: 404 });
+        }
+        const relativePath = decodeURIComponent(parsed.pathname).replace(/^\/+/, "");
+        if (!relativePath) {
+            return new Response("Theme asset path rejected", { status: 403 });
+        }
+        const assetPath = resolveThemeFile(root, relativePath);
+        const fileStat = await fs.stat(assetPath);
+        if (!fileStat.isFile()) {
+            return new Response("Theme asset is not a file", { status: 404 });
+        }
+
+        let byteRange: { start: number; end: number } | null;
+        try {
+            byteRange = resolveLocalMediaByteRange(
+                request.headers.get("range"),
+                fileStat.size,
+            );
+        } catch {
+            return new Response(null, {
+                status: 416,
+                headers: {
+                    "Accept-Ranges": "bytes",
+                    "Content-Range": `bytes */${fileStat.size}`,
+                },
+            });
+        }
+
+        const headers = themeAssetHeaders(
+            assetPath,
+            fileStat.size,
+            fileStat.mtime,
+            byteRange,
+        );
+        const status = byteRange ? 206 : 200;
+        if (request.method === "HEAD") {
+            return new Response(null, { status, headers });
+        }
+
+        const upstreamHeaders = new Headers();
+        if (byteRange) {
+            upstreamHeaders.set(
+                "Range",
+                `bytes=${byteRange.start}-${byteRange.end}`,
+            );
+        }
+        const upstream = await net.fetch(pathToFileURL(assetPath).toString(), {
+            headers: upstreamHeaders,
+            signal: request.signal,
+        });
+        if (!upstream.ok) {
+            return new Response("Theme asset read failed", { status: 502 });
+        }
+        return new Response(upstream.body, { status, headers });
+    } catch {
+        return new Response("Theme asset request rejected", { status: 400 });
+    }
+}
+
 async function readThemeContents(themeUrl: string) {
     const root = resolveRegisteredRoot(themeUrl);
     const rawCss = await readBoundedText(resolveThemeFile(root, "index.css"));
@@ -447,6 +560,7 @@ export function registerThemeProtocolScheme() {
             secure: true,
             supportFetchAPI: true,
             corsEnabled: true,
+            stream: true,
         },
     }]);
 }
@@ -457,26 +571,7 @@ export async function setupThemePackMain() {
     }
     themeMainSetup = true;
     await ensureThemeRepository();
-    protocol.handle(THEME_PROTOCOL, async (request) => {
-        try {
-            const parsed = new URL(request.url);
-            const root = themeRootsByToken.get(parsed.hostname);
-            if (!root) {
-                return new Response("Theme pack not found", { status: 404 });
-            }
-            const relativePath = decodeURIComponent(parsed.pathname).replace(/^\/+/, "");
-            if (!relativePath) {
-                return new Response("Theme asset path rejected", { status: 403 });
-            }
-            const assetPath = resolveThemeFile(root, relativePath);
-            if (!(await fs.stat(assetPath)).isFile()) {
-                return new Response("Theme asset is not a file", { status: 404 });
-            }
-            return net.fetch(pathToFileURL(assetPath).toString());
-        } catch {
-            return new Response("Theme asset request rejected", { status: 400 });
-        }
-    });
+    protocol.handle(THEME_PROTOCOL, handleThemeAssetRequest);
 
     ipcMain.handle("@shared/themepack/init-current", async (event, selection) => {
         assertIpcSender(event, ["main"]);

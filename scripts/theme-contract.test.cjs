@@ -19,6 +19,11 @@ const {
     resolveMusicItemId,
 } = require("../src/renderer/core/track-player/plugin-media");
 
+const themeMainSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/shared/themepack/main.ts",
+), "utf8");
+
 assert.equal(matchesThemeSearch({}, ""), true);
 assert.equal(matchesThemeSearch({
     name: "Midnight Blue",
@@ -49,6 +54,11 @@ assert.match(localThemesSource, /matchesThemeSearch\(it, normalizedSearch\)/);
 assert.match(remoteThemesSource, /matchesThemeSearch\(\s*theme\.config,\s*normalizedSearch,/);
 
 assert.equal(THEME_SPEC_V2, "bakamusic-theme@2");
+assert.match(themeMainSource, /stream:\s*true/);
+assert.match(themeMainSource, /resolveLocalMediaByteRange/);
+assert.match(themeMainSource, /Content-Range/);
+assert.match(themeMainSource, /"\.mp4":\s*"video\/mp4"/);
+assert.match(themeMainSource, /Access-Control-Allow-Origin/);
 assert.deepEqual(CLIENT_OWNED_COMPATIBILITY_TOKENS, [
     "--theme-detail-bg",
     "--theme-detail-overlay",
