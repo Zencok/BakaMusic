@@ -98,9 +98,9 @@
             color-mix(in srgb, var(--backgroundColor) 84%, transparent),
             color-mix(in srgb, var(--backgroundColor) 68%, transparent)
         );
-    --sideBarBorder: var(--appSurfaceBorder);
+    --sideBarBorder: color-mix(in srgb, var(--textColor) 10%, transparent);
     --sideBarFilter: var(--appGlassFilter);
-    --sideBarShadow: inset -1px 0 0 color-mix(in srgb, white 10%, transparent);
+    --sideBarShadow: none;
     --sideBarItemHover: color-mix(in srgb, var(--primaryColor) 9%, transparent);
     --sideBarItemSelected:
         linear-gradient(

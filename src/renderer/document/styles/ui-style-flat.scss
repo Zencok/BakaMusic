@@ -314,10 +314,6 @@
         --sideBarAccentBar: var(--primaryColor);
         --sideBarAccentBarOpacity: 1;
 
-        &::after {
-            display: none;
-        }
-
         .side-bar-section-title {
             height: 2.15rem;
             padding: 0 0.56rem 0 0.68rem;
