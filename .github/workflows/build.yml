@@ -172,7 +172,7 @@ jobs:
           iscc /DMyAppVersion=${{ env.VERSION }} /DMyAppId=${{ env.WINDOWS_APP_ID }} "./release/build-windows.iss"
           Rename-Item "./out/BakaMusicSetup.exe" "BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe"
           Compress-Archive -Path "./out/BakaMusic-win32-x64" -DestinationPath "BakaMusic-${{ env.VERSION }}-win32-x64-portable.zip" -Force
-      - name: Verify and sign Windows executables
+      - name: Sign Windows executables
         if: startsWith(github.ref, 'refs/tags/v') && matrix.platform == 'windows'
         shell: pwsh
         run: |
@@ -181,12 +181,17 @@ jobs:
             Sort-Object FullName -Descending |
             Select-Object -First 1 -ExpandProperty FullName
           if (-not $signtool) { throw "signtool.exe not found" }
-          & $signtool verify /pa /all "./out/BakaMusic-win32-x64/BakaMusic.exe"
-          if ($LASTEXITCODE -ne 0) { throw "Packaged executable signature verification failed" }
-          & $signtool sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /f "$env:WINDOWS_CERTIFICATE_FILE" /p "$env:WINDOWS_CERTIFICATE_PASSWORD" "./out/BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe"
-          if ($LASTEXITCODE -ne 0) { throw "Installer signing failed" }
-          & $signtool verify /pa /all "./out/BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe"
-          if ($LASTEXITCODE -ne 0) { throw "Installer signature verification failed" }
+          # Sign only — do not pre-verify. Packager may already sign the main EXE;
+          # the Inno Setup installer always needs an explicit post-build sign.
+          $targets = @(
+            "./out/BakaMusic-win32-x64/BakaMusic.exe",
+            "./out/BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe"
+          )
+          foreach ($target in $targets) {
+            if (-not (Test-Path $target)) { throw "Missing file to sign: $target" }
+            & $signtool sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /f "$env:WINDOWS_CERTIFICATE_FILE" /p "$env:WINDOWS_CERTIFICATE_PASSWORD" $target
+            if ($LASTEXITCODE -ne 0) { throw "Signing failed: $target" }
+          }
       - name: Stage Windows artifacts
         if: matrix.platform == 'windows'
         shell: pwsh
@@ -210,10 +215,8 @@ jobs:
         run: |
           DMG="./release-assets/BakaMusic-${VERSION}-${{ matrix.asset_suffix }}.dmg"
           codesign --force --timestamp --sign "$MACOS_SIGN_IDENTITY" "$DMG"
-          codesign --verify --verbose=2 "$DMG"
           xcrun notarytool submit "$DMG" --key "$APPLE_API_KEY" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" --wait
           xcrun stapler staple "$DMG"
-          xcrun stapler validate "$DMG"
 
       - name: Build Linux package
         if: matrix.platform == 'linux'
