@@ -5,8 +5,7 @@ import Loading from "@/renderer/components/Loading";
 import { isBasicType } from "@/common/normalize-util";
 import useVirtualList from "@/hooks/useVirtualList";
 import { rem } from "@/common/constant";
-import { CSSProperties, ReactNode, RefObject, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { ReactNode, useLayoutEffect, useRef } from "react";
 import SvgAsset from "@/renderer/components/SvgAsset";
 import { Tooltip } from "react-tooltip";
 import { IAppConfig } from "@/types/app-config";
@@ -26,7 +25,6 @@ interface ListBoxSettingItemProps<T extends keyof IAppConfig> {
 export default function ListBoxSettingItem<T extends keyof IAppConfig>(
     props: ListBoxSettingItemProps<T>,
 ) {
-
     const {
         keyPath,
         label,
@@ -38,7 +36,6 @@ export default function ListBoxSettingItem<T extends keyof IAppConfig>(
     } = props;
 
     const value = useAppConfig(keyPath);
-    const buttonRef = useRef<HTMLButtonElement>(null);
 
     return (
         <div className="setting-view--list-box-setting-item-container setting-row">
@@ -47,146 +44,68 @@ export default function ListBoxSettingItem<T extends keyof IAppConfig>(
             </IfTruthy>
             <Listbox
                 value={value}
-                onChange={
-                    (newVal) => {
-                        const event = new Event("ConfigChanged", {
-                            cancelable: true,
-                        });
-                        if (onChange) {
-                            onChange(event, newVal);
-                        }
-                        if (!event.defaultPrevented) {
-                            AppConfig.setConfig({
-                                [keyPath]: newVal,
-                            });
-                        }
+                onChange={(newVal) => {
+                    const event = new Event("ConfigChanged", {
+                        cancelable: true,
+                    });
+                    if (onChange) {
+                        onChange(event, newVal);
                     }
-                }
+                    if (!event.defaultPrevented) {
+                        AppConfig.setConfig({
+                            [keyPath]: newVal,
+                        });
+                    }
+                }}
             >
-                {({ open }) => (
-                    <>
-                        <div className={"label-container"}>
-                            {label}
-                            <IfTruthy condition={toolTip}>
-                                <div
-                                    className="question-mark-container"
-                                    data-tooltip-id={`tt-${keyPath}`}
-                                    data-tooltip-content={toolTip}
-                                >
-                                    <SvgAsset iconName="question-mark-circle"></SvgAsset>
-                                </div>
-                            </IfTruthy>
+                <div className={"label-container"}>
+                    {label}
+                    <IfTruthy condition={toolTip}>
+                        <div
+                            className="question-mark-container"
+                            data-tooltip-id={`tt-${keyPath}`}
+                            data-tooltip-content={toolTip}
+                        >
+                            <SvgAsset iconName="question-mark-circle"></SvgAsset>
                         </div>
-                        <div className="options-container">
-                            <Listbox.Button
-                                ref={buttonRef}
-                                as="div"
-                                className={"listbox-button"}
-                                style={{ width }}
-                            >
-                                <span>
-                                    {renderItem
-                                        ? renderItem(value)
-                                        : isBasicType(value)
-                                            ? (value as string)
-                                            : ""}
-                                </span>
-                            </Listbox.Button>
-                            <IfTruthy condition={open}>
-                                <ListBoxOptions
-                                    buttonRef={buttonRef}
-                                    width={width}
-                                    options={options}
-                                    renderItem={renderItem}
-                                ></ListBoxOptions>
-                            </IfTruthy>
-                        </div>
-                    </>
-                )}
+                    </IfTruthy>
+                </div>
+                <div className="options-container">
+                    <Listbox.Button
+                        as="div"
+                        className={"listbox-button"}
+                        style={{ width }}
+                    >
+                        <span>
+                            {renderItem
+                                ? renderItem(value)
+                                : isBasicType(value)
+                                    ? (value as string)
+                                    : ""}
+                        </span>
+                    </Listbox.Button>
+                    <ListBoxOptions
+                        width={width}
+                        options={options}
+                        renderItem={renderItem}
+                    ></ListBoxOptions>
+                </div>
             </Listbox>
         </div>
     );
 }
 
 interface IListBoxOptionsProps<T extends keyof IAppConfig> {
-    buttonRef: RefObject<HTMLElement | null>;
     options: Array<IAppConfig[T]> | null;
     renderItem?: (item: IAppConfig[T]) => ReactNode;
     width?: number | string;
 }
 
-interface IListBoxPanelPosition {
-    top: number;
-    left: number;
-    /** absolute within portal root; fixed only when portaled to body */
-    position: "absolute" | "fixed";
-}
-
-const LISTBOX_PANEL_MAX_HEIGHT = 280;
-const LISTBOX_PANEL_GAP = 8;
-const LISTBOX_PANEL_MARGIN = 8;
-
-/**
- * Anchor the panel to the trigger button.
- * Prefer coordinates relative to the portal root so we stay correct even when
- * an ancestor creates a fixed containing block (transform / filter / backdrop-filter).
- */
-function computeListBoxPanelPosition(
-    button: HTMLElement,
-    portalRoot: HTMLElement,
-): IListBoxPanelPosition {
-    const rect = button.getBoundingClientRect();
-    const useAbsolute = portalRoot !== document.body
-        && getComputedStyle(portalRoot).position !== "static";
-    const rootRect = useAbsolute
-        ? portalRoot.getBoundingClientRect()
-        : { top: 0, left: 0, width: window.innerWidth, height: window.innerHeight };
-    const viewportBottomLimit = window.innerHeight - LISTBOX_PANEL_MARGIN;
-    const viewportTopLimit = LISTBOX_PANEL_MARGIN;
-
-    // Prefer opening below the trigger; flip above when there is not enough room.
-    let viewportTop = rect.bottom + LISTBOX_PANEL_GAP;
-    if (viewportTop + LISTBOX_PANEL_MAX_HEIGHT > viewportBottomLimit) {
-        const flippedTop = rect.top - LISTBOX_PANEL_MAX_HEIGHT - LISTBOX_PANEL_GAP;
-        viewportTop = flippedTop >= viewportTopLimit
-            ? flippedTop
-            : Math.max(
-                viewportTopLimit,
-                window.innerHeight - LISTBOX_PANEL_MAX_HEIGHT - LISTBOX_PANEL_MARGIN,
-            );
-    }
-
-    let viewportLeft = rect.left;
-    const panelWidth = Math.max(rect.width, 160);
-    if (viewportLeft + panelWidth > window.innerWidth - LISTBOX_PANEL_MARGIN) {
-        viewportLeft = Math.max(
-            LISTBOX_PANEL_MARGIN,
-            window.innerWidth - panelWidth - LISTBOX_PANEL_MARGIN,
-        );
-    }
-
-    if (useAbsolute) {
-        return {
-            position: "absolute",
-            top: viewportTop - rootRect.top + portalRoot.scrollTop,
-            left: viewportLeft - rootRect.left + portalRoot.scrollLeft,
-        };
-    }
-
-    return {
-        position: "fixed",
-        top: viewportTop,
-        left: viewportLeft,
-    };
-}
-
 function ListBoxOptions<T extends keyof IAppConfig>(
     props: IListBoxOptionsProps<T>,
 ) {
-    const { buttonRef, options, renderItem, width } = props;
+    const { options, renderItem, width } = props;
     const containerRef = useRef<HTMLDivElement>(null);
-    const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-    const [panelPosition, setPanelPosition] = useState<IListBoxPanelPosition | null>(null);
 
     const virtualController = useVirtualList({
         data: options ?? [],
@@ -198,60 +117,26 @@ function ListBoxOptions<T extends keyof IAppConfig>(
     const { setScrollElement } = virtualController;
 
     useLayoutEffect(() => {
-        const button = buttonRef.current;
-        // Keep CSS variables from the settings shell; fall back to body.
-        const target = (button?.closest(".setting-view--container") as HTMLElement | null)
-            ?? document.body;
-        setPortalTarget(target);
-
-        const updatePosition = () => {
-            const anchor = buttonRef.current;
-            if (!anchor?.isConnected || !target.isConnected) {
-                return;
-            }
-            setPanelPosition(computeListBoxPanelPosition(anchor, target));
-        };
-
-        updatePosition();
-        window.addEventListener("scroll", updatePosition, true);
-        window.addEventListener("resize", updatePosition);
-        return () => {
-            window.removeEventListener("scroll", updatePosition, true);
-            window.removeEventListener("resize", updatePosition);
-        };
-    }, [buttonRef]);
-
-    useLayoutEffect(() => {
-        if (!portalTarget) {
-            return;
-        }
-
         setScrollElement(containerRef.current);
         return () => {
             setScrollElement(null);
         };
-    }, [portalTarget, setScrollElement]);
+    }, [setScrollElement, options]);
 
-    if (!portalTarget) {
-        return null;
-    }
-
-    const panelStyle: CSSProperties = panelPosition
-        ? {
-            width,
-            top: panelPosition.top,
-            left: panelPosition.left,
-            position: panelPosition.position,
-        }
-        : { width, visibility: "hidden" };
-
-    return createPortal(
+    // Headless UI v2: anchor + portal positions against the trigger with Floating UI.
+    // Avoid manual getBoundingClientRect/portal math — it drifts when ancestors create
+    // fixed containing blocks (filter / backdrop-filter / transform).
+    return (
         <Listbox.Options
             ref={containerRef}
-            as={"div"}
-            static
-            className={"setting-listbox-options shadow backdrop-color"}
-            style={panelStyle}
+            as="div"
+            anchor={{
+                to: "bottom start",
+                gap: 8,
+                padding: 8,
+            }}
+            className="setting-listbox-options shadow backdrop-color"
+            style={{ width: width ?? 240 }}
         >
             <Condition condition={options !== null} falsy={<Loading></Loading>}>
                 <div
@@ -283,7 +168,6 @@ function ListBoxOptions<T extends keyof IAppConfig>(
                     ))}
                 </div>
             </Condition>
-        </Listbox.Options>,
-        portalTarget,
+        </Listbox.Options>
     );
 }

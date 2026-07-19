@@ -4,20 +4,34 @@
   overflow: hidden;
   position: relative;
   color: var(--settingTextPrimary);
+  /* Shared surface hierarchy (flat model): light page canvas → elevated cards → muted groups */
   --settingTextPrimary: var(--theme-text);
   --settingTextSecondary: var(--theme-text-secondary);
   --settingTextMuted: var(--theme-text-muted);
-  --settingPanelSurface: var(--theme-panel-bg);
-  --settingSidebarSurface: var(--theme-sidebar-bg);
+  --settingPageBg: transparent;
+  --settingSidebarSurface: transparent;
+  /* Solid elevated card (not full-page glass gray) so page canvas stays light. */
+  --settingPanelSurface: color-mix(in srgb, var(--backgroundColor) 96%, var(--textColor) 2.8%);
+  --settingGroupSurface: color-mix(in srgb, var(--textColor) 3.5%, var(--backgroundColor));
   --settingRowSurface: var(--theme-panel-row-bg);
   --settingRowSurfaceHover: var(--theme-panel-row-hover-bg);
-  --settingControlSurface: var(--theme-input-bg);
-  --settingControlSurfaceHover: var(--theme-input-bg-hover);
+  --settingControlSurface: color-mix(in srgb, var(--backgroundColor) 98%, var(--textColor) 1.2%);
+  --settingControlSurfaceHover: color-mix(in srgb, var(--textColor) 5%, var(--backgroundColor));
   --settingControlBorder: var(--theme-input-border);
   --settingControlBorderActive: var(--theme-input-border-active);
   --settingControlInset: none;
-  --settingGroupSurface: color-mix(in srgb, var(--theme-panel-bg) 78%, transparent);
   --settingAccentSoft: color-mix(in srgb, var(--primaryColor) 14%, transparent);
+  /* Radius tokens — flat mode remaps these to square WinUI radii */
+  --settingCardRadius: 14px;
+  --settingGroupRadius: 12px;
+  --settingNavRadius: 10px;
+  --settingIconRadius: 12px;
+  --settingControlRadius: 8px;
+  --settingChipRadius: 6px;
+  --settingCheckRadius: 5px;
+  --settingToggleRadius: 999px;
+  --settingToggleThumbRadius: 50%;
+  background: var(--settingPageBg);
 
   & .setting-view--shell {
     width: 100%;
@@ -26,6 +40,7 @@
     grid-template-columns: clamp(188px, 16vw, 220px) minmax(0, 1fr);
     min-width: 0;
     overflow: hidden;
+    background: transparent;
   }
 
   & .setting-view--sidebar {
@@ -33,8 +48,8 @@
     padding: 1.05rem 0.72rem 1rem;
     border-right: 1px solid var(--appSurfaceBorder);
     background: var(--settingSidebarSurface);
-    backdrop-filter: var(--appGlassFilter);
-    box-shadow: inset -1px 0 0 color-mix(in srgb, white 10%, transparent);
+    backdrop-filter: none;
+    box-shadow: none;
     box-sizing: border-box;
     overflow: hidden;
     display: flex;
@@ -101,7 +116,7 @@
     column-gap: 0.54rem;
     padding: 0 0.58rem;
     border: 1px solid transparent;
-    border-radius: 10px;
+    border-radius: var(--settingNavRadius);
     color: var(--settingTextSecondary);
     background: transparent;
     cursor: pointer;
@@ -157,6 +172,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     scroll-padding-top: 1.25rem;
+    background: transparent;
   }
 
   & .setting-view--content {
@@ -168,16 +184,18 @@
     display: flex;
     flex-direction: column;
     gap: 1.15rem;
+    background: transparent;
   }
 
   & .setting-view--body-item-container {
     width: 100%;
     margin: 0;
     border: 1px solid var(--appSurfaceBorder);
-    border-radius: 14px;
+    border-radius: var(--settingCardRadius);
+    /* Elevated gray-ish card on the light page canvas (flat hierarchy). */
     background: var(--settingPanelSurface);
     box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
-    backdrop-filter: var(--appGlassFilter);
+    backdrop-filter: none;
     box-sizing: border-box;
     overflow: hidden;
     scroll-margin-top: 1.1rem;
@@ -199,7 +217,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 12px;
+    border-radius: var(--settingIconRadius);
     color: color-mix(in srgb, var(--primaryColor) 78%, var(--settingTextPrimary));
     background: var(--settingAccentSoft);
     border: 1px solid color-mix(in srgb, var(--primaryColor) 18%, transparent);
@@ -241,10 +259,10 @@
     gap: 0.85rem;
   }
 
-  /* —— SettingGroup —— */
+  /* —— SettingGroup (nested muted surface inside the section card) —— */
   & .setting-group {
-    border: 1px solid color-mix(in srgb, var(--textColor) 9%, transparent);
-    border-radius: 12px;
+    border: 1px solid var(--appSurfaceBorder);
+    border-radius: var(--settingGroupRadius);
     background: var(--settingGroupSurface);
     overflow: hidden;
   }
@@ -315,7 +333,7 @@
       max-width: 100%;
       padding: 0.42rem 0.78rem;
       border: 1px solid var(--settingControlBorder);
-      border-radius: 8px;
+      border-radius: var(--settingControlRadius);
       color: var(--settingTextPrimary);
       background: var(--settingControlSurface);
       box-shadow: var(--settingControlInset);
@@ -348,7 +366,7 @@
         margin-right: 0.52rem;
         position: relative;
         border: 1px solid currentColor;
-        border-radius: 5px;
+        border-radius: var(--settingCheckRadius);
         background: color-mix(in srgb, var(--backgroundColor) 84%, transparent);
         box-shadow: var(--settingControlInset);
 
@@ -366,7 +384,7 @@
     & > div[role="button"][data-type="primaryButton"] {
       min-height: 2.25rem;
       padding: 0.52rem 0.85rem;
-      border-radius: 8px;
+      border-radius: var(--settingControlRadius);
       font-weight: 620;
       box-sizing: border-box;
     }
@@ -407,7 +425,7 @@
     align-items: center;
     padding: 0.18rem;
     border: 1px solid var(--settingControlBorder);
-    border-radius: 999px;
+    border-radius: var(--settingToggleRadius);
     color: var(--settingTextMuted);
     background: color-mix(in srgb, var(--textColor) 8%, transparent);
     box-shadow: var(--settingControlInset);
@@ -434,7 +452,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
+    border-radius: var(--settingToggleThumbRadius);
     background: color-mix(in srgb, var(--backgroundColor) 96%, white 4%);
     box-shadow: 0 2px 5px rgba(15, 23, 42, 0.18);
     transition: transform 160ms ease;

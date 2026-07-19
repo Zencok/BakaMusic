@@ -12,7 +12,7 @@
     white-space: nowrap;
     min-height: 2.35rem;
     padding: 0.5rem 0.78rem;
-    border-radius: var(--controlRadius, 8px);
+    border-radius: var(--settingControlRadius, var(--controlRadius, 8px));
     color: var(--settingTextPrimary);
     background: var(--settingControlSurface);
     border: 1px solid var(--settingControlBorder);

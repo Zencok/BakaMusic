@@ -18,7 +18,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       padding: 0.62rem 0.82rem;
-      border-radius: 8px;
+      border-radius: var(--settingControlRadius, var(--controlRadius, 8px));
       background: var(--settingControlSurface);
       border: 1px solid var(--settingControlBorder);
       box-shadow: var(--settingControlInset);

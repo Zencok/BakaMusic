@@ -40,11 +40,11 @@
       align-items: center;
       box-sizing: border-box;
       padding: 0 2.5rem 0 14px;
-      border-radius: 8px;
-      color: var(--settingTextPrimary);
-      background: var(--settingControlSurface);
-      border: 1px solid var(--settingControlBorder);
-      box-shadow: var(--settingControlInset);
+      border-radius: var(--settingControlRadius, var(--controlRadius, 8px));
+      color: var(--settingTextPrimary, var(--textColor));
+      background: var(--settingControlSurface, var(--theme-input-bg, var(--backgroundColor)));
+      border: 1px solid var(--settingControlBorder, var(--theme-input-border, color-mix(in srgb, var(--textColor) 16%, transparent)));
+      box-shadow: var(--settingControlInset, none);
       transition:
         transform 160ms ease,
         border-color 160ms ease,
@@ -52,8 +52,8 @@
 
       &:hover {
         transform: translateY(-1px);
-        border-color: var(--settingControlBorderActive);
-        background: var(--settingControlSurfaceHover);
+        border-color: var(--settingControlBorderActive, var(--theme-input-border-active, color-mix(in srgb, var(--primaryColor) 40%, transparent)));
+        background: var(--settingControlSurfaceHover, var(--theme-input-bg-hover, color-mix(in srgb, var(--textColor) 8%, var(--backgroundColor))));
       }
 
       & span {
@@ -69,32 +69,30 @@
         width: 0;
         height: 0;
         border: 5px solid transparent;
-        border-left-color: var(--settingTextSecondary);
+        border-left-color: var(--settingTextSecondary, color-mix(in srgb, var(--textColor) 72%, transparent));
         transform-origin: left center;
         transform: rotate(90deg);
       }
     }
-
   }
 }
 
+/* Portaled by Headless UI; keep styles self-contained with theme fallbacks. */
 .setting-listbox-options {
-  /* position is set inline (absolute within settings shell, or fixed on body) */
-  position: absolute;
-  z-index: 1000;
+  z-index: 10000;
   width: 240px;
-  max-height: 280px;
+  max-height: min(280px, var(--anchor-max-height, 280px));
   padding: 0.45rem;
-  margin-block-start: 0;
+  margin: 0;
   overflow-x: hidden;
   overflow-y: auto;
   list-style: none;
-  color: var(--settingTextPrimary);
-  border: 1px solid var(--settingControlBorder);
-  border-radius: 8px;
-  background: var(--settingPanelSurface);
+  color: var(--settingTextPrimary, var(--textColor));
+  border: 1px solid var(--settingControlBorder, var(--theme-input-border, color-mix(in srgb, var(--textColor) 16%, transparent)));
+  border-radius: var(--settingControlRadius, var(--controlRadius, 8px));
+  background: var(--settingPanelSurface, var(--theme-panel-bg, var(--backgroundColor)));
   box-shadow: 0 22px 40px rgba(15, 23, 42, 0.14);
-  backdrop-filter: var(--appGlassFilter);
+  backdrop-filter: var(--appGlassFilter, none);
   box-sizing: border-box;
 
   & .listbox-option {
@@ -105,11 +103,14 @@
     padding: 0 12px;
     vertical-align: middle;
     box-sizing: border-box;
-    border-radius: 6px;
+    border-radius: var(--settingChipRadius, var(--appRadiusSm, 6px));
+    cursor: pointer;
 
-    &[data-headlessui-state*="active"] {
-      color: color-mix(in srgb, var(--primaryColor) 72%, var(--settingTextPrimary));
-      background: var(--settingControlSurfaceHover);
+    &[data-headlessui-state*="active"],
+    &[data-focus],
+    &:hover {
+      color: color-mix(in srgb, var(--primaryColor) 72%, var(--textColor));
+      background: var(--settingControlSurfaceHover, var(--theme-input-bg-hover, color-mix(in srgb, var(--textColor) 8%, var(--backgroundColor))));
     }
 
     & div {

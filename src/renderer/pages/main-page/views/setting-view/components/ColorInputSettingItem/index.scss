@@ -28,7 +28,7 @@
   width: 2.55rem;
   height: 2.55rem;
   padding: 0;
-  border-radius: 8px;
+  border-radius: var(--settingControlRadius, var(--controlRadius, 8px));
   border: 1px solid var(--settingControlBorderActive);
   cursor: pointer;
   box-shadow:
@@ -37,15 +37,15 @@
 }
 
 .setting-color-input-panel {
-  /* position set inline: absolute within settings shell (or fixed on body) */
-  position: absolute;
-  z-index: 1000;
+  /* Headless UI anchor places this; keep theme fallbacks for portal on body. */
+  z-index: 10000;
   width: 256px;
   padding: 0.9rem;
-  border-radius: 8px;
-  border: 1px solid var(--settingControlBorder);
-  background: var(--settingPanelSurface);
-  box-shadow: var(--appSurfaceShadow), var(--appSurfaceInset);
+  border-radius: var(--settingControlRadius, var(--controlRadius, 8px));
+  border: 1px solid var(--settingControlBorder, var(--theme-input-border, color-mix(in srgb, var(--textColor) 16%, transparent)));
+  background: var(--settingPanelSurface, var(--theme-panel-bg, var(--backgroundColor)));
+  color: var(--settingTextPrimary, var(--textColor));
+  box-shadow: var(--appSurfaceShadow, 0 22px 40px rgba(15, 23, 42, 0.14)), var(--appSurfaceInset, none);
   box-sizing: border-box;
 
   & .react-colorful {
@@ -53,13 +53,13 @@
   }
 
   & .react-colorful__saturation {
-    border-radius: 8px 8px 4px 4px;
+    border-radius: var(--settingControlRadius, 8px) var(--settingControlRadius, 8px) var(--settingChipRadius, 4px) var(--settingChipRadius, 4px);
   }
 
   & .react-colorful__hue,
   & .react-colorful__alpha {
     height: 16px;
-    border-radius: var(--appRadiusPill, 999px);
+    border-radius: var(--settingToggleRadius, var(--appRadiusPill, 999px));
   }
 
   & .react-colorful__pointer {
@@ -78,7 +78,7 @@
 .setting-color-input-format {
   flex: 1;
   height: 2rem;
-  border-radius: 8px;
+  border-radius: var(--settingControlRadius, var(--controlRadius, 8px));
   border: 1px solid var(--settingControlBorder);
   background: var(--settingControlSurface);
   color: var(--settingTextSecondary);
@@ -96,7 +96,7 @@
   height: 2.45rem;
   margin-top: 0.75rem;
   padding: 0 0.8rem;
-  border-radius: 8px;
+  border-radius: var(--settingControlRadius, var(--controlRadius, 8px));
   border: 1px solid var(--settingControlBorder);
   color: var(--settingTextPrimary);
   background: var(--settingControlSurface);
@@ -123,7 +123,7 @@
   & button {
     height: 2.15rem;
     padding: 0 0.9rem;
-    border-radius: 8px;
+    border-radius: var(--settingControlRadius, var(--controlRadius, 8px));
     border: 1px solid var(--settingControlBorder);
     color: var(--settingTextPrimary);
     background: var(--settingControlSurface);

@@ -1033,29 +1033,28 @@
 }
 
 // ---------------------------------------------------------------------------
-// Settings
+// Settings — unify square radii via container tokens
 // ---------------------------------------------------------------------------
 [data-ui-style="flat"] {
     .setting-view--container {
-        --settingPanelSurface: var(--theme-panel-bg);
-        --settingSidebarSurface: var(--theme-sidebar-bg);
-        --settingRowSurface: var(--theme-panel-row-bg);
-        --settingRowSurfaceHover: var(--theme-panel-row-hover-bg);
-        --settingControlSurface: var(--theme-input-bg);
-        --settingControlSurfaceHover: var(--theme-input-bg-hover);
-        --settingControlBorder: var(--theme-input-border);
-        --settingControlBorderActive: var(--theme-input-border-active);
+        /* Surfaces already match the shared hierarchy in setting-view SCSS
+           (light page canvas → elevated cards → muted groups). Only geometry
+           and chrome differ for flat. */
         --settingControlInset: none;
 
-        .setting-view--sidebar {
-            backdrop-filter: none;
-            box-shadow: none;
-            background: transparent;
-            border-right: 1px solid var(--appSurfaceBorder);
-        }
+        /* Flat WinUI: mild square corners, one scale for all shells/controls */
+        --settingCardRadius: var(--cardRadius);
+        --settingGroupRadius: var(--appRadiusMd);
+        --settingNavRadius: var(--controlRadius);
+        --settingIconRadius: var(--controlRadius);
+        --settingControlRadius: var(--controlRadius);
+        --settingChipRadius: var(--appRadiusXs);
+        --settingCheckRadius: var(--appRadiusXs);
+        --settingToggleRadius: var(--controlRadiusLg);
+        --settingToggleThumbRadius: var(--controlRadius);
 
         .setting-view--nav-item {
-            border-radius: 10px;
+            border-radius: var(--settingNavRadius);
 
             &[data-selected="true"],
             &.active,
@@ -1063,14 +1062,63 @@
                 color: var(--appTextPrimary) !important;
                 background: color-mix(in srgb, var(--textColor) 8%, transparent) !important;
                 border-color: transparent !important;
+                box-shadow: none !important;
             }
         }
 
         .setting-view--body-item-container {
-            border-radius: 12px;
             box-shadow: none;
-            backdrop-filter: none;
-            background: var(--appSurfaceStrong);
+        }
+
+        .setting-toggle-thumb {
+            box-shadow: none;
+        }
+
+        .option-item-container,
+        .listbox-button,
+        .path-container,
+        .backup-action-button,
+        .about-link-chip,
+        .short-cut-item--input,
+        .setting-view--input-setting-item-container input,
+        .setting-color-input-swatch,
+        .setting-color-input-format,
+        .setting-color-input-value,
+        .setting-color-input-actions button {
+            border-radius: var(--settingControlRadius) !important;
+        }
+
+        .setting-toggle-control {
+            border-radius: var(--settingToggleRadius) !important;
+        }
+
+        .setting-toggle-thumb {
+            border-radius: var(--settingToggleThumbRadius) !important;
+        }
+    }
+
+    /* Portaled listbox/color panels live under body — force flat radii globally */
+    .setting-listbox-options {
+        border-radius: var(--controlRadius) !important;
+        backdrop-filter: none !important;
+        box-shadow: var(--appSurfaceShadowSoft) !important;
+
+        .listbox-option {
+            border-radius: var(--appRadiusXs) !important;
+        }
+    }
+
+    .setting-color-input-panel {
+        border-radius: var(--controlRadius) !important;
+        box-shadow: var(--appSurfaceShadowSoft) !important;
+
+        .react-colorful__saturation {
+            border-radius: var(--controlRadius) var(--controlRadius) var(--appRadiusXs) var(--appRadiusXs) !important;
+        }
+
+        .react-colorful__hue,
+        .react-colorful__alpha {
+            border-radius: var(--controlRadius) !important;
         }
     }
 
@@ -1096,7 +1144,7 @@
         flex-direction: column;
         gap: 10px;
         padding: 12px;
-        border-radius: 14px;
+        border-radius: var(--cardRadius);
         border: 1.5px solid color-mix(in srgb, var(--textColor) 10%, transparent);
         background: color-mix(in srgb, var(--backgroundColor) 96%, white);
         cursor: pointer;
@@ -1121,7 +1169,7 @@
     .setting-view--ui-style-preview {
         position: relative;
         height: 88px;
-        border-radius: 10px;
+        border-radius: var(--controlRadius);
         overflow: hidden;
         border: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
     }

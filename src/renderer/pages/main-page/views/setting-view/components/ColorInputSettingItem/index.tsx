@@ -1,7 +1,6 @@
 import { Popover } from "@headlessui/react";
 import "./index.scss";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { HexColorPicker } from "react-colorful";
 import useAppConfig from "@/hooks/useAppConfig";
 import { IAppConfig } from "@/types/app-config";
@@ -262,13 +261,10 @@ function normalizeColor(value: string) {
 }
 
 interface IColorPanelContentProps {
-    buttonRef: React.RefObject<HTMLButtonElement | null>;
-    close: () => void;
     draftColor: string;
     format: ColorFormat;
     inputValue: string;
     errorMessage: string | null;
-    onMounted: () => void;
     onPickerPointerDown: () => void;
     onPickerChange: (color: string) => void;
     onFormatChange: (format: ColorFormat) => void;
@@ -278,21 +274,15 @@ interface IColorPanelContentProps {
 }
 
 /**
- * Color panel content. Portal into .setting-view--container (not body) so:
- * - Escape overflow/stacking from the scroll body and later cards
- * - Inherit --settingXxx CSS variables
- * Position is absolute relative to that shell (not fixed-to-viewport), so
- * transform / filter / backdrop-filter containing blocks cannot offset it.
+ * Use Headless UI v2 Popover.Panel anchor so Floating UI places the panel
+ * next to the swatch. Manual portal math was drifting under glass filters.
  */
 function ColorPanelContent(props: IColorPanelContentProps) {
     const {
-        buttonRef,
-        close,
         draftColor,
         format,
         inputValue,
         errorMessage,
-        onMounted,
         onPickerPointerDown,
         onPickerChange,
         onFormatChange,
@@ -300,92 +290,15 @@ function ColorPanelContent(props: IColorPanelContentProps) {
         onCommit,
         onCancel,
     } = props;
-    const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-    const [panelPosition, setPanelPosition] = useState<{
-        top: number;
-        left: number;
-        position: "absolute" | "fixed";
-    } | null>(null);
-    const closeRef = useRef(close);
-    closeRef.current = close;
-    const onMountedRef = useRef(onMounted);
-    onMountedRef.current = onMounted;
 
-    useLayoutEffect(() => {
-        const button = buttonRef.current;
-        const target = (button?.closest(".setting-view--container") as HTMLElement | null) ?? document.body;
-        setPortalTarget(target);
-
-        const computePosition = () => {
-            const anchor = buttonRef.current;
-            if (!anchor?.isConnected || !target.isConnected) {
-                return;
-            }
-            const rect = anchor.getBoundingClientRect();
-            const panelWidth = 256;
-            const panelHeight = 380;
-            const gap = 8;
-            const margin = 8;
-            let viewportTop = rect.bottom + gap;
-            if (viewportTop + panelHeight > window.innerHeight - margin) {
-                const flippedTop = rect.top - panelHeight - gap;
-                viewportTop = flippedTop >= margin
-                    ? flippedTop
-                    : Math.max(margin, window.innerHeight - panelHeight - margin);
-            }
-            let viewportLeft = rect.left;
-            if (viewportLeft + panelWidth > window.innerWidth - margin) {
-                viewportLeft = Math.max(margin, window.innerWidth - panelWidth - margin);
-            }
-
-            const useAbsolute = target !== document.body
-                && getComputedStyle(target).position !== "static";
-            if (useAbsolute) {
-                const rootRect = target.getBoundingClientRect();
-                setPanelPosition({
-                    position: "absolute",
-                    top: viewportTop - rootRect.top + target.scrollTop,
-                    left: viewportLeft - rootRect.left + target.scrollLeft,
-                });
-                return;
-            }
-
-            setPanelPosition({
-                position: "fixed",
-                top: viewportTop,
-                left: viewportLeft,
-            });
-        };
-
-        onMountedRef.current();
-        computePosition();
-
-        const handleViewportChange = () => {
-            closeRef.current();
-        };
-        window.addEventListener("scroll", handleViewportChange, true);
-        window.addEventListener("resize", handleViewportChange);
-        return () => {
-            window.removeEventListener("scroll", handleViewportChange, true);
-            window.removeEventListener("resize", handleViewportChange);
-        };
-    }, [buttonRef]);
-
-    if (!portalTarget) {
-        return null;
-    }
-
-    return createPortal(
+    return (
         <Popover.Panel
-            static
+            anchor={{
+                to: "bottom start",
+                gap: 8,
+                padding: 8,
+            }}
             className="setting-color-input-panel shadow backdrop-color"
-            style={panelPosition
-                ? {
-                    top: panelPosition.top,
-                    left: panelPosition.left,
-                    position: panelPosition.position,
-                }
-                : { visibility: "hidden" }}
         >
             <div
                 className="setting-color-input-picker"
@@ -442,8 +355,7 @@ function ColorPanelContent(props: IColorPanelContentProps) {
                     提交
                 </button>
             </div>
-        </Popover.Panel>,
-        portalTarget,
+        </Popover.Panel>
     );
 }
 
@@ -460,14 +372,12 @@ export default function ColorInputSettingItem<T extends keyof IAppConfig>(
     const [inputValue, setInputValue] = useState(formatColor(safeRealColor, "hex"));
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    const buttonRef = useRef<HTMLButtonElement>(null);
     // 标记 picker 拖动期间，短路外部 config 回流，避免拖动时面板跳动
     const isDraggingRef = useRef(false);
     // 记录本组件刚通过 debounced setConfig 写出的归一化值，回流命中则忽略（防抖动竞态）
     const selfUpdateRef = useRef<string | null>(null);
     // 打开面板时的已提交颜色快照，供「取消」回滚
     const originalColorRef = useRef(safeRealColor);
-
     // 拖动 picker 时实时写 config，使桌面歌词窗口即时跟随预览。
     // 必须显式 leading:false/trailing:true（项目 debounce 默认 leading:true 会丢松手最后一帧）。
     const debouncedPreview = useMemo(
@@ -593,38 +503,99 @@ export default function ColorInputSettingItem<T extends keyof IAppConfig>(
     return (
         <Popover className="setting-row setting-color-input-row">
             {({ open, close }) => (
-                <>
-                    <div className="label-container">{label}</div>
-                    <div className="setting-color-input-summary">
-                        <Popover.Button
-                            ref={buttonRef}
-                            className="setting-color-input-swatch"
-                            style={{
-                                backgroundColor: safeRealColor,
-                            }}
-                            title={safeRealColor}
-                        ></Popover.Button>
-                        <span>{safeRealColor}</span>
-                    </div>
-                    {open ? (
-                        <ColorPanelContent
-                            buttonRef={buttonRef}
-                            close={close}
-                            draftColor={draftColor}
-                            format={format}
-                            inputValue={inputValue}
-                            errorMessage={errorMessage}
-                            onMounted={handlePanelOpen}
-                            onPickerPointerDown={handlePickerPointerDown}
-                            onPickerChange={changeDraftColor}
-                            onFormatChange={setFormat}
-                            onInputChange={changeInputValue}
-                            onCommit={() => commitColor(close)}
-                            onCancel={() => cancelColor(close)}
-                        />
-                    ) : null}
-                </>
+                <ColorInputPopoverBody
+                    open={open}
+                    close={close}
+                    label={label}
+                    safeRealColor={safeRealColor}
+                    draftColor={draftColor}
+                    format={format}
+                    inputValue={inputValue}
+                    errorMessage={errorMessage}
+                    onOpen={handlePanelOpen}
+                    onPickerPointerDown={handlePickerPointerDown}
+                    onPickerChange={changeDraftColor}
+                    onFormatChange={setFormat}
+                    onInputChange={changeInputValue}
+                    onCommit={() => commitColor(close)}
+                    onCancel={() => cancelColor(close)}
+                />
             )}
         </Popover>
+    );
+}
+
+interface IColorInputPopoverBodyProps {
+    open: boolean;
+    close: () => void;
+    label?: string;
+    safeRealColor: string;
+    draftColor: string;
+    format: ColorFormat;
+    inputValue: string;
+    errorMessage: string | null;
+    onOpen: () => void;
+    onPickerPointerDown: () => void;
+    onPickerChange: (color: string) => void;
+    onFormatChange: (format: ColorFormat) => void;
+    onInputChange: (value: string) => void;
+    onCommit: () => void;
+    onCancel: () => void;
+}
+
+function ColorInputPopoverBody(props: IColorInputPopoverBodyProps) {
+    const {
+        open,
+        label,
+        safeRealColor,
+        draftColor,
+        format,
+        inputValue,
+        errorMessage,
+        onOpen,
+        onPickerPointerDown,
+        onPickerChange,
+        onFormatChange,
+        onInputChange,
+        onCommit,
+        onCancel,
+    } = props;
+    const wasOpenRef = useRef(false);
+
+    useEffect(() => {
+        if (open && !wasOpenRef.current) {
+            onOpen();
+        }
+        wasOpenRef.current = open;
+    }, [open, onOpen]);
+
+    return (
+        <>
+            <div className="label-container">{label}</div>
+            <div className="setting-color-input-summary">
+                <Popover.Button
+                    className="setting-color-input-swatch"
+                    style={{
+                        backgroundColor: safeRealColor,
+                    }}
+                    title={safeRealColor}
+                ></Popover.Button>
+                <span>{safeRealColor}</span>
+            </div>
+            {open ? (
+                <ColorPanelContent
+                    draftColor={draftColor}
+                    format={format}
+                    inputValue={inputValue}
+                    errorMessage={errorMessage}
+                    onPickerPointerDown={onPickerPointerDown}
+                    onPickerChange={onPickerChange}
+                    onFormatChange={onFormatChange}
+                    onInputChange={onInputChange}
+                    onCommit={onCommit}
+                    onCancel={onCancel}
+                />
+            ) : null}
+        </>
     );
 }

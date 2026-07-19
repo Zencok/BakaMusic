@@ -108,7 +108,7 @@
   height: 2.55rem;
   padding: 0 2.35rem 0 0.85rem;
   border: 1px solid var(--settingControlBorder);
-  border-radius: 8px;
+  border-radius: var(--settingControlRadius, var(--controlRadius, 8px));
   color: var(--settingTextPrimary);
   background: var(--settingControlSurface);
   box-shadow: var(--settingControlInset);

@@ -7,7 +7,7 @@
     min-width: 0;
     min-height: 2.55rem;
     padding: 0 0.85rem;
-    border-radius: 8px;
+    border-radius: var(--settingControlRadius, var(--controlRadius, 8px));
     border: 1px solid var(--settingControlBorder);
     background: var(--settingControlSurface);
     color: var(--settingTextPrimary);
