@@ -38,7 +38,8 @@
     "startup": {
         "failed": "BakaMusic 启动失败",
         "loading": "正在启动…",
-        "reload": "重新加载"
+        "reload": "重新加载",
+        "tagline": "为音乐留一片清澈的空间"
     },
     "media": {
         "unknown_title": "未命名",

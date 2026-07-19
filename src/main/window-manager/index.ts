@@ -1,4 +1,4 @@
-import { app, BrowserWindow, nativeImage, screen } from "electron";
+import { app, BrowserWindow, nativeImage, nativeTheme, screen } from "electron";
 import getResourcePath from "@/common/get-resource-path";
 import { IWindowEvents, IWindowManager } from "@/types/window-manager";
 import { isPlaybackActive, localPluginName, ResourceName } from "@/common/constant";
@@ -204,6 +204,7 @@ class WindowManager implements IWindowManager {
                 navigateOnDragDrop: false,
             },
             frame: false,
+            backgroundColor: nativeTheme.shouldUseDarkColors ? "#12182a" : "#f4f7ff",
             // Required for true OS fullscreen (F11 on music detail).
             fullscreenable: true,
             icon: nativeImage.createFromPath(getResourcePath(ResourceName.LOGO_IMAGE)),

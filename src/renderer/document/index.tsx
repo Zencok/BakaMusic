@@ -1,39 +1,21 @@
 import ReactDOM from "react-dom/client";
-import { useEffect, useState, type ComponentType, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 
-const STARTUP_CONTAINER_STYLE: CSSProperties = {
-    alignItems: "center",
-    background: "#18181b",
-    color: "#f4f4f5",
-    display: "flex",
-    flexDirection: "column",
-    fontFamily: "system-ui, sans-serif",
-    gap: 12,
-    height: "100vh",
-    justifyContent: "center",
-    textAlign: "center",
-    width: "100vw",
-};
-
-const RETRY_BUTTON_STYLE: CSSProperties = {
-    background: "#0a95ff",
-    border: 0,
-    borderRadius: 8,
-    color: "#fff",
-    cursor: "pointer",
-    padding: "8px 18px",
-};
+import "./startup-shell.scss";
 
 const DEFAULT_STARTUP_COPY = {
     failed: "BakaMusic failed to start",
     loading: "Starting…",
     reload: "Reload",
+    tagline: "A clear space for your music",
 };
 
 function StartupShell() {
     const [RuntimeRoot, setRuntimeRoot] = useState<ComponentType | null>(null);
     const [startupError, setStartupError] = useState<Error | null>(null);
     const [startupCopy, setStartupCopy] = useState(DEFAULT_STARTUP_COPY);
+    const [startupVisible, setStartupVisible] = useState(true);
+    const dismissTimerRef = useRef<number | null>(null);
 
     useEffect(() => {
         let active = true;
@@ -45,6 +27,7 @@ function StartupShell() {
                         failed: i18n.t("startup.failed"),
                         loading: i18n.t("startup.loading"),
                         reload: i18n.t("startup.reload"),
+                        tagline: i18n.t("startup.tagline"),
                     });
                 }
             })
@@ -60,6 +43,9 @@ function StartupShell() {
                 }
                 runtimeRootModule.markBootstrapReady();
                 setRuntimeRoot(() => runtimeRootModule.default);
+                dismissTimerRef.current = window.setTimeout(() => {
+                    setStartupVisible(false);
+                }, 220);
             })
             .catch((error: unknown) => {
                 if (active) {
@@ -71,34 +57,69 @@ function StartupShell() {
 
         return () => {
             active = false;
+            if (dismissTimerRef.current !== null) {
+                window.clearTimeout(dismissTimerRef.current);
+            }
         };
     }, []);
 
-    if (RuntimeRoot) {
-        return <RuntimeRoot></RuntimeRoot>;
-    }
-
-    if (startupError) {
-        return (
-            <div style={STARTUP_CONTAINER_STYLE} role="alert">
-                <strong>{startupCopy.failed}</strong>
-                <span>{startupError.message}</span>
-                <button
-                    type="button"
-                    style={RETRY_BUTTON_STYLE}
-                    onClick={() => window.location.reload()}
-                >
-                    {startupCopy.reload}
-                </button>
-            </div>
-        );
-    }
-
     return (
-        <div style={STARTUP_CONTAINER_STYLE} aria-busy="true" aria-live="polite">
-            <strong>BakaMusic</strong>
-            <span>{startupCopy.loading}</span>
-        </div>
+        <>
+            {RuntimeRoot ? <RuntimeRoot></RuntimeRoot> : null}
+            {startupVisible ? (
+                <div
+                    className="startup-shell"
+                    data-state={RuntimeRoot ? "leaving" : startupError ? "error" : "loading"}
+                    role={startupError ? "alert" : undefined}
+                    aria-busy={!startupError}
+                    aria-live="polite"
+                >
+                    <div className="startup-shell__glow startup-shell__glow--one"></div>
+                    <div className="startup-shell__glow startup-shell__glow--two"></div>
+                    <div className="startup-shell__content">
+                        <div className="startup-shell__brand" aria-label="BakaMusic">
+                            <div className="startup-shell__mark" aria-hidden="true">
+                                <svg viewBox="0 0 64 64" focusable="false">
+                                    <circle cx="30" cy="34" r="21" className="startup-shell__record"></circle>
+                                    <circle cx="30" cy="34" r="14" className="startup-shell__groove"></circle>
+                                    <circle cx="30" cy="34" r="5" className="startup-shell__center"></circle>
+                                    <path d="M45 10c4 8 3 15-3 21l-7 7" className="startup-shell__arm"></path>
+                                    <circle cx="45" cy="10" r="3" className="startup-shell__pivot"></circle>
+                                    <path d="m34 38 3 2-4 3Z" className="startup-shell__needle"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <span className="startup-shell__name">BakaMusic</span>
+                                <span className="startup-shell__tagline">{startupCopy.tagline}</span>
+                            </div>
+                        </div>
+
+                        {startupError ? (
+                            <div className="startup-shell__error">
+                                <strong>{startupCopy.failed}</strong>
+                                <span>{startupError.message}</span>
+                                <button type="button" onClick={() => window.location.reload()}>
+                                    {startupCopy.reload}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="startup-shell__status">
+                                <div className="startup-shell__status-line">
+                                    <span>{startupCopy.loading}</span>
+                                    <span className="startup-shell__dots" aria-hidden="true">
+                                        <i></i><i></i><i></i>
+                                    </span>
+                                </div>
+                                <div className="startup-shell__progress" aria-hidden="true">
+                                    <span></span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <span className="startup-shell__footer">LOCAL MUSIC · PLUGINS · YOUR WAY</span>
+                </div>
+            ) : null}
+        </>
     );
 }
 

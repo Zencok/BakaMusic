@@ -38,7 +38,8 @@
     "startup": {
         "failed": "BakaMusic failed to start",
         "loading": "Starting…",
-        "reload": "Reload"
+        "reload": "Reload",
+        "tagline": "A clear space for your music"
     },
     "media": {
         "unknown_title": "Untitled",

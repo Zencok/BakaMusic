@@ -10,8 +10,21 @@ const entrySource = read("src/renderer/document/index.tsx");
 assert.match(entrySource, /createRoot\(rootElement\)\.render\(<StartupShell/);
 assert.match(entrySource, /import\("\.\/bootstrap"\)/);
 assert.match(entrySource, /import\("\.\/runtime-root"\)/);
+assert.match(entrySource, /import "\.\/startup-shell\.scss"/);
 assert.match(entrySource, /window\.location\.reload\(\)/);
+assert.match(entrySource, /prefers-reduced-motion|startup-shell/, "startup shell styling must remain lightweight");
+assert.doesNotMatch(entrySource, /loadingPercent|Math\.random|setInterval/);
 assert.doesNotMatch(entrySource, /import App from/);
+
+const startupShellStyleSource = read("src/renderer/document/startup-shell.scss");
+assert.match(startupShellStyleSource, /prefers-color-scheme:\s*dark/);
+assert.match(startupShellStyleSource, /prefers-reduced-motion:\s*reduce/);
+assert.match(startupShellStyleSource, /\[data-state="leaving"\]/);
+assert.doesNotMatch(startupShellStyleSource, /#18181b/i);
+
+const rendererDocumentSource = read("src/renderer/document/index.html");
+assert.match(rendererDocumentSource, /<title>BakaMusic<\/title>/);
+assert.match(rendererDocumentSource, /prefers-color-scheme:\s*dark/);
 
 const runtimeRootSource = read("src/renderer/document/runtime-root.tsx");
 assert.match(runtimeRootSource, /import App from "\.\.\/app"/);
