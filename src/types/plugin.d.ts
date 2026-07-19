@@ -124,6 +124,10 @@ declare namespace IPlugin {
     ) => Promise<ISheetInfoResult | null>;
     /** 获取作品，有分页 */
     getArtistWorks?: IGetArtistWorksFunc;
+    /** 获取作者详情（头像/简介等） */
+    getArtistInfo?: (
+      artistItem: IArtist.IArtistItem,
+    ) => Promise<Partial<IArtist.IArtistItem> | null>;
     /** 导入歌单 */
     // todo: 数据结构应该是IMusicSheetItem
     importMusicSheet?: (urlLike: string) => Promise<IMusic.IMusicItem[] | null>;

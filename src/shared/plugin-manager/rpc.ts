@@ -6,6 +6,7 @@ export const pluginMethodNames = [
     "getAlbumInfo",
     "getMusicSheetInfo",
     "getArtistWorks",
+    "getArtistInfo",
     "importMusicSheet",
     "importMusicItem",
     "getTopLists",

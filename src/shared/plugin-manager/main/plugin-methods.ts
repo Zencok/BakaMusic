@@ -532,6 +532,29 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
         };
     }
 
+    /** 作者详情（头像 / 简介） */
+    async getArtistInfo(
+        artistItem: IArtist.IArtistItem,
+    ): Promise<Partial<IArtist.IArtistItem> | null> {
+        if (!this.plugin.instance.getArtistInfo) {
+            return null;
+        }
+        try {
+            const result = await this.plugin.instance.getArtistInfo(
+                resetMediaItem(artistItem as IMedia.IMediaBase, undefined, true) as IArtist.IArtistItem,
+            );
+            if (!result || typeof result !== "object") {
+                return null;
+            }
+            return {
+                ...result,
+                platform: result.platform || this.plugin.name,
+            };
+        } catch {
+            return null;
+        }
+    }
+
     /** 导入歌单 */
     async importMusicSheet(urlLike: string): Promise<IMusic.IMusicItem[]> {
         try {
