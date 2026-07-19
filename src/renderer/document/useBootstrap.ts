@@ -6,6 +6,7 @@ import logger from "@shared/logger/renderer";
 import AppConfig from "@shared/app-config/renderer";
 import messageBus from "@shared/message-bus/renderer/main";
 import { applyUiStyle } from "@renderer/utils/ui-style";
+import { setAppNavigate } from "@renderer/utils/app-navigate";
 import type { IAppConfig } from "@/types/app-config";
 
 export default function useBootstrap() {
@@ -14,7 +15,8 @@ export default function useBootstrap() {
     useLayoutEffect(() => {
         Themepack.setupThemePacks();
         applyUiStyle(AppConfig.getConfig("normal.uiStyle"));
-    }, []);
+        setAppNavigate(navigate);
+    }, [navigate]);
 
     useEffect(() => {
         const disposeNavigate = messageBus.onCommand("Navigate", (route) => {
