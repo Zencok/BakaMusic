@@ -39,7 +39,7 @@ const lastVolumeStore = new Store(1);
 const currentSpeedStore = new Store(1);
 
 /** 音质 */
-const currentQualityStore = new Store<IMusic.IQualityKey>("320k");
+const currentQualityStore = new Store<IMusic.IQualityKey>("flac");
 
 
 function resetProgress() {

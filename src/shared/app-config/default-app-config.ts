@@ -4,7 +4,7 @@ import { IAppConfig } from "@/types/app-config";
 const _defaultAppConfig: IAppConfig =  {
     "$schema-version": 1,
     "playMusic.whenQualityMissing": "lower",
-    "playMusic.defaultQuality": "320k",
+    "playMusic.defaultQuality": "flac",
     "playMusic.clickMusicList": "replace",
     "playMusic.caseSensitiveInSearch": false,
     "playMusic.newSheetDefaultSort": "time",
@@ -15,7 +15,7 @@ const _defaultAppConfig: IAppConfig =  {
     "normal.checkUpdate": true,
     "normal.autoLoadMore": true,
     "normal.maxHistoryLength": 30,
-    "download.defaultQuality": "320k",
+    "download.defaultQuality": "flac",
     "download.whenQualityMissing": "lower",
     "download.writeMetadata": false,
     "download.writeMetadataCover": true,
