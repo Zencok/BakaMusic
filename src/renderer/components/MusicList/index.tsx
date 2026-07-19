@@ -11,6 +11,7 @@ import { localPluginName, qualityKeys, RequestStateCode, sortIndexSymbol, timeSt
 import { toError } from "@/common/error-util";
 import { getInternalData, isSameMedia } from "@/common/media-util";
 import {
+    buildAlbumItemFromMusic,
     buildMusicAlbumCopyPayload,
     buildMusicArtistCopyPayload,
     buildMusicSongCopyPayload,
@@ -19,7 +20,11 @@ import {
     formatMusicArtistTitle,
     formatMusicSharePayload,
     formatMusicSongIdTitle,
+    getNavigableArtists,
+    type IMusicArtistEntry,
 } from "@/common/music-identity";
+import { appNavigate } from "@renderer/utils/app-navigate";
+import MusicDetail, { isMusicDetailShown } from "@/renderer/components/MusicDetail";
 import { secondsToDuration } from "@/common/time-util";
 import { CSSProperties, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import hotkeys from "hotkeys-js";
@@ -220,6 +225,137 @@ async function copyWithToast(text: string) {
     }
 }
 
+function formatArtistEntryLabel(entry: IMusicArtistEntry, unknownLabel: string): string {
+    const name = entry.name || unknownLabel;
+    const parts: string[] = [];
+    if (entry.artistId) {
+        parts.push(`id: ${entry.artistId}`);
+    }
+    if (entry.artistMid && entry.artistMid !== entry.artistId) {
+        parts.push(`mid: ${entry.artistMid}`);
+    }
+    return parts.length ? `${name} (${parts.join(", ")})` : name;
+}
+
+function navigateToArtistPage(artistItem: IArtist.IArtistItem) {
+    if (isMusicDetailShown()) {
+        MusicDetail.hide();
+    }
+    const ok = appNavigate(
+        `/main/artist/${encodeURIComponent(artistItem.platform)}/${encodeURIComponent(artistItem.id)}`,
+        { state: { artistItem } },
+    );
+    if (!ok) {
+        toast.warn(i18n.t("music_list_context_menu.open_artist_failed"));
+    }
+}
+
+function navigateToAlbumPage(albumItem: IAlbum.IAlbumItem) {
+    if (isMusicDetailShown()) {
+        MusicDetail.hide();
+    }
+    const ok = appNavigate(
+        `/main/album/${encodeURIComponent(albumItem.platform)}/${encodeURIComponent(albumItem.id)}`,
+        { state: { albumItem } },
+    );
+    if (!ok) {
+        toast.warn(i18n.t("music_list_context_menu.open_album_failed"));
+    }
+}
+
+function buildArtistContextMenuItem(musicItem: IMusic.IMusicItem): IContextMenuItem {
+    const unknownArtist = i18n.t("media.unknown_artist");
+    const title = `${i18n.t("media.media_type_artist")}: ${
+        formatMusicArtistTitle(musicItem, unknownArtist)
+    }`;
+    const local = isLocalMusic(musicItem);
+    const navigable = local ? [] : getNavigableArtists(musicItem);
+    const copyArtist = () => {
+        void copyWithToast(buildMusicArtistCopyPayload(musicItem));
+    };
+
+    // Local / no artist id → left/right both copy.
+    if (!navigable.length) {
+        return {
+            title,
+            icon: "user",
+            onClick: copyArtist,
+            onContextMenu: copyArtist,
+        };
+    }
+
+    // Multi-artist: hover submenu — L open that artist, R copy that artist;
+    // parent R copies full artist payload.
+    if (navigable.length > 1) {
+        return {
+            title,
+            icon: "user",
+            onContextMenu: copyArtist,
+            subMenu: navigable.map(({ entry, artistItem }) => ({
+                title: formatArtistEntryLabel(entry, unknownArtist),
+                icon: "user" as const,
+                onClick() {
+                    navigateToArtistPage(artistItem);
+                },
+                onContextMenu() {
+                    void copyWithToast(
+                        JSON.stringify({
+                            platform: musicItem.platform,
+                            name: entry.name || "",
+                            ...(entry.artistId ? { artistId: entry.artistId } : {}),
+                            ...(entry.artistMid && entry.artistMid !== entry.artistId
+                                ? { artistMid: entry.artistMid }
+                                : {}),
+                        }),
+                    );
+                },
+            })),
+        };
+    }
+
+    // Single artist: L open page, R copy ids.
+    return {
+        title,
+        icon: "user",
+        onClick() {
+            navigateToArtistPage(navigable[0].artistItem);
+        },
+        onContextMenu: copyArtist,
+    };
+}
+
+function buildAlbumContextMenuItem(musicItem: IMusic.IMusicItem): IContextMenuItem {
+    const title = `${i18n.t("media.media_type_album")}: ${
+        formatMusicAlbumTitle(musicItem, i18n.t("media.unknown_album"))
+    }`;
+    const albumItem = !isLocalMusic(musicItem) ? buildAlbumItemFromMusic(musicItem) : null;
+    const copyAlbum = () => {
+        void copyWithToast(buildMusicAlbumCopyPayload(musicItem));
+    };
+
+    // No navigable album → left/right both copy.
+    if (!albumItem) {
+        return {
+            title,
+            icon: "album",
+            show: !!musicItem.album,
+            onClick: copyAlbum,
+            onContextMenu: copyAlbum,
+        };
+    }
+
+    // L open album page, R copy ids.
+    return {
+        title,
+        icon: "album",
+        show: !!musicItem.album,
+        onClick() {
+            navigateToAlbumPage(albumItem);
+        },
+        onContextMenu: copyAlbum,
+    };
+}
+
 export function showMusicContextMenu(
     musicItems: IMusic.IMusicItem | IMusic.IMusicItem[],
     x: number,
@@ -238,25 +374,8 @@ export function showMusicContextMenu(
                     void copyWithToast(buildMusicSongCopyPayload(musicItem));
                 },
             },
-            {
-                title: `${i18n.t("media.media_type_artist")}: ${
-                    formatMusicArtistTitle(musicItem, i18n.t("media.unknown_artist"))
-                }`,
-                icon: "user",
-                onClick() {
-                    void copyWithToast(buildMusicArtistCopyPayload(musicItem));
-                },
-            },
-            {
-                title: `${i18n.t("media.media_type_album")}: ${
-                    formatMusicAlbumTitle(musicItem, i18n.t("media.unknown_album"))
-                }`,
-                icon: "album",
-                show: !!musicItem.album,
-                onClick() {
-                    void copyWithToast(buildMusicAlbumCopyPayload(musicItem));
-                },
-            },
+            buildArtistContextMenuItem(musicItem),
+            buildAlbumContextMenuItem(musicItem),
             {
                 title: i18n.t("music_list_context_menu.share_music"),
                 icon: "share",

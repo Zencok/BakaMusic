@@ -230,7 +230,10 @@
         "delete_local_downloaded_song_success": "已删除本地歌曲 [{{songName}}]",
         "share_music": "分享歌曲",
         "share_music_copied": "分享文案已复制到剪贴板",
-        "share_music_failed": "分享失败"
+        "share_music_failed": "分享失败",
+        "copy_artist_info": "复制作者信息",
+        "open_artist_failed": "无法打开作者页",
+        "open_album_failed": "无法打开专辑页"
     },
     "search_result_page": {
         "search_result_title": "的搜索结果",

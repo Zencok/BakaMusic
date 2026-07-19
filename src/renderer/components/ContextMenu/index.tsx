@@ -13,8 +13,10 @@ export interface IContextMenuItem {
     divider?: boolean;
     /** 是否展示 */
     show?: boolean;
-    /** 点击事件 */
+    /** 左键点击 */
     onClick?: (value?: IContextMenuItem) => void;
+    /** 右键点击（如复制 id） */
+    onContextMenu?: (value?: IContextMenuItem) => void;
     /** 子菜单 */
     subMenu?: IContextMenuItem[];
 }
@@ -126,6 +128,15 @@ function SingleColumnContextMenuComponent(props: IContextMenuData) {
                                 onClick={() => {
                                     item.onClick?.();
                                     onItemClick?.(item);
+                                }}
+                                onContextMenu={(e) => {
+                                    if (!item.onContextMenu) {
+                                        return;
+                                    }
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    item.onContextMenu(item);
+                                    hideContextMenu();
                                 }}
                                 onMouseEnter={(e) => {
                                     const subMenu = item.subMenu;

@@ -230,7 +230,10 @@
         "delete_local_downloaded_song_success": "Deleted local song [{{songName}}]",
         "share_music": "Share song",
         "share_music_copied": "Share text copied to clipboard",
-        "share_music_failed": "Failed to share"
+        "share_music_failed": "Failed to share",
+        "copy_artist_info": "Copy artist info",
+        "open_artist_failed": "Unable to open artist page",
+        "open_album_failed": "Unable to open album page"
     },
     "search_result_page": {
         "search_result_title": "Search Results for",

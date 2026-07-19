@@ -230,7 +230,10 @@
         "delete_local_downloaded_song_success": "已刪除本地歌曲 [{{songName}}]",
         "share_music": "分享歌曲",
         "share_music_copied": "分享文案已複製到剪貼簿",
-        "share_music_failed": "分享失敗"
+        "share_music_failed": "分享失敗",
+        "copy_artist_info": "複製作者資訊",
+        "open_artist_failed": "無法開啟作者頁",
+        "open_album_failed": "無法開啟專輯頁"
     },
     "search_result_page": {
         "search_result_title": "搜尋結果",
