@@ -12,13 +12,16 @@ interface IProps {
 export default function Header(props: IProps) {
     const { artistItem } = props;
     const { t } = useTranslation();
+    // Empty string must not win over fallback (?? only handles null/undefined).
+    const avatarSrc = (artistItem?.avatar ?? "").trim() || albumImg;
 
     return (
         <div className="artist-view--header-container">
             <img
+                key={`${artistItem?.platform ?? ""}:${artistItem?.id ?? ""}:${avatarSrc}`}
                 alt={artistItem?.name ?? t("media.unknown_artist")}
                 draggable={false}
-                src={artistItem?.avatar ?? albumImg}
+                src={avatarSrc}
                 onError={setFallbackAlbum}
             ></img>
             <div className="artist-info">
