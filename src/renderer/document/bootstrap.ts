@@ -288,6 +288,10 @@ function setupCommandAndEvents() {
     trackPlayer.on(PlayerEvents.LyricChanged, lyric => {
         messageBus.syncAppState({
             fullLyric: lyric?.getLyricItems?.() || [],
+            // Keep the active line in sync when full lyrics first arrive (startup
+            // restore, track change) — CurrentLyricChanged alone may not fire yet.
+            parsedLrc: trackPlayer.lyric?.currentLrc ?? null,
+            lyricText: trackPlayer.lyric?.currentLrc?.lrc ?? null,
         });
     });
 

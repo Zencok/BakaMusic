@@ -58,6 +58,16 @@ export default function Lyric() {
         });
     }, [lyricParser, showRomanization, showTranslation]);
 
+    // Music detail unmounts while closed. When reopened after startup restore,
+    // re-request only while the store is still in the initial "loading" state.
+    // `{}` means "loaded, no lyric" — do not loop-fetch in that case.
+    useEffect(() => {
+        if (!currentMusic || lyricContext !== null) {
+            return;
+        }
+        void trackPlayer.fetchCurrentLyric(true);
+    }, [currentMusic, lyricContext]);
+
     const displayFontSize = fontSize ? Math.max(24, +fontSize * 2.15) : undefined;
 
     const openSearchLyric = useCallback(() => {

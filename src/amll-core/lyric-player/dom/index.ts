@@ -190,7 +190,10 @@ export class DomLyricPlayer extends LyricPlayerBase {
 		this.setLinePosYSpringParams({});
 		this.setLineScaleSpringParams({});
 		this.setCurrentTime(initialTime, true);
-		this.calcLayout(true);
+		// Force-sync geometry so lines are show()'d while paused. Without force,
+		// springs start at off-screen positions and only advance during RAF —
+		// which does not run when playback is paused (startup restore case).
+		this.calcLayout(true, true);
 		this.update(0);
 	}
 

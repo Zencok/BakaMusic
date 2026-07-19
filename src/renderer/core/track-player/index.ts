@@ -393,8 +393,29 @@ class TrackPlayer {
             this.setRepeatMode(repeatMode as RepeatMode);
         }
 
-        this.setCurrentMusic(currentMusic);
-        this.currentIndex = this.findMusicIndex(currentMusic);
+        // Prefer the playlist item so restored tracks keep full metadata for lyric plugins.
+        const playlistIndex = this.findMusicIndex(currentMusic);
+        const restoredMusic = playlistIndex >= 0
+            ? playList[playlistIndex]
+            : currentMusic ?? null;
+        const restoredProgress =
+            typeof currentProgress === "number"
+            && Number.isFinite(currentProgress)
+            && currentProgress >= 0
+                ? currentProgress
+                : null;
+
+        // Restore last progress before lyric fetch so the active line is correct.
+        if (restoredMusic && restoredProgress !== null) {
+            progressStore.setValue({
+                currentTime: restoredProgress,
+                duration: Infinity,
+            });
+        }
+
+        // setCurrentMusic triggers lyric loading for the restored track.
+        this.setCurrentMusic(restoredMusic);
+        this.currentIndex = playlistIndex;
 
         if (deviceId) {
             this.setAudioOutputDevice(deviceId);
@@ -421,33 +442,38 @@ class TrackPlayer {
             this.setSpeed(speed);
         }
 
-        // 4. reload lyric
-        this.fetchCurrentLyric();
-
-        // 5. fetch music source
-        if (!currentMusic) {
+        // 4. fetch music source (lyrics already requested in setCurrentMusic)
+        if (!restoredMusic) {
             return;
         }
         const { generation, signal } = this.beginMediaLoad();
-        this.fetchMediaSource(currentMusic, defaultQuality ?? undefined, signal).then(({ mediaSource, quality }) => {
+        this.fetchMediaSource(restoredMusic, defaultQuality ?? undefined, signal).then(({ mediaSource, quality }) => {
             if (
                 this.isCurrentMediaLoad(generation, signal)
-                && this.isCurrentMusic(currentMusic)
+                && this.isCurrentMusic(restoredMusic)
             ) {
                 if (!this.hasPlayableMediaSource(mediaSource)) {
                     logger.logError(
                         "restore media source is empty",
                         new Error("restore media source is empty"),
-                        currentMusic,
+                        restoredMusic,
                     );
                     return;
                 }
 
-                this.setTrack(mediaSource, currentMusic, {
-                    seekTo: currentProgress ?? undefined,
+                this.setTrack(mediaSource, restoredMusic, {
+                    seekTo: restoredProgress ?? undefined,
                     autoPlay: false,
                 });
                 this.setCurrentQuality(quality);
+
+                // If the first lyric request raced or failed during startup, retry once
+                // after the media source is ready (plugins/network more likely available).
+                if (!this.lyric?.parser) {
+                    void this.fetchCurrentLyric(true);
+                } else if (restoredProgress !== null) {
+                    this.syncCurrentLyric(restoredProgress);
+                }
             }
         }).catch(voidCallback);
     }
@@ -1133,8 +1159,9 @@ class TrackPlayer {
             this.flushProgressPreference();
             currentMusicStore.setValue(musicItem);
             this.ee.emit(PlayerEvents.MusicChanged, musicItem);
-            this.fetchCurrentLyric();
+            // Clear first so the UI shows loading, then start the async lyric fetch.
             this.setCurrentLyric(null);
+            void this.fetchCurrentLyric();
 
             if (musicItem) {
                 setUserPreference("currentMusic", musicItem);
@@ -1252,7 +1279,11 @@ class TrackPlayer {
         currentLyricStore.setValue(lyric ?? null);
 
         if (lyric?.parser !== prev?.parser) {
+            // Full lyric payload changed — notify both full list and active line.
+            // Previously only LyricChanged fired, so desktop/mini mode kept a null
+            // parsedLrc until the user pressed play and progress updates arrived.
             this.ee.emit(PlayerEvents.LyricChanged, lyric?.parser ?? null);
+            this.ee.emit(PlayerEvents.CurrentLyricChanged, lyric?.currentLrc ?? null);
         } else if (lyric?.currentLrc !== prev?.currentLrc) {
             this.ee.emit(PlayerEvents.CurrentLyricChanged, lyric?.currentLrc ?? null);
         }
@@ -1316,11 +1347,27 @@ class TrackPlayer {
             throw new Error("mediaSource.url is empty");
         }
 
-        this.resetProgress();
+        const seekTo = options.seekTo;
+        const shouldSeek = seekTo !== undefined && seekTo >= 0;
+
+        // When restoring a seek position, keep the preference and in-memory
+        // progress so lyric positioning is not wiped until audio events arrive.
+        this.pendingProgressTime = null;
+        this.lastProgressPersistedAt = Number.NEGATIVE_INFINITY;
+        resetProgress();
+        if (!shouldSeek) {
+            removeUserPreference("currentProgress");
+        }
+
         this.audioController.setTrackSource(mediaSource, musicItem);
 
-        if (options.seekTo !== undefined && options.seekTo >= 0) {
-            this.audioController.seekTo(options.seekTo);
+        if (shouldSeek) {
+            this.audioController.seekTo(seekTo);
+            this.setProgress({
+                currentTime: seekTo,
+                duration: this.progress.duration,
+            }, true);
+            this.syncCurrentLyric(seekTo);
         }
 
         if (options.autoPlay) {

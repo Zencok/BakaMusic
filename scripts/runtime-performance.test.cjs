@@ -5,6 +5,7 @@ const {
     shouldPersistPlaybackProgress,
 } = require("../src/renderer/core/track-player/progress-persistence");
 const {
+    settlePausedLyricLayout,
     shouldRunLyricAnimation,
 } = require("../src/renderer/components/AppleMusicLyricPlayer/animation-state");
 
@@ -17,6 +18,12 @@ assert.equal(shouldRunLyricAnimation(true, true, true), true);
 assert.equal(shouldRunLyricAnimation(false, true, true), false);
 assert.equal(shouldRunLyricAnimation(true, false, true), false);
 assert.equal(shouldRunLyricAnimation(true, true, false), false);
+
+{
+    const deltas = [];
+    settlePausedLyricLayout((delta) => deltas.push(delta), 3, 16);
+    assert.deepEqual(deltas, [16, 16, 16]);
+}
 
 const trackPlayerSource = fs.readFileSync(path.join(
     __dirname,
@@ -32,6 +39,13 @@ const lyricPlayerSource = fs.readFileSync(path.join(
 ), "utf8");
 assert.match(lyricPlayerSource, /document\.visibilityState/);
 assert.match(lyricPlayerSource, /shouldRunLyricAnimation/);
+assert.match(lyricPlayerSource, /settlePausedLyricLayout/);
+
+const amllDomPlayerSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/amll-core/lyric-player/dom/index.ts",
+), "utf8");
+assert.match(amllDomPlayerSource, /calcLayout\(true, true\)/);
 
 const watchLocalDirSource = fs.readFileSync(path.join(
     __dirname,

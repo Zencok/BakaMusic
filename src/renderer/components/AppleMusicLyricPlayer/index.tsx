@@ -4,7 +4,7 @@ import type { AmlLyricLineTiming, IBakaAmlLyricLine } from "@/common/amll-lyric"
 import { DomLyricPlayer } from "@amll-core/lyric-player/dom/index";
 import { MaskObsceneWordsMode } from "@amll-core/lyric-player/index";
 import type { LyricLine } from "@amll-core/interfaces";
-import { shouldRunLyricAnimation } from "./animation-state";
+import { settlePausedLyricLayout, shouldRunLyricAnimation } from "./animation-state";
 
 interface IAppleMusicLyricPlayerProps {
     lyricLines?: LyricLine[];
@@ -209,6 +209,9 @@ export default function AppleMusicLyricPlayer({
                 currentTimePropRef.current,
                 markLinePlayState,
             );
+            if (!playingRef.current) {
+                settlePausedLyricLayout((delta) => player.update(delta));
+            }
             return;
         }
         lastLyricSignatureRef.current = lyricSignature;
@@ -220,6 +223,10 @@ export default function AppleMusicLyricPlayer({
         lastPropTimeRef.current = nextCurrentTime;
         anchorTimeRef.current = nextCurrentTime;
         anchorFrameTimeRef.current = performance.now();
+        // Paint while paused: show()/hide() is driven only by update().
+        if (!playingRef.current) {
+            settlePausedLyricLayout((delta) => player.update(delta));
+        }
     }, [lyricSignature, markLinePlayState]);
 
     useEffect(() => {
@@ -247,6 +254,7 @@ export default function AppleMusicLyricPlayer({
             player.pause();
             player.setCurrentTime(transitionTime, true);
             syncLyricLinePlayState(player, transitionTime, markLinePlayState);
+            settlePausedLyricLayout((delta) => player.update(delta));
         }
     }, [documentVisible, markLinePlayState, playing]);
 
@@ -261,10 +269,13 @@ export default function AppleMusicLyricPlayer({
 
         const prevPropTime = lastPropTimeRef.current;
         const isSeek = Math.abs(currentTimeMs - prevPropTime) > 1200;
-        player.setCurrentTime(currentTimeMs, isSeek);
+        player.setCurrentTime(currentTimeMs, isSeek || !playingRef.current);
         syncLyricLinePlayState(player, currentTimeMs, markLinePlayState);
         lastSyncedTimeRef.current = currentTimeMs;
         lastPropTimeRef.current = currentTimeMs;
+        if (!playingRef.current) {
+            settlePausedLyricLayout((delta) => player.update(delta));
+        }
     }, [currentTimeMs, markLinePlayState]);
 
     useEffect(() => {

@@ -176,10 +176,16 @@ export abstract class LyricPlayerBase
 			}
 		}
 		if (shouldRelayout) {
-			this.calcLayout(true);
+			// Force + paint: container size often arrives after setLyricLines while
+			// paused. Springs alone leave lines off-screen, and without update()
+			// LyricLineGroup.show() never runs (hide-by-default until in-sight).
+			this.calcLayout(true, true);
+			this.update(0);
 		}
 		if (shouldRebuildPlayerStyle) {
 			this.onResize();
+			// Size change also needs a paint pass while paused.
+			this.update(0);
 		}
 	}) as ResizeObserverCallback);
 	protected wordFadeWidth = 0.5;
