@@ -64,8 +64,7 @@ export function isContextMenuOpen() {
     return contextMenuDataStore.getValue() != null;
 }
 
-/** Wide enough for "作者: 名 (id: …, mid: …)" without ellipsis. */
-const menuItemWidth = 360;
+const menuItemWidth = 260;
 const menuItemHeight = 32;
 const menuContainerMaxHeight = menuItemHeight * 14;
 
@@ -97,15 +96,11 @@ function SingleColumnContextMenuComponent(props: IContextMenuData) {
         items[nextIndex]?.focus();
     };
 
-    const maxMenuWidth = Math.min(560, Math.max(menuItemWidth, window.innerWidth - 24));
-
     return (
         <div
             className="context-menu--single-column-container shadow backdrop-color"
             style={{
-                width: "max-content",
-                minWidth: menuItemWidth,
-                maxWidth: maxMenuWidth,
+                width: menuItemWidth,
                 paddingTop: menuItemHeight / 4,
                 paddingBottom: menuItemHeight / 4,
                 top: y,
@@ -225,8 +220,7 @@ export function ContextMenuComponent() {
             menuContainerMaxHeight,
         );
 
-        // Menu uses max-content up to this cap; reserve space so it stays on-screen.
-        const containerWidth = width ?? Math.min(560, Math.max(menuItemWidth, 360));
+        const containerWidth = width ?? menuItemWidth;
 
         switch (isLeft + isTop) {
             case 0: // 左上角

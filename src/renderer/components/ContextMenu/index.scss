@@ -27,9 +27,8 @@
       flex: 1;
       min-width: 0;
       white-space: nowrap;
-      overflow: visible;
-      // Identity rows (ID / multi artist) must stay fully readable.
-      text-overflow: clip;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     & .menu-item-icon {
