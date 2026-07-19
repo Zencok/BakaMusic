@@ -1,6 +1,7 @@
 import { isSameMedia } from "@/common/media-util";
 import { useCurrentMusic } from "@renderer/core/track-player/hooks";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import SvgAsset from "../SvgAsset";
 import "./index.scss";
@@ -132,7 +133,7 @@ export default function CurrentMusicLocator(props: ICurrentMusicLocatorProps) {
         return null;
     }
 
-    return (
+    const locatorButton = (
         <button
             type="button"
             className="current-music-locator"
@@ -160,4 +161,9 @@ export default function CurrentMusicLocator(props: ICurrentMusicLocatorProps) {
             <SvgAsset iconName="map-aiming" size={19}></SvgAsset>
         </button>
     );
+
+    if (placement === "fixed" && typeof document !== "undefined" && document.body) {
+        return createPortal(locatorButton, document.body);
+    }
+    return locatorButton;
 }
