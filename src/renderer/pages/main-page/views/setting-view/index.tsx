@@ -7,21 +7,27 @@ import SvgAsset from "@/renderer/components/SvgAsset";
 
 const LAST_SECTION_ID = routers[routers.length - 1]?.id ?? "about";
 /** Distance from the body top used to decide which section is active */
-const ACTIVE_SECTION_OFFSET_PX = 88;
-const SCROLL_BOTTOM_THRESHOLD_PX = 12;
+const ACTIVE_SECTION_OFFSET_PX = 96;
+/** How long scroll must be idle after a jump before scroll-spy resumes */
+const SCROLL_IDLE_MS = 80;
+/** Near-bottom only wins when the last section itself is in view */
+const SCROLL_BOTTOM_THRESHOLD_PX = 24;
 
 function resolveActiveSectionId(scrollRoot: HTMLElement): string {
     const { scrollTop, clientHeight, scrollHeight } = scrollRoot;
     const distanceToBottom = scrollHeight - (scrollTop + clientHeight);
+    const rootTop = scrollRoot.getBoundingClientRect().top;
 
-    // Last section is often shorter than the viewport; force-select it near the bottom
-    if (distanceToBottom <= SCROLL_BOTTOM_THRESHOLD_PX) {
-        return LAST_SECTION_ID;
+    const lastSection = document.getElementById(`setting-${LAST_SECTION_ID}`);
+    if (lastSection && distanceToBottom <= SCROLL_BOTTOM_THRESHOLD_PX) {
+        const lastTop = lastSection.getBoundingClientRect().top - rootTop;
+        // Only pin "about" when its header has actually reached the active band.
+        if (lastTop <= ACTIVE_SECTION_OFFSET_PX + 40) {
+            return LAST_SECTION_ID;
+        }
     }
 
-    const rootTop = scrollRoot.getBoundingClientRect().top;
     let activeId = routers[0]?.id ?? "appearance";
-
     for (const setting of routers) {
         const section = document.getElementById(`setting-${setting.id}`);
         if (!section) {
@@ -43,43 +49,55 @@ export default function SettingView() {
     const { t } = useTranslation();
 
     const bodyContainerRef = useRef<HTMLDivElement | null>(null);
-    /** While programmatic scroll is running, keep the clicked tab selected */
+    /** Clicked section id while programmatic smooth scroll is in progress */
     const programmaticScrollTargetRef = useRef<string | null>(null);
-    const programmaticScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const scrollIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const scrollFrameRef = useRef(0);
 
     const sectionById = useMemo(
         () => new Map(routers.map((section) => [section.id, section])),
         [],
     );
 
+    const clearScrollIdleTimer = () => {
+        if (scrollIdleTimerRef.current) {
+            clearTimeout(scrollIdleTimerRef.current);
+            scrollIdleTimerRef.current = null;
+        }
+    };
+
+    const releaseProgrammaticLock = (preferId?: string | null) => {
+        const lockedId = preferId ?? programmaticScrollTargetRef.current;
+        programmaticScrollTargetRef.current = null;
+        clearScrollIdleTimer();
+        if (lockedId) {
+            setSelected(lockedId);
+        }
+    };
+
     const scrollToSection = (settingId: string) => {
         const target = document.getElementById(`setting-${settingId}`);
-        if (!target) {
+        const root = bodyContainerRef.current;
+        if (!target || !root) {
             return;
         }
 
+        // Instant jump + short lock so scroll-spy does not flicker through neighbors.
         programmaticScrollTargetRef.current = settingId;
         setSelected(settingId);
-
-        if (programmaticScrollTimerRef.current) {
-            clearTimeout(programmaticScrollTimerRef.current);
-        }
+        clearScrollIdleTimer();
 
         target.scrollIntoView({
-            behavior: "smooth",
+            behavior: "auto",
             block: "start",
         });
 
-        // Release lock after smooth scroll settles (or user scrolls manually)
-        programmaticScrollTimerRef.current = setTimeout(() => {
-            programmaticScrollTargetRef.current = null;
-            programmaticScrollTimerRef.current = null;
-
-            const root = bodyContainerRef.current;
-            if (root) {
-                setSelected(resolveActiveSectionId(root));
+        // Release after the jump settles (scroll events from the jump go idle quickly).
+        scrollIdleTimerRef.current = setTimeout(() => {
+            if (programmaticScrollTargetRef.current === settingId) {
+                releaseProgrammaticLock(settingId);
             }
-        }, 450);
+        }, SCROLL_IDLE_MS);
     };
 
     useEffect(() => {
@@ -88,20 +106,26 @@ export default function SettingView() {
             return;
         }
 
-        let frameId = 0;
         const syncSelectedFromScroll = () => {
-            frameId = 0;
+            scrollFrameRef.current = 0;
+
+            // During a nav jump, keep the sidebar pinned until scroll is idle.
             if (programmaticScrollTargetRef.current) {
+                clearScrollIdleTimer();
+                scrollIdleTimerRef.current = setTimeout(() => {
+                    releaseProgrammaticLock();
+                }, SCROLL_IDLE_MS);
                 return;
             }
+
             setSelected(resolveActiveSectionId(root));
         };
 
         const onScroll = () => {
-            if (frameId) {
+            if (scrollFrameRef.current) {
                 return;
             }
-            frameId = requestAnimationFrame(syncSelectedFromScroll);
+            scrollFrameRef.current = requestAnimationFrame(syncSelectedFromScroll);
         };
 
         root.addEventListener("scroll", onScroll, { passive: true });
@@ -109,19 +133,17 @@ export default function SettingView() {
 
         return () => {
             root.removeEventListener("scroll", onScroll);
-            if (frameId) {
-                cancelAnimationFrame(frameId);
+            if (scrollFrameRef.current) {
+                cancelAnimationFrame(scrollFrameRef.current);
             }
-            if (programmaticScrollTimerRef.current) {
-                clearTimeout(programmaticScrollTimerRef.current);
-                programmaticScrollTimerRef.current = null;
-            }
+            clearScrollIdleTimer();
             programmaticScrollTargetRef.current = null;
 
             document
                 .getElementById("page-container")
                 ?.classList?.remove("page-container-full-width");
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
