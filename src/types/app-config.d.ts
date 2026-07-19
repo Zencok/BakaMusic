@@ -92,6 +92,20 @@ interface _IAppConfig {
     "download.lyricOrder": Array<"original" | "translation" | "romanization">;
     /** 是否保留逐字歌词 */
     "download.enableWordByWordLyric": boolean;
+    /** 下载文件命名类型：预设 / 自定义 */
+    "download.fileNamingType": "preset" | "custom";
+    /** 下载文件命名预设模板 */
+    "download.fileNamingPreset":
+        | "title-artist"
+        | "artist-title"
+        | "title"
+        | "title-artist-album"
+        | "artist-album-title"
+        | "title-artist-quality";
+    /** 下载文件命名自定义模板，如 {artist} - {title} */
+    "download.fileNamingCustom": string;
+    /** 下载文件名最大长度（不含扩展名时的主体上限） */
+    "download.fileNamingMaxLength": number;
 
     /** 是否自动升级插件 */
     "plugin.autoUpdatePlugin": boolean;

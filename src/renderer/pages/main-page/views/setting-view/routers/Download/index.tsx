@@ -9,6 +9,17 @@ import SvgAsset from "@/renderer/components/SvgAsset";
 import useAppConfig from "@/hooks/useAppConfig";
 import AppConfig from "@shared/app-config/renderer";
 import { useTranslation } from "react-i18next";
+import { useEffect, useMemo, useState } from "react";
+import {
+    DEFAULT_FILE_NAMING_CONFIG,
+    FILE_NAMING_PRESETS,
+    getPresetTemplate,
+    previewFilename,
+    resolveFileNamingTemplate,
+    validateTemplate,
+    type FileNamingPreset,
+    type FileNamingType,
+} from "@/common/file-naming-formatter";
 
 type DownloadLyricOrderItem = "original" | "translation" | "romanization";
 
@@ -159,6 +170,141 @@ function LyricOrderSettingItem() {
     );
 }
 
+function FileNamingSettingGroup() {
+    const { t } = useTranslation();
+    const fileNamingType = (useAppConfig("download.fileNamingType")
+        ?? DEFAULT_FILE_NAMING_CONFIG.type) as FileNamingType;
+    const fileNamingPreset = (useAppConfig("download.fileNamingPreset")
+        ?? DEFAULT_FILE_NAMING_CONFIG.preset) as FileNamingPreset;
+    const fileNamingCustom = useAppConfig("download.fileNamingCustom")
+        ?? DEFAULT_FILE_NAMING_CONFIG.custom
+        ?? "{title}-{artist}";
+
+    const [customDraft, setCustomDraft] = useState(fileNamingCustom);
+    const [customError, setCustomError] = useState<string | null>(null);
+
+    useEffect(() => {
+        setCustomDraft(fileNamingCustom);
+        setCustomError(null);
+    }, [fileNamingCustom]);
+
+    const activeTemplate = useMemo(() => {
+        if (fileNamingType === "custom") {
+            return customDraft.trim() || fileNamingCustom;
+        }
+        return resolveFileNamingTemplate({
+            type: "preset",
+            preset: fileNamingPreset,
+            maxLength: DEFAULT_FILE_NAMING_CONFIG.maxLength,
+            keepExtension: true,
+        });
+    }, [customDraft, fileNamingCustom, fileNamingPreset, fileNamingType]);
+
+    const preview = useMemo(() => {
+        const validation = validateTemplate(activeTemplate);
+        if (!validation.valid) {
+            return null;
+        }
+        return previewFilename(activeTemplate);
+    }, [activeTemplate]);
+
+    const commitCustomTemplate = () => {
+        const next = customDraft.trim();
+        const validation = validateTemplate(next);
+        if (!validation.valid) {
+            setCustomError(
+                t(`settings.download.file_naming_error_${validation.error}`),
+            );
+            setCustomDraft(fileNamingCustom);
+            return;
+        }
+        setCustomError(null);
+        if (next !== fileNamingCustom) {
+            AppConfig.setConfig({
+                "download.fileNamingCustom": next,
+            });
+        }
+        setCustomDraft(next);
+    };
+
+    return (
+        <SettingGroup
+            title={t("settings.group.download_file_naming")}
+            description={t("settings.group.download_file_naming_desc")}
+        >
+            <RadioGroupSettingItem
+                label={t("settings.download.file_naming_type")}
+                keyPath="download.fileNamingType"
+                options={["preset", "custom"]}
+                renderItem={(item) =>
+                    t(`settings.download.file_naming_type_${item}`)
+                }
+            ></RadioGroupSettingItem>
+
+            {fileNamingType === "preset" ? (
+                <ListBoxSettingItem
+                    keyPath="download.fileNamingPreset"
+                    options={[...FILE_NAMING_PRESETS]}
+                    label={t("settings.download.file_naming_preset")}
+                    renderItem={(item) =>
+                        item
+                            ? t(`settings.download.preset_${item}`)
+                            : t("settings.download.preset_title-artist")
+                    }
+                ></ListBoxSettingItem>
+            ) : (
+                <div className="setting-row setting-view--download-file-naming-custom">
+                    <div className="label-container">
+                        {t("settings.download.file_naming_custom")}
+                    </div>
+                    <div className="file-naming-custom-content">
+                        <input
+                            spellCheck={false}
+                            value={customDraft}
+                            placeholder={t(
+                                "settings.download.file_naming_custom_placeholder",
+                            )}
+                            onChange={(event) => {
+                                setCustomDraft(event.target.value);
+                                if (customError) {
+                                    setCustomError(null);
+                                }
+                            }}
+                            onBlur={commitCustomTemplate}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                    event.currentTarget.blur();
+                                }
+                            }}
+                        />
+                        <div className="file-naming-tip">
+                            {t("settings.download.file_naming_custom_tip")}
+                        </div>
+                        {customError ? (
+                            <div className="file-naming-error" role="alert">
+                                {customError}
+                            </div>
+                        ) : null}
+                    </div>
+                </div>
+            )}
+
+            <div className="setting-row setting-view--download-file-naming-preview">
+                <div className="label-container">
+                    {t("settings.download.file_naming_preview")}
+                </div>
+                <div className="file-naming-preview-content">
+                    <code className="file-naming-preview-sample">
+                        {preview
+                            ? `${preview}.mp3`
+                            : getPresetTemplate("title-artist")}
+                    </code>
+                </div>
+            </div>
+        </SettingGroup>
+    );
+}
+
 export default function Download() {
     const { t } = useTranslation();
     const writeMetadata = useAppConfig("download.writeMetadata") ?? false;
@@ -213,6 +359,8 @@ export default function Download() {
                     renderItem={(item) => t("settings.download.download_" + item + "_quality_version")}
                 ></RadioGroupSettingItem>
             </SettingGroup>
+
+            <FileNamingSettingGroup />
 
             <SettingGroup
                 title={t("settings.group.download_metadata")}

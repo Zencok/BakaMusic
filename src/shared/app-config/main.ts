@@ -65,6 +65,10 @@ const rendererWritableConfigKeys = new Set<keyof IAppConfig>([
     "download.lyricFileFormat",
     "download.lyricOrder",
     "download.enableWordByWordLyric",
+    "download.fileNamingType",
+    "download.fileNamingPreset",
+    "download.fileNamingCustom",
+    "download.fileNamingMaxLength",
     "plugin.autoUpdatePlugin",
     "plugin.notCheckPluginVersion",
     "network.proxy.enabled",
@@ -126,6 +130,15 @@ const enumConfigValues = new Map<keyof IAppConfig, ReadonlySet<string>>([
     ["download.defaultQuality", new Set(["mgg", "128k", "192k", "320k", "flac", "flac24bit", "hires", "vinyl", "dolby", "atmos", "atmos_plus", "master"])],
     ["download.whenQualityMissing", new Set(["higher", "lower"])],
     ["download.lyricFileFormat", new Set(["lrc", "txt"])],
+    ["download.fileNamingType", new Set(["preset", "custom"])],
+    ["download.fileNamingPreset", new Set([
+        "title-artist",
+        "artist-title",
+        "title",
+        "title-artist-album",
+        "artist-album-title",
+        "title-artist-quality",
+    ])],
     ["backup.resumeBehavior", new Set(["append", "overwrite"])],
 ]);
 
@@ -169,6 +182,18 @@ function validateRendererConfigValue(key: keyof IAppConfig, value: unknown) {
     if (key === "download.concurrency") {
         if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > 20) {
             throw new Error(`${key} is outside its range`);
+        }
+        return;
+    }
+    if (key === "download.fileNamingMaxLength") {
+        if (!Number.isInteger(value) || (value as number) < 32 || (value as number) > 200) {
+            throw new Error(`${key} is outside its range`);
+        }
+        return;
+    }
+    if (key === "download.fileNamingCustom") {
+        if (typeof value !== "string" || value.length > 512) {
+            throw new Error(`${key} is not a bounded string`);
         }
         return;
     }

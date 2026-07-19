@@ -38,6 +38,16 @@ assert.match(mainSource, /assertIpcSender\(event, \["main", "lyric"\]\)/);
 assert.match(mainSource, /senderRole === "lyric"/);
 assert.match(mainSource, /@shared\/app-config\/migrate-local-watch-dirs/);
 assert.match(mainSource, /grantPathAccess\(directory, true\)/);
+assert.match(mainSource, /"download\.fileNamingType"/);
+assert.match(mainSource, /"download\.fileNamingPreset"/);
+assert.match(mainSource, /"download\.fileNamingCustom"/);
+
+const defaultConfigSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/shared/app-config/default-app-config.ts",
+), "utf8");
+assert.match(defaultConfigSource, /"download\.fileNamingType": "preset"/);
+assert.match(defaultConfigSource, /"download\.fileNamingPreset": "title-artist"/);
 
 const rendererSource = fs.readFileSync(path.join(
     __dirname,

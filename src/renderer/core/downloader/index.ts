@@ -27,6 +27,12 @@ import {
 import { DownloadEvts, ee } from "./ee";
 import { buildDownloadPostprocessPayload } from "./postprocess";
 import { resolveFilePath } from "@/common/path-util";
+import {
+    buildDownloadFileBaseName,
+    DEFAULT_FILE_NAMING_CONFIG,
+    type FileNamingPreset,
+    type FileNamingType,
+} from "@/common/file-naming-formatter";
 import nodeRuntime from "@shared/node-runtime/renderer";
 
 interface IDownloadStatus {
@@ -420,8 +426,23 @@ async function downloadMusicImpl(
         const ext = getUrlExt(mediaSource.url)?.slice(1) ?? "mp3";
         const downloadBasePath = AppConfig.getConfig("download.path")
             ?? getGlobalContext().appPath.downloads;
-        const fileName = `${musicItem.title}-${musicItem.artist}`
-            .replace(/[/|\\?*"<>:]/g, "_");
+        const fileNamingType = AppConfig.getConfig("download.fileNamingType")
+            ?? DEFAULT_FILE_NAMING_CONFIG.type;
+        const fileNamingPreset = AppConfig.getConfig("download.fileNamingPreset")
+            ?? DEFAULT_FILE_NAMING_CONFIG.preset;
+        const fileName = buildDownloadFileBaseName(
+            musicItem,
+            {
+                type: fileNamingType as FileNamingType,
+                preset: fileNamingPreset as FileNamingPreset,
+                custom: AppConfig.getConfig("download.fileNamingCustom")
+                    ?? DEFAULT_FILE_NAMING_CONFIG.custom,
+                maxLength: AppConfig.getConfig("download.fileNamingMaxLength")
+                    ?? DEFAULT_FILE_NAMING_CONFIG.maxLength,
+                keepExtension: true,
+            },
+            realQuality,
+        );
         const downloadPath = resolveFilePath(downloadBasePath, `./${fileName}.${ext}`);
 
         if (!worker) {

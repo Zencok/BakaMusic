@@ -1,13 +1,17 @@
 .setting-view--download-container {
   width: 100%;
 
-  .setting-view--download-lyric-order {
+  .setting-view--download-lyric-order,
+  .setting-view--download-file-naming-custom,
+  .setting-view--download-file-naming-preview {
     align-items: start;
 
     & > .label-container {
       padding-top: 0.6rem;
     }
+  }
 
+  .setting-view--download-lyric-order {
     .lyric-order-content {
       grid-column: 2;
       min-width: 0;
@@ -69,6 +73,62 @@
       }
     }
   }
+
+  .setting-view--download-file-naming-custom,
+  .setting-view--download-file-naming-preview {
+    .file-naming-custom-content,
+    .file-naming-preview-content {
+      grid-column: 2;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    input {
+      width: min(100%, 420px);
+      min-width: 0;
+      min-height: 2.55rem;
+      padding: 0 0.85rem;
+      border-radius: var(--settingControlRadius, var(--controlRadius, 8px));
+      border: 1px solid var(--settingControlBorder);
+      background: var(--settingControlSurface);
+      color: var(--settingTextPrimary);
+      box-shadow: var(--settingControlInset);
+      box-sizing: border-box;
+
+      &:focus {
+        border-color: var(--settingControlBorderActive);
+        background: color-mix(in srgb, var(--backgroundColor) 92%, var(--primaryColor) 6%);
+      }
+    }
+
+    .file-naming-tip {
+      color: var(--settingTextSecondary);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .file-naming-error {
+      color: var(--dangerColor, #e5484d);
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
+    .file-naming-preview-sample {
+      display: inline-block;
+      max-width: 100%;
+      padding: 0.45rem 0.7rem;
+      border-radius: var(--settingControlRadius, var(--controlRadius, 8px));
+      border: 1px solid var(--settingControlBorder);
+      background: color-mix(in srgb, var(--settingControlSurface) 88%, var(--primaryColor) 4%);
+      color: var(--settingTextPrimary);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9rem;
+      line-height: 1.45;
+      word-break: break-all;
+    }
+  }
 }
 
 @media (max-width: 820px) {
@@ -78,5 +138,14 @@
         grid-column: auto;
       }
     }
+
+    .setting-view--download-file-naming-custom,
+    .setting-view--download-file-naming-preview {
+      .file-naming-custom-content,
+      .file-naming-preview-content {
+        grid-column: auto;
+      }
+    }
+
   }
 }
