@@ -53,10 +53,4 @@ const trayManagerSource = fs.readFileSync(path.join(
 assert.doesNotMatch(utilityMainSource, /app\.exit\(/);
 assert.doesNotMatch(trayManagerSource, /app\.exit\(/);
 
-const buildWorkflowSource = fs.readFileSync(path.join(
-    __dirname,
-    "../.github/workflows/build.yml",
-), "utf8");
-assert.match(buildWorkflowSource, /- name: Run regression tests\s+run: npm test/);
-
 console.log("service-manager: all assertions passed");

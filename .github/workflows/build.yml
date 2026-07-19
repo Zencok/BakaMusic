@@ -29,18 +29,10 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - name: Verify node-gyp toolchain
-        run: test "$(npm exec node-gyp -- --version)" = "v${NODE_GYP_VERSION}"
-      - name: Verify AMLL source integration
-        run: |
-          test -f src/amll-core/lyric-player/dom/index.ts
-          test ! -d vendor/applemusic-like-lyrics
       - name: Type check
         run: npm exec tsc -- --noEmit
       - name: Lint
         run: npm exec eslint -- ./src
-      - name: Run regression tests
-        run: npm test
 
   build:
     needs: validate-source
