@@ -19,19 +19,25 @@
   box-sizing: border-box;
 
   &[data-surface-mode="header-only"] {
+    // Transparent shell only — do not paint or frost the outer container,
+    // otherwise the gap between toolbar and list becomes a glued acrylic slab.
     min-height: 0;
     padding: 0;
     border: none;
     background: transparent;
+    background-image: none;
     box-shadow: none;
+    -webkit-backdrop-filter: none;
     backdrop-filter: none;
+    isolation: isolate;
 
     & .music-list-toolbar {
       padding: 0.9rem 1rem;
       border-radius: var(--cardRadius, 22px);
       background: var(--musicListSurface);
       border: 1px solid var(--appSurfaceBorder);
-      box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
+      box-shadow: var(--appSurfaceShadowSoft);
+      -webkit-backdrop-filter: var(--appGlassFilter);
       backdrop-filter: var(--appGlassFilter);
     }
 
@@ -43,10 +49,12 @@
 
     & .music-list-virtual-spacer {
       overflow: hidden;
-      border-radius: var(--controlRadiusLg, 20px);
-      background: color-mix(in srgb, var(--backgroundColor) 64%, transparent);
+      border-radius: var(--cardRadius, 22px);
+      background: var(--musicListSurface);
       border: 1px solid var(--appSurfaceBorder);
-      box-shadow: var(--appSurfaceInset);
+      box-shadow: var(--appSurfaceShadowSoft);
+      -webkit-backdrop-filter: var(--appGlassFilter);
+      backdrop-filter: var(--appGlassFilter);
     }
   }
 

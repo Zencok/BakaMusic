@@ -1,4 +1,4 @@
-import { app, BrowserWindow, nativeImage, nativeTheme, screen } from "electron";
+import { app, BrowserWindow, nativeImage, screen } from "electron";
 import getResourcePath from "@/common/get-resource-path";
 import { IWindowEvents, IWindowManager } from "@/types/window-manager";
 import { isPlaybackActive, localPluginName, ResourceName } from "@/common/constant";
@@ -13,6 +13,7 @@ import { toError } from "@/common/error-util";
 import { isFullscreenApplicationRunning } from "./fullscreen-notification-state";
 import { isFullscreenForegroundWindow } from "./foreground-fullscreen-state";
 import { hardenWindow } from "@main/electron-security";
+import { getInitialWindowSurfaceOptions } from "@shared/themepack/window-material";
 import { fileURLToPath } from "url";
 
 
@@ -204,7 +205,10 @@ class WindowManager implements IWindowManager {
                 navigateOnDragDrop: false,
             },
             frame: false,
-            backgroundColor: nativeTheme.shouldUseDarkColors ? "#12182a" : "#f4f7ff",
+            // Only Acrylic-capable Windows shells start transparent. Older OS
+            // builds and non-Windows platforms keep an opaque client fill so
+            // the first paint never punches through to the desktop.
+            ...getInitialWindowSurfaceOptions(),
             // Required for true OS fullscreen (F11 on music detail).
             fullscreenable: true,
             icon: nativeImage.createFromPath(getResourcePath(ResourceName.LOGO_IMAGE)),

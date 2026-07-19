@@ -34,6 +34,17 @@ async function installRemoteThemePack(remoteUrl: string) {
     ) as ICommon.IThemePack;
 }
 
+async function setWindowMaterial(
+    enabled: boolean,
+    scheme?: "light" | "dark",
+) {
+    return await ipcRenderer.invoke(
+        "@shared/themepack/set-window-material",
+        enabled,
+        scheme ?? null,
+    ) as boolean;
+}
+
 export const mod = {
     initCurrentTheme,
     loadThemePacks,
@@ -41,6 +52,7 @@ export const mod = {
     installThemePack,
     uninstallThemePack,
     installRemoteThemePack,
+    setWindowMaterial,
 };
 
 exposeInMainWorld("@shared/themepack", mod);

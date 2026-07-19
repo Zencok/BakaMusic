@@ -593,14 +593,32 @@
                 background: color-mix(in srgb, var(--musicBarText) 8%, transparent) !important;
             }
 
+            // Quality is text, not an icon — keep the same 34px control height,
+            // secondary color, and hover fill as sibling action buttons.
             &.quality-btn {
                 width: auto !important;
-                min-width: 0 !important;
-                padding: 0 8px !important;
+                min-width: 34px !important;
+                height: 34px !important;
+                padding: 0 10px !important;
                 border-radius: 8px !important;
                 border: none !important;
                 background: transparent !important;
                 box-shadow: none !important;
+                color: var(--musicBarTextSecondary) !important;
+
+                .quality-abbr-text {
+                    font-size: 0.72rem !important;
+                    font-weight: 600 !important;
+                    letter-spacing: 0.04em !important;
+                    line-height: 1 !important;
+                    color: inherit !important;
+                }
+
+                &:hover {
+                    transform: none !important;
+                    color: var(--musicBarText) !important;
+                    background: color-mix(in srgb, var(--musicBarText) 8%, transparent) !important;
+                }
             }
 
             &.highlight {
@@ -815,7 +833,9 @@
         }
 
         .music-extra .extra-btn {
-            color: var(--musicDetailText) !important;
+            width: 34px !important;
+            height: 34px !important;
+            color: var(--musicDetailTextSecondary) !important;
             background: transparent !important;
             border: none !important;
             box-shadow: none !important;
@@ -828,10 +848,23 @@
             }
 
             &.quality-btn {
+                width: auto !important;
+                min-width: 34px !important;
+                height: 34px !important;
+                padding: 0 10px !important;
+                border-radius: 8px !important;
                 color: var(--musicDetailTextSecondary) !important;
                 background: transparent !important;
                 border: none !important;
                 box-shadow: none !important;
+
+                .quality-abbr-text {
+                    font-size: 0.72rem !important;
+                    font-weight: 600 !important;
+                    letter-spacing: 0.04em !important;
+                    line-height: 1 !important;
+                    color: inherit !important;
+                }
 
                 &:hover {
                     color: var(--musicDetailText) !important;
@@ -1862,12 +1895,28 @@
         border-radius: var(--tagRadius) !important;
     }
 
-    // Quality label: ghost text, no chip frame
-    .music-extra .extra-btn.quality-btn {
+    // Quality stays a short text control (not a glass chip). Keep this from
+    // overriding detail-open dock colors — those live under [data-detail-open].
+    .music-bar-container:not([data-detail-open="true"]) .music-extra .extra-btn.quality-btn {
         border: none !important;
         background: transparent !important;
         box-shadow: none !important;
         border-radius: 8px !important;
+        min-width: 34px !important;
+        height: 34px !important;
+        color: var(--musicBarTextSecondary) !important;
+
+        .quality-abbr-text {
+            font-size: 0.72rem !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.04em !important;
+            color: inherit !important;
+        }
+
+        &:hover {
+            color: var(--musicBarText) !important;
+            background: color-mix(in srgb, var(--musicBarText) 8%, transparent) !important;
+        }
     }
 
     // Action icon circles that must stay round in flat mode

@@ -1,5 +1,6 @@
 import {
     app,
+    BrowserWindow,
     ipcMain,
     net,
     protocol,
@@ -17,6 +18,13 @@ import { nanoid } from "nanoid";
 import type { Entry } from "unzipper";
 import createUnzipParser from "unzipper/lib/parse";
 import {
+    getOpaqueWindowBackground,
+    resolveThemeScheme,
+    supportsNativeAcrylic,
+    type ThemeScheme,
+} from "./window-material";
+import {
+    assertBoolean,
     assertIpcSender,
     assertPathAccess,
     assertString,
@@ -604,5 +612,45 @@ export async function setupThemePackMain() {
             throw new Error("Theme pack is not valid");
         }
         return uninstallThemePack(themePack);
+    });
+    ipcMain.handle("@shared/themepack/set-window-material", (event, enabled, scheme) => {
+        assertIpcSender(event, ["main"]);
+        assertBoolean(enabled, "window material enabled");
+        let themeScheme: ThemeScheme | undefined;
+        if (scheme !== undefined && scheme !== null) {
+            assertString(scheme, "window material scheme", 16);
+            if (scheme !== "light" && scheme !== "dark") {
+                throw new Error("Window material scheme is not valid");
+            }
+            themeScheme = scheme;
+        }
+        const resolvedScheme = resolveThemeScheme(themeScheme);
+        const targetWindow = BrowserWindow.fromWebContents(event.sender);
+        if (!targetWindow || targetWindow.isDestroyed() || !supportsNativeAcrylic()) {
+            if (targetWindow && !targetWindow.isDestroyed() && process.platform === "win32") {
+                targetWindow.setBackgroundColor(getOpaqueWindowBackground(resolvedScheme));
+            }
+            return false;
+        }
+
+        try {
+            // Electron Acrylic has no tint channel (unlike Tauri). Keep the
+            // compositor clear and let the renderer apply a Lycia-balanced wash.
+            targetWindow.setBackgroundMaterial(enabled ? "acrylic" : "none");
+            targetWindow.setBackgroundColor(
+                enabled
+                    ? "#00000000"
+                    : getOpaqueWindowBackground(resolvedScheme),
+            );
+            return enabled;
+        } catch {
+            try {
+                targetWindow.setBackgroundMaterial("none");
+            } catch {
+                // Keep the opaque renderer fallback below.
+            }
+            targetWindow.setBackgroundColor(getOpaqueWindowBackground(resolvedScheme));
+            return false;
+        }
     });
 }

@@ -1,8 +1,8 @@
 .side-bar-container {
-  width: 220px;
+  width: var(--appSideBarWidth, 220px);
   height: 100%;
   display: flex;
-  flex: 0 0 220px;
+  flex: 0 0 var(--appSideBarWidth, 220px);
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;

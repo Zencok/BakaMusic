@@ -31,10 +31,48 @@ const themeBridgeSource = fs.readFileSync(path.join(
     __dirname,
     "../src/renderer/document/styles/theme-bridge.scss",
 ), "utf8");
+const defaultAcrylicSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/document/styles/default-acrylic.scss",
+), "utf8");
+const globalStyleEntrySource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/document/styles/index.scss",
+), "utf8");
+const windowMaterialSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/shared/themepack/window-material.ts",
+), "utf8");
+const windowManagerSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/main/window-manager/index.ts",
+), "utf8");
 const defaultThemeSource = fs.readFileSync(path.join(
     __dirname,
     "../src/shared/themepack/default-theme.ts",
 ), "utf8");
+
+function extractStyleBlocks(source, selectorPattern) {
+    const blocks = [];
+    const re = new RegExp(selectorPattern + "\\s*\\{", "g");
+    let match = re.exec(source);
+    while (match) {
+        let depth = 1;
+        let index = match.index + match[0].length;
+        while (index < source.length && depth > 0) {
+            const character = source[index];
+            if (character === "{") {
+                depth += 1;
+            } else if (character === "}") {
+                depth -= 1;
+            }
+            index += 1;
+        }
+        blocks.push(source.slice(match.index, index));
+        match = re.exec(source);
+    }
+    return blocks;
+}
 
 function readDefaultThemeCss(exportName) {
     const match = defaultThemeSource.match(new RegExp(
@@ -97,6 +135,10 @@ assert.equal(
 assert.match(themeRuntimeSource, /matchMedia\(darkSchemeMediaQuery\)/);
 assert.match(themeRuntimeSource, /addEventListener\("change", systemThemeChangeListener\)/);
 assert.match(themeRuntimeSource, /removeEventListener\("change", systemThemeChangeListener\)/);
+assert.match(themeRuntimeSource, /data-theme-source/);
+assert.match(themeRuntimeSource, /bridge\.setWindowMaterial\(allowAcrylic,\s*scheme\)/);
+assert.match(themeRuntimeSource, /prefers-reduced-transparency:\s*reduce/);
+assert.match(themeRuntimeSource, /reducedTransparencyQuery\.addEventListener/);
 assert.match(
     themeRuntimeSource,
     /systemThemeQuery\?\.matches\s*\?\s*BUILTIN_DEFAULT_DARK_THEME_CSS\s*:\s*BUILTIN_DEFAULT_LIGHT_THEME_CSS/,
@@ -109,6 +151,66 @@ assert.match(
     themeBridgeSource,
     /@media \(prefers-color-scheme:\s*dark\)[\s\S]*:root:not\(\[data-theme-spec="2"\]\)/,
 );
+assert.match(
+    defaultAcrylicSource,
+    /data-theme-source="builtin"\]\[data-ui-style="glass"/,
+);
+assert.match(
+    defaultAcrylicSource,
+    /data-theme-source="builtin"\]\[data-ui-style="flat"/,
+);
+assert.match(defaultAcrylicSource, /backdrop-filter:\s*var\(--appGlassFilter\)/);
+assert.match(defaultAcrylicSource, /prefers-reduced-transparency:\s*reduce/);
+const glassAcrylicBlocks = extractStyleBlocks(
+    defaultAcrylicSource,
+    '(?::root|html)\\[data-theme-source="builtin"\\]\\[data-ui-style="glass"\\]',
+);
+assert.ok(
+    glassAcrylicBlocks.length >= 2,
+    "default acrylic should define glass token and element blocks",
+);
+for (const block of glassAcrylicBlocks) {
+    // Glass keeps the existing floating dock chrome; only detail-open (shared)
+    // and auto-hide clearing may touch the bar, never restyle .music-bar-shell.
+    assert.doesNotMatch(block, /\.music-bar-shell/);
+}
+assert.match(
+    defaultAcrylicSource,
+    /music-bar-container\[data-auto-hide="true"\]\[data-revealed="false"\][\s\S]*backdrop-filter:\s*none\s*!important/,
+);
+assert.match(
+    defaultAcrylicSource,
+    /data-ui-style="flat"[\s\S]*music-bar-container\[data-detail-open="true"\][\s\S]*\.music-bar-overlay[\s\S]*display:\s*none\s*!important/,
+);
+// Glass must keep dynamic album-color dock chrome on the detail page.
+assert.doesNotMatch(
+    defaultAcrylicSource,
+    /data-ui-style="glass"[\s\S]{0,400}music-bar-container\[data-detail-open="true"\][\s\S]{0,200}display:\s*none\s*!important/,
+);
+assert.match(
+    defaultAcrylicSource,
+    /data-window-material="acrylic"[\s\S]*\.app-container[\s\S]*--defaultAcrylicWindowTint/,
+);
+assert.match(defaultAcrylicSource, /--defaultAcrylicWindowTint/);
+assert.match(
+    defaultAcrylicSource,
+    /data-theme-scheme="dark"\]\[data-ui-style="glass"/,
+);
+assert.match(
+    defaultAcrylicSource,
+    /music-list-container\[data-surface-mode="header-only"\][\s\S]*backdrop-filter:\s*none\s*!important/,
+);
+assert.match(
+    defaultAcrylicSource,
+    /music-list-container\[data-surface-mode="header-only"\][\s\S]*music-list-virtual-spacer[\s\S]*margin-top:\s*12px\s*!important/,
+);
+assert.match(globalStyleEntrySource, /@use '\.\/default-acrylic\.scss';/);
+assert.match(windowMaterialSource, /WINDOWS_ACRYLIC_MIN_BUILD\s*=\s*22621/);
+assert.match(windowMaterialSource, /ACRYLIC_TINT_DARK/);
+assert.match(windowMaterialSource, /getInitialWindowSurfaceOptions/);
+assert.match(windowManagerSource, /getInitialWindowSurfaceOptions/);
+assert.match(themeMainSource, /from "\.\/window-material"/);
+assert.match(themeMainSource, /setBackgroundMaterial\(enabled \? "acrylic" : "none"\)/);
 assert.match(themeMainSource, /stream:\s*true/);
 assert.match(themeMainSource, /resolveLocalMediaByteRange/);
 assert.match(themeMainSource, /Content-Range/);

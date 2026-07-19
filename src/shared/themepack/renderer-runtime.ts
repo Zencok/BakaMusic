@@ -10,10 +10,16 @@ import {
 
 const themeNodeId = "themepack-node";
 const darkSchemeMediaQuery = "(prefers-color-scheme: dark)";
+const reducedTransparencyMediaQuery = "(prefers-reduced-transparency: reduce)";
 export const themePathKey = "themepack-path";
 let themeBackgroundIframe: HTMLIFrameElement | null = null;
 let systemThemeQuery: MediaQueryList | null = null;
 let systemThemeChangeListener: (() => void) | null = null;
+let reducedTransparencyQuery: MediaQueryList | null = null;
+let reducedTransparencyChangeListener: (() => void) | null = null;
+let windowMaterialSyncGeneration = 0;
+let windowMaterialBridge: IMod | null = null;
+let windowMaterialRequested = false;
 
 function addTailSlash(value: string) {
     return value.endsWith("/") || value.endsWith("\\") ? value : `${value}/`;
@@ -69,10 +75,68 @@ function applyThemeDocumentAttributes(
     themeTokens: ReadonlyMap<string, string>,
 ) {
     const scheme = resolveThemeScheme(themePack, themeTokens);
+    const source = isBuiltinDefaultTheme(themePack) ? "builtin" : "pack";
     document.documentElement.setAttribute("data-theme-spec", "2");
     document.documentElement.setAttribute("data-theme-scheme", scheme);
+    document.documentElement.setAttribute("data-theme-source", source);
     document.body?.setAttribute("data-theme-spec", "2");
     document.body?.setAttribute("data-theme-scheme", scheme);
+    document.body?.setAttribute("data-theme-source", source);
+}
+
+function prefersReducedTransparency() {
+    return window.matchMedia(reducedTransparencyMediaQuery).matches;
+}
+
+function applyWindowMaterialAttribute(value: "acrylic" | "none") {
+    document.documentElement.setAttribute("data-window-material", value);
+    document.body?.setAttribute("data-window-material", value);
+}
+
+function readActiveThemeScheme(): "light" | "dark" {
+    const value = document.documentElement.getAttribute("data-theme-scheme");
+    return value === "dark" ? "dark" : "light";
+}
+
+async function syncBuiltinWindowMaterial(bridge: IMod, enabled: boolean) {
+    windowMaterialBridge = bridge;
+    windowMaterialRequested = enabled;
+    ensureReducedTransparencyFollow();
+    const generation = ++windowMaterialSyncGeneration;
+    const allowAcrylic = enabled && !prefersReducedTransparency();
+    const scheme = readActiveThemeScheme();
+    try {
+        const active = await bridge.setWindowMaterial(allowAcrylic, scheme);
+        if (generation !== windowMaterialSyncGeneration) {
+            return;
+        }
+        applyWindowMaterialAttribute(active ? "acrylic" : "none");
+    } catch {
+        if (generation !== windowMaterialSyncGeneration) {
+            return;
+        }
+        applyWindowMaterialAttribute("none");
+    }
+}
+
+function ensureReducedTransparencyFollow() {
+    if (reducedTransparencyQuery && reducedTransparencyChangeListener) {
+        return;
+    }
+    reducedTransparencyQuery = window.matchMedia(reducedTransparencyMediaQuery);
+    reducedTransparencyChangeListener = () => {
+        if (!windowMaterialBridge) {
+            return;
+        }
+        void syncBuiltinWindowMaterial(
+            windowMaterialBridge,
+            windowMaterialRequested,
+        );
+    };
+    reducedTransparencyQuery.addEventListener(
+        "change",
+        reducedTransparencyChangeListener,
+    );
 }
 
 function clearThemeIframe() {
@@ -88,7 +152,7 @@ function stopFollowingSystemTheme() {
     systemThemeChangeListener = null;
 }
 
-function applyThemeCss(themePack: ICommon.IThemePack, rawCss: string) {
+function applyThemeCss(themePack: ICommon.IThemePack, rawCss: string, bridge: IMod) {
     const parsed = parseThemeCss(rawCss);
     let themeNode = document.querySelector(`#${themeNodeId}`) as HTMLStyleElement | null;
     if (!themeNode) {
@@ -97,12 +161,13 @@ function applyThemeCss(themePack: ICommon.IThemePack, rawCss: string) {
     }
     document.head.appendChild(themeNode);
     applyThemeDocumentAttributes(themePack, parsed.tokens);
+    void syncBuiltinWindowMaterial(bridge, isBuiltinDefaultTheme(themePack));
     themeNode.textContent = isBuiltinDefaultTheme(themePack)
         ? parsed.css
         : replaceThemeAlias(parsed.css, themePack.path);
 }
 
-function applyBuiltinDefaultTheme(themePack: ICommon.IThemePack) {
+function applyBuiltinDefaultTheme(themePack: ICommon.IThemePack, bridge: IMod) {
     stopFollowingSystemTheme();
     systemThemeQuery = window.matchMedia(darkSchemeMediaQuery);
 
@@ -112,6 +177,7 @@ function applyBuiltinDefaultTheme(themePack: ICommon.IThemePack) {
             systemThemeQuery?.matches
                 ? BUILTIN_DEFAULT_DARK_THEME_CSS
                 : BUILTIN_DEFAULT_LIGHT_THEME_CSS,
+            bridge,
         );
     };
 
@@ -141,12 +207,12 @@ export async function applyTheme(
     if (!themePack || isBuiltinDefaultTheme(themePack)) {
         const builtin = createBuiltinDefaultThemePack(themePack?.name);
         clearThemeIframe();
-        applyBuiltinDefaultTheme(builtin);
+        applyBuiltinDefaultTheme(builtin, bridge);
         localStorage.setItem(themePathKey, BUILTIN_DEFAULT_THEME_PATH);
         return builtin;
     }
     const contents = await bridge.readThemeContents(themePack.path);
-    applyThemeCss(themePack, contents.rawCss);
+    applyThemeCss(themePack, contents.rawCss, bridge);
     stopFollowingSystemTheme();
     applyThemeIframe(themePack, contents.iframeHtml);
     localStorage.setItem(themePathKey, themePack.path);

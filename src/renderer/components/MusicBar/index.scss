@@ -76,6 +76,100 @@
 }
 
 // ---------------------------------------------------------------------------
+// Glass floating dock
+// - Out of document flow: sidebar + content run full height under the header
+// - Full-width floating pill that spans across the sidebar column too
+// - Opening music detail does NOT re-layout the dock (same geometry)
+// - Flat keeps an in-flow square dock and is unchanged here
+// ---------------------------------------------------------------------------
+html[data-ui-style="glass"] {
+  .app-container {
+    // Absolute dock is positioned against this frame.
+    position: relative;
+  }
+
+  .body-container {
+    // Claim every pixel under the header — the floating dock no longer eats height.
+    flex: 1 1 0;
+    min-height: 0;
+  }
+
+  .music-bar-container,
+  .music-bar-container[data-detail-open="true"] {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: var(--appMusicBarHeight, 92px);
+    // Transparent hit-box; only the floating pill paints.
+    background: transparent;
+    box-shadow: none;
+    padding: 8px 12px 10px;
+    pointer-events: none;
+    z-index: 4000;
+
+    .music-bar-motion-layer,
+    .music-bar-hover-zone {
+      pointer-events: auto;
+    }
+
+    .music-bar-overlay,
+    .music-bar-shell {
+      // Same insets whether detail is open or not — no jump.
+      left: 12px;
+      right: 12px;
+      top: 8px;
+      bottom: 10px;
+    }
+
+    .music-bar--slider-container {
+      left: 18px;
+      right: 18px;
+    }
+  }
+
+  // Scroll clearance for the floating pill. Do NOT pad full-bleed shells
+  // (settings) on the outer container — that leaves a dead empty band above
+  // the dock. Only the scrolling content needs a bottom inset.
+  --floatingMusicBarClearance: calc(var(--appMusicBarHeight, 92px) + 12px);
+
+  .page-container:not(.page-container-fw):not(.setting-view--container) {
+    padding-bottom: var(--floatingMusicBarClearance);
+    scroll-padding-bottom: var(--floatingMusicBarClearance);
+  }
+
+  // Settings is a full-height shell; keep it flush to the window bottom so the
+  // panel edge meets the floating dock instead of floating over empty canvas.
+  .page-container-fw.setting-view--container,
+  .setting-view--container {
+    padding-bottom: 0 !important;
+    scroll-padding-bottom: 0;
+  }
+
+  .setting-view--body {
+    // One clearance only — enough to clear the pill when scrolled to the end.
+    padding-bottom: calc(var(--appMusicBarHeight, 92px) - 6px);
+    scroll-padding-bottom: calc(var(--appMusicBarHeight, 92px) - 6px);
+    box-sizing: border-box;
+  }
+
+  .setting-view--content {
+    // Base SCSS already pads 2.4rem; with bar clearance that becomes a canyon.
+    padding-bottom: 0.85rem !important;
+  }
+
+  // Nested independent scrollers (local music masters).
+  .local-music--album-view-container .right-part,
+  .local-music--artist-view-container .right-part,
+  .local-music--folder-view-container .right-part {
+    padding-bottom: var(--floatingMusicBarClearance);
+    scroll-padding-bottom: var(--floatingMusicBarClearance);
+    box-sizing: border-box;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Detail immersive + auto-hide (glass + flat) — data-detail-open / auto-hide
 // ---------------------------------------------------------------------------
 // Product state owns visibility. Theme packs can only paint semantic tokens, so

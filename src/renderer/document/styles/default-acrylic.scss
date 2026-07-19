@@ -1,0 +1,459 @@
+// Default-theme-only acrylic material. Installed packs keep full control of
+// their surfaces because the runtime marks them with data-theme-source="pack".
+//
+// Density target follows LyciaMusic acrylic balance:
+// - compositor / canvas wash ≈ dark 55% · light 49% cover
+// - chrome surfaces denser than pure glass so black wallpapers stay readable
+// - blur stays moderate once the wash already provides body
+
+:root[data-theme-source="builtin"] {
+    // Lycia acrylic tint equivalents (dark 0.55 / light 0.49 of near-neutral bg).
+    --defaultAcrylicWindowTint: color-mix(
+        in srgb,
+        var(--backgroundColor) 52%,
+        transparent
+    );
+    --defaultAcrylicCanvas:
+        linear-gradient(
+            145deg,
+            color-mix(in srgb, var(--backgroundColor) 96%, white 4%),
+            var(--backgroundColor)
+        );
+    --defaultAcrylicTexture:
+        repeating-linear-gradient(
+            112deg,
+            color-mix(in srgb, var(--textColor) 1.2%, transparent) 0 0.45px,
+            transparent 0.45px 3px
+        ),
+        repeating-linear-gradient(
+            22deg,
+            color-mix(in srgb, white 1.4%, transparent) 0 0.4px,
+            transparent 0.4px 3.6px
+        );
+    --defaultAcrylicBorder: color-mix(in srgb, var(--textColor) 14%, transparent);
+    --defaultAcrylicHighlight: inset 0 1px 0 color-mix(in srgb, white 36%, transparent);
+    --musicListSurface: var(--appSurface);
+    --settingPanelSurface: var(--appSurfaceStrong);
+    --settingSidebarSurface: var(--appSurfaceMuted);
+    --settingRowSurface: var(--appSurfaceMuted);
+    --settingRowSurfaceHover: var(--appInteractiveSurfaceHover);
+    --settingControlSurface: var(--appSurfaceMuted);
+    --settingControlSurfaceHover: var(--appInteractiveSurfaceHover);
+    --panelInputBg: var(--appSurfaceMuted);
+    --searchHistoryBg: var(--appSurfaceStrong);
+}
+
+:root[data-theme-source="builtin"][data-theme-scheme="dark"] {
+    // Dark desktops need more cover; Lycia dark acrylic alpha ≈ 0.55 base + denser chrome.
+    --defaultAcrylicWindowTint: color-mix(
+        in srgb,
+        var(--backgroundColor) 58%,
+        transparent
+    );
+}
+
+:root[data-theme-source="builtin"][data-theme-scheme="light"] {
+    --defaultAcrylicWindowTint: color-mix(
+        in srgb,
+        var(--backgroundColor) 48%,
+        transparent
+    );
+}
+
+html[data-theme-source="builtin"] {
+    .app-container {
+        background: var(--defaultAcrylicCanvas);
+    }
+
+    .app-container .body-container {
+        background-color: transparent;
+        background-image: var(--appBodyBg);
+    }
+
+    .header-container {
+        background: var(--defaultAcrylicTexture), var(--headerChromeBg);
+    }
+
+    .side-bar-container {
+        background: var(--defaultAcrylicTexture), var(--sideBarBg);
+    }
+
+    .music-list-container:not([data-surface-mode="header-only"]) {
+        background: var(--defaultAcrylicTexture), var(--musicListSurface);
+    }
+
+    .music-sheetlike-view--header-container {
+        background:
+            var(--defaultAcrylicTexture),
+            linear-gradient(
+                145deg,
+                color-mix(in srgb, var(--appSurface) 88%, white 6%),
+                var(--appSurface)
+            );
+        border: 1px solid var(--appSurfaceBorder);
+        -webkit-backdrop-filter: var(--appGlassFilter) !important;
+        backdrop-filter: var(--appGlassFilter) !important;
+    }
+
+    .music-sheetlike-view--body-container .operations,
+    .tab-list-container {
+        -webkit-backdrop-filter: var(--appGlassFilter) !important;
+        backdrop-filter: var(--appGlassFilter) !important;
+    }
+
+    // Toolbar sits inside the list card; frosting it creates a second white
+    // plate around the "音乐" title + sort control.
+    .music-list-container:not([data-surface-mode="header-only"]) .music-list-toolbar {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+    }
+
+    // Local music (header-only): title bar + song list are two cards. The shell
+    // must stay fully clear so the gap does not fill with frosted acrylic glue.
+    .music-list-container[data-surface-mode="header-only"] {
+        --musicListSurface: var(--appSurface);
+        background: transparent !important;
+        background-image: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+
+        .music-list-toolbar {
+            background: var(--defaultAcrylicTexture), var(--musicListSurface) !important;
+            border: 1px solid var(--appSurfaceBorder) !important;
+            box-shadow: var(--appSurfaceShadowSoft) !important;
+            -webkit-backdrop-filter: var(--appGlassFilter) !important;
+            backdrop-filter: var(--appGlassFilter) !important;
+        }
+
+        .music-list-virtual-spacer,
+        .bottom-loading-state,
+        .components--empty-container {
+            margin-top: 12px !important;
+        }
+
+        .music-list-virtual-spacer {
+            background: var(--defaultAcrylicTexture), var(--musicListSurface) !important;
+            border: 1px solid var(--appSurfaceBorder) !important;
+            box-shadow: var(--appSurfaceShadowSoft) !important;
+            -webkit-backdrop-filter: var(--appGlassFilter) !important;
+            backdrop-filter: var(--appGlassFilter) !important;
+        }
+    }
+
+    .components--modal-base > [class^="modal--"],
+    .components--modal-base > [class*=" modal--"],
+    .components--panel-base .components--panel-base-content,
+    .components--context-menu,
+    [class*="context-menu"] {
+        background: var(--defaultAcrylicTexture), var(--appPanelSurface) !important;
+        -webkit-backdrop-filter: var(--panelFilter) !important;
+        backdrop-filter: var(--panelFilter) !important;
+    }
+}
+
+// Electron Acrylic supplies the desktop blur. The canvas keeps a Lycia-like
+// tinted wash so pure black wallpapers do not punch through empty chrome.
+html[data-theme-source="builtin"][data-window-material="acrylic"] {
+    &,
+    body,
+    #root {
+        background: transparent !important;
+        background-color: transparent !important;
+    }
+
+    .app-container {
+        background: var(--defaultAcrylicWindowTint) !important;
+        background-image: none !important;
+    }
+
+    .app-container .body-container {
+        background-color: transparent !important;
+        background-image: var(--appBodyBg) !important;
+    }
+}
+
+// Glass: denser than pure frosted glass, softer blur once the wash is present.
+:root[data-theme-source="builtin"][data-ui-style="glass"] {
+    --appSurface: color-mix(in srgb, var(--backgroundColor) 64%, transparent);
+    --appSurfaceStrong: color-mix(in srgb, var(--backgroundColor) 78%, transparent);
+    --appSurfaceMuted: color-mix(in srgb, var(--backgroundColor) 54%, transparent);
+    --appSurfaceBorder: var(--defaultAcrylicBorder);
+    --appSurfaceBorderStrong: color-mix(in srgb, var(--textColor) 18%, transparent);
+    --appSurfaceInset: var(--defaultAcrylicHighlight);
+    --appSurfaceShadow: 0 18px 42px color-mix(in srgb, black 14%, transparent);
+    --appSurfaceShadowSoft: 0 10px 24px color-mix(in srgb, black 8%, transparent);
+    --appGlassFilter: blur(20px) saturate(150%);
+    --appPanelSurface:
+        linear-gradient(
+            145deg,
+            color-mix(in srgb, var(--backgroundColor) 82%, white 4%),
+            color-mix(in srgb, var(--backgroundColor) 70%, transparent)
+        );
+    --appBodyBg: linear-gradient(
+        180deg,
+        color-mix(in srgb, white 1.5%, transparent),
+        transparent
+    );
+    --headerChromeBg: color-mix(in srgb, var(--backgroundColor) 66%, transparent);
+    --headerChromeBorder: color-mix(in srgb, var(--textColor) 12%, transparent);
+    --headerChromeShadow: 0 8px 22px color-mix(in srgb, black 8%, transparent);
+    --headerChromeFilter: blur(20px) saturate(150%);
+    --headerSearchBg: color-mix(in srgb, var(--backgroundColor) 58%, transparent);
+    --sideBarBg:
+        linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--backgroundColor) 68%, transparent),
+            color-mix(in srgb, var(--backgroundColor) 58%, transparent)
+        );
+    --sideBarFilter: blur(22px) saturate(150%);
+    --panelFilter: blur(22px) saturate(150%);
+}
+
+:root[data-theme-source="builtin"][data-theme-scheme="dark"][data-ui-style="glass"] {
+    // Extra body on dark scheme (Lycia shell uses ~black/60 when no material wash).
+    --appSurface: color-mix(in srgb, var(--backgroundColor) 74%, transparent);
+    --appSurfaceStrong: color-mix(in srgb, var(--backgroundColor) 86%, transparent);
+    --appSurfaceMuted: color-mix(in srgb, var(--backgroundColor) 66%, transparent);
+    --appPanelSurface:
+        linear-gradient(
+            145deg,
+            color-mix(in srgb, var(--backgroundColor) 88%, white 2%),
+            color-mix(in srgb, var(--backgroundColor) 78%, transparent)
+        );
+    --headerChromeBg: color-mix(in srgb, var(--backgroundColor) 76%, transparent);
+    --headerSearchBg: color-mix(in srgb, var(--backgroundColor) 70%, transparent);
+    --sideBarBg:
+        linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--backgroundColor) 78%, transparent),
+            color-mix(in srgb, var(--backgroundColor) 70%, transparent)
+        );
+}
+
+// Flat: mica-like, still denser than the previous acrylic pass.
+:root[data-theme-source="builtin"][data-ui-style="flat"] {
+    --appSurface: color-mix(in srgb, var(--backgroundColor) 76%, transparent);
+    --appSurfaceStrong: color-mix(in srgb, var(--backgroundColor) 86%, transparent);
+    --appSurfaceMuted: color-mix(in srgb, var(--backgroundColor) 68%, transparent);
+    --appSurfaceBorder: color-mix(in srgb, var(--textColor) 10%, transparent);
+    --appSurfaceBorderStrong: color-mix(in srgb, var(--textColor) 15%, transparent);
+    --appSurfaceInset: inset 0 1px 0 color-mix(in srgb, white 22%, transparent);
+    --appSurfaceShadow: 0 8px 22px color-mix(in srgb, black 8%, transparent);
+    --appSurfaceShadowSoft: 0 3px 12px color-mix(in srgb, black 5%, transparent);
+    --appGlassFilter: blur(16px) saturate(140%);
+    --appPanelSurface: color-mix(in srgb, var(--backgroundColor) 84%, transparent);
+    --appBodyBg: linear-gradient(
+        160deg,
+        color-mix(in srgb, white 2%, transparent),
+        transparent
+    );
+    --headerChromeBg: color-mix(in srgb, var(--backgroundColor) 80%, transparent);
+    --headerChromeShadow: 0 2px 10px color-mix(in srgb, black 5%, transparent);
+    --headerChromeFilter: blur(16px) saturate(140%);
+    --headerSearchBg: color-mix(in srgb, var(--backgroundColor) 72%, transparent);
+    --sideBarBg: color-mix(in srgb, var(--backgroundColor) 78%, transparent);
+    --sideBarFilter: blur(16px) saturate(140%);
+    --musicBarSurface: color-mix(in srgb, var(--backgroundColor) 82%, transparent);
+    --musicBarSurfaceAlt: color-mix(in srgb, var(--backgroundColor) 78%, transparent);
+    --panelFilter: blur(18px) saturate(145%);
+}
+
+:root[data-theme-source="builtin"][data-theme-scheme="dark"][data-ui-style="flat"] {
+    --appSurface: color-mix(in srgb, var(--backgroundColor) 84%, transparent);
+    --appSurfaceStrong: color-mix(in srgb, var(--backgroundColor) 92%, transparent);
+    --appSurfaceMuted: color-mix(in srgb, var(--backgroundColor) 76%, transparent);
+    --appPanelSurface: color-mix(in srgb, var(--backgroundColor) 90%, transparent);
+    --headerChromeBg: color-mix(in srgb, var(--backgroundColor) 88%, transparent);
+    --headerSearchBg: color-mix(in srgb, var(--backgroundColor) 82%, transparent);
+    --sideBarBg: color-mix(in srgb, var(--backgroundColor) 86%, transparent);
+    --musicBarSurface: color-mix(in srgb, var(--backgroundColor) 90%, transparent);
+    --musicBarSurfaceAlt: color-mix(in srgb, var(--backgroundColor) 86%, transparent);
+}
+
+html[data-theme-source="builtin"][data-ui-style="flat"] {
+    .header-container,
+    .side-bar-container {
+        -webkit-backdrop-filter: var(--appGlassFilter);
+        backdrop-filter: var(--appGlassFilter);
+    }
+
+    .music-bar-container {
+        --musicBarSurface: color-mix(in srgb, var(--backgroundColor) 82%, transparent) !important;
+        --musicBarSurfaceAlt: color-mix(in srgb, var(--backgroundColor) 78%, transparent) !important;
+        background: var(--defaultAcrylicTexture), var(--musicBarSurface) !important;
+        -webkit-backdrop-filter: var(--appGlassFilter);
+        backdrop-filter: var(--appGlassFilter);
+    }
+
+    .components--modal-base > [class^="modal--"],
+    .components--modal-base > [class*=" modal--"],
+    .components--panel-base .components--panel-base-content {
+        -webkit-backdrop-filter: var(--panelFilter);
+        backdrop-filter: var(--panelFilter);
+    }
+
+    .components--context-menu,
+    [class*="context-menu"] {
+        background: var(--appPanelSurface) !important;
+        -webkit-backdrop-filter: var(--panelFilter) !important;
+        backdrop-filter: var(--panelFilter) !important;
+    }
+
+    .backdrop-blur,
+    .glass-surface {
+        -webkit-backdrop-filter: var(--appGlassFilter) !important;
+        backdrop-filter: var(--appGlassFilter) !important;
+    }
+
+    .tab-list-container,
+    .music-sheetlike-view--body-container .operations {
+        -webkit-backdrop-filter: var(--appGlassFilter) !important;
+        backdrop-filter: var(--appGlassFilter) !important;
+    }
+
+    .setting-view--container {
+        --settingPanelSurface: var(--appSurfaceStrong);
+        --settingSidebarSurface: var(--appSurfaceMuted);
+        --settingRowSurface: var(--appSurfaceMuted);
+        --settingControlSurface: var(--appSurfaceMuted);
+        --settingControlSurfaceHover: var(--appInteractiveSurfaceHover);
+    }
+
+    .setting-view--sidebar,
+    .setting-view--body-item-container {
+        -webkit-backdrop-filter: var(--appGlassFilter);
+        backdrop-filter: var(--appGlassFilter);
+    }
+
+    .music-list-container:not([data-surface-mode="header-only"]) {
+        --musicListSurface: var(--appSurface);
+        -webkit-backdrop-filter: var(--appGlassFilter) !important;
+        backdrop-filter: var(--appGlassFilter) !important;
+    }
+
+    .music-list-container:not([data-surface-mode="header-only"]) .music-list-toolbar {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+    }
+
+    // The auto-hidden dock must not leave a full-width frosted strip behind.
+    .music-bar-container[data-auto-hide="true"][data-revealed="false"] {
+        background: transparent !important;
+        background-color: transparent !important;
+        background-image: none !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        box-shadow: none !important;
+    }
+}
+
+html[data-theme-source="builtin"][data-theme-scheme="dark"][data-ui-style="flat"] {
+    .music-bar-container {
+        --musicBarSurface: color-mix(in srgb, var(--backgroundColor) 90%, transparent) !important;
+        --musicBarSurfaceAlt: color-mix(in srgb, var(--backgroundColor) 86%, transparent) !important;
+    }
+}
+
+html[data-theme-source="builtin"][data-ui-style="glass"] {
+    .setting-view--container {
+        --settingPanelSurface: var(--appSurfaceStrong);
+        --settingSidebarSurface: var(--appSurfaceMuted);
+        --settingRowSurface: var(--appSurfaceMuted);
+        --settingControlSurface: var(--appSurfaceMuted);
+        --settingControlSurfaceHover: var(--appInteractiveSurfaceHover);
+    }
+
+    .setting-view--sidebar,
+    .setting-view--body-item-container {
+        -webkit-backdrop-filter: var(--appGlassFilter);
+        backdrop-filter: var(--appGlassFilter);
+    }
+
+    .music-list-container:not([data-surface-mode="header-only"]) {
+        --musicListSurface: var(--appSurface);
+        -webkit-backdrop-filter: var(--appGlassFilter) !important;
+        backdrop-filter: var(--appGlassFilter) !important;
+    }
+
+    .music-list-container:not([data-surface-mode="header-only"]) .music-list-toolbar {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+    }
+
+    // Glass already owns the floating dock chrome; only clear residual frost
+    // when the bar is auto-hidden so no full-width strip remains.
+    .music-bar-container[data-auto-hide="true"][data-revealed="false"] {
+        background: transparent !important;
+        background-color: transparent !important;
+        background-image: none !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        box-shadow: none !important;
+    }
+}
+
+// Flat only: detail page dock goes fully clear so the immersive stage shows
+// through. Glass keeps MusicBar's dynamic album-color overlay/shell — do not
+// strip that path under the default acrylic theme.
+html[data-theme-source="builtin"][data-ui-style="flat"]
+    .music-bar-container[data-detail-open="true"] {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+
+    .music-bar-overlay,
+    .music-bar-shell {
+        background: transparent !important;
+        background-image: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+    }
+
+    .music-bar-overlay {
+        display: none !important;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    :root[data-theme-source="builtin"] {
+        --defaultAcrylicWindowTint: var(--backgroundColor);
+        --appSurface: var(--backgroundColor);
+        --appSurfaceStrong: var(--backgroundColor);
+        --appSurfaceMuted: color-mix(in srgb, var(--textColor) 5%, var(--backgroundColor));
+        --appPanelSurface: var(--backgroundColor);
+        --appGlassFilter: none;
+        --headerChromeBg: var(--backgroundColor);
+        --headerChromeFilter: none;
+        --sideBarBg: var(--backgroundColor);
+        --sideBarFilter: none;
+        --panelFilter: none;
+    }
+
+    html[data-theme-source="builtin"][data-window-material="acrylic"] {
+        background: var(--backgroundColor) !important;
+
+        body,
+        #root,
+        .app-container,
+        .app-container .body-container {
+            background: var(--backgroundColor) !important;
+            background-image: none !important;
+        }
+    }
+}
