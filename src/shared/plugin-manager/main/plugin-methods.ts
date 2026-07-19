@@ -286,6 +286,26 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
         }
     }
 
+    /** 歌曲详情/分享页链接 */
+    async getMusicDetailPageUrl(
+        musicItem: IMusic.IMusicItemPartial,
+    ): Promise<string | null> {
+        if (!this.plugin.instance.getMusicDetailPageUrl) {
+            return null;
+        }
+        try {
+            const url = await this.plugin.instance.getMusicDetailPageUrl(
+                resetMediaItem(musicItem as IMedia.IMediaBase, undefined, true),
+            );
+            if (typeof url === "string" && url.trim()) {
+                return url.trim();
+            }
+            return null;
+        } catch {
+            return null;
+        }
+    }
+
     /** 获取歌词 */
     async getLyric(
         musicItem: IMusic.IMusicItemPartial,

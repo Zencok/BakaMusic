@@ -104,6 +104,10 @@ declare namespace IPlugin {
     getMusicInfo?: (
       musicBase: IMedia.IMediaBase
     ) => Promise<Partial<IMusic.IMusicItem> | null>;
+    /** 歌曲分享/详情页 URL */
+    getMusicDetailPageUrl?: (
+      musicItem: IMusic.IMusicItemPartial
+    ) => string | Promise<string | null> | null;
     /** 获取歌词 */
     getLyric?: (
       musicItem: IMusic.IMusicItemPartial
