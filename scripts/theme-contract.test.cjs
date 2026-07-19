@@ -23,6 +23,26 @@ const themeMainSource = fs.readFileSync(path.join(
     __dirname,
     "../src/shared/themepack/main.ts",
 ), "utf8");
+const themeRuntimeSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/shared/themepack/renderer-runtime.ts",
+), "utf8");
+const themeBridgeSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/document/styles/theme-bridge.scss",
+), "utf8");
+const defaultThemeSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/shared/themepack/default-theme.ts",
+), "utf8");
+
+function readDefaultThemeCss(exportName) {
+    const match = defaultThemeSource.match(new RegExp(
+        "export const " + exportName + " = \`([\\s\\S]*?)\`;",
+    ));
+    assert.ok(match, "Missing " + exportName);
+    return match[1];
+}
 
 assert.equal(matchesThemeSearch({}, ""), true);
 assert.equal(matchesThemeSearch({
@@ -54,6 +74,41 @@ assert.match(localThemesSource, /matchesThemeSearch\(it, normalizedSearch\)/);
 assert.match(remoteThemesSource, /matchesThemeSearch\(\s*theme\.config,\s*normalizedSearch,/);
 
 assert.equal(THEME_SPEC_V2, "bakamusic-theme@2");
+assert.match(defaultThemeSource, /scheme:\s*"system"/);
+assert.match(defaultThemeSource, /BUILTIN_DEFAULT_THEME_HASH = "builtin-default-v2"/);
+const builtinDefaultLightThemeCss = readDefaultThemeCss(
+    "BUILTIN_DEFAULT_LIGHT_THEME_CSS",
+);
+const builtinDefaultDarkThemeCss = readDefaultThemeCss(
+    "BUILTIN_DEFAULT_DARK_THEME_CSS",
+);
+assert.equal(
+    parseThemeCss(builtinDefaultLightThemeCss).tokens.get("--theme-scheme"),
+    "light",
+);
+assert.equal(
+    parseThemeCss(builtinDefaultDarkThemeCss).tokens.get("--theme-scheme"),
+    "dark",
+);
+assert.equal(
+    parseThemeCss(builtinDefaultDarkThemeCss).tokens.get("--theme-bg"),
+    "#111318",
+);
+assert.match(themeRuntimeSource, /matchMedia\(darkSchemeMediaQuery\)/);
+assert.match(themeRuntimeSource, /addEventListener\("change", systemThemeChangeListener\)/);
+assert.match(themeRuntimeSource, /removeEventListener\("change", systemThemeChangeListener\)/);
+assert.match(
+    themeRuntimeSource,
+    /systemThemeQuery\?\.matches\s*\?\s*BUILTIN_DEFAULT_DARK_THEME_CSS\s*:\s*BUILTIN_DEFAULT_LIGHT_THEME_CSS/,
+);
+assert.match(
+    themeRuntimeSource,
+    /const contents = await bridge\.readThemeContents\(themePack\.path\);\s*applyThemeCss[^;]+;\s*stopFollowingSystemTheme\(\)/,
+);
+assert.match(
+    themeBridgeSource,
+    /@media \(prefers-color-scheme:\s*dark\)[\s\S]*:root:not\(\[data-theme-spec="2"\]\)/,
+);
 assert.match(themeMainSource, /stream:\s*true/);
 assert.match(themeMainSource, /resolveLocalMediaByteRange/);
 assert.match(themeMainSource, /Content-Range/);

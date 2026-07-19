@@ -122,6 +122,28 @@
     --placeholderColor: var(--theme-placeholder);
 }
 
+// First-paint fallback before the selected pack is applied. The selector stops
+// matching as soon as the theme runtime sets data-theme-spec, so market packs
+// keep full ownership of their fixed light/dark scheme.
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme-spec="2"]) {
+        --theme-primary: #ff9850;
+        --theme-primary-hover: #ffad75;
+        --theme-primary-active: #e87931;
+        --theme-bg: #111318;
+        --theme-text: #f2f4f8;
+        --theme-scheme: dark;
+        --theme-text-secondary: rgba(242, 244, 248, 0.76);
+        --theme-text-muted: rgba(242, 244, 248, 0.54);
+        --theme-text-on-primary: #18100a;
+        --theme-header-text: #f2f4f8;
+        --theme-link: #ffad75;
+        --theme-divider: rgba(242, 244, 248, 0.13);
+        --theme-mask: rgba(3, 5, 9, 0.68);
+        --theme-placeholder: #252932;
+    }
+}
+
 // This bridge is loaded after both UI-style sheets. It deliberately owns every
 // colour/effect token while glass/flat continue to own geometry and behaviour.
 :root {

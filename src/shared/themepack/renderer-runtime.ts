@@ -1,15 +1,19 @@
 import type { IMod } from "./type";
 import { parseThemeCss } from "./contract";
 import {
-    BUILTIN_DEFAULT_THEME_CSS,
+    BUILTIN_DEFAULT_DARK_THEME_CSS,
+    BUILTIN_DEFAULT_LIGHT_THEME_CSS,
     BUILTIN_DEFAULT_THEME_PATH,
     createBuiltinDefaultThemePack,
     isBuiltinDefaultTheme,
 } from "./default-theme";
 
 const themeNodeId = "themepack-node";
+const darkSchemeMediaQuery = "(prefers-color-scheme: dark)";
 export const themePathKey = "themepack-path";
 let themeBackgroundIframe: HTMLIFrameElement | null = null;
+let systemThemeQuery: MediaQueryList | null = null;
+let systemThemeChangeListener: (() => void) | null = null;
 
 function addTailSlash(value: string) {
     return value.endsWith("/") || value.endsWith("\\") ? value : `${value}/`;
@@ -76,6 +80,14 @@ function clearThemeIframe() {
     themeBackgroundIframe = null;
 }
 
+function stopFollowingSystemTheme() {
+    if (systemThemeQuery && systemThemeChangeListener) {
+        systemThemeQuery.removeEventListener("change", systemThemeChangeListener);
+    }
+    systemThemeQuery = null;
+    systemThemeChangeListener = null;
+}
+
 function applyThemeCss(themePack: ICommon.IThemePack, rawCss: string) {
     const parsed = parseThemeCss(rawCss);
     let themeNode = document.querySelector(`#${themeNodeId}`) as HTMLStyleElement | null;
@@ -88,6 +100,24 @@ function applyThemeCss(themePack: ICommon.IThemePack, rawCss: string) {
     themeNode.textContent = isBuiltinDefaultTheme(themePack)
         ? parsed.css
         : replaceThemeAlias(parsed.css, themePack.path);
+}
+
+function applyBuiltinDefaultTheme(themePack: ICommon.IThemePack) {
+    stopFollowingSystemTheme();
+    systemThemeQuery = window.matchMedia(darkSchemeMediaQuery);
+
+    const applyCurrentSystemTheme = () => {
+        applyThemeCss(
+            themePack,
+            systemThemeQuery?.matches
+                ? BUILTIN_DEFAULT_DARK_THEME_CSS
+                : BUILTIN_DEFAULT_LIGHT_THEME_CSS,
+        );
+    };
+
+    systemThemeChangeListener = applyCurrentSystemTheme;
+    systemThemeQuery.addEventListener("change", systemThemeChangeListener);
+    applyCurrentSystemTheme();
 }
 
 function applyThemeIframe(themePack: ICommon.IThemePack, iframeHtml: string | null) {
@@ -111,12 +141,13 @@ export async function applyTheme(
     if (!themePack || isBuiltinDefaultTheme(themePack)) {
         const builtin = createBuiltinDefaultThemePack(themePack?.name);
         clearThemeIframe();
-        applyThemeCss(builtin, BUILTIN_DEFAULT_THEME_CSS);
+        applyBuiltinDefaultTheme(builtin);
         localStorage.setItem(themePathKey, BUILTIN_DEFAULT_THEME_PATH);
         return builtin;
     }
     const contents = await bridge.readThemeContents(themePack.path);
     applyThemeCss(themePack, contents.rawCss);
+    stopFollowingSystemTheme();
     applyThemeIframe(themePack, contents.iframeHtml);
     localStorage.setItem(themePathKey, themePack.path);
     return themePack;
