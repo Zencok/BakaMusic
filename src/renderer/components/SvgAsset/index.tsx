@@ -52,6 +52,7 @@ export type SvgAssetIconNames =
     | "repeat-song-1"
     | "repeat-song"
     | "rolling-1s"
+    | "share"
     | "shuffle"
     | "skip-left"
     | "skip-right"

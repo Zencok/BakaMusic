@@ -31,7 +31,9 @@
         "status": "状态",
         "close": "关闭",
         "dialog": "对话框",
-        "panel": "侧边面板"
+        "panel": "侧边面板",
+        "copied_to_clipboard": "已复制到剪贴板",
+        "copy_to_clipboard_failed": "复制失败"
     },
     "startup": {
         "failed": "BakaMusic 启动失败",
@@ -225,7 +227,10 @@
         "reveal_local_music_in_file_explorer": "打开歌曲所在文件夹",
         "reveal_local_music_in_file_explorer_fail": "打开失败: ",
         "delete_local_downloaded_songs_success": "已删除 {{musicNums}} 首本地歌曲",
-        "delete_local_downloaded_song_success": "已删除本地歌曲 [{{songName}}]"
+        "delete_local_downloaded_song_success": "已删除本地歌曲 [{{songName}}]",
+        "share_music": "分享歌曲",
+        "share_music_copied": "分享文案已复制到剪贴板",
+        "share_music_failed": "分享失败"
     },
     "search_result_page": {
         "search_result_title": "的搜索结果",

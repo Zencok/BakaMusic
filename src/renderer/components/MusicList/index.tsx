@@ -9,7 +9,17 @@ import "./index.scss";
 import albumImg from "@/assets/imgs/album-cover.jpg";
 import { localPluginName, qualityKeys, RequestStateCode, sortIndexSymbol, timeStampSymbol } from "@/common/constant";
 import { toError } from "@/common/error-util";
-import { getInternalData, getMediaPrimaryKey, isSameMedia } from "@/common/media-util";
+import { getInternalData, isSameMedia } from "@/common/media-util";
+import {
+    buildMusicAlbumCopyPayload,
+    buildMusicArtistCopyPayload,
+    buildMusicSongCopyPayload,
+    copyTextToClipboard,
+    formatMusicAlbumTitle,
+    formatMusicArtistTitle,
+    formatMusicSharePayload,
+    formatMusicSongIdTitle,
+} from "@/common/music-identity";
 import { secondsToDuration } from "@/common/time-util";
 import { CSSProperties, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import hotkeys from "hotkeys-js";
@@ -18,6 +28,7 @@ import useVirtualList from "@/hooks/useVirtualList";
 import AppConfig from "@shared/app-config/renderer";
 import { i18n } from "@/shared/i18n/renderer";
 import { shellUtil } from "@shared/utils/renderer";
+import PluginManager from "@shared/plugin-manager/renderer";
 import BottomLoadingState from "../BottomLoadingState";
 import Condition, { IfTruthy } from "../Condition";
 import { IContextMenuItem, showContextMenu } from "../ContextMenu";
@@ -32,6 +43,7 @@ import musicSheetDB from "@/renderer/core/music-sheet/database";
 import Downloader from "@/renderer/core/downloader";
 import MusicSheet from "@/renderer/core/music-sheet";
 import trackPlayer from "@renderer/core/track-player";
+import { getMediaPluginDelegate } from "@renderer/core/track-player/plugin-media";
 import { useCurrentMusic } from "@renderer/core/track-player/hooks";
 import isLocalMusic from "@/renderer/utils/is-local-music";
 import normalizeArtworkDisplaySrc from "@/renderer/utils/normalize-artwork-display-src";
@@ -199,6 +211,15 @@ const columnDef: ColumnDef<IMusic.IMusicItem, any>[] = [
 
 const estimizeItemHeight = 84; // flat list row with cover shadow room
 
+async function copyWithToast(text: string) {
+    const ok = await copyTextToClipboard(text);
+    if (ok) {
+        toast.success(i18n.t("common.copied_to_clipboard"));
+    } else {
+        toast.warn(i18n.t("common.copy_to_clipboard_failed"));
+    }
+}
+
 export function showMusicContextMenu(
     musicItems: IMusic.IMusicItem | IMusic.IMusicItem[],
     x: number,
@@ -208,23 +229,85 @@ export function showMusicContextMenu(
     const menuItems: IContextMenuItem[] = [];
     const isArray = Array.isArray(musicItems);
     if (!isArray) {
+        const musicItem = musicItems;
         menuItems.push(
             {
-                title: `ID: ${getMediaPrimaryKey(musicItems)}`,
+                title: formatMusicSongIdTitle(musicItem),
                 icon: "identification",
+                onClick() {
+                    void copyWithToast(buildMusicSongCopyPayload(musicItem));
+                },
             },
             {
                 title: `${i18n.t("media.media_type_artist")}: ${
-                    musicItems.artist ?? i18n.t("media.unknown_artist")
+                    formatMusicArtistTitle(musicItem, i18n.t("media.unknown_artist"))
                 }`,
                 icon: "user",
+                onClick() {
+                    void copyWithToast(buildMusicArtistCopyPayload(musicItem));
+                },
             },
             {
                 title: `${i18n.t("media.media_type_album")}: ${
-                    musicItems.album ?? i18n.t("media.unknown_album")
+                    formatMusicAlbumTitle(musicItem, i18n.t("media.unknown_album"))
                 }`,
                 icon: "album",
-                show: !!musicItems.album,
+                show: !!musicItem.album,
+                onClick() {
+                    void copyWithToast(buildMusicAlbumCopyPayload(musicItem));
+                },
+            },
+            {
+                title: i18n.t("music_list_context_menu.share_music"),
+                icon: "share",
+                show: !isLocalMusic(musicItem),
+                onClick() {
+                    void (async () => {
+                        try {
+                            const { message, url } = await formatMusicSharePayload(
+                                musicItem,
+                                async (item) => {
+                                    const result = await PluginManager.callPluginDelegateMethod(
+                                        getMediaPluginDelegate(item as IMusic.IMusicItem),
+                                        "getMusicDetailPageUrl",
+                                        item,
+                                    );
+                                    return typeof result === "string" ? result : null;
+                                },
+                            );
+                            if (!message) {
+                                toast.warn(i18n.t("music_list_context_menu.share_music_failed"));
+                                return;
+                            }
+
+                            // Prefer system share when available; always fall back to clipboard.
+                            if (typeof navigator.share === "function") {
+                                try {
+                                    await navigator.share({
+                                        title: musicItem.title,
+                                        text: message,
+                                        url,
+                                    });
+                                    return;
+                                } catch (error) {
+                                    const msg = String((error as Error)?.message ?? error ?? "");
+                                    if (/cancel|dismiss|AbortError/i.test(msg)) {
+                                        return;
+                                    }
+                                }
+                            }
+
+                            const ok = await copyTextToClipboard(message);
+                            if (ok) {
+                                toast.success(i18n.t("music_list_context_menu.share_music_copied"));
+                            } else {
+                                toast.warn(i18n.t("music_list_context_menu.share_music_failed"));
+                            }
+                        } catch {
+                            toast.warn(i18n.t("music_list_context_menu.share_music_failed"));
+                        }
+                    })();
+                },
             },
             {
                 divider: true,

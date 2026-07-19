@@ -31,7 +31,9 @@
         "status": "Status",
         "close": "Close",
         "dialog": "Dialog",
-        "panel": "Side panel"
+        "panel": "Side panel",
+        "copied_to_clipboard": "Copied to clipboard",
+        "copy_to_clipboard_failed": "Failed to copy"
     },
     "startup": {
         "failed": "BakaMusic failed to start",
@@ -225,7 +227,10 @@
         "reveal_local_music_in_file_explorer": "Show in File Explorer",
         "reveal_local_music_in_file_explorer_fail": "Open Failed: ",
         "delete_local_downloaded_songs_success": "Deleted {{musicNums}} local songs",
-        "delete_local_downloaded_song_success": "Deleted local song [{{songName}}]"
+        "delete_local_downloaded_song_success": "Deleted local song [{{songName}}]",
+        "share_music": "Share song",
+        "share_music_copied": "Share text copied to clipboard",
+        "share_music_failed": "Failed to share"
     },
     "search_result_page": {
         "search_result_title": "Search Results for",

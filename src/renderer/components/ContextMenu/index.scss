@@ -24,9 +24,12 @@
     position: relative;
 
     & span {
+      flex: 1;
+      min-width: 0;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      overflow: visible;
+      // Identity rows (ID / multi artist) must stay fully readable.
+      text-overflow: clip;
     }
 
     & .menu-item-icon {
