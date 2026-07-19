@@ -109,6 +109,52 @@ function optionalDialogString(value: unknown, maxLength: number) {
     return typeof value === "string" && value.length <= maxLength ? value : undefined;
 }
 
+/**
+ * Sanitize defaultPath for native open/save dialogs.
+ * Bare filenames are allowed (Electron uses them as the default name only).
+ * Absolute paths must still fall inside granted roots; otherwise fall back to basename.
+ */
+function sanitizeDialogDefaultPath(value: unknown): string | undefined {
+    if (typeof value !== "string") {
+        return undefined;
+    }
+    const trimmed = value.trim();
+    if (!trimmed || trimmed.includes("\0") || trimmed.length > 32_768) {
+        return undefined;
+    }
+
+    const baseName = path.basename(trimmed);
+    const isSafeBaseName = Boolean(
+        baseName
+        && baseName !== "."
+        && baseName !== ".."
+        && !baseName.includes("/")
+        && !baseName.includes("\\")
+        && baseName.length <= 512,
+    );
+
+    // Bare filename (or relative path with only a final name) without absolute root
+    if (!path.isAbsolute(trimmed) && !/^[A-Za-z]:[\\/]/.test(trimmed)) {
+        // Disallow traversal segments
+        if (
+            trimmed === "."
+            || trimmed === ".."
+            || trimmed.split(/[/\\]/).some((segment) => segment === "..")
+        ) {
+            return isSafeBaseName ? baseName : undefined;
+        }
+        // Prefer basename so renderer can pass just "title-artist.lrc"
+        return isSafeBaseName ? baseName : undefined;
+    }
+
+    try {
+        return assertPathAccess(trimmed, { allowMissing: true });
+    } catch {
+        // Outside grants: keep a safe default filename so the dialog is not blank
+        return isSafeBaseName ? baseName : undefined;
+    }
+}
+
 function assertExternalUrl(value: unknown) {
     assertString(value, "external URL", 8192);
     const parsed = new URL(value);
@@ -146,14 +192,7 @@ function sanitizeOpenDialogOptions(value: unknown): Electron.OpenDialogOptions {
             && allowedProperties.has(property as OpenDialogProperty),
         )
         : undefined;
-    let defaultPath: string | undefined;
-    if (typeof value.defaultPath === "string") {
-        try {
-            defaultPath = assertPathAccess(value.defaultPath, { allowMissing: true });
-        } catch {
-            defaultPath = undefined;
-        }
-    }
+    const defaultPath = sanitizeDialogDefaultPath(value.defaultPath);
     return {
         title: optionalDialogString(value.title, 256),
         buttonLabel: optionalDialogString(value.buttonLabel, 128),
@@ -167,14 +206,7 @@ function sanitizeOpenDialogOptions(value: unknown): Electron.OpenDialogOptions {
 function sanitizeSaveDialogOptions(value: unknown): Electron.SaveDialogOptions {
     assertIpcPayload(value, 64 * 1024);
     assertPlainObject(value, "dialog options");
-    let defaultPath: string | undefined;
-    if (typeof value.defaultPath === "string") {
-        try {
-            defaultPath = assertPathAccess(value.defaultPath, { allowMissing: true });
-        } catch {
-            defaultPath = undefined;
-        }
-    }
+    const defaultPath = sanitizeDialogDefaultPath(value.defaultPath);
     const allowedProperties = new Set<SaveDialogProperty>([
         "showHiddenFiles",
         "createDirectory",
