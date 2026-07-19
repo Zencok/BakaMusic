@@ -147,133 +147,135 @@ export default function PlayList(props: IProps) {
                     </div>
                 </div>
             </div>
-            <div className="playlist--music-list-container" ref={scrollElementRef}>
+            <div className="playlist--music-list-shell">
                 <CurrentMusicLocator
                     musicList={musicQueue}
                     getScrollElement={getScrollElement}
                     scrollToIndex={scrollToIndex}
                     placement="container"
                 ></CurrentMusicLocator>
-                <Condition
-                    condition={musicQueue.length !== 0}
-                    falsy={<div className="playlist--empty-state"><Empty></Empty></div>}
-                >
-                    <div
-                        className="playlist--music-list-scroll"
-                        style={{
-                            height: virtualController.totalHeight,
-                        }}
-                        tabIndex={-1}
-                        onFocus={() => {
-                            hotkeys.setScope("play-list");
-                        }}
-                        onBlur={() => {
-                            hotkeys.setScope("all");
-                        }}
+                <div className="playlist--music-list-container" ref={scrollElementRef}>
+                    <Condition
+                        condition={musicQueue.length !== 0}
+                        falsy={<div className="playlist--empty-state"><Empty></Empty></div>}
                     >
-                        {virtualController.virtualItems.map((virtualItem) => {
-                            const musicItem = virtualItem.dataItem;
-                            const rowIndex = virtualItem.rowIndex;
-                            return (
-                                <div
-                                    key={virtualItem.rowIndex}
-                                    style={{
-                                        position: "absolute",
-                                        left: 0,
-                                        top: virtualItem.top,
-                                        width: "100%",
-                                    }}
-                                    draggable
-                                    onDragStart={(e) => {
-                                        startDrag(e, rowIndex, DRAG_TAG);
-                                    }}
-                                    onDoubleClick={() => {
-                                        trackPlayer.playMusic(musicItem);
-                                    }}
-                                    onContextMenu={(e) => {
-                                        if (activeItems.size > 1) {
-                                            const selectedItems: IMusic.IMusicItem[] = [];
+                        <div
+                            className="playlist--music-list-scroll"
+                            style={{
+                                height: virtualController.totalHeight,
+                            }}
+                            tabIndex={-1}
+                            onFocus={() => {
+                                hotkeys.setScope("play-list");
+                            }}
+                            onBlur={() => {
+                                hotkeys.setScope("all");
+                            }}
+                        >
+                            {virtualController.virtualItems.map((virtualItem) => {
+                                const musicItem = virtualItem.dataItem;
+                                const rowIndex = virtualItem.rowIndex;
+                                return (
+                                    <div
+                                        key={virtualItem.rowIndex}
+                                        style={{
+                                            position: "absolute",
+                                            left: 0,
+                                            top: virtualItem.top,
+                                            width: "100%",
+                                        }}
+                                        draggable
+                                        onDragStart={(e) => {
+                                            startDrag(e, rowIndex, DRAG_TAG);
+                                        }}
+                                        onDoubleClick={() => {
+                                            trackPlayer.playMusic(musicItem);
+                                        }}
+                                        onContextMenu={(e) => {
+                                            if (activeItems.size > 1) {
+                                                const selectedItems: IMusic.IMusicItem[] = [];
 
-                                            activeItems.forEach((item) => {
-                                                selectedItems.push(musicQueue[item]);
-                                            });
+                                                activeItems.forEach((item) => {
+                                                    selectedItems.push(musicQueue[item]);
+                                                });
 
-                                            showMusicContextMenu(
-                                                selectedItems,
-                                                e.clientX,
-                                                e.clientY,
-                                                "play-list",
-                                            );
-                                        } else {
-                                            lastActiveIndexRef.current = virtualItem.rowIndex;
-                                            setActiveItems(new Set([virtualItem.rowIndex]));
-                                            showMusicContextMenu(
-                                                musicItem,
-                                                e.clientX,
-                                                e.clientY,
-                                                "play-list",
-                                            );
-                                        }
-                                    }}
-                                    onClick={() => {
-                                        if (hotkeys.shift) {
-                                            let start = lastActiveIndexRef.current;
-                                            let end = virtualItem.rowIndex;
-
-                                            if (start >= end) {
-                                                [start, end] = [end, start];
-                                            }
-
-                                            if (end > musicQueue.length) {
-                                                end = musicQueue.length - 1;
-                                            }
-                                            setActiveItems(
-                                                new Set(
-                                                    Array.from({ length: end - start + 1 }, (_, i) => start + i),
-                                                ),
-                                            );
-                                        } else if (hotkeys.ctrl) {
-                                            const newSet = new Set(activeItems);
-
-                                            if (newSet.has(virtualItem.rowIndex)) {
-                                                newSet.delete(virtualItem.rowIndex);
+                                                showMusicContextMenu(
+                                                    selectedItems,
+                                                    e.clientX,
+                                                    e.clientY,
+                                                    "play-list",
+                                                );
                                             } else {
-                                                newSet.add(virtualItem.rowIndex);
+                                                lastActiveIndexRef.current = virtualItem.rowIndex;
+                                                setActiveItems(new Set([virtualItem.rowIndex]));
+                                                showMusicContextMenu(
+                                                    musicItem,
+                                                    e.clientX,
+                                                    e.clientY,
+                                                    "play-list",
+                                                );
                                             }
-                                            setActiveItems(newSet);
-                                        } else {
-                                            setActiveItems(new Set([virtualItem.rowIndex]));
-                                            lastActiveIndexRef.current = virtualItem.rowIndex;
-                                        }
-                                    }}
-                                >
-                                    <PlayListMusicItem
-                                        key={getMediaPrimaryKey(musicItem)}
-                                        rowIndex={rowIndex}
-                                        isPlaying={isSameMedia(currentMusic, musicItem)}
-                                        isActive={activeItems.has(virtualItem.rowIndex)}
-                                        musicItem={musicItem}
-                                    ></PlayListMusicItem>
+                                        }}
+                                        onClick={() => {
+                                            if (hotkeys.shift) {
+                                                let start = lastActiveIndexRef.current;
+                                                let end = virtualItem.rowIndex;
 
-                                    <IfTruthy condition={rowIndex === 0}>
+                                                if (start >= end) {
+                                                    [start, end] = [end, start];
+                                                }
+
+                                                if (end > musicQueue.length) {
+                                                    end = musicQueue.length - 1;
+                                                }
+                                                setActiveItems(
+                                                    new Set(
+                                                        Array.from({ length: end - start + 1 }, (_, i) => start + i),
+                                                    ),
+                                                );
+                                            } else if (hotkeys.ctrl) {
+                                                const newSet = new Set(activeItems);
+
+                                                if (newSet.has(virtualItem.rowIndex)) {
+                                                    newSet.delete(virtualItem.rowIndex);
+                                                } else {
+                                                    newSet.add(virtualItem.rowIndex);
+                                                }
+                                                setActiveItems(newSet);
+                                            } else {
+                                                setActiveItems(new Set([virtualItem.rowIndex]));
+                                                lastActiveIndexRef.current = virtualItem.rowIndex;
+                                            }
+                                        }}
+                                    >
+                                        <PlayListMusicItem
+                                            key={getMediaPrimaryKey(musicItem)}
+                                            rowIndex={rowIndex}
+                                            isPlaying={isSameMedia(currentMusic, musicItem)}
+                                            isActive={activeItems.has(virtualItem.rowIndex)}
+                                            musicItem={musicItem}
+                                        ></PlayListMusicItem>
+
+                                        <IfTruthy condition={rowIndex === 0}>
+                                            <DragReceiver
+                                                position="top"
+                                                rowIndex={0}
+                                                tag={DRAG_TAG}
+                                                onDrop={onDrop}
+                                            ></DragReceiver>
+                                        </IfTruthy>
                                         <DragReceiver
-                                            position="top"
-                                            rowIndex={0}
+                                            position="bottom"
+                                            rowIndex={rowIndex + 1}
                                             tag={DRAG_TAG}
                                             onDrop={onDrop}
                                         ></DragReceiver>
-                                    </IfTruthy>
-                                    <DragReceiver
-                                        position="bottom"
-                                        rowIndex={rowIndex + 1}
-                                        tag={DRAG_TAG}
-                                        onDrop={onDrop}
-                                    ></DragReceiver>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </Condition>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </Condition>
+                </div>
             </div>
         </Base>
     );
