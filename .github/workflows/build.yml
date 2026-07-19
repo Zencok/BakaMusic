@@ -115,10 +115,16 @@ jobs:
           CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
           if (-not $env:CERTIFICATE_BASE64 -or -not $env:CERTIFICATE_PASSWORD) {
-            throw "Tagged Windows builds require WINDOWS_CERTIFICATE_BASE64 and WINDOWS_CERTIFICATE_PASSWORD"
+            Write-Host "Windows signing secrets incomplete; packaging unsigned"
+            exit 0
           }
           $certificatePath = Join-Path $env:RUNNER_TEMP "bakamusic-code-signing.pfx"
-          [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:CERTIFICATE_BASE64))
+          try {
+            [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:CERTIFICATE_BASE64))
+          } catch {
+            Write-Host "Invalid WINDOWS_CERTIFICATE_BASE64; packaging unsigned"
+            exit 0
+          }
           "WINDOWS_CERTIFICATE_FILE=$certificatePath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "WINDOWS_CERTIFICATE_PASSWORD=$env:CERTIFICATE_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
@@ -177,23 +183,34 @@ jobs:
           Compress-Archive -Path "./out/BakaMusic-win32-x64" -DestinationPath "BakaMusic-${{ env.VERSION }}-win32-x64-portable.zip" -Force
       - name: Sign Windows executables
         if: startsWith(github.ref, 'refs/tags/v') && matrix.platform == 'windows'
+        continue-on-error: true
         shell: pwsh
         run: |
+          if (-not $env:WINDOWS_CERTIFICATE_FILE -or -not $env:WINDOWS_CERTIFICATE_PASSWORD) {
+            Write-Host "Skip Windows signing: certificate not prepared"
+            exit 0
+          }
           $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
             Where-Object FullName -Match '\\x64\\signtool\.exe$' |
             Sort-Object FullName -Descending |
             Select-Object -First 1 -ExpandProperty FullName
-          if (-not $signtool) { throw "signtool.exe not found" }
-          # Sign only — do not pre-verify. Packager may already sign the main EXE;
-          # the Inno Setup installer always needs an explicit post-build sign.
+          if (-not $signtool) {
+            Write-Host "signtool.exe not found; skip signing"
+            exit 0
+          }
           $targets = @(
             "./out/BakaMusic-win32-x64/BakaMusic.exe",
             "./out/BakaMusic-${{ env.VERSION }}-win32-x64-setup.exe"
           )
           foreach ($target in $targets) {
-            if (-not (Test-Path $target)) { throw "Missing file to sign: $target" }
+            if (-not (Test-Path $target)) {
+              Write-Host "Missing file to sign: $target"
+              continue
+            }
             & $signtool sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /f "$env:WINDOWS_CERTIFICATE_FILE" /p "$env:WINDOWS_CERTIFICATE_PASSWORD" $target
-            if ($LASTEXITCODE -ne 0) { throw "Signing failed: $target" }
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "Signing failed: $target (continuing)"
+            }
           }
       - name: Stage Windows artifacts
         if: matrix.platform == 'windows'

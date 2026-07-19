@@ -24,11 +24,8 @@ const macNotarizationConfigured = !!(
     && process.env.APPLE_API_ISSUER
 );
 
-if (requireReleaseSigning && process.platform === "win32" && !windowsSigningConfigured) {
-    throw new Error("Tagged Windows builds require code-signing credentials");
-}
-// macOS: sign when credentials exist, but do not hard-fail tagged builds when
-// notarization secrets are incomplete. CI can still ship an unsigned/signed-only app.
+// Sign when credentials exist. Tagged CI builds must still package if secrets
+// are missing — do not hard-fail release matrix jobs on signing alone.
 
 const nativeSourceIgnorePlugin = {
     __isElectronForgePlugin: true,
