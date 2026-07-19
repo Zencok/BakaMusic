@@ -123,54 +123,113 @@ function stringifyMetaValue(key: string, value: unknown) {
     return String(value);
 }
 
-export function formatLyricsByTimestamp(
-    rawLrc: string,
-    translation?: string,
-    romanization?: string,
-    lyricOrder?: DownloadLyricOrderItem[] | null,
-    options?: {
-        enableWordByWord?: boolean;
-    },
-) {
-    const parser = new LyricParser(rawLrc, {
-        translation,
-        romanization,
-    });
-    const parsedItems = parser.getLyricItems();
+export interface IFormatLyricItemsOptions {
+    /** Include enhanced word-by-word timestamps when available */
+    enableWordByWord?: boolean;
+    /** Keep LRC timestamps (default true). When false, emit plain text lines only. */
+    withTimestamp?: boolean;
+    meta?: Record<string, unknown> | null;
+}
 
-    if (!parsedItems.length) {
+/** Lyric line shape needed for export (compatible with LyricParser items). */
+export interface IExportableLyricItem {
+    time: number;
+    lrc?: string;
+    translation?: string | null;
+    romanization?: string | null;
+    words?: ILyric.IWordData[];
+    hasWordTimeline?: boolean;
+    endTime?: number;
+    romanizationWords?: ILyric.IWordData[];
+    hasRomanizationWordTimeline?: boolean;
+    romanizationDuration?: number;
+}
+
+/**
+ * Build export order from lyric display toggles.
+ * Original is always included; translation / romanization follow show flags.
+ * Relative order prefers download.lyricOrder when provided.
+ */
+export function resolveLyricExportOrder(options: {
+    showTranslation?: boolean;
+    showRomanization?: boolean;
+    preferredOrder?: DownloadLyricOrderItem[] | null;
+}): DownloadLyricOrderItem[] {
+    const preferred = normalizeDownloadLyricOrder(options.preferredOrder);
+    const allowed = new Set<DownloadLyricOrderItem>(["original"]);
+    if (options.showTranslation) {
+        allowed.add("translation");
+    }
+    if (options.showRomanization) {
+        allowed.add("romanization");
+    }
+
+    const ordered = preferred.filter((item) => allowed.has(item));
+    if (!ordered.includes("original")) {
+        ordered.unshift("original");
+    }
+    return ordered;
+}
+
+function formatPlainWordLine(words: ILyric.IWordData[] | undefined, fallback: string) {
+    if (!words?.length) {
+        return fallback;
+    }
+    return words.map((word) => word?.text ?? "").join("") || fallback;
+}
+
+/**
+ * Format already-parsed lyric lines into LRC / plain text.
+ */
+export function formatLyricsFromItems(
+    items: IExportableLyricItem[],
+    lyricOrder?: DownloadLyricOrderItem[] | null,
+    options?: IFormatLyricItemsOptions,
+): string {
+    if (!Array.isArray(items) || !items.length) {
         return "";
     }
 
     const normalizedOrder = normalizeDownloadLyricOrder(lyricOrder);
     const enableWordByWord = options?.enableWordByWord === true;
-    const meta = parser.getMeta();
-    const metaLines = ["ti", "ar", "al", "by", "offset"]
-        .map((key) => {
-            const value = stringifyMetaValue(key, meta[key]);
-            return value ? `[${key}:${value}]` : null;
-        })
-        .filter((line): line is string => Boolean(line));
+    const withTimestamp = options?.withTimestamp !== false;
+    const meta = options?.meta ?? null;
 
     const resultLines: string[] = [];
-    if (metaLines.length) {
-        resultLines.push(...metaLines, "");
+    if (withTimestamp && meta) {
+        const metaLines = ["ti", "ar", "al", "by", "offset"]
+            .map((key) => {
+                const value = stringifyMetaValue(key, meta[key]);
+                return value ? `[${key}:${value}]` : null;
+            })
+            .filter((line): line is string => Boolean(line));
+        if (metaLines.length) {
+            resultLines.push(...metaLines, "");
+        }
     }
 
-    for (const item of parsedItems) {
+    for (const item of items) {
         for (const lyricType of normalizedOrder) {
             if (lyricType === "original") {
                 const content = item.lrc ?? "";
                 if (!content.trim()) {
-                    resultLines.push(toLrcTimestamp(item.time));
+                    if (withTimestamp) {
+                        resultLines.push(toLrcTimestamp(item.time));
+                    }
                     continue;
                 }
 
                 if (enableWordByWord && item.hasWordTimeline && item.words?.length) {
-                    const line = formatWordByWordLine(item.time, item.words, item.endTime);
-                    resultLines.push(line || `${toLrcTimestamp(item.time)}${content}`);
-                } else {
+                    if (withTimestamp) {
+                        const line = formatWordByWordLine(item.time, item.words, item.endTime);
+                        resultLines.push(line || `${toLrcTimestamp(item.time)}${content}`);
+                    } else {
+                        resultLines.push(formatPlainWordLine(item.words, content));
+                    }
+                } else if (withTimestamp) {
                     resultLines.push(`${toLrcTimestamp(item.time)}${content}`);
+                } else {
+                    resultLines.push(content);
                 }
                 continue;
             }
@@ -179,7 +238,11 @@ export function formatLyricsByTimestamp(
                 if (item.translation == null || !item.translation.trim()) {
                     continue;
                 }
-                resultLines.push(`${toLrcTimestamp(item.time)}${item.translation}`);
+                if (withTimestamp) {
+                    resultLines.push(`${toLrcTimestamp(item.time)}${item.translation}`);
+                } else {
+                    resultLines.push(item.translation);
+                }
                 continue;
             }
 
@@ -192,17 +255,49 @@ export function formatLyricsByTimestamp(
                 && item.hasRomanizationWordTimeline
                 && item.romanizationWords?.length
             ) {
-                const line = formatWordByWordLine(
-                    item.time,
-                    item.romanizationWords,
-                    item.romanizationDuration ?? item.endTime,
-                );
-                resultLines.push(line || `${toLrcTimestamp(item.time)}${item.romanization}`);
-            } else {
+                if (withTimestamp) {
+                    const line = formatWordByWordLine(
+                        item.time,
+                        item.romanizationWords,
+                        item.romanizationDuration ?? item.endTime,
+                    );
+                    resultLines.push(
+                        line || `${toLrcTimestamp(item.time)}${item.romanization}`,
+                    );
+                } else {
+                    resultLines.push(
+                        formatPlainWordLine(item.romanizationWords, item.romanization),
+                    );
+                }
+            } else if (withTimestamp) {
                 resultLines.push(`${toLrcTimestamp(item.time)}${item.romanization}`);
+            } else {
+                resultLines.push(item.romanization);
             }
         }
     }
 
     return resultLines.join("\n").trim();
+}
+
+export function formatLyricsByTimestamp(
+    rawLrc: string,
+    translation?: string,
+    romanization?: string,
+    lyricOrder?: DownloadLyricOrderItem[] | null,
+    options?: {
+        enableWordByWord?: boolean;
+        withTimestamp?: boolean;
+    },
+) {
+    const parser = new LyricParser(rawLrc, {
+        translation,
+        romanization,
+    });
+
+    return formatLyricsFromItems(parser.getLyricItems(), lyricOrder, {
+        enableWordByWord: options?.enableWordByWord,
+        withTimestamp: options?.withTimestamp,
+        meta: parser.getMeta(),
+    });
 }

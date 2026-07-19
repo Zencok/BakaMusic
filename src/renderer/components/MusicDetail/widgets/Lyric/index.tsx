@@ -28,6 +28,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import { PlayerState } from "@/common/constant";
+import {
+    buildDownloadFileBaseName,
+    DEFAULT_FILE_NAMING_CONFIG,
+    type FileNamingPreset,
+    type FileNamingType,
+} from "@/common/file-naming-formatter";
+import {
+    formatLyricsFromItems,
+    resolveLyricExportOrder,
+} from "@/common/download-postprocess";
+import { resolveFilePath } from "@/common/path-util";
+import { getGlobalContext } from "@shared/global-context/renderer";
 
 type MusicDetailCoverStyle = "cover" | "vinyl";
 type MusicDetailVinylTonearm = "none" | "classic" | "glass";
@@ -82,7 +94,7 @@ export default function Lyric() {
             x,
             y,
             width: 244,
-            height: 292,
+            height: 328,
             component: (
                 <LyricContextMenu
                     lyricParser={lyricParser}
@@ -376,6 +388,7 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
         getUserPreference("inlineLyricFontSize") ?? "13",
     );
     const showTranslation = useAppConfig("lyric.showTranslation");
+    const showRomanization = useAppConfig("lyric.showRomanization");
     const [linkedLyricInfo, setLinkedLyricInfo] = useState<IMedia.IUnique | null>(null);
     const { t } = useTranslation();
 
@@ -418,16 +431,51 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
             return;
         }
 
-        const rawLyric = fileType === "lrc"
-            ? lyricParser.toString({ withTimestamp: true })
-            : lyricParser.toString();
+        // Follow lyric-page display toggles + keep real word-by-word timing when present
+        const lyricOrder = resolveLyricExportOrder({
+            showTranslation: !!showTranslation && lyricParser.hasTranslation,
+            showRomanization: !!showRomanization && lyricParser.hasRomanization,
+            preferredOrder: AppConfig.getConfig("download.lyricOrder"),
+        });
+        const rawLyric = formatLyricsFromItems(
+            lyricParser.getLyricItems(),
+            lyricOrder,
+            {
+                // Lyric page renders word timeline when available — export the same way
+                enableWordByWord: true,
+                withTimestamp: fileType === "lrc",
+                meta: lyricParser.getMeta(),
+            },
+        );
+
+        if (!rawLyric.trim()) {
+            toast.error(t("music_detail.lyric_ctx_download_fail"));
+            return;
+        }
+
+        const musicItem = currentMusicRef.current;
+        const fileBaseName = buildDownloadFileBaseName(musicItem, {
+            type: (AppConfig.getConfig("download.fileNamingType")
+                ?? DEFAULT_FILE_NAMING_CONFIG.type) as FileNamingType,
+            preset: (AppConfig.getConfig("download.fileNamingPreset")
+                ?? DEFAULT_FILE_NAMING_CONFIG.preset) as FileNamingPreset,
+            custom: AppConfig.getConfig("download.fileNamingCustom")
+                ?? DEFAULT_FILE_NAMING_CONFIG.custom,
+            maxLength: AppConfig.getConfig("download.fileNamingMaxLength")
+                ?? DEFAULT_FILE_NAMING_CONFIG.maxLength,
+            keepExtension: true,
+        });
+        const fileName = `${fileBaseName}.${fileType}`;
+        const downloadBasePath = AppConfig.getConfig("download.path")
+            ?? getGlobalContext().appPath.downloads;
+        const defaultPath = downloadBasePath
+            ? resolveFilePath(downloadBasePath, `./${fileName}`)
+            : fileName;
 
         try {
             const result = await dialogUtil.showSaveDialog({
                 title: t("music_detail.lyric_ctx_download_lyric"),
-                defaultPath:
-                    currentMusicRef.current.title +
-                    (fileType === "lrc" ? ".lrc" : ".txt"),
+                defaultPath,
                 filters: [{
                     name: t("media.media_type_lyric"),
                     extensions: ["lrc", "txt"],
@@ -513,6 +561,22 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
                 {showTranslation
                     ? t("music_detail.hide_translation")
                     : t("music_detail.show_translation")}
+            </div>
+            <div
+                className="lyric-ctx-menu--row-container"
+                role="button"
+                data-disabled={!lyricParser?.hasRomanization}
+                onClick={() => {
+                    if (lyricParser?.hasRomanization) {
+                        AppConfig.setConfig({
+                            "lyric.showRomanization": !showRomanization,
+                        });
+                    }
+                }}
+            >
+                {showRomanization
+                    ? t("music_detail.hide_romanization")
+                    : t("music_detail.show_romanization")}
             </div>
             <div
                 className="lyric-ctx-menu--row-container"
