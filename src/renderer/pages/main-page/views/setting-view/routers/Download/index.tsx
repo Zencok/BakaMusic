@@ -3,6 +3,7 @@ import CheckBoxSettingItem from "../../components/CheckBoxSettingItem";
 import ListBoxSettingItem from "../../components/ListBoxSettingItem";
 import PathSettingItem from "../../components/PathSettingItem";
 import RadioGroupSettingItem from "../../components/RadioGroupSettingItem";
+import SettingGroup from "../../components/SettingGroup";
 import Downloader from "@/renderer/core/downloader";
 import SvgAsset from "@/renderer/components/SvgAsset";
 import useAppConfig from "@/hooks/useAppConfig";
@@ -167,83 +168,100 @@ export default function Download() {
 
     return (
         <div className="setting-view--download-container">
-            <PathSettingItem
-                keyPath="download.path"
-                label={t("settings.download.download_folder")}
-            ></PathSettingItem>
-            <ListBoxSettingItem
-                keyPath="download.concurrency"
-                options={concurrencyList}
-                onChange={(_evt, newConfig) => {
-                    Downloader.setDownloadingConcurrency(newConfig ?? 1);
-                }}
-                label={t("settings.download.max_concurrency")}
-            ></ListBoxSettingItem>
-            <RadioGroupSettingItem
-                label={t("settings.download.default_download_quality")}
-                keyPath="download.defaultQuality"
-                options={[
-                    "mgg",
-                    "128k",
-                    "192k",
-                    "320k",
-                    "flac",
-                    "flac24bit",
-                    "hires",
-                    "vinyl",
-                    "dolby",
-                    "atmos",
-                    "atmos_plus",
-                    "master",
-                ]}
-                renderItem={(item) => t("media.music_quality_" + item)}
-            ></RadioGroupSettingItem>
-            <RadioGroupSettingItem
-                label={t("settings.download.when_quality_missing")}
-                keyPath="download.whenQualityMissing"
-                options={[
-                    "lower",
-                    "higher",
-                ]}
-                renderItem={(item) => t("settings.download.download_" + item + "_quality_version")}
-            ></RadioGroupSettingItem>
-            <CheckBoxSettingItem
-                label={t("settings.download.write_metadata")}
-                keyPath="download.writeMetadata"
-            ></CheckBoxSettingItem>
-            {writeMetadata ? (
-                <>
-                    <CheckBoxSettingItem
-                        label={t("settings.download.write_metadata_cover")}
-                        keyPath="download.writeMetadataCover"
-                    ></CheckBoxSettingItem>
-                    <CheckBoxSettingItem
-                        label={t("settings.download.write_metadata_lyric")}
-                        keyPath="download.writeMetadataLyric"
-                    ></CheckBoxSettingItem>
-                </>
-            ) : null}
-            <CheckBoxSettingItem
-                label={t("settings.download.download_lyric_file")}
-                keyPath="download.downloadLyricFile"
-            ></CheckBoxSettingItem>
-            {showLyricSettings ? (
-                <>
-                    <LyricOrderSettingItem></LyricOrderSettingItem>
-                    <CheckBoxSettingItem
-                        label={t("settings.download.enable_word_by_word_lyric")}
-                        keyPath="download.enableWordByWordLyric"
-                    ></CheckBoxSettingItem>
-                    {downloadLyricFile ? (
-                        <ListBoxSettingItem
-                            keyPath="download.lyricFileFormat"
-                            options={[...lyricFormatList]}
-                            label={t("settings.download.lyric_file_format")}
-                            renderItem={(item) => `.${item}`}
-                        ></ListBoxSettingItem>
-                    ) : null}
-                </>
-            ) : null}
+            <SettingGroup
+                title={t("settings.group.download_basic")}
+                description={t("settings.group.download_basic_desc")}
+            >
+                <PathSettingItem
+                    keyPath="download.path"
+                    label={t("settings.download.download_folder")}
+                ></PathSettingItem>
+                <ListBoxSettingItem
+                    keyPath="download.concurrency"
+                    options={concurrencyList}
+                    onChange={(_evt, newConfig) => {
+                        Downloader.setDownloadingConcurrency(newConfig ?? 1);
+                    }}
+                    label={t("settings.download.max_concurrency")}
+                ></ListBoxSettingItem>
+                <RadioGroupSettingItem
+                    label={t("settings.download.default_download_quality")}
+                    keyPath="download.defaultQuality"
+                    options={[
+                        "mgg",
+                        "128k",
+                        "192k",
+                        "320k",
+                        "flac",
+                        "flac24bit",
+                        "hires",
+                        "vinyl",
+                        "dolby",
+                        "atmos",
+                        "atmos_plus",
+                        "master",
+                    ]}
+                    renderItem={(item) => t("media.music_quality_" + item)}
+                ></RadioGroupSettingItem>
+                <RadioGroupSettingItem
+                    label={t("settings.download.when_quality_missing")}
+                    keyPath="download.whenQualityMissing"
+                    options={[
+                        "lower",
+                        "higher",
+                    ]}
+                    renderItem={(item) => t("settings.download.download_" + item + "_quality_version")}
+                ></RadioGroupSettingItem>
+            </SettingGroup>
+
+            <SettingGroup
+                title={t("settings.group.download_metadata")}
+                description={t("settings.group.download_metadata_desc")}
+            >
+                <CheckBoxSettingItem
+                    label={t("settings.download.write_metadata")}
+                    keyPath="download.writeMetadata"
+                ></CheckBoxSettingItem>
+                {writeMetadata ? (
+                    <>
+                        <CheckBoxSettingItem
+                            label={t("settings.download.write_metadata_cover")}
+                            keyPath="download.writeMetadataCover"
+                        ></CheckBoxSettingItem>
+                        <CheckBoxSettingItem
+                            label={t("settings.download.write_metadata_lyric")}
+                            keyPath="download.writeMetadataLyric"
+                        ></CheckBoxSettingItem>
+                    </>
+                ) : null}
+            </SettingGroup>
+
+            <SettingGroup
+                title={t("settings.group.download_lyric")}
+                description={t("settings.group.download_lyric_desc")}
+            >
+                <CheckBoxSettingItem
+                    label={t("settings.download.download_lyric_file")}
+                    keyPath="download.downloadLyricFile"
+                ></CheckBoxSettingItem>
+                {showLyricSettings ? (
+                    <>
+                        <LyricOrderSettingItem></LyricOrderSettingItem>
+                        <CheckBoxSettingItem
+                            label={t("settings.download.enable_word_by_word_lyric")}
+                            keyPath="download.enableWordByWordLyric"
+                        ></CheckBoxSettingItem>
+                        {downloadLyricFile ? (
+                            <ListBoxSettingItem
+                                keyPath="download.lyricFileFormat"
+                                options={[...lyricFormatList]}
+                                label={t("settings.download.lyric_file_format")}
+                                renderItem={(item) => `.${item}`}
+                            ></ListBoxSettingItem>
+                        ) : null}
+                    </>
+                ) : null}
+            </SettingGroup>
         </div>
     );
 }

@@ -79,7 +79,8 @@
 }
 
 .setting-listbox-options {
-  position: fixed;
+  /* position is set inline (absolute within settings shell, or fixed on body) */
+  position: absolute;
   z-index: 1000;
   width: 240px;
   max-height: 280px;

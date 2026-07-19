@@ -2,6 +2,7 @@ import "./index.scss";
 import { toast } from "react-toastify";
 import RadioGroupSettingItem from "../../components/RadioGroupSettingItem";
 import InputSettingItem from "../../components/InputSettingItem";
+import SettingGroup from "../../components/SettingGroup";
 import { useTranslation } from "react-i18next";
 import AppConfig from "@shared/app-config/renderer";
 import { dialogUtil, fsUtil } from "@shared/utils/renderer";
@@ -202,72 +203,83 @@ export default function Backup() {
 
     return (
         <div className="setting-view--backup-container">
-            <RadioGroupSettingItem
-                keyPath="backup.resumeBehavior"
-                label={t("settings.backup.resume_behavior")}
-                options={[
-                    "append",
-                    "overwrite",
-                ]}
-                renderItem={(item) => t("settings.backup.resume_mode_" + item)}
-            ></RadioGroupSettingItem>
-            <div className="setting-row backup-block-row">
-                <div className="backup-block-title">
-                    {t("settings.backup.backup_by_file")}
-                </div>
-                <div className="backup-block-content backup-file-actions">
-                    <BackupActionButton
-                        iconName="array-download-tray"
-                        label={t("settings.backup.backup_music_sheet")}
-                        onClick={onFileBackupClick}
-                    ></BackupActionButton>
-                    <BackupActionButton
-                        iconName="arrow-path"
-                        label={t("settings.backup.resume_music_sheet")}
-                        onClick={onFileResumeClick}
-                    ></BackupActionButton>
-                </div>
-            </div>
-            <div className="setting-row backup-block-row webdav-panel">
-                <div className="backup-block-title">
-                    {t("settings.backup.backup_by_webdav")}
-                </div>
-                <div className="backup-block-content webdav-block-content">
-                    <div className="webdav-backup-container">
-                        <InputSettingItem
-                            width="100%"
-                            label={t("settings.backup.webdav_server_url")}
-                            trim
-                            keyPath="backup.webdav.url"
-                        ></InputSettingItem>
-                        <InputSettingItem
-                            width="100%"
-                            label={t("settings.backup.username")}
-                            trim
-                            keyPath="backup.webdav.username"
-                        ></InputSettingItem>
-                        <InputSettingItem
-                            width="100%"
-                            label={t("settings.backup.password")}
-                            type="password"
-                            trim
-                            keyPath="backup.webdav.password"
-                        ></InputSettingItem>
-                    </div>
-                    <div className="webdav-actions">
+            <SettingGroup
+                title={t("settings.group.backup_policy")}
+                description={t("settings.group.backup_policy_desc")}
+            >
+                <RadioGroupSettingItem
+                    keyPath="backup.resumeBehavior"
+                    label={t("settings.backup.resume_behavior")}
+                    options={[
+                        "append",
+                        "overwrite",
+                    ]}
+                    renderItem={(item) => t("settings.backup.resume_mode_" + item)}
+                ></RadioGroupSettingItem>
+            </SettingGroup>
+
+            <SettingGroup
+                title={t("settings.backup.backup_by_file")}
+                description={t("settings.group.backup_file_desc")}
+            >
+                <div className="setting-row backup-block-row">
+                    <div className="backup-block-content backup-file-actions">
                         <BackupActionButton
                             iconName="array-download-tray"
                             label={t("settings.backup.backup_music_sheet")}
-                            onClick={onWebdavBackupClick}
+                            onClick={onFileBackupClick}
                         ></BackupActionButton>
                         <BackupActionButton
                             iconName="arrow-path"
                             label={t("settings.backup.resume_music_sheet")}
-                            onClick={onWebdavResumeClick}
+                            onClick={onFileResumeClick}
                         ></BackupActionButton>
                     </div>
                 </div>
-            </div>
+            </SettingGroup>
+
+            <SettingGroup
+                title={t("settings.backup.backup_by_webdav")}
+                description={t("settings.group.backup_webdav_desc")}
+            >
+                <div className="setting-row backup-block-row webdav-panel">
+                    <div className="backup-block-content webdav-block-content">
+                        <div className="webdav-backup-container">
+                            <InputSettingItem
+                                width="100%"
+                                label={t("settings.backup.webdav_server_url")}
+                                trim
+                                keyPath="backup.webdav.url"
+                            ></InputSettingItem>
+                            <InputSettingItem
+                                width="100%"
+                                label={t("settings.backup.username")}
+                                trim
+                                keyPath="backup.webdav.username"
+                            ></InputSettingItem>
+                            <InputSettingItem
+                                width="100%"
+                                label={t("settings.backup.password")}
+                                type="password"
+                                trim
+                                keyPath="backup.webdav.password"
+                            ></InputSettingItem>
+                        </div>
+                        <div className="webdav-actions">
+                            <BackupActionButton
+                                iconName="array-download-tray"
+                                label={t("settings.backup.backup_music_sheet")}
+                                onClick={onWebdavBackupClick}
+                            ></BackupActionButton>
+                            <BackupActionButton
+                                iconName="arrow-path"
+                                label={t("settings.backup.resume_music_sheet")}
+                                onClick={onWebdavResumeClick}
+                            ></BackupActionButton>
+                        </div>
+                    </div>
+                </div>
+            </SettingGroup>
         </div>
     );
 }

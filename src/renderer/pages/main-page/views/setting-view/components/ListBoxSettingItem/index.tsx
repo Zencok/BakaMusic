@@ -118,29 +118,66 @@ interface IListBoxOptionsProps<T extends keyof IAppConfig> {
 interface IListBoxPanelPosition {
     top: number;
     left: number;
+    /** absolute within portal root; fixed only when portaled to body */
+    position: "absolute" | "fixed";
 }
 
 const LISTBOX_PANEL_MAX_HEIGHT = 280;
-const LISTBOX_PANEL_GAP = 10;
+const LISTBOX_PANEL_GAP = 8;
 const LISTBOX_PANEL_MARGIN = 8;
 
-function computeListBoxPanelPosition(button: HTMLElement): IListBoxPanelPosition {
+/**
+ * Anchor the panel to the trigger button.
+ * Prefer coordinates relative to the portal root so we stay correct even when
+ * an ancestor creates a fixed containing block (transform / filter / backdrop-filter).
+ */
+function computeListBoxPanelPosition(
+    button: HTMLElement,
+    portalRoot: HTMLElement,
+): IListBoxPanelPosition {
     const rect = button.getBoundingClientRect();
-    let top = rect.bottom + LISTBOX_PANEL_GAP;
+    const useAbsolute = portalRoot !== document.body
+        && getComputedStyle(portalRoot).position !== "static";
+    const rootRect = useAbsolute
+        ? portalRoot.getBoundingClientRect()
+        : { top: 0, left: 0, width: window.innerWidth, height: window.innerHeight };
+    const viewportBottomLimit = window.innerHeight - LISTBOX_PANEL_MARGIN;
+    const viewportTopLimit = LISTBOX_PANEL_MARGIN;
 
-    if (top + LISTBOX_PANEL_MAX_HEIGHT > window.innerHeight - LISTBOX_PANEL_MARGIN) {
+    // Prefer opening below the trigger; flip above when there is not enough room.
+    let viewportTop = rect.bottom + LISTBOX_PANEL_GAP;
+    if (viewportTop + LISTBOX_PANEL_MAX_HEIGHT > viewportBottomLimit) {
         const flippedTop = rect.top - LISTBOX_PANEL_MAX_HEIGHT - LISTBOX_PANEL_GAP;
-        top = flippedTop >= LISTBOX_PANEL_MARGIN
+        viewportTop = flippedTop >= viewportTopLimit
             ? flippedTop
-            : Math.max(LISTBOX_PANEL_MARGIN, window.innerHeight - LISTBOX_PANEL_MAX_HEIGHT - LISTBOX_PANEL_MARGIN);
+            : Math.max(
+                viewportTopLimit,
+                window.innerHeight - LISTBOX_PANEL_MAX_HEIGHT - LISTBOX_PANEL_MARGIN,
+            );
     }
 
-    let left = rect.left;
-    if (left + rect.width > window.innerWidth - LISTBOX_PANEL_MARGIN) {
-        left = Math.max(LISTBOX_PANEL_MARGIN, window.innerWidth - rect.width - LISTBOX_PANEL_MARGIN);
+    let viewportLeft = rect.left;
+    const panelWidth = Math.max(rect.width, 160);
+    if (viewportLeft + panelWidth > window.innerWidth - LISTBOX_PANEL_MARGIN) {
+        viewportLeft = Math.max(
+            LISTBOX_PANEL_MARGIN,
+            window.innerWidth - panelWidth - LISTBOX_PANEL_MARGIN,
+        );
     }
 
-    return { top, left };
+    if (useAbsolute) {
+        return {
+            position: "absolute",
+            top: viewportTop - rootRect.top + portalRoot.scrollTop,
+            left: viewportLeft - rootRect.left + portalRoot.scrollLeft,
+        };
+    }
+
+    return {
+        position: "fixed",
+        top: viewportTop,
+        left: viewportLeft,
+    };
 }
 
 function ListBoxOptions<T extends keyof IAppConfig>(
@@ -162,15 +199,17 @@ function ListBoxOptions<T extends keyof IAppConfig>(
 
     useLayoutEffect(() => {
         const button = buttonRef.current;
-        const target = (button?.closest(".setting-view--container") as HTMLElement | null) ?? document.body;
+        // Keep CSS variables from the settings shell; fall back to body.
+        const target = (button?.closest(".setting-view--container") as HTMLElement | null)
+            ?? document.body;
         setPortalTarget(target);
 
         const updatePosition = () => {
             const anchor = buttonRef.current;
-            if (!anchor?.isConnected) {
+            if (!anchor?.isConnected || !target.isConnected) {
                 return;
             }
-            setPanelPosition(computeListBoxPanelPosition(anchor));
+            setPanelPosition(computeListBoxPanelPosition(anchor, target));
         };
 
         updatePosition();
@@ -198,7 +237,12 @@ function ListBoxOptions<T extends keyof IAppConfig>(
     }
 
     const panelStyle: CSSProperties = panelPosition
-        ? { width, top: panelPosition.top, left: panelPosition.left }
+        ? {
+            width,
+            top: panelPosition.top,
+            left: panelPosition.left,
+            position: panelPosition.position,
+        }
         : { width, visibility: "hidden" };
 
     return createPortal(

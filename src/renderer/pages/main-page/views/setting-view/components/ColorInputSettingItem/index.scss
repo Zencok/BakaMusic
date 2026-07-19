@@ -37,7 +37,8 @@
 }
 
 .setting-color-input-panel {
-  position: fixed;
+  /* position set inline: absolute within settings shell (or fixed on body) */
+  position: absolute;
   z-index: 1000;
   width: 256px;
   padding: 0.9rem;

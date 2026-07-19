@@ -278,10 +278,11 @@ interface IColorPanelContentProps {
 }
 
 /**
- * 颜色面板内容。通过 createPortal 传送到 .setting-view--container（而非 body）：
- * - 逃逸 .setting-view--body 的 overflow-y:auto 裁剪与后续设置卡片的 stacking context 遮挡；
- * - 仍处于 .setting-view--container 内，保留 --settingXxx CSS 变量继承；
- * - position:fixed + getBoundingClientRect 相对视口定位，不受祖先 backdrop-filter 影响。
+ * Color panel content. Portal into .setting-view--container (not body) so:
+ * - Escape overflow/stacking from the scroll body and later cards
+ * - Inherit --settingXxx CSS variables
+ * Position is absolute relative to that shell (not fixed-to-viewport), so
+ * transform / filter / backdrop-filter containing blocks cannot offset it.
  */
 function ColorPanelContent(props: IColorPanelContentProps) {
     const {
@@ -300,7 +301,11 @@ function ColorPanelContent(props: IColorPanelContentProps) {
         onCancel,
     } = props;
     const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-    const [panelPosition, setPanelPosition] = useState<{ top: number; left: number } | null>(null);
+    const [panelPosition, setPanelPosition] = useState<{
+        top: number;
+        left: number;
+        position: "absolute" | "fixed";
+    } | null>(null);
     const closeRef = useRef(close);
     closeRef.current = close;
     const onMountedRef = useRef(onMounted);
@@ -313,7 +318,7 @@ function ColorPanelContent(props: IColorPanelContentProps) {
 
         const computePosition = () => {
             const anchor = buttonRef.current;
-            if (!anchor) {
+            if (!anchor?.isConnected || !target.isConnected) {
                 return;
             }
             const rect = anchor.getBoundingClientRect();
@@ -321,18 +326,35 @@ function ColorPanelContent(props: IColorPanelContentProps) {
             const panelHeight = 380;
             const gap = 8;
             const margin = 8;
-            let top = rect.bottom + gap;
-            if (top + panelHeight > window.innerHeight - margin) {
+            let viewportTop = rect.bottom + gap;
+            if (viewportTop + panelHeight > window.innerHeight - margin) {
                 const flippedTop = rect.top - panelHeight - gap;
-                top = flippedTop >= margin
+                viewportTop = flippedTop >= margin
                     ? flippedTop
                     : Math.max(margin, window.innerHeight - panelHeight - margin);
             }
-            let left = rect.left;
-            if (left + panelWidth > window.innerWidth - margin) {
-                left = Math.max(margin, window.innerWidth - panelWidth - margin);
+            let viewportLeft = rect.left;
+            if (viewportLeft + panelWidth > window.innerWidth - margin) {
+                viewportLeft = Math.max(margin, window.innerWidth - panelWidth - margin);
             }
-            setPanelPosition({ top, left });
+
+            const useAbsolute = target !== document.body
+                && getComputedStyle(target).position !== "static";
+            if (useAbsolute) {
+                const rootRect = target.getBoundingClientRect();
+                setPanelPosition({
+                    position: "absolute",
+                    top: viewportTop - rootRect.top + target.scrollTop,
+                    left: viewportLeft - rootRect.left + target.scrollLeft,
+                });
+                return;
+            }
+
+            setPanelPosition({
+                position: "fixed",
+                top: viewportTop,
+                left: viewportLeft,
+            });
         };
 
         onMountedRef.current();
@@ -358,7 +380,11 @@ function ColorPanelContent(props: IColorPanelContentProps) {
             static
             className="setting-color-input-panel shadow backdrop-color"
             style={panelPosition
-                ? { top: panelPosition.top, left: panelPosition.left }
+                ? {
+                    top: panelPosition.top,
+                    left: panelPosition.left,
+                    position: panelPosition.position,
+                }
                 : { visibility: "hidden" }}
         >
             <div

@@ -1,5 +1,6 @@
 import "./index.scss";
 import CheckBoxSettingItem from "../../components/CheckBoxSettingItem";
+import SettingGroup from "../../components/SettingGroup";
 import { useEffect, useRef, useState } from "react";
 
 import hotkeys from "hotkeys-js";
@@ -10,27 +11,36 @@ import shortCut from "@shared/short-cut/renderer";
 import { shortCutKeys } from "@/common/constant";
 import SvgAsset from "@renderer/components/SvgAsset";
 
-
 export default function ShortCut() {
     const { t } = useTranslation();
 
     return (
         <div className="setting-view--short-cut-container">
-            <CheckBoxSettingItem
-                keyPath="shortCut.enableLocal"
-                label={t("settings.short_cut.enable_local")}
-            ></CheckBoxSettingItem>
-            <CheckBoxSettingItem
-                keyPath="shortCut.enableGlobal"
-                label={t("settings.short_cut.enable_global")}
-            ></CheckBoxSettingItem>
-            <ShortCutTable></ShortCutTable>
+            <SettingGroup
+                title={t("settings.group.shortcut_toggle")}
+                description={t("settings.group.shortcut_toggle_desc")}
+            >
+                <CheckBoxSettingItem
+                    keyPath="shortCut.enableLocal"
+                    label={t("settings.short_cut.enable_local")}
+                ></CheckBoxSettingItem>
+                <CheckBoxSettingItem
+                    keyPath="shortCut.enableGlobal"
+                    label={t("settings.short_cut.enable_global")}
+                ></CheckBoxSettingItem>
+            </SettingGroup>
+
+            <SettingGroup
+                title={t("settings.group.shortcut_bindings")}
+                description={t("settings.group.shortcut_bindings_desc")}
+            >
+                <ShortCutTable></ShortCutTable>
+            </SettingGroup>
         </div>
     );
 }
 
 type IShortCutKeys = Extract<keyof NonNullable<IAppConfig["shortCut.shortcuts"]>, string>;
-
 
 function ShortCutTable() {
     const { t } = useTranslation();
@@ -39,7 +49,6 @@ function ShortCutTable() {
     const enableGlobalShortCut = useAppConfig("shortCut.enableGlobal");
     const shortCuts = useAppConfig("shortCut.shortcuts");
     const shortcutKeys = shortCutKeys as IShortCutKeys[];
-
 
     return (
         <div className="setting-view--short-cut-table-container">
@@ -160,7 +169,6 @@ function ShortCutItem(props: IShortCutItemProps) {
                 }
             } else if (type === "keyup" && isRecordingRef.current) {
                 isRecordingRef.current = false;
-                // 开始结算
                 const recordedSet = recordedKeysRef.current;
                 const _recordShortCutKey: string[] = [];
 

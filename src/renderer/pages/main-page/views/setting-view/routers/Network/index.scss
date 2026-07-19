@@ -5,10 +5,14 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--textColor) 9%, transparent);
+    border-top: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
+
+    &[data-disabled="true"] {
+      opacity: 0.55;
+    }
 
     & .setting-view--input-setting-item-container {
-      border-right: 1px solid color-mix(in srgb, var(--textColor) 9%, transparent);
+      border-right: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
 
       &:nth-child(2n) {
         border-right: 0;
@@ -25,7 +29,13 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    min-height: 4.35rem;
+    min-height: 4rem;
+  }
+
+  & .network-cache-label {
+    color: var(--settingTextSecondary);
+    font-size: 0.9rem;
+    font-weight: 620;
   }
 }
 
@@ -38,7 +48,7 @@
         border-right: 0;
 
         &:nth-last-child(2) {
-          border-bottom: 1px solid color-mix(in srgb, var(--textColor) 9%, transparent);
+          border-bottom: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
         }
       }
     }
