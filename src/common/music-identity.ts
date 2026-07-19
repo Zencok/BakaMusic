@@ -73,6 +73,10 @@ export function buildMusicSongCopyPayload(musicItem: IMusic.IMusicItemPartial): 
     const payload: Record<string, string> = {
         platform: String(musicItem.platform ?? ""),
     };
+    const name = nonEmpty(musicItem.title);
+    if (name) {
+        payload.name = name;
+    }
     if (ids.id) {
         payload.id = ids.id;
     }
@@ -93,6 +97,7 @@ export interface IMusicArtistEntry {
     name: string | null;
     artistId: string | null;
     artistMid: string | null;
+    avatar: string | null;
 }
 
 export interface IMusicArtistIds {
@@ -101,13 +106,47 @@ export interface IMusicArtistIds {
     artistName: string | null;
 }
 
+/** QQ singer mid looks like "000jNiaT2aHJb9" (has letters); pure digits are singer id, not mid. */
+function isQqSingerMid(value: string | null | undefined): boolean {
+    if (!value) {
+        return false;
+    }
+    const text = String(value).trim();
+    return text.length >= 8 && /[A-Za-z]/.test(text);
+}
+
+/** Best-effort avatar URL when plugins omit singerList.avatar (esp. QQ mid). */
+function resolveArtistAvatar(
+    platform: string | null | undefined,
+    entry: Pick<IMusicArtistEntry, "artistId" | "artistMid" | "avatar">,
+): string | null {
+    const existing = nonEmpty(entry.avatar);
+    if (existing) {
+        // Netease default placeholder is useless as cover
+        if (existing.includes("5639395138885805")) {
+            // fall through
+        } else {
+            return existing;
+        }
+    }
+    const p = (platform ?? "").toLowerCase();
+    const mid = entry.artistMid || (isQqSingerMid(entry.artistId) ? entry.artistId : null);
+    // QQ singer cover needs mid (not numeric singer id)
+    if ((p.includes("qq") || (platform ?? "").includes("QQ")) && mid && isQqSingerMid(mid)) {
+        return `https://y.gtimg.cn/music/photo_new/T001R500x500M000${mid}.jpg`;
+    }
+    return null;
+}
+
 function normalizeSingerEntry(raw: unknown): IMusicArtistEntry | null {
     if (raw == null) {
         return null;
     }
     if (typeof raw === "string" || typeof raw === "number") {
         const name = nonEmpty(raw);
-        return name ? { name, artistId: null, artistMid: null } : null;
+        return name
+            ? { name, artistId: null, artistMid: null, avatar: null }
+            : null;
     }
     if (typeof raw !== "object") {
         return null;
@@ -142,10 +181,22 @@ function normalizeSingerEntry(raw: unknown): IMusicArtistEntry | null {
         entry.artistMid,
         entry.artistmid,
     );
+    const avatar = pickFirst(
+        entry.avatar,
+        entry.img,
+        entry.picUrl,
+        entry.img1v1Url,
+        entry.singerPic,
+        entry.artistPic,
+        entry.face,
+        entry.pic,
+        entry.cover,
+        entry.headPic,
+    );
     if (!name && !artistId && !artistMid) {
         return null;
     }
-    return { name, artistId, artistMid };
+    return { name, artistId, artistMid, avatar };
 }
 
 function collectSingerList(item: Record<string, unknown>): unknown[] {
@@ -168,6 +219,54 @@ function collectSingerList(item: Record<string, unknown>): unknown[] {
         return item.authors;
     }
     return [];
+}
+
+/** Multi-artist joined fields (Kuwo/Joox/…): "A&B" / "A, B" / "A/B" + ids "id1&id2". */
+const MULTI_ARTIST_SPLIT = /\s*(?:&|＆|\+|·|•|feat\.?|ft\.?|,|，|、|\/|／)\s*/i;
+
+function looksLikeMultiArtistJoined(text: string | null | undefined): boolean {
+    if (!text) {
+        return false;
+    }
+    return MULTI_ARTIST_SPLIT.test(text);
+}
+
+function splitMultiArtistField(text: string | null): string[] {
+    if (!text) {
+        return [];
+    }
+    return text
+        .split(MULTI_ARTIST_SPLIT)
+        .map((part) => part.trim())
+        .filter(Boolean);
+}
+
+/**
+ * Expand a single joined artist entry ("A&B", id "1&2") into multiple.
+ * Kuwo plugins historically packed multi-singers into one singerList row.
+ */
+function expandJoinedArtistEntries(entries: IMusicArtistEntry[]): IMusicArtistEntry[] {
+    if (entries.length !== 1) {
+        return entries;
+    }
+    const only = entries[0];
+    const nameJoined = looksLikeMultiArtistJoined(only.name);
+    const idJoined = looksLikeMultiArtistJoined(only.artistId);
+    if (!nameJoined && !idJoined) {
+        return entries;
+    }
+    const names = splitMultiArtistField(only.name);
+    const ids = splitMultiArtistField(only.artistId);
+    const count = Math.max(names.length, ids.length);
+    if (count <= 1) {
+        return entries;
+    }
+    return Array.from({ length: count }, (_, index) => ({
+        name: names[index] || null,
+        artistId: ids[index] || null,
+        artistMid: index === 0 ? only.artistMid : null,
+        avatar: index === 0 ? only.avatar : null,
+    }));
 }
 
 /** All artists on a track (singerList / ar / top-level fields). */
@@ -207,10 +306,10 @@ export function getMusicArtists(musicItem: IMusic.IMusicItemPartial): IMusicArti
                 };
             }
         }
-        return fromList;
+        return expandJoinedArtistEntries(fromList);
     }
 
-    // Fallback: single artist from scalar fields (or comma-joined name without per-person ids).
+    // Fallback: scalar artist / artistId — also split Kuwo-style joined fields.
     const artistName = pickFirst(musicItem.artist);
     const artistId = pickFirst(
         item.artistId,
@@ -232,7 +331,9 @@ export function getMusicArtists(musicItem: IMusic.IMusicItemPartial): IMusicArti
     if (!artistName && !artistId && !artistMid) {
         return [];
     }
-    return [{ name: artistName, artistId, artistMid }];
+    return expandJoinedArtistEntries([
+        { name: artistName, artistId, artistMid, avatar: null },
+    ]);
 }
 
 export function getMusicArtistIds(musicItem: IMusic.IMusicItemPartial): IMusicArtistIds {
@@ -249,7 +350,7 @@ export function getMusicArtistIds(musicItem: IMusic.IMusicItemPartial): IMusicAr
     };
 }
 
-/** Display: "A, B, C (id, mid)" — all names outside; only first artist's ids inside (no name). */
+/** Display: "A, B, C (id: …, mid: …)" — all names outside; first artist's ids inside. */
 export function formatMusicArtistTitle(
     musicItem: IMusic.IMusicItemPartial,
     unknownLabel: string,
@@ -320,6 +421,73 @@ export function buildMusicArtistCopyPayload(musicItem: IMusic.IMusicItemPartial)
         platform: String(musicItem.platform ?? ""),
         artists: artists.map(artistEntryToCopyRow),
     });
+}
+
+/** Build navigable artist item (id/mid required). QQ plugins read singerMID. */
+export function buildArtistItemFromEntry(
+    musicItem: IMusic.IMusicItemPartial,
+    entry: IMusicArtistEntry,
+): IArtist.IArtistItem | null {
+    const platform = nonEmpty(musicItem.platform);
+    const id = entry.artistId || entry.artistMid;
+    if (!platform || !id) {
+        return null;
+    }
+    const mid = entry.artistMid || (isQqSingerMid(entry.artistId) ? entry.artistId : null);
+    const artistItem: IArtist.IArtistItem = {
+        id: String(id),
+        name: entry.name || "",
+        platform,
+        avatar: resolveArtistAvatar(platform, entry) || "",
+    };
+    if (mid) {
+        // Used by QQ getArtistWorks / avatar URL
+        (artistItem as IArtist.IArtistItem & { singerMID?: string }).singerMID = mid;
+        (artistItem as IArtist.IArtistItem & { mid?: string }).mid = mid;
+    }
+    return artistItem;
+}
+
+export function getNavigableArtists(
+    musicItem: IMusic.IMusicItemPartial,
+): Array<{ entry: IMusicArtistEntry; artistItem: IArtist.IArtistItem }> {
+    return getMusicArtists(musicItem)
+        .map((entry) => {
+            const artistItem = buildArtistItemFromEntry(musicItem, entry);
+            return artistItem ? { entry, artistItem } : null;
+        })
+        .filter(
+            (item): item is { entry: IMusicArtistEntry; artistItem: IArtist.IArtistItem } =>
+                item != null,
+        );
+}
+
+/** Build navigable album item (albumId/mid required). QQ plugins read albumMID. */
+export function buildAlbumItemFromMusic(
+    musicItem: IMusic.IMusicItemPartial,
+): IAlbum.IAlbumItem | null {
+    const platform = nonEmpty(musicItem.platform);
+    const { albumId, albumMid, albumName } = getMusicAlbumIds(musicItem);
+    const id = albumId || albumMid;
+    if (!platform || !id) {
+        return null;
+    }
+    const albumItem: IAlbum.IAlbumItem = {
+        id: String(id),
+        platform,
+        title: albumName || "",
+        description: "",
+        artist: nonEmpty(musicItem.artist) || undefined,
+        artwork: nonEmpty(musicItem.artwork) || undefined,
+    };
+    if (albumMid) {
+        (albumItem as IAlbum.IAlbumItem & { albumMID?: string }).albumMID = albumMid;
+        (albumItem as IAlbum.IAlbumItem & { albummid?: string }).albummid = albumMid;
+    }
+    if (albumId) {
+        (albumItem as IAlbum.IAlbumItem & { albumId?: string }).albumId = albumId;
+    }
+    return albumItem;
 }
 
 export interface IMusicAlbumIds {
