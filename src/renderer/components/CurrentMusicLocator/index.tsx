@@ -158,7 +158,7 @@ export default function CurrentMusicLocator(props: ICurrentMusicLocatorProps) {
                 scheduleHide();
             }}
         >
-            <SvgAsset iconName="map-aiming" size={19}></SvgAsset>
+            <SvgAsset iconName="map-aiming" size={20}></SvgAsset>
         </button>
     );
 
