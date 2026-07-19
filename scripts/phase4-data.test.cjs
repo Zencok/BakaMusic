@@ -86,10 +86,20 @@ function testWindowsPathNormalization() {
         path.join(process.cwd(), "fixture", "..", "fixture", "track.mp3"),
     );
     assert.equal(normalized, path.normalize(normalized));
-    assert.equal(
-        getLocalPathComparisonKey(normalized),
-        getLocalPathComparisonKey(normalized.toLocaleLowerCase("en-US")),
-    );
+
+    const comparisonKey = getLocalPathComparisonKey(normalized);
+    if (process.platform === "win32") {
+        // Windows paths are compared case-insensitively
+        assert.equal(comparisonKey, normalized.toLocaleLowerCase("en-US"));
+        assert.equal(
+            comparisonKey,
+            getLocalPathComparisonKey(normalized.toLocaleLowerCase("en-US")),
+        );
+        return;
+    }
+
+    // Case-sensitive platforms keep the resolved path case as identity
+    assert.equal(comparisonKey, normalized);
 }
 
 function readSource(relativePath) {
