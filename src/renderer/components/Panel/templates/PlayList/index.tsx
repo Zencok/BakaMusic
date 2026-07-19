@@ -1,5 +1,5 @@
 ﻿import "./index.scss";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import trackPlayer from "@renderer/core/track-player";
 import Condition, { IfTruthy } from "@/renderer/components/Condition";
 import Empty from "@/renderer/components/Empty";
@@ -16,6 +16,7 @@ import hotkeys from "hotkeys-js";
 import { Trans, useTranslation } from "react-i18next";
 import DragReceiver, { startDrag } from "@/renderer/components/DragReceiver";
 import { useCurrentMusic, useMusicQueue } from "@renderer/core/track-player/hooks";
+import CurrentMusicLocator from "@/renderer/components/CurrentMusicLocator";
 
 const estimateItemHeight = 5.4 * rem;
 const DRAG_TAG = "Playlist";
@@ -29,6 +30,7 @@ export default function PlayList(props: IProps) {
     const musicQueue = useMusicQueue();
     const currentMusic = useCurrentMusic();
     const scrollElementRef = useRef<HTMLDivElement>(null);
+    const getScrollElement = useCallback(() => scrollElementRef.current, []);
     const [activeItems, setActiveItems] = useState<Set<number>>(new Set());
     const lastActiveIndexRef = useRef(0);
 
@@ -37,9 +39,7 @@ export default function PlayList(props: IProps) {
     const virtualController = useVirtualList({
         estimateItemHeight,
         data: musicQueue,
-        getScrollElement() {
-            return scrollElementRef.current;
-        },
+        getScrollElement,
         fallbackRenderCount: 0,
     });
     const { scrollToIndex, setScrollElement } = virtualController;
@@ -148,6 +148,12 @@ export default function PlayList(props: IProps) {
                 </div>
             </div>
             <div className="playlist--music-list-container" ref={scrollElementRef}>
+                <CurrentMusicLocator
+                    musicList={musicQueue}
+                    getScrollElement={getScrollElement}
+                    scrollToIndex={scrollToIndex}
+                    placement="container"
+                ></CurrentMusicLocator>
                 <Condition
                     condition={musicQueue.length !== 0}
                     falsy={<div className="playlist--empty-state"><Empty></Empty></div>}

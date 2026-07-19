@@ -1,0 +1,59 @@
+.current-music-locator {
+    position: fixed;
+    right: 2rem;
+    bottom: 5.5rem;
+    z-index: 80;
+    width: 2.65rem;
+    height: 2.65rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--appInteractiveBorder);
+    border-radius: 50%;
+    background: var(--appSurfaceStrong);
+    color: color-mix(in srgb, var(--primaryColor) 82%, var(--appTextPrimary));
+    box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
+    backdrop-filter: var(--appGlassFilter);
+    cursor: pointer;
+    animation: current-music-locator-enter 160ms ease-out;
+    transition: transform 160ms ease, background-color 160ms ease, color 160ms ease;
+
+    &:hover {
+        transform: translateY(-2px) scale(1.04);
+        background: var(--appInteractiveSurface);
+    }
+
+    &:active {
+        transform: scale(0.96);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--primaryColor);
+        outline-offset: 3px;
+    }
+
+    &[data-placement="container"] {
+        position: absolute;
+        right: 1rem;
+        bottom: 1rem;
+    }
+}
+
+@keyframes current-music-locator-enter {
+    from {
+        opacity: 0;
+        transform: scale(0.86);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .current-music-locator {
+        animation: none;
+        transition: none;
+    }
+}

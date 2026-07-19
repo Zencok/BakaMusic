@@ -34,6 +34,7 @@ export type SvgAssetIconNames =
     | "lock-closed"
     | "lock-open"
     | "logo"
+    | "map-aiming"
     | "lyric"
     | "lyric-en"
     | "magnifying-glass"

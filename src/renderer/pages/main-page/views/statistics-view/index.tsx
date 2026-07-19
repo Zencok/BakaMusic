@@ -13,6 +13,7 @@ import trackPlayer from "@/renderer/core/track-player";
 import { useCurrentMusic } from "@/renderer/core/track-player/hooks";
 import { hideModal, showModal } from "@/renderer/components/Modal";
 import SvgAsset from "@/renderer/components/SvgAsset";
+import CurrentMusicLocator from "@/renderer/components/CurrentMusicLocator";
 import type { SvgAssetIconNames } from "@/renderer/components/SvgAsset";
 import Tag from "@/renderer/components/Tag";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
@@ -370,6 +371,11 @@ export default function StatisticsView() {
                             : "statistics_page.empty_hint")}</span>
                     </div>
                 )}
+                <CurrentMusicLocator
+                    musicList={visibleEntries.map(({ musicItem }) => musicItem)}
+                    getScrollElement={getScrollElement}
+                    scrollToIndex={virtualController.scrollToIndex}
+                ></CurrentMusicLocator>
             </section>
         </div>
     );

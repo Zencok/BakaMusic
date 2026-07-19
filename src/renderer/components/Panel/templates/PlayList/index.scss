@@ -90,6 +90,7 @@
 }
 
 .playlist--music-list-container {
+  position: relative;
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;

@@ -40,6 +40,7 @@ import { getBestMusicQualityInfo } from "@/renderer/utils/music-quality-metadata
 import LazyImage from "../LazyImage";
 import getCompactArtworkSrc from "@/renderer/utils/get-compact-artwork-src";
 import { getPlayCount } from "@/renderer/core/listening-statistics";
+import CurrentMusicLocator from "../CurrentMusicLocator";
 interface IMusicListProps {
     /** 音乐列表 */
     musicList: IMusic.IMusicItem[];
@@ -588,9 +589,15 @@ function MusicListComponent(props: IMusicListProps) {
     });
 
     const tableContainerRef = useRef<HTMLDivElement>(null);
+    const virtualGetScrollElement = virtualProps?.getScrollElement;
+    const getScrollElement = useCallback(
+        () => virtualGetScrollElement?.() ??
+            tableContainerRef.current?.closest<HTMLElement>(".page-container") ?? null,
+        [virtualGetScrollElement],
+    );
     const virtualController = useVirtualList({
         data: table.getRowModel().rows,
-        getScrollElement: virtualProps?.getScrollElement,
+        getScrollElement,
         offsetHeight:
             virtualProps?.offsetHeight ??
             (() => tableContainerRef.current?.offsetTop ?? 0),
@@ -996,6 +1003,11 @@ function MusicListComponent(props: IMusicListProps) {
                     </div>
                 </div>
             ) : null}
+            <CurrentMusicLocator
+                musicList={sortedMusicList}
+                getScrollElement={getScrollElement}
+                scrollToIndex={virtualController.scrollToIndex}
+            ></CurrentMusicLocator>
             <Condition
                 condition={musicList.length === 0}
                 falsy={
