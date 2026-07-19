@@ -117,14 +117,20 @@ const config: ForgeConfig = {
             loggerPort: 9200,
             devContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: file: bakamusic-theme: https: http:; media-src 'self' data: blob: file: bakamusic-media: bakamusic-theme: https: http:; font-src 'self' data: file: bakamusic-theme:; connect-src 'self' https: http: ws: wss:; worker-src 'self' blob:; frame-src 'self' data: blob: bakamusic-theme:; object-src 'none'; base-uri 'none'; form-action 'none';",
             devServer: {
-                // Electron renderer cannot use the web overlay reload path reliably.
-                liveReload: false,
+                // Keep liveReload so SCSS/TSX rebuilds still refresh when HMR cannot
+                // apply (common after the async bootstrap/runtime-root split).
+                // Overlay is limited to compile errors — full-page web overlay is
+                // flaky in Electron, but liveReload itself is fine.
+                liveReload: true,
+                hot: true,
                 client: {
                     overlay: {
                         errors: true,
                         warnings: false,
                         runtimeErrors: false,
                     },
+                    // Prefer reconnect over silent stall when the renderer WS drops.
+                    reconnect: true,
                 },
             },
             mainConfig,
