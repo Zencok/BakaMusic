@@ -40,7 +40,7 @@
     &::before {
         content: "";
         position: absolute;
-        inset: 4px;
+        inset: 0;
         border-radius: 50%;
         background: conic-gradient(from 0deg,
             transparent 0deg,
@@ -52,7 +52,7 @@
     &::after {
         content: "";
         position: absolute;
-        inset: 4px;
+        inset: 0;
         border-radius: 50%;
         background: conic-gradient(from 180deg,
             transparent 0deg,
