@@ -8,6 +8,7 @@ import { isContextMenuOpen } from "@/renderer/components/ContextMenu";
 import { useTranslation } from "react-i18next";
 
 interface IBaseModalProps {
+    className?: string;
     onDefaultClick?: () => void;
     defaultClose?: boolean;
     withBlur?: boolean;
@@ -23,6 +24,7 @@ const baseId = "components--panel-base-container";
 
 function Base(props: IBaseModalProps) {
     const {
+        className,
         onDefaultClick,
         defaultClose = true,
         maskColor,
@@ -68,7 +70,7 @@ function Base(props: IBaseModalProps) {
             id={baseId}
             className={`components--panel-base animate__animated animate__fadeIn ${
                 withBlur ? "blur10" : ""
-            }`}
+            } ${className ?? ""}`}
             data-cover-header={coverHeader}
             style={{
                 backgroundColor: maskColor,

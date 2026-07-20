@@ -397,6 +397,10 @@
     "panel": {
         "play_list_song_num": "Playlist ({{number}} songs)",
         "locate_current_music": "Locate Current Song",
+        "play_queue": "Play Queue",
+        "queue_track_count": "{{number}} tracks",
+        "now_playing": "Now Playing",
+        "remove_from_queue": "Remove from queue",
         "user_variable": "User Variable",
         "user_variable_setting_success": "Setting Successful~"
     },

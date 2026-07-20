@@ -219,3 +219,12 @@
 - **Bug**: QQ Music [L2] expected alphanumeric IDs in songmid/mid rather than id alone.
 - **Files**: 14 files
 - **Tests**: ESLint; TypeScript; theme contract; music quality; listening statistics; lyric z-order; Electron Forge package; diff check
+
+## 2026-07-20T22:14:53.8798903+08:00 — feat(playlist): redesign play queue panel
+`pending`
+- **Context-Id**: fd43c9b8-f4de-484e-b0ed-d1e6a752075c
+- **Decision**: Replace the legacy pill list with an artwork-led queue rail and dedicated now-playing stage.
+- **Decision**: Keep the floating current-song locator and remove the duplicate text action.
+- **Decision**: Cover the floating dock region and tune glass/flat panel opacity independently.
+- **Files**: 7 files
+- **Tests**: TypeScript; ESLint; full regression suite; Forge package; package smoke; Electron runtime visual and geometry audit; diff check

@@ -397,6 +397,10 @@
     "panel": {
         "play_list_song_num": "播放清單（{{number}} 首歌曲）",
         "locate_current_music": "定位當前歌曲",
+        "play_queue": "播放佇列",
+        "queue_track_count": "{{number}} 首歌曲",
+        "now_playing": "正在播放",
+        "remove_from_queue": "從播放佇列移除",
         "user_variable": "用戶變量",
         "user_variable_setting_success": "設置成功~"
     },
