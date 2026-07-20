@@ -239,6 +239,10 @@ assert.match(
     musicBarStyleSource,
     /html\[data-ui-style="glass"\][\s\S]*?\.music-bar-container\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?inset:\s*auto\s+0\s+0;/,
 );
+assert.match(
+    musicBarStyleSource,
+    /html\[data-ui-style="glass"\][\s\S]*?\.music-bar--slider-container\s*\{[^}]*left:\s*18px;[^}]*right:\s*18px;/,
+);
 assert.doesNotMatch(
     musicBarStyleSource,
     /\.music-bar-container,\s*\.music-bar-container\[data-detail-open="true"\]/,
