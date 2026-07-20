@@ -35,8 +35,8 @@ function MusicDetail() {
     const [storedCoverStyle] = useUserPreference("musicDetailCoverStyle");
     const [storedVinylTonearm] = useUserPreference("musicDetailVinylTonearm");
     const [storedTonearmReach] = useUserPreference("musicDetailVinylTonearmReach");
+    const [lyricPlayerReady, setLyricPlayerReady] = useState(false);
     const { t } = useTranslation();
-    const reflowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isFullscreenRef = useRef(false);
     const lastF11ToggleAtRef = useRef(0);
     const cursorHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -189,15 +189,6 @@ function MusicDetail() {
         };
     }, [musicDetailShown]);
 
-    useEffect(() => {
-        return () => {
-            if (reflowTimerRef.current !== null) {
-                clearTimeout(reflowTimerRef.current);
-                reflowTimerRef.current = null;
-            }
-        };
-    }, []);
-
     const artwork = musicItem?.coverImg ?? musicItem?.artwork ?? albumImg;
     const qualityLabel = quality ? (qualityText[quality] || quality).replace(/^.*?\s/, "") : null;
     const title = musicItem?.title || t("media.unknown_title");
@@ -214,21 +205,18 @@ function MusicDetail() {
     return (
         <AnimatedDiv
             showIf={musicDetailShown}
-            className="music-detail--container animate__animated"
+            keepMounted
+            className="music-detail--container"
+            aria-hidden={!musicDetailShown}
+            inert={!musicDetailShown}
             data-fullscreen={isFullscreen ? "true" : "false"}
             data-cursor-hidden={isFullscreenCursorHidden ? "true" : "false"}
-            mountClassName="animate__fadeInUp"
-            unmountClassName="animate__fadeOutDown"
-            onAnimationEnd={() => {
-                if (reflowTimerRef.current !== null) {
-                    clearTimeout(reflowTimerRef.current);
-                }
-                reflowTimerRef.current = setTimeout(() => {
-                    reflowTimerRef.current = null;
-                    document.body.style.width = "0";
-                    document.body.getBoundingClientRect();
-                    document.body.style.width = "";
-                }, 120);
+            mountClassName="music-detail--enter"
+            unmountClassName="music-detail--exit"
+            onMountAnimationEnd={() => {
+                // Let the lightweight stage finish its first paint before AMLL
+                // creates and measures the word-by-word lyric DOM.
+                setLyricPlayerReady(true);
             }}
         >
             <div
@@ -356,7 +344,10 @@ function MusicDetail() {
                     </div>
 
                     <div className="music-detail-lyric-column">
-                        <Lyric></Lyric>
+                        <Lyric
+                            active={musicDetailShown}
+                            playerReady={lyricPlayerReady}
+                        ></Lyric>
                     </div>
                 </div>
             </div>

@@ -45,7 +45,12 @@ type MusicDetailCoverStyle = "cover" | "vinyl";
 type MusicDetailVinylTonearm = "none" | "classic" | "glass";
 type MusicDetailVinylTonearmReach = "outer" | "inner";
 
-export default function Lyric() {
+interface ILyricProps {
+    active: boolean;
+    playerReady: boolean;
+}
+
+export default function Lyric({ active, playerReady }: ILyricProps) {
     const currentMusic = useCurrentMusic();
     const lyricContext = useLyric();
     const lyricParser = lyricContext?.parser;
@@ -151,8 +156,9 @@ export default function Lyric() {
                     <div className="music-detail-lyric-loading">
                         <Loading></Loading>
                     </div>
-                ) : lyricParser ? (
+                ) : lyricParser && playerReady ? (
                     <AppleMusicLyricPlayer
+                        active={active}
                         lyricLines={lyricLines}
                         currentTimeMs={(progress?.currentTime ?? 0) * 1000}
                         playing={playerState === PlayerState.Playing}
@@ -167,6 +173,10 @@ export default function Lyric() {
                         enableSpring
                         wordFadeWidth={0.66}
                     ></AppleMusicLyricPlayer>
+                ) : lyricParser ? (
+                    <div className="music-detail-lyric-loading">
+                        <Loading></Loading>
+                    </div>
                 ) : (
                     <div className="music-detail-lyric-empty">
                         <div className="music-detail-lyric-empty-title">

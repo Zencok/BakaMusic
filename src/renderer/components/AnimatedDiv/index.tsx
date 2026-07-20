@@ -13,6 +13,8 @@ interface IProps
     mountClassName?: string;
     // 卸载动画
     unmountClassName?: string;
+    // 卸载动画后保留节点，避免重复初始化重型子组件
+    keepMounted?: boolean;
     onMountAnimationEnd?: () => void;
     onUnmountAnimationEnd?: () => void;
 }
@@ -26,6 +28,7 @@ export default function AnimatedDiv(props: IProps) {
         showIf = true,
         mountClassName,
         unmountClassName,
+        keepMounted = false,
         onMountAnimationEnd,
         onUnmountAnimationEnd,
         className,
@@ -42,16 +45,19 @@ export default function AnimatedDiv(props: IProps) {
         delete res.showIf;
         delete res.mountClassName;
         delete res.unmountClassName;
+        delete res.keepMounted;
+        delete res.onMountAnimationEnd;
+        delete res.onUnmountAnimationEnd;
         return res;
     }, [props]);
 
     useEffect(() => {
         if (showIf) {
             setShouldMount(true);
-        } else if (!unmountClassName) {
+        } else if (!unmountClassName && !keepMounted) {
             setShouldMount(false);
         }
-    }, [showIf, unmountClassName]);
+    }, [keepMounted, showIf, unmountClassName]);
 
     return shouldMount ? (
         <div
@@ -59,10 +65,17 @@ export default function AnimatedDiv(props: IProps) {
             className={`${className ?? ""} ${showIf ? mountClassName ?? "" : unmountClassName ?? ""
             }`}
             onAnimationEnd={(...args) => {
+                // Descendant animations bubble through the wrapper. Only the
+                // wrapper's own entrance/exit animation controls its lifecycle.
+                if (args[0].target !== args[0].currentTarget) {
+                    return;
+                }
                 onAnimationEnd?.(...args);
                 if (!showIf) {
                     // 如果showIf是false，表示当前播放的是卸载状态的动画
-                    setShouldMount(false);
+                    if (!keepMounted) {
+                        setShouldMount(false);
+                    }
                     onUnmountAnimationEnd?.();
                 } else {
                     setShouldMount(true);

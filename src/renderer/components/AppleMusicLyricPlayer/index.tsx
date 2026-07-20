@@ -7,6 +7,7 @@ import type { LyricLine } from "@amll-core/interfaces";
 import { settlePausedLyricLayout, shouldRunLyricAnimation } from "./animation-state";
 
 interface IAppleMusicLyricPlayerProps {
+    active?: boolean;
     lyricLines?: LyricLine[];
     currentTimeMs?: number;
     playing?: boolean;
@@ -90,6 +91,7 @@ function syncLyricLinePlayState(
 }
 
 export default function AppleMusicLyricPlayer({
+    active = true,
     lyricLines = [],
     currentTimeMs = 0,
     playing = false,
@@ -199,7 +201,7 @@ export default function AppleMusicLyricPlayer({
 
     useEffect(() => {
         const player = playerRef.current;
-        if (!player) {
+        if (!player || !active) {
             return;
         }
 
@@ -227,7 +229,7 @@ export default function AppleMusicLyricPlayer({
         if (!playingRef.current) {
             settlePausedLyricLayout((delta) => player.update(delta));
         }
-    }, [lyricSignature, markLinePlayState]);
+    }, [active, lyricSignature, markLinePlayState]);
 
     useEffect(() => {
         const player = playerRef.current;
@@ -241,7 +243,7 @@ export default function AppleMusicLyricPlayer({
         anchorFrameTimeRef.current = performance.now();
         lastSyncedTimeRef.current = transitionTime;
 
-        if (playing && documentVisible) {
+        if (active && playing && documentVisible) {
             // A long pause leaves the previous RAF anchor far in the past. Re-sync
             // before resuming so the first frame cannot extrapolate by the pause duration.
             playingRef.current = false;
@@ -254,16 +256,19 @@ export default function AppleMusicLyricPlayer({
             player.pause();
             player.setCurrentTime(transitionTime, true);
             syncLyricLinePlayState(player, transitionTime, markLinePlayState);
-            settlePausedLyricLayout((delta) => player.update(delta));
+            if (active && documentVisible) {
+                settlePausedLyricLayout((delta) => player.update(delta));
+            }
         }
-    }, [documentVisible, markLinePlayState, playing]);
+    }, [active, documentVisible, markLinePlayState, playing]);
 
     useEffect(() => {
         anchorTimeRef.current = currentTimeMs;
         anchorFrameTimeRef.current = performance.now();
 
         const player = playerRef.current;
-        if (!player) {
+        if (!player || !active) {
+            lastPropTimeRef.current = currentTimeMs;
             return;
         }
 
@@ -276,7 +281,7 @@ export default function AppleMusicLyricPlayer({
         if (!playingRef.current) {
             settlePausedLyricLayout((delta) => player.update(delta));
         }
-    }, [currentTimeMs, markLinePlayState]);
+    }, [active, currentTimeMs, markLinePlayState]);
 
     useEffect(() => {
         speedRef.current = speed || 1;
@@ -285,7 +290,7 @@ export default function AppleMusicLyricPlayer({
     }, [speed]);
 
     useEffect(() => {
-        if (!shouldRunLyricAnimation(hasLyricLines, playing, documentVisible)) {
+        if (!active || !shouldRunLyricAnimation(hasLyricLines, playing, documentVisible)) {
             cancelAnimationFrame(rafRef.current);
             rafRef.current = 0;
             lastFrameTimeRef.current = 0;
@@ -317,7 +322,7 @@ export default function AppleMusicLyricPlayer({
             cancelAnimationFrame(rafRef.current);
             lastFrameTimeRef.current = 0;
         };
-    }, [documentVisible, hasLyricLines, markLinePlayState, playing]);
+    }, [active, documentVisible, hasLyricLines, markLinePlayState, playing]);
 
     return (
         <div
