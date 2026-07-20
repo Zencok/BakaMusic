@@ -55,6 +55,10 @@ const musicBarStyleSource = fs.readFileSync(path.join(
     __dirname,
     "../src/renderer/components/MusicBar/index.scss",
 ), "utf8");
+const recommendSheetsViewSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/pages/main-page/views/recommend-sheets-view/index.tsx",
+), "utf8");
 const liquidGlassSource = fs.readFileSync(path.join(
     __dirname,
     "../src/renderer/components/MusicBar/LiquidGlassFilter.tsx",
@@ -243,6 +247,18 @@ assert.match(musicBarStyleSource, /--liquidGlassEdgeWidth:\s*0\.5px/);
 assert.doesNotMatch(
     musicBarStyleSource,
     /border:\s*1px\s+solid\s+var\(--liquidGlassBorder\)/,
+);
+assert.match(
+    recommendSheetsViewSource,
+    /className="page-container recommend-sheets-view--container"/,
+);
+assert.match(
+    musicBarStyleSource,
+    /\.recommend-sheets-view--container \.music-sheet-like-list--container::after/,
+);
+assert.match(
+    musicBarStyleSource,
+    /\.plugin-manager-view-container \.plugin-card-list::after/,
 );
 assert.match(liquidGlassSource, /ResizeObserver/);
 assert.match(liquidGlassSource, /feDisplacementMap/);

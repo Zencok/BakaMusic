@@ -246,9 +246,39 @@ html[data-ui-style="glass"] {
 
   --floatingMusicBarClearance: calc(var(--appMusicBarHeight, 92px) + 12px);
 
-  .page-container:not(.page-container-fw):not(.setting-view--container) {
+  .page-container:not(
+    .page-container-fw,
+    .setting-view--container,
+    .local-music-view--container,
+    .download-view--container,
+    .recommend-sheets-view--container,
+    .plugin-manager-view-container
+  ) {
     padding-bottom: var(--floatingMusicBarClearance);
     scroll-padding-bottom: var(--floatingMusicBarClearance);
+  }
+
+  // These pages own the scroll viewport while long list content overflows a
+  // fixed or shrinkable child. Put the clearance at the real content tail so
+  // the final rendered item can scroll above the dock.
+  .local-music-view--container,
+  .download-view--container,
+  .recommend-sheets-view--container,
+  .plugin-manager-view-container {
+    padding-bottom: 0;
+    scroll-padding-bottom: var(--floatingMusicBarClearance);
+  }
+
+  .local-music-view--container[data-full-page="false"] .music-list-container::after,
+  .download-view--container > .downloading-container::after,
+  .recommend-sheets-view--container .music-sheet-like-list--container::after,
+  .plugin-manager-view-container .plugin-card-list::after {
+    content: "";
+    display: block;
+    width: 100%;
+    height: var(--floatingMusicBarClearance);
+    flex: 0 0 var(--floatingMusicBarClearance);
+    pointer-events: none;
   }
 
   .page-container-fw.setting-view--container,

@@ -10,7 +10,10 @@ export default function RecommendSheetsView() {
     const navigate = useNavigate();
 
     return (
-        <div id="page-container" className="page-container">
+        <div
+            id="page-container"
+            className="page-container recommend-sheets-view--container"
+        >
             <Condition
                 condition={availablePlugins.length}
                 falsy={<NoPlugin supportMethod="热门歌单" height={"100%"}></NoPlugin>}
