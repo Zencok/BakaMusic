@@ -87,9 +87,25 @@ export default function SettingView() {
         setSelected(settingId);
         clearScrollIdleTimer();
 
-        target.scrollIntoView({
+        const rootStyle = getComputedStyle(root);
+        const targetStyle = getComputedStyle(target);
+        const scrollPaddingTop = Number.parseFloat(rootStyle.scrollPaddingTop) || 0;
+        const scrollMarginTop = Number.parseFloat(targetStyle.scrollMarginTop) || 0;
+        const rootTop = root.getBoundingClientRect().top;
+        const targetTop = target.getBoundingClientRect().top;
+
+        // Scroll only the settings body. Element.scrollIntoView() also scrolls
+        // fixed overflow ancestors when the retained detail page is translated.
+        root.scrollTo({
             behavior: "auto",
-            block: "start",
+            top: Math.max(
+                0,
+                root.scrollTop
+                    + targetTop
+                    - rootTop
+                    - scrollPaddingTop
+                    - scrollMarginTop,
+            ),
         });
 
         // Release after the jump settles (scroll events from the jump go idle quickly).

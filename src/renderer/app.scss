@@ -3,7 +3,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: clip;
   position: relative;
   // Solid theme canvas under translucent chrome (critical for dark packs)
   background-color: var(--backgroundColor);

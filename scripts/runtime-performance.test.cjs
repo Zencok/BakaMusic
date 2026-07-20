@@ -60,4 +60,22 @@ const searchLyricSource = fs.readFileSync(path.join(
 assert.match(searchLyricSource, /modal\.search_lyric_result_empty/);
 assert.doesNotMatch(searchLyricSource, /modal\.serach_lyric_result_empty/);
 
+const settingsViewSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/pages/main-page/views/setting-view/index.tsx",
+), "utf8");
+assert.match(settingsViewSource, /root\.scrollTo\(/);
+assert.doesNotMatch(settingsViewSource, /target\.scrollIntoView\(/);
+
+const appSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/app.tsx",
+), "utf8");
+const appStyleSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/app.scss",
+), "utf8");
+assert.match(appSource, /overflow: "clip"/);
+assert.match(appStyleSource, /\.app-container[\s\S]*overflow: clip/);
+
 console.log("runtime-performance: all assertions passed");

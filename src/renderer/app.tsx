@@ -11,7 +11,7 @@ const APP_CONTAINER_STYLE: CSSProperties = {
     height: "100%",
     display: "flex",
     flexDirection: "column",
-    overflow: "hidden",
+    overflow: "clip",
     position: "relative",
 };
 
