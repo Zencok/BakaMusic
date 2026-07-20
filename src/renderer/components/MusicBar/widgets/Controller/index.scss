@@ -8,7 +8,15 @@
   height: 100%;
   -webkit-app-region: no-drag;
 
+  & .music-controller-transport {
+    display: contents;
+  }
+
   & .liquid-controller-button {
+    appearance: none;
+    margin: 0;
+    font: inherit;
+    line-height: 0;
     width: 42px;
     min-width: 42px;
     max-width: 42px;
@@ -43,6 +51,12 @@
       width: 22px;
       height: 22px;
     }
+
+    &:disabled {
+      opacity: 0.32;
+      cursor: default;
+      pointer-events: none;
+    }
   }
 
   & .liquid-controller-primary {
@@ -71,8 +85,18 @@
 }
 
 html[data-ui-style="glass"] .music-controller {
-  height: 52px;
-  gap: 8px;
+  position: relative;
+  height: 50px;
+  gap: 4px;
+  padding: 0;
+  box-sizing: border-box;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+
+  & .music-controller-transport {
+    display: contents;
+  }
 
   // Glass-only overrides — keep flat rules on .liquid-controller-* base selectors
   // so reusing ThemeSafeRoundButton does not bleed glass sizes into flat mode.
@@ -95,8 +119,8 @@ html[data-ui-style="glass"] .music-controller {
       background-color 160ms ease !important;
 
     &:hover {
-      transform: none !important;
-      background: color-mix(in srgb, var(--musicBarText) 8%, transparent) !important;
+      transform: translateY(-1px) !important;
+      background: color-mix(in srgb, var(--musicBarText) 10%, transparent) !important;
       box-shadow: none !important;
     }
 
@@ -110,28 +134,71 @@ html[data-ui-style="glass"] .music-controller {
     }
   }
 
-  // Primary is a quiet frosted disc — not a multi-layer “lens button”.
+  // The play action is the rail's single saturated object; surrounding actions
+  // stay quiet so the control row reads as one hierarchy.
   & .liquid-controller-primary {
-    width: 46px !important;
-    min-width: 46px !important;
-    max-width: 46px !important;
-    height: 46px !important;
-    min-height: 46px !important;
-    max-height: 46px !important;
-    color: var(--musicBarText) !important;
-    background: color-mix(in srgb, var(--musicBarText) 10%, transparent) !important;
-    border: 1px solid color-mix(in srgb, white 16%, transparent) !important;
+    width: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    max-height: 50px !important;
+    margin: 0 2px;
+    color: var(--musicBarPrimaryText) !important;
+    background: var(--musicBarAccent) !important;
+    border: 1px solid color-mix(in srgb, var(--musicBarAccent) 62%, white) !important;
     box-shadow:
-      inset 0 1px 0 color-mix(in srgb, white 22%, transparent),
-      0 4px 14px color-mix(in srgb, black 12%, transparent) !important;
-    -webkit-backdrop-filter: blur(10px) saturate(130%);
-    backdrop-filter: blur(10px) saturate(130%);
+      inset 0 1px 0 color-mix(in srgb, white 42%, transparent),
+      0 7px 18px color-mix(in srgb, var(--musicBarAccent) 28%, transparent),
+      0 5px 14px color-mix(in srgb, black 16%, transparent) !important;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
 
     &:hover {
-      background: color-mix(in srgb, var(--musicBarText) 14%, transparent) !important;
+      transform: translateY(-2px) scale(1.02) !important;
+      background: color-mix(in srgb, var(--musicBarAccent) 86%, white) !important;
       box-shadow:
-        inset 0 1px 0 color-mix(in srgb, white 28%, transparent),
-        0 6px 16px color-mix(in srgb, black 14%, transparent) !important;
+        inset 0 1px 0 color-mix(in srgb, white 50%, transparent),
+        0 9px 22px color-mix(in srgb, var(--musicBarAccent) 34%, transparent),
+      0 6px 16px color-mix(in srgb, black 17%, transparent) !important;
     }
+  }
+
+  & .liquid-controller-edge {
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    border: 0 !important;
+    color: color-mix(in srgb, var(--musicBarText) 68%, transparent) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+
+    &:hover {
+      color: var(--musicBarText) !important;
+      background: color-mix(in srgb, var(--musicBarText) 9%, transparent) !important;
+      box-shadow: none !important;
+    }
+
+    & svg {
+      width: 19px;
+      height: 19px;
+    }
+  }
+
+  & .liquid-controller-repeat {
+    color: color-mix(in srgb, var(--musicBarAccent) 74%, var(--musicBarText)) !important;
+    background: transparent !important;
+
+    &:hover {
+      color: color-mix(in srgb, var(--musicBarAccent) 82%, white) !important;
+      background: color-mix(in srgb, var(--musicBarAccent) 10%, transparent) !important;
+    }
+  }
+
+  & .liquid-controller-lyric[data-active="true"] {
+    color: color-mix(in srgb, var(--musicBarAccent) 74%, var(--musicBarText)) !important;
   }
 }

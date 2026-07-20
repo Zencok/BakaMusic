@@ -148,65 +148,27 @@
     letter-spacing: 0.01em;
   }
 
-  & .music-info-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-left: 8px;
-    flex-shrink: 0;
-  }
-
-  & .music-info-action-shell {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    border-radius: 50%;
-    color: color-mix(in srgb, var(--musicBarText) 90%, transparent);
-    background: color-mix(in srgb, var(--musicBarText) 9%, var(--musicBarSurface));
-    border: 1px solid color-mix(in srgb, var(--musicBarText) 10%, transparent);
-    box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
-    cursor: pointer;
-    transition: transform 160ms ease, background-color 160ms ease, color 160ms ease;
-
-    &:hover {
-      transform: translateY(-1px);
-      background: color-mix(in srgb, var(--musicBarText) 16%, var(--musicBarSurface));
-    }
-
-    & svg {
-      width: 18px;
-      height: 18px;
-    }
-
-    & > div {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-  }
-
-  & .music-info-action-shell[data-disabled]:not([data-disabled="false"]) {
-    opacity: 0.34;
-    cursor: default;
-  }
 }
 
 html[data-ui-style="glass"] .music-info-container {
+  position: relative;
   flex: none;
-  height: 52px;
-  gap: 12px;
+  height: 50px;
+  gap: 10px;
   color: var(--musicBarText);
 
   & .music-cover-wrap,
   & .music-info-placeholder-icon {
-    width: 48px;
-    height: 48px;
+    width: 54px;
+    height: 54px;
     border-radius: 14px;
-    border: 1px solid color-mix(in srgb, white 14%, transparent);
-    box-shadow: 0 4px 12px color-mix(in srgb, black 14%, transparent);
+    border: 1px solid color-mix(in srgb, white 16%, transparent);
+    box-shadow:
+      0 3px 10px color-mix(in srgb, black 11%, transparent),
+      inset 0 1px 0 color-mix(in srgb, white 20%, transparent);
+    transform: none;
+    transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms ease;
+    z-index: 1;
   }
 
   & .music-cover-wrap {
@@ -215,6 +177,13 @@ html[data-ui-style="glass"] .music-info-container {
     flex-shrink: 0;
     overflow: hidden;
     cursor: pointer;
+
+    &:hover {
+      transform: scale(1.012);
+      box-shadow:
+        0 4px 12px color-mix(in srgb, black 14%, transparent),
+        inset 0 1px 0 color-mix(in srgb, white 24%, transparent);
+    }
   }
 
   // Detail is an overlay above the app shell. Keep the dock artwork at the
@@ -225,15 +194,27 @@ html[data-ui-style="glass"] .music-info-container {
   }
 
   & .open-detail {
-    border-radius: inherit;
-    clip-path: inset(0 round 16px);
-    background: color-mix(in srgb, var(--musicBarSurface) 34%, transparent);
+    inset: auto 4px 4px auto;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    clip-path: none;
+    color: var(--musicBarText);
+    background: color-mix(in srgb, var(--musicBarSurface) 62%, transparent);
+    border: 1px solid color-mix(in srgb, white 22%, transparent);
+    box-shadow: 0 4px 12px color-mix(in srgb, black 24%, transparent);
     -webkit-backdrop-filter: blur(10px) saturate(140%);
     backdrop-filter: blur(10px) saturate(140%);
+
+    & svg {
+      width: 13px;
+      height: 13px;
+    }
   }
 
   & .music-info-copy {
-    gap: 3px;
+    gap: 4px;
+    align-self: center;
   }
 
   & .music-title-row,
@@ -242,64 +223,47 @@ html[data-ui-style="glass"] .music-info-container {
   }
 
   & .music-title {
-    font-size: 0.9rem;
-    font-weight: 680;
+    font-size: 0.94rem;
+    font-weight: 700;
     line-height: 1.15;
-    letter-spacing: 0;
+    letter-spacing: -0.012em;
   }
 
   & .music-subtitle {
-    font-size: 0.75rem;
+    font-size: 0.76rem;
     line-height: 1.12;
-    letter-spacing: 0;
-    color: color-mix(in srgb, var(--musicBarText) 62%, transparent);
+    letter-spacing: 0.005em;
+    color: color-mix(in srgb, var(--musicBarText) 58%, transparent);
   }
 
-  & .progress {
-    font-size: 0.67rem;
-    line-height: 1;
-    letter-spacing: 0;
-    color: color-mix(in srgb, var(--musicBarText) 46%, transparent);
-    font-variant-numeric: tabular-nums;
+  // Time belongs to the full-width lower timeline in glass mode.
+  & .music-meta-row {
+    display: none;
   }
 
   & .components--tag-container {
-    max-width: 64px;
-    padding: 2px 6px;
-    border: 1px solid color-mix(in srgb, var(--musicBarText) 13%, transparent);
-    border-radius: 8px;
-    color: color-mix(in srgb, var(--musicBarText) 70%, transparent);
-    background: color-mix(in srgb, var(--musicBarText) 7%, transparent);
-    font-size: 0.64rem !important;
+    max-width: 68px;
+    padding: 2px 7px;
+    border: 1px solid color-mix(in srgb, var(--musicBarAccent) 22%, transparent);
+    border-radius: 999px;
+    color: color-mix(in srgb, var(--musicBarAccent) 72%, var(--musicBarText));
+    background: color-mix(in srgb, var(--musicBarAccent) 9%, transparent);
+    font-size: 0.62rem !important;
     line-height: 1.2;
-  }
-
-  & .music-info-actions {
-    gap: 5px;
-    margin-left: 6px;
-  }
-
-  & .music-info-action-shell {
-    width: 30px;
-    height: 30px;
-    border: 0;
-    border-radius: 50%;
-    color: color-mix(in srgb, var(--musicBarText) 72%, transparent);
-    background: transparent;
-    box-shadow: none;
-    transition: color 160ms ease, background-color 160ms ease;
-
-    &:hover {
-      transform: none;
-      color: var(--musicBarText);
-      background: color-mix(in srgb, var(--musicBarText) 8%, transparent);
-      box-shadow: none;
-    }
   }
 
   & .music-cover-wrap:focus-visible,
   & .music-title:focus-visible {
     outline: 2px solid color-mix(in srgb, var(--musicBarAccent) 62%, white);
     outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui-style="glass"] .music-info-container {
+    & .music-cover-wrap,
+    & .music-info-placeholder-icon {
+      transition-duration: 1ms;
+    }
   }
 }

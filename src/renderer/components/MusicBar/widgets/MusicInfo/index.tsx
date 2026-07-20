@@ -3,14 +3,11 @@ import "./index.scss";
 
 import Tag from "@/renderer/components/Tag";
 import { secondsToDuration } from "@/common/time-util";
-import MusicFavorite from "@/renderer/components/MusicFavorite";
 import MusicDetail, { useMusicDetailShown } from "@/renderer/components/MusicDetail";
 import albumImg from "@/assets/imgs/album-cover.jpg";
 import { useTranslation } from "react-i18next";
 import { useCurrentMusic, useProgress } from "@renderer/core/track-player/hooks";
-import { getCurrentPanel, hidePanel, showPanel } from "@renderer/components/Panel";
-import MusicDownloaded from "@renderer/components/MusicDownloaded";
-import PluginManager from "@shared/plugin-manager/renderer";
+import { hidePanel } from "@renderer/components/Panel";
 import { useEffect, useState } from "react";
 import normalizeArtworkDisplaySrc from "@/renderer/utils/normalize-artwork-display-src";
 
@@ -59,10 +56,6 @@ export default function MusicInfo() {
     const musicItem = useCurrentMusic();
     const musicDetailShown = useMusicDetailShown();
     const { t } = useTranslation();
-    const canShowComments = PluginManager.isSupportFeatureMethod(
-        musicItem?.platform ?? "",
-        "getMusicComments",
-    );
 
     function toggleMusicDetail() {
         if (musicDetailShown) {
@@ -154,38 +147,6 @@ export default function MusicInfo() {
                 </div>
             </div>
 
-            <div className="music-info-actions">
-                <div className="music-info-action-shell">
-                    <MusicFavorite musicItem={musicItem} size={18} fillContainer></MusicFavorite>
-                </div>
-                <div className="music-info-action-shell">
-                    <MusicDownloaded musicItem={musicItem} size={18} fillContainer></MusicDownloaded>
-                </div>
-                <div
-                    role="button"
-                    className="music-info-action music-info-action-shell"
-                    data-disabled={!canShowComments}
-                    onClick={() => {
-                        if (!canShowComments) {
-                            return;
-                        }
-
-                        // Toggle like playlist: second click closes the panel
-                        if (getCurrentPanel()?.type === "MusicComment") {
-                            hidePanel();
-                            return;
-                        }
-
-                        showPanel("MusicComment", {
-                            musicItem,
-                            // Match playlist: only cover chrome while detail is open
-                            coverHeader: musicDetailShown,
-                        });
-                    }}
-                >
-                    <SvgAsset iconName="chat-bubble-left-ellipsis" size={18}></SvgAsset>
-                </div>
-            </div>
         </div>
     );
 }

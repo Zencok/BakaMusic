@@ -317,6 +317,7 @@
         "next_music": "下一首",
         "play": "播放",
         "pause": "暂停",
+        "seek": "播放进度",
         "mute": "静音",
         "unmute": "恢复音量",
         "playback_speed": "倍速播放",

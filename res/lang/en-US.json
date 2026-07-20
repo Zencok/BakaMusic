@@ -317,6 +317,7 @@
         "next_music": "Next",
         "play": "Play",
         "pause": "Pause",
+        "seek": "Playback progress",
         "mute": "Mute",
         "unmute": "Unmute",
         "playback_speed": "Playback Speed",

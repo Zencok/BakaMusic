@@ -1,75 +1,47 @@
 ﻿import SvgAsset from "@/renderer/components/SvgAsset";
 import "./index.scss";
-import SwitchCase from "@/renderer/components/SwitchCase";
 import trackPlayer from "@renderer/core/track-player";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import Condition from "@/renderer/components/Condition";
 import throttle from "lodash.throttle";
-import classNames from "@/renderer/utils/classnames";
 import { getCurrentPanel, hidePanel, showPanel } from "@/renderer/components/Panel";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
-import { isCN } from "@/shared/i18n/renderer";
-import useAppConfig from "@/hooks/useAppConfig";
-import { RepeatMode } from "@/common/constant";
 import { getQualityAbbr, getQualityDisplayText, resolveMusicQualityChoices } from "@/renderer/utils/music-quality";
 import { showQualitySelectPopover } from "@/renderer/components/QualitySelectPopover";
-import { useCurrentMusic, useIsMute, useQuality, useRepeatMode, useSpeed, useVolume } from "@renderer/core/track-player/hooks";
-import { appWindowUtil } from "@shared/utils/renderer";
+import { useCurrentMusic, useIsMute, useQuality, useSpeed, useVolume } from "@renderer/core/track-player/hooks";
 import { musicDetailShownStore } from "@renderer/components/MusicDetail/store";
 import { createPortal } from "react-dom";
+import PluginManager from "@shared/plugin-manager/renderer";
 
 export default function Extra() {
-    const repeatMode = useRepeatMode();
     const { t } = useTranslation();
 
     return (
         <div className="music-extra">
-            <QualityBtn></QualityBtn>
-            <SpeedBtn></SpeedBtn>
-            <VolumeBtn></VolumeBtn>
-            <LyricBtn></LyricBtn>
-            <div
-                className="extra-btn"
-                role="button"
-                onClick={() => {
-                    trackPlayer.toggleRepeatMode();
-                }}
-                title={
-                    repeatMode === RepeatMode.Loop
-                        ? t("media.music_repeat_mode_loop")
-                        : repeatMode === RepeatMode.Queue
-                            ? t("media.music_repeat_mode_queue")
-                            : t("media.music_repeat_mode_shuffle")
-                }
-            >
-                <SwitchCase.Switch switch={repeatMode}>
-                    <SwitchCase.Case case={RepeatMode.Loop}>
-                        <SvgAsset iconName="repeat-song"></SvgAsset>
-                    </SwitchCase.Case>
-                    <SwitchCase.Case case={RepeatMode.Queue}>
-                        <SvgAsset iconName="repeat-song-1"></SvgAsset>
-                    </SwitchCase.Case>
-                    <SwitchCase.Case case={RepeatMode.Shuffle}>
-                        <SvgAsset iconName="shuffle"></SvgAsset>
-                    </SwitchCase.Case>
-                </SwitchCase.Switch>
+            <div className="music-extra-group music-extra-status">
+                <QualityBtn></QualityBtn>
+                <SpeedBtn></SpeedBtn>
             </div>
-            <div
-                className="extra-btn"
-                title={t("media.playlist")}
-                role="button"
-                onClick={() => {
-                    if (getCurrentPanel()?.type === "PlayList") {
-                        hidePanel();
-                    } else {
-                        showPanel("PlayList", {
-                            coverHeader: musicDetailShownStore.getValue(),
-                        });
-                    }
-                }}
-            >
-                <SvgAsset iconName="playlist"></SvgAsset>
+            <div className="music-extra-group music-extra-tools">
+                <VolumeBtn></VolumeBtn>
+                <CommentBtn></CommentBtn>
+                <button
+                    type="button"
+                    className="extra-btn playlist-btn"
+                    title={t("media.playlist")}
+                    onClick={() => {
+                        if (getCurrentPanel()?.type === "PlayList") {
+                            hidePanel();
+                        } else {
+                            showPanel("PlayList", {
+                                coverHeader: musicDetailShownStore.getValue(),
+                            });
+                        }
+                    }}
+                >
+                    <SvgAsset iconName="playlist"></SvgAsset>
+                </button>
             </div>
         </div>
     );
@@ -242,7 +214,7 @@ function InlineVerticalSlider(props: IInlineVerticalSliderProps) {
 }
 
 interface IFloatingBubbleProps {
-    anchorRef: RefObject<HTMLDivElement | null>;
+    anchorRef: RefObject<HTMLElement | null>;
     visible: boolean;
     onMouseEnter: () => void;
     onMouseLeave: () => void;
@@ -369,7 +341,7 @@ function VolumeBtn() {
 
     const wheelDeltaRef = useRef(0);
     const wheelStepRef = useRef(0);
-    const volumeBtnRef = useRef<HTMLDivElement>(null);
+    const volumeBtnRef = useRef<HTMLButtonElement>(null);
     const closeBubbleTimerRef = useRef<number | null>(null);
     const flushWheelRef = useRef(
         throttle(
@@ -439,10 +411,11 @@ function VolumeBtn() {
     const muted = isMute || volume === 0;
 
     return (
-        <div
+        <button
+            type="button"
             className="extra-btn"
-            role="button"
             ref={volumeBtnRef}
+            title={muted ? t("music_bar.unmute") : t("music_bar.mute")}
             onMouseEnter={openVolumeBubble}
             onMouseLeave={closeVolumeBubble}
             onClick={(e) => {
@@ -478,7 +451,7 @@ function VolumeBtn() {
                 title={muted ? t("music_bar.unmute") : t("music_bar.mute")}
                 iconName={muted ? "speaker-x-mark" : "speaker-wave"}
             ></SvgAsset>
-        </div>
+        </button>
     );
 }
 
@@ -489,7 +462,7 @@ function SpeedBtn() {
     const speedRef = useRef(speed);
     const wheelDeltaRef = useRef(0);
     const wheelStepRef = useRef(0);
-    const speedBtnRef = useRef<HTMLDivElement>(null);
+    const speedBtnRef = useRef<HTMLButtonElement>(null);
     const closeBubbleTimerRef = useRef<number | null>(null);
     const { t } = useTranslation();
     const flushWheelRef = useRef(
@@ -566,10 +539,11 @@ function SpeedBtn() {
     };
 
     return (
-        <div
+        <button
+            type="button"
             className="extra-btn"
-            role="button"
             ref={speedBtnRef}
+            title={t("music_bar.playback_speed")}
             onMouseEnter={openSpeedBubble}
             onMouseLeave={closeSpeedBubble}
             onClick={() => {
@@ -609,7 +583,7 @@ function SpeedBtn() {
                 title={t("music_bar.playback_speed")}
                 iconName={"dashboard-speed"}
             ></SvgAsset>
-        </div>
+        </button>
     );
 }
 
@@ -620,9 +594,9 @@ function QualityBtn() {
     const [isLoading, setIsLoading] = useState(false);
 
     return (
-        <div
+        <button
+            type="button"
             className="extra-btn quality-btn"
-            role="button"
             title={getQualityDisplayText(quality, t)}
             onClick={async (event) => {
                 if (!currentMusic || isLoading) {
@@ -674,28 +648,39 @@ function QualityBtn() {
             }}
         >
             <span className="quality-abbr-text">{getQualityAbbr(quality)}</span>
-        </div>
+        </button>
     );
 }
-function LyricBtn() {
-    const enableDesktopLyric = useAppConfig("lyric.enableDesktopLyric");
+function CommentBtn() {
+    const currentMusic = useCurrentMusic();
     const { t } = useTranslation();
+    const canShowComments = PluginManager.isSupportFeatureMethod(
+        currentMusic?.platform ?? "",
+        "getMusicComments",
+    );
 
     return (
-        <div
-            className={classNames({
-                "extra-btn": true,
-                highlight: !!enableDesktopLyric,
-            })}
-            role="button"
-            onClick={async () => {
-                appWindowUtil.setLyricWindow(!enableDesktopLyric);
+        <button
+            type="button"
+            className="extra-btn comment-btn"
+            disabled={!currentMusic || !canShowComments}
+            title={t("media.media_type_comment")}
+            aria-label={t("media.media_type_comment")}
+            onClick={() => {
+                if (!currentMusic || !canShowComments) {
+                    return;
+                }
+                if (getCurrentPanel()?.type === "MusicComment") {
+                    hidePanel();
+                    return;
+                }
+                showPanel("MusicComment", {
+                    musicItem: currentMusic,
+                    coverHeader: musicDetailShownStore.getValue(),
+                });
             }}
         >
-            <SvgAsset
-                iconName={isCN() ? "lyric" : "lyric-en"}
-                title={t("music_bar.desktop_lyric")}
-            ></SvgAsset>
-        </div>
+            <SvgAsset iconName="chat-bubble-left-ellipsis"></SvgAsset>
+        </button>
     );
 }

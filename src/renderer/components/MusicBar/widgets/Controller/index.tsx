@@ -2,10 +2,14 @@ import ThemeSafeRoundButton from "@/renderer/components/ThemeSafeRoundButton";
 import "./index.scss";
 import trackPlayer from "@renderer/core/track-player";
 import { useTranslation } from "react-i18next";
-import { isPlaybackActive } from "@/common/constant";
-import { usePlayerState } from "@renderer/core/track-player/hooks";
+import { isPlaybackActive, RepeatMode } from "@/common/constant";
+import { usePlayerState, useRepeatMode } from "@renderer/core/track-player/hooks";
 import { musicDetailShownStore } from "@renderer/components/MusicDetail/store";
 import { useEffect, useState } from "react";
+import SvgAsset from "@/renderer/components/SvgAsset";
+import useAppConfig from "@/hooks/useAppConfig";
+import { appWindowUtil } from "@shared/utils/renderer";
+import { isCN } from "@/shared/i18n/renderer";
 
 function isFlatUiStyleActive() {
     return typeof document !== "undefined"
@@ -31,6 +35,8 @@ function readRootThemeColors() {
 
 export default function Controller() {
     const playerState = usePlayerState();
+    const repeatMode = useRepeatMode();
+    const enableDesktopLyric = useAppConfig("lyric.enableDesktopLyric");
     const { t } = useTranslation();
     const isPlaying = isPlaybackActive(playerState);
     const musicDetailShown = musicDetailShownStore.useValue();
@@ -94,57 +100,95 @@ export default function Controller() {
         ? "0 10px 24px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.38)"
         : "inset 0 1px 0 color-mix(in srgb, white 22%, transparent), 0 4px 14px color-mix(in srgb, black 12%, transparent)";
 
+    const repeatTitle = repeatMode === RepeatMode.Loop
+        ? t("media.music_repeat_mode_loop")
+        : repeatMode === RepeatMode.Queue
+            ? t("media.music_repeat_mode_queue")
+            : t("media.music_repeat_mode_shuffle");
+    const repeatIcon = repeatMode === RepeatMode.Loop
+        ? "repeat-song"
+        : repeatMode === RepeatMode.Queue
+            ? "repeat-song-1"
+            : "shuffle";
+
     return (
         <div className="music-controller">
-            <ThemeSafeRoundButton
-                className="liquid-controller-button liquid-controller-skip"
-                title={t("music_bar.previous_music")}
-                iconName="skip-left"
-                size={42}
-                iconSize={22}
-                color={skipColor}
-                background={skipBackground}
-                hoverBackground={skipHoverBackground}
-                borderColor={skipBorder}
-                shadow={skipShadow}
+            <button
+                type="button"
+                className="liquid-controller-button liquid-controller-edge liquid-controller-repeat"
+                data-repeat-mode={repeatMode}
+                title={repeatTitle}
+                aria-label={repeatTitle}
                 onClick={() => {
-                    trackPlayer.skipToPrev();
+                    trackPlayer.toggleRepeatMode();
                 }}
-            ></ThemeSafeRoundButton>
-            <ThemeSafeRoundButton
-                className="liquid-controller-button liquid-controller-primary"
-                title={isPlaying ? t("music_bar.pause") : t("music_bar.play")}
-                iconName={!isPlaying ? "play" : "pause"}
-                size={54}
-                iconSize={26}
-                color={primaryColor}
-                background={primaryBackground}
-                hoverBackground={primaryHoverBackground}
-                borderColor={primaryBorder}
-                shadow={primaryShadow}
-                onClick={() => {
-                    if (isPlaying) {
-                        trackPlayer.pause();
-                    } else {
-                        trackPlayer.resume();
-                    }
+            >
+                <SvgAsset iconName={repeatIcon} size={19}></SvgAsset>
+            </button>
+            <div className="music-controller-transport">
+                <ThemeSafeRoundButton
+                    className="liquid-controller-button liquid-controller-skip"
+                    title={t("music_bar.previous_music")}
+                    iconName="skip-left"
+                    size={42}
+                    iconSize={22}
+                    color={skipColor}
+                    background={skipBackground}
+                    hoverBackground={skipHoverBackground}
+                    borderColor={skipBorder}
+                    shadow={skipShadow}
+                    onClick={() => {
+                        trackPlayer.skipToPrev();
+                    }}
+                ></ThemeSafeRoundButton>
+                <ThemeSafeRoundButton
+                    className="liquid-controller-button liquid-controller-primary"
+                    title={isPlaying ? t("music_bar.pause") : t("music_bar.play")}
+                    iconName={!isPlaying ? "play" : "pause"}
+                    size={54}
+                    iconSize={26}
+                    color={primaryColor}
+                    background={primaryBackground}
+                    hoverBackground={primaryHoverBackground}
+                    borderColor={primaryBorder}
+                    shadow={primaryShadow}
+                    onClick={() => {
+                        if (isPlaying) {
+                            trackPlayer.pause();
+                        } else {
+                            trackPlayer.resume();
+                        }
+                    }}
+                ></ThemeSafeRoundButton>
+                <ThemeSafeRoundButton
+                    className="liquid-controller-button liquid-controller-skip"
+                    title={t("music_bar.next_music")}
+                    iconName="skip-right"
+                    size={42}
+                    iconSize={22}
+                    color={skipColor}
+                    background={skipBackground}
+                    hoverBackground={skipHoverBackground}
+                    borderColor={skipBorder}
+                    shadow={skipShadow}
+                    onClick={() => {
+                        trackPlayer.skipToNext();
+                    }}
+                ></ThemeSafeRoundButton>
+            </div>
+            <button
+                type="button"
+                className="liquid-controller-button liquid-controller-edge liquid-controller-lyric"
+                data-active={enableDesktopLyric ? "true" : "false"}
+                title={t("music_bar.desktop_lyric")}
+                aria-label={t("music_bar.desktop_lyric")}
+                aria-pressed={!!enableDesktopLyric}
+                onClick={async () => {
+                    appWindowUtil.setLyricWindow(!enableDesktopLyric);
                 }}
-            ></ThemeSafeRoundButton>
-            <ThemeSafeRoundButton
-                className="liquid-controller-button liquid-controller-skip"
-                title={t("music_bar.next_music")}
-                iconName="skip-right"
-                size={42}
-                iconSize={22}
-                color={skipColor}
-                background={skipBackground}
-                hoverBackground={skipHoverBackground}
-                borderColor={skipBorder}
-                shadow={skipShadow}
-                onClick={() => {
-                    trackPlayer.skipToNext();
-                }}
-            ></ThemeSafeRoundButton>
+            >
+                <SvgAsset iconName={isCN() ? "lyric" : "lyric-en"} size={19}></SvgAsset>
+            </button>
         </div>
     );
 }

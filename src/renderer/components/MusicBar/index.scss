@@ -84,10 +84,10 @@
 }
 
 // ---------------------------------------------------------------------------
-// Glass floating dock
-// - Out of document flow: sidebar + content run full height under the header
-// - Centered liquid-glass console spanning the sidebar/content boundary
-// - Viewport-anchored so mounting the detail overlay cannot change its geometry
+// Glass floating rail
+// - One suspended plane spans the sidebar/content boundary
+// - Controls stay flat within it instead of becoming nested islands
+// - Viewport anchoring keeps detail-overlay geometry stable
 // - Flat keeps an in-flow square dock and is unchanged here
 // ---------------------------------------------------------------------------
 html[data-ui-style="glass"] {
@@ -104,21 +104,22 @@ html[data-ui-style="glass"] {
   // attribute-qualified duplicate here raises specificity and prevents the
   // later container queries from applying while the detail overlay is open.
   .music-bar-container {
-    // Kyant Backdrop-like liquid glass: soft frosted fill, edge lens, quiet chrome.
-    --liquidGlassRadius: 28px;
+    // One continuous floating plane. Structure comes from spacing and alignment,
+    // not nested control islands.
+    --liquidGlassRadius: 26px;
     --liquidGlassEdgeWidth: 0.5px;
     --liquidGlassSurface: color-mix(
       in srgb,
-      var(--musicBarSurface) 40%,
+      var(--musicBarSurface) 52%,
       transparent
     );
     position: fixed;
     inset: auto 0 0;
     width: 100%;
-    height: var(--appMusicBarHeight, 92px);
+    height: var(--appMusicBarHeight, 100px);
     background: transparent;
     box-shadow: none;
-    padding: 8px 12px 10px;
+    padding: 8px 16px 12px;
     pointer-events: none;
     z-index: 4000;
     container-name: music-bar;
@@ -129,82 +130,65 @@ html[data-ui-style="glass"] {
       pointer-events: auto;
     }
 
-    .music-bar-overlay,
     .music-bar-shell {
       left: 50%;
       right: auto;
       top: 8px;
-      bottom: 10px;
-      width: min(1120px, calc(100% - 24px));
+      bottom: 12px;
+      width: min(1040px, calc(100% - 32px));
       transform: translateX(-50%);
       border-radius: var(--liquidGlassRadius);
     }
 
     .music-bar-overlay {
-      left: 50%;
-      opacity: 0.12;
-      border: 0;
-      // Soft ambient lift only — no accent-tinted bloom.
-      background: color-mix(in srgb, black 28%, transparent);
-      box-shadow: 0 4px 24px color-mix(in srgb, black 10%, transparent);
-      filter: blur(18px);
+      display: none;
     }
 
     .music-bar-shell {
       display: grid;
       grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
       align-items: center;
-      gap: 14px;
-      // Keep the content box identical to the former 1px edge while rendering
-      // Kyant's much finer 0.5dp-style highlight.
-      padding: 12.5px 22.5px 10.5px;
-      border: var(--liquidGlassEdgeWidth) solid transparent;
+      gap: 16px;
+      padding: 21.5px 17.5px 5.5px;
+      border: var(--liquidGlassEdgeWidth) solid color-mix(in srgb, white 18%, transparent);
       background: var(--liquidGlassSurface);
-      // AndroidLiquidGlass defaults: a broad 24dp shadow at 10% black and no
-      // permanent inner shadow on the bottom-tabs container.
-      box-shadow: 0 4px 24px color-mix(in srgb, black 10%, transparent);
-      -webkit-backdrop-filter: blur(20px) saturate(140%);
-      backdrop-filter: blur(20px) saturate(140%);
+      box-shadow:
+        inset 0 1px 0 color-mix(in srgb, white 12%, transparent),
+        0 10px 28px color-mix(in srgb, black 12%, transparent);
+      -webkit-backdrop-filter: blur(28px) saturate(145%);
+      backdrop-filter: blur(28px) saturate(145%);
       isolation: isolate;
       overflow: visible;
     }
 
     &[data-liquid-glass-svg="true"] .music-bar-shell {
-      // Edge lens + mild vibrancy; keep blur soft like LiquidBottomTabs.
+      // A restrained displacement keeps the single suspended plane liquid
+      // without adding internal glass layers.
       -webkit-backdrop-filter:
         url("#bakamusic-music-bar-liquid-glass")
-        blur(2px)
-        saturate(1.12);
+        blur(6px)
+        saturate(1.16);
       backdrop-filter:
         url("#bakamusic-music-bar-liquid-glass")
-        blur(2px)
-        saturate(1.12);
+        blur(6px)
+        saturate(1.16);
     }
 
-    // Kyant Highlight.Default: 0.5dp line, soft 45deg luminance falloff.
+    // A quiet top highlight defines the material without introducing another layer.
     .music-bar-shell::before {
       content: "";
       position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      border: var(--liquidGlassEdgeWidth) solid transparent;
-      background:
-        linear-gradient(
-          135deg,
-          color-mix(in srgb, white 50%, transparent) 0%,
-          color-mix(in srgb, white 20%, transparent) 32%,
-          color-mix(in srgb, white 4%, transparent) 55%,
-          transparent 72%
-        ) border-box;
-      -webkit-mask:
-        linear-gradient(#000 0 0) content-box,
-        linear-gradient(#000 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-      padding: var(--liquidGlassEdgeWidth);
+      inset: 0 18px auto;
+      height: 1px;
+      border-radius: 999px;
+      background: linear-gradient(
+        90deg,
+        color-mix(in srgb, white 12%, transparent),
+        color-mix(in srgb, white 46%, transparent) 50%,
+        color-mix(in srgb, white 12%, transparent)
+      );
       pointer-events: none;
       z-index: 0;
-      filter: blur(0.25px);
     }
 
     .music-bar-shell > * {
@@ -215,7 +199,7 @@ html[data-ui-style="glass"] {
       grid-column: 1;
       justify-self: start;
       width: 100%;
-      max-width: min(430px, 100%);
+      max-width: min(340px, 100%);
       transform: none;
     }
 
@@ -234,17 +218,13 @@ html[data-ui-style="glass"] {
       transform: none;
     }
 
-    .music-info-actions {
-      transform: none;
-    }
-
     .music-bar--slider-container {
       left: 18px;
       right: 18px;
     }
   }
 
-  --floatingMusicBarClearance: calc(var(--appMusicBarHeight, 92px) + 12px);
+  --musicBarClearance: calc(var(--appMusicBarHeight, 100px) + 8px);
 
   .page-container:not(
     .page-container-fw,
@@ -254,8 +234,8 @@ html[data-ui-style="glass"] {
     .recommend-sheets-view--container,
     .plugin-manager-view-container
   ) {
-    padding-bottom: var(--floatingMusicBarClearance);
-    scroll-padding-bottom: var(--floatingMusicBarClearance);
+    padding-bottom: var(--musicBarClearance);
+    scroll-padding-bottom: var(--musicBarClearance);
   }
 
   // These pages own the scroll viewport while long list content overflows a
@@ -266,7 +246,7 @@ html[data-ui-style="glass"] {
   .recommend-sheets-view--container,
   .plugin-manager-view-container {
     padding-bottom: 0;
-    scroll-padding-bottom: var(--floatingMusicBarClearance);
+    scroll-padding-bottom: var(--musicBarClearance);
   }
 
   .local-music-view--container[data-full-page="false"] .music-list-container::after,
@@ -276,8 +256,8 @@ html[data-ui-style="glass"] {
     content: "";
     display: block;
     width: 100%;
-    height: var(--floatingMusicBarClearance);
-    flex: 0 0 var(--floatingMusicBarClearance);
+    height: var(--musicBarClearance);
+    flex: 0 0 var(--musicBarClearance);
     pointer-events: none;
   }
 
@@ -288,8 +268,8 @@ html[data-ui-style="glass"] {
   }
 
   .setting-view--body {
-    padding-bottom: calc(var(--appMusicBarHeight, 92px) - 6px);
-    scroll-padding-bottom: calc(var(--appMusicBarHeight, 92px) - 6px);
+    padding-bottom: calc(var(--appMusicBarHeight, 100px) - 4px);
+    scroll-padding-bottom: calc(var(--appMusicBarHeight, 100px) - 4px);
     box-sizing: border-box;
   }
 
@@ -300,66 +280,58 @@ html[data-ui-style="glass"] {
   .local-music--album-view-container .right-part,
   .local-music--artist-view-container .right-part,
   .local-music--folder-view-container .right-part {
-    padding-bottom: var(--floatingMusicBarClearance);
-    scroll-padding-bottom: var(--floatingMusicBarClearance);
+    padding-bottom: var(--musicBarClearance);
+    scroll-padding-bottom: var(--musicBarClearance);
     box-sizing: border-box;
   }
 }
 
-@container music-bar (max-width: 1180px) {
+@container music-bar (max-width: 1040px) {
   html[data-ui-style="glass"] .music-bar-container {
     .music-bar-shell {
-      gap: 10px;
-      // 0.5px edge + 18.5px padding preserves the previous 19px inset.
-      padding-inline: 18.5px;
-    }
-
-    .music-info-actions {
-      gap: 4px;
-      margin-left: 4px;
-    }
-
-    .music-info-action-shell:nth-child(3) {
-      display: none;
+      gap: 12px;
+      padding-inline: 18px;
     }
 
     .music-extra {
-      gap: 5px;
+      gap: 6px;
     }
   }
 }
 
-@container music-bar (max-width: 920px) {
+@container music-bar (max-width: 860px) {
   html[data-ui-style="glass"] .music-bar-container {
-    .music-info-actions,
     .music-title-row .components--tag-container {
       display: none;
     }
 
     .music-info-container {
-      max-width: 250px;
+      max-width: 270px;
     }
 
-    .music-extra .extra-btn:nth-child(2),
-    .music-extra .extra-btn:nth-child(4) {
+    .music-extra-status .extra-btn:not(.quality-btn) {
       display: none;
     }
   }
 }
 
-@container music-bar (max-width: 720px) {
+@container music-bar (max-width: 700px) {
   html[data-ui-style="glass"] .music-bar-container {
     .music-info-copy {
       display: none;
     }
 
     .music-info-container {
-      width: 48px;
+      width: 60px;
     }
 
-    .music-extra .extra-btn:nth-child(1),
-    .music-extra .extra-btn:nth-child(5) {
+    .music-extra-status {
       display: none;
+    }
+
+    .music-bar--slider-container {
+      left: 16px;
+      right: 16px;
     }
   }
 }
