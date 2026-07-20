@@ -28,6 +28,14 @@
   inset: 0;
 }
 
+.music-bar-liquid-filter {
+  position: fixed;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .music-bar-overlay {
   pointer-events: none;
 }
@@ -78,36 +86,43 @@
 // ---------------------------------------------------------------------------
 // Glass floating dock
 // - Out of document flow: sidebar + content run full height under the header
-// - Full-width floating pill that spans across the sidebar column too
-// - Opening music detail does NOT re-layout the dock (same geometry)
+// - Centered liquid-glass console spanning the sidebar/content boundary
+// - Viewport-anchored so mounting the detail overlay cannot change its geometry
 // - Flat keeps an in-flow square dock and is unchanged here
 // ---------------------------------------------------------------------------
 html[data-ui-style="glass"] {
   .app-container {
-    // Absolute dock is positioned against this frame.
     position: relative;
   }
 
   .body-container {
-    // Claim every pixel under the header — the floating dock no longer eats height.
     flex: 1 1 0;
     min-height: 0;
   }
 
-  .music-bar-container,
-  .music-bar-container[data-detail-open="true"] {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
+  // Detail state deliberately shares this one geometry rule. Adding an
+  // attribute-qualified duplicate here raises specificity and prevents the
+  // later container queries from applying while the detail overlay is open.
+  .music-bar-container {
+    // Kyant Backdrop-like liquid glass: soft frosted fill, edge lens, quiet chrome.
+    --liquidGlassRadius: 28px;
+    --liquidGlassEdgeWidth: 0.5px;
+    --liquidGlassSurface: color-mix(
+      in srgb,
+      var(--musicBarSurface) 40%,
+      transparent
+    );
+    position: fixed;
+    inset: auto 0 0;
     width: 100%;
     height: var(--appMusicBarHeight, 92px);
-    // Transparent hit-box; only the floating pill paints.
     background: transparent;
     box-shadow: none;
     padding: 8px 12px 10px;
     pointer-events: none;
     z-index: 4000;
+    container-name: music-bar;
+    container-type: inline-size;
 
     .music-bar-motion-layer,
     .music-bar-hover-zone {
@@ -116,22 +131,119 @@ html[data-ui-style="glass"] {
 
     .music-bar-overlay,
     .music-bar-shell {
-      // Same insets whether detail is open or not — no jump.
-      left: 12px;
-      right: 12px;
+      left: 50%;
+      right: auto;
       top: 8px;
       bottom: 10px;
+      width: min(1120px, calc(100% - 24px));
+      transform: translateX(-50%);
+      border-radius: var(--liquidGlassRadius);
+    }
+
+    .music-bar-overlay {
+      left: 50%;
+      opacity: 0.12;
+      border: 0;
+      // Soft ambient lift only — no accent-tinted bloom.
+      background: color-mix(in srgb, black 28%, transparent);
+      box-shadow: 0 4px 24px color-mix(in srgb, black 10%, transparent);
+      filter: blur(18px);
+    }
+
+    .music-bar-shell {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
+      align-items: center;
+      gap: 14px;
+      // Keep the content box identical to the former 1px edge while rendering
+      // Kyant's much finer 0.5dp-style highlight.
+      padding: 12.5px 22.5px 10.5px;
+      border: var(--liquidGlassEdgeWidth) solid transparent;
+      background: var(--liquidGlassSurface);
+      // AndroidLiquidGlass defaults: a broad 24dp shadow at 10% black and no
+      // permanent inner shadow on the bottom-tabs container.
+      box-shadow: 0 4px 24px color-mix(in srgb, black 10%, transparent);
+      -webkit-backdrop-filter: blur(20px) saturate(140%);
+      backdrop-filter: blur(20px) saturate(140%);
+      isolation: isolate;
+      overflow: visible;
+    }
+
+    &[data-liquid-glass-svg="true"] .music-bar-shell {
+      // Edge lens + mild vibrancy; keep blur soft like LiquidBottomTabs.
+      -webkit-backdrop-filter:
+        url("#bakamusic-music-bar-liquid-glass")
+        blur(2px)
+        saturate(1.12);
+      backdrop-filter:
+        url("#bakamusic-music-bar-liquid-glass")
+        blur(2px)
+        saturate(1.12);
+    }
+
+    // Kyant Highlight.Default: 0.5dp line, soft 45deg luminance falloff.
+    .music-bar-shell::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      border: var(--liquidGlassEdgeWidth) solid transparent;
+      background:
+        linear-gradient(
+          135deg,
+          color-mix(in srgb, white 50%, transparent) 0%,
+          color-mix(in srgb, white 20%, transparent) 32%,
+          color-mix(in srgb, white 4%, transparent) 55%,
+          transparent 72%
+        ) border-box;
+      -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      padding: var(--liquidGlassEdgeWidth);
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(0.25px);
+    }
+
+    .music-bar-shell > * {
+      z-index: 1;
+    }
+
+    .music-info-container {
+      grid-column: 1;
+      justify-self: start;
+      width: 100%;
+      max-width: min(430px, 100%);
+      transform: none;
+    }
+
+    .music-controller {
+      grid-column: 2;
+      justify-self: center;
+      width: max-content;
+      min-width: 0;
+      transform: none;
+    }
+
+    .music-extra {
+      grid-column: 3;
+      justify-self: end;
+      width: max-content;
+      transform: none;
+    }
+
+    .music-info-actions {
+      transform: none;
     }
 
     .music-bar--slider-container {
-      left: 18px;
-      right: 18px;
+      left: clamp(56px, 7vw, 88px);
+      right: clamp(56px, 7vw, 88px);
     }
   }
 
-  // Scroll clearance for the floating pill. Do NOT pad full-bleed shells
-  // (settings) on the outer container — that leaves a dead empty band above
-  // the dock. Only the scrolling content needs a bottom inset.
   --floatingMusicBarClearance: calc(var(--appMusicBarHeight, 92px) + 12px);
 
   .page-container:not(.page-container-fw):not(.setting-view--container) {
@@ -139,8 +251,6 @@ html[data-ui-style="glass"] {
     scroll-padding-bottom: var(--floatingMusicBarClearance);
   }
 
-  // Settings is a full-height shell; keep it flush to the window bottom so the
-  // panel edge meets the floating dock instead of floating over empty canvas.
   .page-container-fw.setting-view--container,
   .setting-view--container {
     padding-bottom: 0 !important;
@@ -148,24 +258,94 @@ html[data-ui-style="glass"] {
   }
 
   .setting-view--body {
-    // One clearance only — enough to clear the pill when scrolled to the end.
     padding-bottom: calc(var(--appMusicBarHeight, 92px) - 6px);
     scroll-padding-bottom: calc(var(--appMusicBarHeight, 92px) - 6px);
     box-sizing: border-box;
   }
 
   .setting-view--content {
-    // Base SCSS already pads 2.4rem; with bar clearance that becomes a canyon.
     padding-bottom: 0.85rem !important;
   }
 
-  // Nested independent scrollers (local music masters).
   .local-music--album-view-container .right-part,
   .local-music--artist-view-container .right-part,
   .local-music--folder-view-container .right-part {
     padding-bottom: var(--floatingMusicBarClearance);
     scroll-padding-bottom: var(--floatingMusicBarClearance);
     box-sizing: border-box;
+  }
+}
+
+@container music-bar (max-width: 1180px) {
+  html[data-ui-style="glass"] .music-bar-container {
+    .music-bar-shell {
+      gap: 10px;
+      // 0.5px edge + 18.5px padding preserves the previous 19px inset.
+      padding-inline: 18.5px;
+    }
+
+    .music-info-actions {
+      gap: 4px;
+      margin-left: 4px;
+    }
+
+    .music-info-action-shell:nth-child(3) {
+      display: none;
+    }
+
+    .music-extra {
+      gap: 5px;
+    }
+  }
+}
+
+@container music-bar (max-width: 920px) {
+  html[data-ui-style="glass"] .music-bar-container {
+    .music-info-actions,
+    .music-title-row .components--tag-container {
+      display: none;
+    }
+
+    .music-info-container {
+      max-width: 250px;
+    }
+
+    .music-extra .extra-btn:nth-child(2),
+    .music-extra .extra-btn:nth-child(4) {
+      display: none;
+    }
+  }
+}
+
+@container music-bar (max-width: 720px) {
+  html[data-ui-style="glass"] .music-bar-container {
+    .music-info-copy {
+      display: none;
+    }
+
+    .music-info-container {
+      width: 48px;
+    }
+
+    .music-extra .extra-btn:nth-child(1),
+    .music-extra .extra-btn:nth-child(5) {
+      display: none;
+    }
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  html[data-ui-style="glass"] .music-bar-container {
+    .music-bar-overlay {
+      display: none;
+    }
+
+    .music-bar-shell,
+    &[data-liquid-glass-svg="true"] .music-bar-shell {
+      background: var(--musicBarSurface);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
   }
 }
 

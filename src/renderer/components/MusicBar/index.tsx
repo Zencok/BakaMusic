@@ -11,6 +11,7 @@ import { musicDetailShownStore } from "@renderer/components/MusicDetail/store";
 import { getCurrentPanel } from "@/renderer/components/Panel";
 import { isQualitySelectPopoverOpen } from "@/renderer/components/QualitySelectPopover";
 import useAppConfig from "@/hooks/useAppConfig";
+import LiquidGlassFilter, { useMusicBarLiquidGlass } from "./LiquidGlassFilter";
 
 import "./index.scss";
 
@@ -268,6 +269,8 @@ function hasPinnedMusicBarOverlay() {
 }
 
 export default function MusicBar() {
+    const shellRef = useRef<HTMLDivElement>(null);
+    const liquidGlass = useMusicBarLiquidGlass(shellRef);
     const currentMusic = useCurrentMusic();
     const artwork = currentMusic?.coverImg ?? currentMusic?.artwork;
     const musicDetailShown = musicDetailShownStore.useValue();
@@ -410,10 +413,14 @@ export default function MusicBar() {
             data-detail-open={musicDetailShown ? "true" : "false"}
             data-auto-hide={autoHide ? "true" : "false"}
             data-revealed={autoHide ? (autoHideRevealed ? "true" : "false") : "true"}
+            data-liquid-glass-svg={
+                liquidGlass.supported && liquidGlass.mapHref ? "true" : "false"
+            }
             onMouseEnter={revealBar}
             onMouseLeave={scheduleHideBar}
             onFocusCapture={revealBar}
         >
+            <LiquidGlassFilter mapHref={liquidGlass.mapHref}></LiquidGlassFilter>
             {autoHide ? (
                 <div
                     className="music-bar-hover-zone"
@@ -423,7 +430,7 @@ export default function MusicBar() {
             ) : null}
             <div className="music-bar-motion-layer">
                 <div className="music-bar-overlay"></div>
-                <div className="music-bar-shell">
+                <div ref={shellRef} className="music-bar-shell">
                     <Slider></Slider>
                     <MusicInfo></MusicInfo>
                     <Controller></Controller>

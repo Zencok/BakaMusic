@@ -315,6 +315,8 @@
         "close_music_detail_page": "Close Song Details",
         "previous_music": "Previous",
         "next_music": "Next",
+        "play": "Play",
+        "pause": "Pause",
         "mute": "Mute",
         "unmute": "Unmute",
         "playback_speed": "Playback Speed",

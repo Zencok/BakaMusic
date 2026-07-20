@@ -47,6 +47,22 @@ const windowManagerSource = fs.readFileSync(path.join(
     __dirname,
     "../src/main/window-manager/index.ts",
 ), "utf8");
+const musicBarComponentSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/MusicBar/index.tsx",
+), "utf8");
+const musicBarStyleSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/MusicBar/index.scss",
+), "utf8");
+const liquidGlassSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/MusicBar/LiquidGlassFilter.tsx",
+), "utf8");
+const controllerSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/MusicBar/widgets/Controller/index.tsx",
+), "utf8");
 const defaultThemeSource = fs.readFileSync(path.join(
     __dirname,
     "../src/shared/themepack/default-theme.ts",
@@ -209,6 +225,28 @@ assert.match(windowMaterialSource, /WINDOWS_ACRYLIC_MIN_BUILD\s*=\s*22621/);
 assert.match(windowMaterialSource, /ACRYLIC_TINT_DARK/);
 assert.match(windowMaterialSource, /getInitialWindowSurfaceOptions/);
 assert.match(windowManagerSource, /getInitialWindowSurfaceOptions/);
+assert.match(musicBarComponentSource, /data-liquid-glass-svg/);
+assert.match(musicBarComponentSource, /LiquidGlassFilter/);
+assert.match(
+    musicBarStyleSource,
+    /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+max-content\s+minmax\(0,\s*1fr\)/,
+);
+assert.match(
+    musicBarStyleSource,
+    /html\[data-ui-style="glass"\][\s\S]*?\.music-bar-container\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?inset:\s*auto\s+0\s+0;/,
+);
+assert.doesNotMatch(
+    musicBarStyleSource,
+    /\.music-bar-container,\s*\.music-bar-container\[data-detail-open="true"\]/,
+);
+assert.match(musicBarStyleSource, /--liquidGlassEdgeWidth:\s*0\.5px/);
+assert.doesNotMatch(
+    musicBarStyleSource,
+    /border:\s*1px\s+solid\s+var\(--liquidGlassBorder\)/,
+);
+assert.match(liquidGlassSource, /ResizeObserver/);
+assert.match(liquidGlassSource, /feDisplacementMap/);
+assert.match(controllerSource, /liquid-controller-primary/);
 assert.match(themeMainSource, /from "\.\/window-material"/);
 assert.match(themeMainSource, /setBackgroundMaterial\(enabled \? "acrylic" : "none"\)/);
 assert.match(themeMainSource, /stream:\s*true/);
@@ -280,7 +318,7 @@ const musicBarStyles = fs.readFileSync(path.join(
 ), "utf8");
 assert.match(
     musicBarSource,
-    /className="music-bar-motion-layer">\s*<div className="music-bar-overlay"><\/div>\s*<div className="music-bar-shell">/s,
+    /className="music-bar-motion-layer">\s*<div className="music-bar-overlay"><\/div>\s*<div ref=\{shellRef\} className="music-bar-shell">/s,
 );
 assert.match(musicBarStyles, /\.music-bar-hover-zone\s*\{[^}]*height:\s*52px;/s);
 assert.match(

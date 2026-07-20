@@ -95,18 +95,13 @@ export default function MusicInfo() {
                 className="music-cover-wrap"
                 data-open={musicDetailShown}
                 role="button"
+                tabIndex={0}
                 onClick={toggleMusicDetail}
-                style={{
-                    all: "unset",
-                    position: "relative",
-                    width: "52px",
-                    height: "52px",
-                    borderRadius: "18px",
-                    flexShrink: 0,
-                    overflow: "hidden",
-                    cursor: "pointer",
-                    boxShadow: "0 12px 24px rgba(0, 0, 0, 0.18)",
-                    display: "block",
+                onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        toggleMusicDetail();
+                    }
                 }}
             >
                 <StableArtwork
@@ -133,7 +128,14 @@ export default function MusicInfo() {
                     <span
                         className="music-title"
                         role="button"
+                        tabIndex={0}
                         onClick={toggleMusicDetail}
+                        onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                toggleMusicDetail();
+                            }
+                        }}
                         title={musicItem.title}
                     >
                         {musicItem.title}

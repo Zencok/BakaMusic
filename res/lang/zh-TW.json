@@ -315,6 +315,8 @@
         "close_music_detail_page": "關閉歌曲詳情",
         "previous_music": "上一首",
         "next_music": "下一首",
+        "play": "播放",
+        "pause": "暫停",
         "mute": "靜音",
         "unmute": "取消靜音",
         "playback_speed": "播放速度",

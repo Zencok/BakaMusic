@@ -60,3 +60,32 @@
     transform: translate(-50%, -50%) scale(1);
   }
 }
+
+html[data-ui-style="glass"] .music-bar--slider-container {
+  top: -3px;
+  height: 14px;
+  --slider-height: 2px;
+
+  &:hover,
+  &[data-seeking="true"] {
+    --slider-height: 3px;
+  }
+
+  & .bar {
+    background: color-mix(in srgb, var(--musicBarText) 14%, transparent);
+    box-shadow: none;
+  }
+
+  & .active-bar {
+    background: color-mix(in srgb, var(--musicBarText) 78%, white);
+    box-shadow: none;
+  }
+
+  & .thumb {
+    width: 12px;
+    height: 12px;
+    border: 1px solid color-mix(in srgb, white 28%, transparent);
+    background: color-mix(in srgb, var(--musicBarText) 88%, white);
+    box-shadow: 0 2px 8px color-mix(in srgb, black 18%, transparent);
+  }
+}

@@ -8,7 +8,7 @@
   height: 100%;
   -webkit-app-region: no-drag;
 
-  & .music-controller-button {
+  & .liquid-controller-button {
     width: 42px;
     min-width: 42px;
     max-width: 42px;
@@ -45,7 +45,7 @@
     }
   }
 
-  & .music-controller-primary {
+  & .liquid-controller-primary {
     width: 54px;
     min-width: 54px;
     max-width: 54px;
@@ -66,6 +66,72 @@
     & svg {
       width: 26px;
       height: 26px;
+    }
+  }
+}
+
+html[data-ui-style="glass"] .music-controller {
+  height: 52px;
+  gap: 8px;
+
+  // Glass-only overrides — keep flat rules on .liquid-controller-* base selectors
+  // so reusing ThemeSafeRoundButton does not bleed glass sizes into flat mode.
+  & .liquid-controller-button {
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
+    border: 0 !important;
+    border-radius: 50% !important;
+    color: var(--musicBarText) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    transition:
+      transform 160ms ease,
+      background-color 160ms ease !important;
+
+    &:hover {
+      transform: none !important;
+      background: color-mix(in srgb, var(--musicBarText) 8%, transparent) !important;
+      box-shadow: none !important;
+    }
+
+    &:active {
+      transform: scale(0.96) !important;
+    }
+
+    &:focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--musicBarAccent) 50%, white) !important;
+      outline-offset: 2px !important;
+    }
+  }
+
+  // Primary is a quiet frosted disc — not a multi-layer “lens button”.
+  & .liquid-controller-primary {
+    width: 46px !important;
+    min-width: 46px !important;
+    max-width: 46px !important;
+    height: 46px !important;
+    min-height: 46px !important;
+    max-height: 46px !important;
+    color: var(--musicBarText) !important;
+    background: color-mix(in srgb, var(--musicBarText) 10%, transparent) !important;
+    border: 1px solid color-mix(in srgb, white 16%, transparent) !important;
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, white 22%, transparent),
+      0 4px 14px color-mix(in srgb, black 12%, transparent) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(130%);
+    backdrop-filter: blur(10px) saturate(130%);
+
+    &:hover {
+      background: color-mix(in srgb, var(--musicBarText) 14%, transparent) !important;
+      box-shadow:
+        inset 0 1px 0 color-mix(in srgb, white 28%, transparent),
+        0 6px 16px color-mix(in srgb, black 14%, transparent) !important;
     }
   }
 }

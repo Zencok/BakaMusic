@@ -2,6 +2,7 @@ import { CSSProperties, MouseEventHandler, useState } from "react";
 import ThemeSafeIcon from "@/renderer/components/ThemeSafeIcon";
 
 interface IProps {
+    className?: string;
     iconName: "play" | "pause" | "skip-left" | "skip-right" | "x-mark";
     iconSize: number;
     size: number;
@@ -29,6 +30,7 @@ export default function ThemeSafeRoundButton(props: IProps) {
     return (
         <button
             type="button"
+            className={props.className}
             title={props.title}
             aria-label={props.title}
             onClick={props.onClick}
