@@ -12,4 +12,8 @@ async function resume(
 
 const BackupResume = { resume };
 export default BackupResume;
-export { createBackupPayload, parseBackupPayload } from "./format";
+export {
+    createBackupFileName,
+    createBackupPayload,
+    parseBackupPayload,
+} from "./format";

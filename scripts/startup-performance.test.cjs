@@ -45,10 +45,13 @@ assert.doesNotMatch(audioControllerSource, /from "hls\.js";/);
 const backupSource = read(
     "src/renderer/pages/main-page/views/setting-view/routers/Backup/index.tsx",
 );
-assert.match(backupSource, /await import\("webdav"\)/);
-assert.match(backupSource, /await import\("@\/renderer\/core\/backup-resume"\)/);
-assert.doesNotMatch(backupSource, /from "webdav"/);
+assert.match(backupSource, /await import\("@\/renderer\/core\/backup-resume(?:\/format)?"\)/);
+assert.match(backupSource, /@shared\/backup\/renderer/);
+assert.doesNotMatch(backupSource, /(?:import\("webdav"\)|from "webdav")/);
 assert.doesNotMatch(backupSource, /import BackupResume from/);
+const backupMainSource = read("src/shared/backup/main.ts");
+assert.match(backupMainSource, /await import\("webdav"\)/);
+assert.doesNotMatch(backupMainSource, /from "webdav"/);
 
 const downloaderWorkerSource = read("src/webworkers/downloader.ts");
 assert.match(downloaderWorkerSource, /await import\("node-taglib-sharp"\)/);
@@ -61,6 +64,7 @@ assert.doesNotMatch(commonPreloadSource, /@shared\/utils\/preload/);
 const mainPreloadSource = read("src/preload/index.ts");
 assert.match(mainPreloadSource, /@shared\/utils\/preload/);
 assert.match(mainPreloadSource, /@shared\/themepack\/preload/);
+assert.match(mainPreloadSource, /@shared\/backup\/preload/);
 
 const extensionPreloadSource = read("src/preload/extension.ts");
 assert.match(extensionPreloadSource, /@shared\/utils\/preload-window/);

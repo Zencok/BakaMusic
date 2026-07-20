@@ -11,3 +11,4 @@ import "@shared/plugin-manager/preload";
 import "@shared/message-bus/preload/main";
 import "@shared/short-cut/preload";
 import "@shared/node-runtime/preload";
+import "@shared/backup/preload";

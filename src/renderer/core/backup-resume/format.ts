@@ -21,8 +21,17 @@ function getUtf8Size(value: string) {
     return new TextEncoder().encode(value).byteLength;
 }
 
-function assertBoundedString(value: unknown, name: string, maxLength = 8_192) {
-    if (typeof value !== "string" || !value.length || value.length > maxLength) {
+function assertBoundedString(
+    value: unknown,
+    name: string,
+    maxLength = 8_192,
+    allowEmpty = false,
+) {
+    if (
+        typeof value !== "string"
+        || (!allowEmpty && !value.length)
+        || value.length > maxLength
+    ) {
         throw new Error(`Invalid ${name}`);
     }
 }
@@ -39,7 +48,12 @@ function validateMusicSheetList(value: unknown) {
         }
         assertBoundedString(sheet.id, `musicSheets[${sheetIndex}].id`, 512);
         assertBoundedString(sheet.platform, `musicSheets[${sheetIndex}].platform`, 512);
-        assertBoundedString(sheet.title, `musicSheets[${sheetIndex}].title`);
+        assertBoundedString(
+            sheet.title,
+            `musicSheets[${sheetIndex}].title`,
+            8_192,
+            true,
+        );
 
         const musicList = sheet.musicList ?? [];
         if (!Array.isArray(musicList)) {
@@ -70,6 +84,14 @@ function validateMusicSheetList(value: unknown) {
     });
 
     return value as IMusic.IMusicSheetItem[];
+}
+
+export function createBackupFileName(createdAt = Date.now()) {
+    const timestamp = new Date(createdAt)
+        .toISOString()
+        .replace(/\.\d{3}Z$/, "Z")
+        .replaceAll(":", "-");
+    return `BakaMusicBackup-${timestamp}.json`;
 }
 
 export function createBackupPayload(

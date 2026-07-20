@@ -13,9 +13,13 @@ const {
     BACKUP_SCHEMA,
     BACKUP_VERSION,
     MAX_BACKUP_BYTES,
+    createBackupFileName,
     createBackupPayload,
     parseBackupPayload,
 } = require("../src/renderer/core/backup-resume/format.ts");
+const {
+    MAX_BACKUP_TRANSFER_BYTES,
+} = require("../src/shared/backup/common.ts");
 
 function fixtureMusic(id) {
     return {
@@ -45,7 +49,17 @@ function testBackupFormat() {
         parseBackupPayload(JSON.stringify({ musicSheets: [fixtureSheet()] })),
         [fixtureSheet()],
     );
+    const untitledSheet = { ...fixtureSheet(), title: "" };
+    assert.deepEqual(
+        parseBackupPayload(createBackupPayload([untitledSheet], 1234)),
+        [untitledSheet],
+    );
+    assert.equal(
+        createBackupFileName(Date.UTC(2026, 6, 20, 12, 34, 56)),
+        "BakaMusicBackup-2026-07-20T12-34-56Z.json",
+    );
     assert.ok(MAX_BACKUP_BYTES >= 1024 * 1024);
+    assert.equal(MAX_BACKUP_BYTES, MAX_BACKUP_TRANSFER_BYTES);
     assert.throws(
         () => parseBackupPayload(JSON.stringify({
             schema: BACKUP_SCHEMA,

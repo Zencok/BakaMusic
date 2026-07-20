@@ -49,6 +49,7 @@ import {
     setupThemePackMain,
 } from "@shared/themepack/main";
 import NodeRuntimeManager from "@shared/node-runtime/main";
+import { setupBackupMain } from "@shared/backup/main";
 import {
     registerLocalMediaProtocolScheme,
     setupLocalMediaMain,
@@ -157,6 +158,7 @@ app.whenReady().then(async () => {
         },
     });
     utils.setup(windowManager);
+    setupBackupMain();
     NodeRuntimeManager.setup(windowManager);
     PluginManager.setup(windowManager);
     TrayManager.setup(windowManager);

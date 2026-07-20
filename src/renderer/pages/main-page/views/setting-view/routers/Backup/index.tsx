@@ -8,6 +8,7 @@ import AppConfig from "@shared/app-config/renderer";
 import { dialogUtil, fsUtil } from "@shared/utils/renderer";
 import SvgAsset, { type SvgAssetIconNames } from "@renderer/components/SvgAsset";
 import { getErrorMessage } from "@/common/error-util";
+import BackupBridge from "@shared/backup/renderer";
 
 interface IBackupActionButtonProps {
     iconName: SvgAssetIconNames;
@@ -42,24 +43,8 @@ async function resumeSheetBackup(data: unknown, overwrite: boolean) {
     await BackupResume.resume(data, overwrite);
 }
 
-async function createWebdavClient(
-    url: string,
-    username: string,
-    password: string,
-) {
-    const { AuthType, createClient } = await import("webdav");
-    return createClient(url, {
-        authType: AuthType.Password,
-        username,
-        password,
-    });
-}
-
 export default function Backup() {
     const { t } = useTranslation();
-    const webdavBackupDir = "/BakaMusic";
-    const webdavBackupFile = webdavBackupDir + "/BakaMusicBackup.json";
-    const legacyWebdavBackupFile = "/MusicFree/MusicFreeBackup.json";
 
     async function exportSheetBackup() {
         const { default: MusicSheet } = await import("@/renderer/core/music-sheet");
@@ -71,20 +56,36 @@ export default function Backup() {
     }
 
     async function onFileBackupClick() {
-        const result = await dialogUtil.showSaveDialog({
-            properties: ["showOverwriteConfirmation", "createDirectory"],
-            filters: [
-                {
-                    name: t("settings.backup.bakamusic_backup_file"),
-                    extensions: ["json", "txt"],
-                },
-            ],
-            title: t("settings.backup.backup_to"),
-        });
+        try {
+            const { createBackupFileName } = await import(
+                "@/renderer/core/backup-resume/format",
+            );
+            const result = await dialogUtil.showSaveDialog({
+                defaultPath: createBackupFileName(),
+                properties: ["showOverwriteConfirmation", "createDirectory"],
+                filters: [
+                    {
+                        name: t("settings.backup.bakamusic_backup_file"),
+                        extensions: ["json", "txt"],
+                    },
+                ],
+                title: t("settings.backup.backup_to"),
+            });
 
-        if (!result.canceled && result.filePath) {
-            await fsUtil.writeFile(result.filePath, await exportSheetBackup(), "utf-8");
-            toast.success(t("settings.backup.backup_success"));
+            if (!result.canceled && result.filePath) {
+                await fsUtil.writeFile(
+                    result.filePath,
+                    await exportSheetBackup(),
+                    "utf-8",
+                );
+                toast.success(t("settings.backup.backup_success"));
+            }
+        } catch (e) {
+            toast.error(
+                t("settings.backup.backup_fail", {
+                    reason: getErrorMessage(e),
+                }),
+            );
         }
     }
 
@@ -130,18 +131,9 @@ export default function Backup() {
 
         try {
             if (url && username && password) {
-                const client = await createWebdavClient(url, username, password);
-
-                if (!(await client.exists(webdavBackupDir))) {
-                    await client.createDirectory(webdavBackupDir);
-                }
-
-                await client.putFileContents(
-                    webdavBackupFile,
+                await BackupBridge.backupToWebdav(
+                    { url, username, password },
                     await exportSheetBackup(),
-                    {
-                        overwrite: true,
-                    },
                 );
                 toast.success(t("settings.backup.backup_success"));
             } else {
@@ -163,27 +155,16 @@ export default function Backup() {
 
         try {
             if (url && username && password) {
-                const client = await createWebdavClient(url, username, password);
-
-                const restoreSource =
-                    (await client.exists(webdavBackupFile))
-                        ? webdavBackupFile
-                        : ((await client.exists(legacyWebdavBackupFile))
-                            ? legacyWebdavBackupFile
-                            : null);
-
-                if (!restoreSource) {
+                const resumeData = await BackupBridge.restoreFromWebdav({
+                    url,
+                    username,
+                    password,
+                });
+                if (resumeData === null) {
                     throw new Error(
                         t("settings.backup.webdav_backup_file_not_exist"),
                     );
                 }
-
-                const resumeData = await client.getFileContents(
-                    restoreSource,
-                    {
-                        format: "text",
-                    },
-                );
                 await resumeSheetBackup(
                     resumeData,
                     AppConfig.getConfig("backup.resumeBehavior") === "overwrite",

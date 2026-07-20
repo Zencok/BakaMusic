@@ -208,6 +208,8 @@ async function inspectWindow(session, name) {
 async function run() {
     assert.ok(fs.existsSync(appPath), `Packaged app not found: ${appPath}`);
     const port = await getFreePort();
+    let webdavDirectoryExists = false;
+    let webdavBackupData = null;
     const resourceServer = http.createServer((request, response) => {
         if (request.url === "/pixel.png" || request.url?.endsWith("/pixel.png")) {
             response.writeHead(200, {
@@ -230,6 +232,67 @@ async function run() {
             response.writeHead(200, { "Content-Type": "application/json" });
             response.end(JSON.stringify({ ok: true }));
             return;
+        }
+        if (request.url?.startsWith("/webdav")) {
+            const expectedAuthorization = `Basic ${Buffer.from(
+                "smoke-user:smoke-pass",
+            ).toString("base64")}`;
+            if (request.headers.authorization !== expectedAuthorization) {
+                response.writeHead(401, { "WWW-Authenticate": "Basic" });
+                response.end("Unauthorized");
+                return;
+            }
+            const requestPath = request.url.replace(/\/$/, "");
+            const backupPath = "/webdav/BakaMusic/BakaMusicBackup.json";
+            if (request.method === "PROPFIND") {
+                const isDirectory = requestPath === "/webdav/BakaMusic"
+                    && webdavDirectoryExists;
+                const isBackup = requestPath === backupPath
+                    && webdavBackupData !== null;
+                if (!isDirectory && !isBackup) {
+                    response.writeHead(404);
+                    response.end("Not found");
+                    return;
+                }
+                const resourceType = isDirectory
+                    ? "<d:resourcetype><d:collection/></d:resourcetype>"
+                    : "<d:resourcetype/>";
+                response.writeHead(207, { "Content-Type": "application/xml" });
+                response.end(`<?xml version="1.0" encoding="utf-8"?>
+                    <d:multistatus xmlns:d="DAV:"><d:response>
+                    <d:href>${requestPath}</d:href><d:propstat><d:prop>
+                    ${resourceType}<d:getcontentlength>${Buffer.byteLength(
+                        webdavBackupData || "",
+                    )}</d:getcontentlength></d:prop>
+                    <d:status>HTTP/1.1 200 OK</d:status>
+                    </d:propstat></d:response></d:multistatus>`);
+                return;
+            }
+            if (request.method === "MKCOL" && requestPath === "/webdav/BakaMusic") {
+                webdavDirectoryExists = true;
+                response.writeHead(201);
+                response.end();
+                return;
+            }
+            if (request.method === "PUT" && requestPath === backupPath) {
+                const chunks = [];
+                request.on("data", (chunk) => chunks.push(chunk));
+                request.on("end", () => {
+                    webdavBackupData = Buffer.concat(chunks).toString("utf8");
+                    response.writeHead(201);
+                    response.end();
+                });
+                return;
+            }
+            if (
+                request.method === "GET"
+                && requestPath === backupPath
+                && webdavBackupData !== null
+            ) {
+                response.writeHead(200, { "Content-Type": "application/json" });
+                response.end(webdavBackupData);
+                return;
+            }
         }
         response.writeHead(404);
         response.end("Not found");
@@ -338,12 +401,15 @@ async function run() {
         const rendererBoundary = await mainSession.evaluate(`(() => {
             const pluginBridge = window["@shared/plugin-manager"];
             const nodeRuntime = window["@shared/node-runtime"];
+            const backupBridge = window["@shared/backup"];
             return {
                 processType: typeof window.process,
                 requireType: typeof window.require,
                 dirnameType: typeof window.__dirname,
                 legacyPathBridgeType: typeof window.path,
                 nodeRuntimeBridge: typeof nodeRuntime.closeWatcher,
+                backupWriteBridge: typeof backupBridge.backupToWebdav,
+                backupReadBridge: typeof backupBridge.restoreFromWebdav,
                 pluginBridge: typeof pluginBridge.callPluginMethod,
             };
         })()`, "renderer boundary");
@@ -358,6 +424,20 @@ async function run() {
                 "music",
             );
         })()`, "plugin utility roundtrip");
+        const webdavState = await mainSession.evaluate(`(async () => {
+            const backupBridge = window["@shared/backup"];
+            const connection = {
+                url: ${JSON.stringify(`${resourceOrigin}/webdav`)},
+                username: "smoke-user",
+                password: "smoke-pass",
+            };
+            const fixture = JSON.stringify({ schema: "package-smoke" });
+            await backupBridge.backupToWebdav(connection, fixture);
+            return {
+                restored: await backupBridge.restoreFromWebdav(connection),
+                fixture,
+            };
+        })()`, "WebDAV backup roundtrip");
         const themeState = await mainSession.evaluate(`(async () => {
             const themeBridge = window["@shared/themepack"];
             const themes = await themeBridge.loadThemePacks();
@@ -453,6 +533,7 @@ async function run() {
             pluginResult,
             remoteArtworkCors,
             themeState,
+            webdavState,
         };
         assert.deepEqual(boundaryState, {
             processType: "undefined",
@@ -460,6 +541,8 @@ async function run() {
             dirnameType: "undefined",
             legacyPathBridgeType: "undefined",
             nodeRuntimeBridge: "function",
+            backupWriteBridge: "function",
+            backupReadBridge: "function",
             localMediaState: {
                 loaded: true,
                 protocol: "bakamusic-media:",
@@ -471,6 +554,10 @@ async function run() {
                 pathProtocol: "bakamusic-theme:",
                 cssValidated: true,
                 assetLoaded: true,
+            },
+            webdavState: {
+                restored: JSON.stringify({ schema: "package-smoke" }),
+                fixture: JSON.stringify({ schema: "package-smoke" }),
             },
         });
         await mainSession.evaluate(`(() => {

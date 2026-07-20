@@ -129,7 +129,8 @@ function testPreloadCapabilitySurface() {
     const themePreload = read("src/shared/themepack/preload.ts");
 
     assert.match(mainPreload, /@shared\/node-runtime\/preload/);
-    assert.doesNotMatch(extensionPreload, /plugin-manager|node-runtime|themepack/);
+    assert.match(mainPreload, /@shared\/backup\/preload/);
+    assert.doesNotMatch(extensionPreload, /plugin-manager|node-runtime|themepack|backup/);
     assert.doesNotMatch(utilsPreload, /from "(?:fs|fs\/promises|path|rimraf|unzipper)/);
     assert.doesNotMatch(themePreload, /from "(?:fs|fs\/promises|path|rimraf|unzipper)/);
     assert.match(themePreload, /ipcRenderer\.invoke/);
@@ -144,6 +145,26 @@ function testPreloadCapabilitySurface() {
             `${path.relative(projectRoot, filePath)} retains the legacy path bridge`,
         );
     }
+}
+
+function testBackupBoundary() {
+    const backupMain = read("src/shared/backup/main.ts");
+    const backupPage = read(
+        "src/renderer/pages/main-page/views/setting-view/routers/Backup/index.tsx",
+    );
+    const mainSource = read("src/main/index.ts");
+
+    assert.equal(count(backupMain, /assertIpcSender\(event, \["main"\]\)/g), 2);
+    assert.match(backupMain, /assertUrl\(value\.url, \["https:", "http:"\]/);
+    assert.match(backupMain, /MAX_BACKUP_TRANSFER_BYTES/);
+    assert.match(backupMain, /WEBDAV_REQUEST_TIMEOUT_MS/);
+    assert.match(backupMain, /axios\.defaults\.httpAgent/);
+    assert.match(backupMain, /axios\.defaults\.httpsAgent/);
+    assert.match(backupMain, /await import\("webdav"\)/);
+    assert.doesNotMatch(backupPage, /(?:import\("webdav"\)|from "webdav")/);
+    assert.match(backupPage, /BackupBridge\.backupToWebdav/);
+    assert.match(backupPage, /BackupBridge\.restoreFromWebdav/);
+    assert.match(mainSource, /setupBackupMain\(\)/);
 }
 
 function testPluginIsolationAndIntegrity() {
@@ -236,12 +257,16 @@ function testPackagedBoundarySmokeContract() {
     }
     assert.match(smokeSource, /pluginResult: \{ isEnd: true, data: \[\] \}/);
     assert.match(smokeSource, /nodeRuntimeBridge: "function"/);
+    assert.match(smokeSource, /backupWriteBridge: "function"/);
+    assert.match(smokeSource, /backupReadBridge: "function"/);
+    assert.match(smokeSource, /WebDAV backup roundtrip/);
 }
 
 testWindowIsolation();
 testSessionAndNavigationPolicy();
 testIpcAndPathBoundaries();
 testPreloadCapabilitySurface();
+testBackupBoundary();
 testPluginIsolationAndIntegrity();
 testThemeAndNodeRuntimeIsolation();
 testPackagedBoundarySmokeContract();
