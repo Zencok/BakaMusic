@@ -19,6 +19,7 @@ const {
     formatLyricsFromItems,
     resolveLyricExportOrder,
 } = require("../src/common/download-postprocess.ts");
+const LyricParser = require("../src/renderer/utils/lyric-parser.ts").default;
 
 // Display toggles filter export order; original always kept
 assert.deepEqual(
@@ -74,5 +75,41 @@ const plainLrc = formatLyricsFromItems(items, ["original"], {
     withTimestamp: true,
 });
 assert.equal(plainLrc, "[00:01.500]こんにちは");
+
+const qqOpeningParser = new LyricParser([
+    "[00:00.150]Written by：Jacob Kasher/Charlie Puth/Hindlin/Selena Gomez",
+    "[00:00.860]Charlie Puth：",
+    "[00:00.860]<00:00.860>We <00:01.200>don't <00:01.600>talk <00:02.000>anymore <00:03.000>we <00:03.400>don't <00:03.800>talk <00:04.200>anymore<00:05.200>",
+    "[00:00.860]只剩沉默 我们之间只剩沉默",
+    "[00:05.523]We don't talk anymore like we used to do",
+    "[00:05.523]只剩沉默 耳语亲昵已是从前",
+].join("\n"), {
+    musicItem: {
+        artist: "Charlie Puth, Selena Gomez",
+        id: "105539541",
+        platform: "QQ音乐",
+        title: "We Don't Talk Anymore",
+    },
+});
+const qqOpeningExport = formatLyricsFromItems(
+    qqOpeningParser.getLyricItems(),
+    ["original", "translation"],
+    {
+        enableWordByWord: true,
+        withTimestamp: true,
+    },
+);
+const qqOpeningExportWithoutWordTags = qqOpeningExport.replace(
+    /<\d{2}:\d{2}\.\d{3}>/g,
+    "",
+);
+assert.match(
+    qqOpeningExportWithoutWordTags,
+    /\[00:00\.860\].*Charlie Puth：We don't talk anymore we don't talk anymore/,
+);
+assert.match(
+    qqOpeningExportWithoutWordTags,
+    /\[00:05\.523\].*We don't talk anymore like we used to do/,
+);
 
 console.log("download-postprocess-lyric: all assertions passed");

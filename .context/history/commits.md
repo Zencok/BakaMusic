@@ -237,3 +237,14 @@
 - **Decision**: Use shared theme tokens, responsive layouts, focus-visible states, and reduced-motion support.
 - **Files**: 5 files
 - **Tests**: TypeScript; ESLint; full regression suite; diff check
+
+## 2026-07-21T17:45:28.2480385+08:00 — fix(lyrics): detect duet vocal layouts
+`pending`
+- **Context-Id**: 82c3a262-7987-4cb8-82e6-2218ab9e2515
+- **Decision**: Infer duet sides from recognized speaker prefixes, alternating singer turns, and parenthesized vocal parts while preserving title and credit metadata.
+- **Decision**: Preserve word timing and AMLL duet flags when splitting inline vocal responses.
+- **Decision**: Merge same-timestamp singer markers before translation folding so opening lyrics remain attached to their source row.
+- **Bug**: Duet tracks stayed on the left or switched on credit rows; conservative singer-role classification now controls layout.
+- **Bug**: The first timed lyric could be swallowed by a parallel marker row; marker merging now precedes translation grouping.
+- **Files**: 6 files
+- **Tests**: lyric duet; download lyric export; TypeScript; ESLint; diff check

@@ -34,6 +34,8 @@ export interface IAmlLyricLineSource {
     endTime?: number;
     words?: IAmlLyricWordSource[];
     hasWordTimeline?: boolean;
+    isBG?: boolean;
+    isDuet?: boolean;
 }
 
 interface IMapLyricOptions {
@@ -171,8 +173,8 @@ export function mapLyricLinesToAml(
                 : "",
             startTime,
             endTime,
-            isBG: false,
-            isDuet: false,
+            isBG: !!line.isBG,
+            isDuet: !!line.isDuet,
         });
     });
 

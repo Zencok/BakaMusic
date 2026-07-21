@@ -39,6 +39,14 @@ export interface IParsedLrcItem {
     hasWordTimeline?: boolean;
     /** 是否为伪逐字（均分生成） */
     isVirtualWords?: boolean;
+    /** 是否为附着在上一主歌词行的背景人声 */
+    isBG?: boolean;
+    /** 是否为第二演唱者（AMLL 右对齐行） */
+    isDuet?: boolean;
+    /** 是否为从主歌词括号中拆出的同时演唱行 */
+    isDuetPartner?: boolean;
+    /** 原始行是否带有已识别的演唱者标签 */
+    hasSingerLabel?: boolean;
 }
 
 export interface IActiveLyricState {
@@ -69,7 +77,23 @@ const HAN_REG = /[\u3400-\u9fff\uf900-\ufaff]/;
 const KANA_REG = /[\u3040-\u30ff\u31f0-\u31ff]/;
 const HANGUL_REG = /[\uac00-\ud7af]/;
 const LATIN_REG = /[A-Za-z\u00c0-\u024f]/;
-const CREDIT_LINE_REG = /^(?:(?:作)?词|(?:作)?詞|曲|作曲|编曲|編曲|词曲|詞曲|原唱|演唱|歌手|vocal|lyrics?|lyricist|composer|music|arrange(?:r|ment)?)\s*[:：]/i;
+const CREDIT_LINE_REG = /^(?:(?:作)?词|(?:作)?詞|曲|作曲|编曲|編曲|词曲|詞曲|原唱|演唱|歌手|制作(?:人)?|製作(?:人)?|出品|发行|發行|策划|策劃|统筹|統籌|监制|監製|导演|導演|混音|母带|母帶|录音|錄音|和声|和聲|翻唱|原曲|歌名|歌曲|专辑|專輯|标题|標題|written\s+by|vocal|lyrics?|lyricist|composer|music|arrange(?:r|ment)?|producer|produced\s+by|mix|master(?:ing)?|recording|staff)\s*[:：]/i;
+const NON_SPEAKER_LABEL_REG = /^(?:制作|出品|发行|發行|策划|策劃|监制|監製|混音|母带|母帶|录音|錄音|和声|和聲|翻唱|原曲|歌名|歌曲|专辑|專輯|标题|標題|artist|album|title|producer|produced\s+by|mix|master(?:ing)?|staff)$/i;
+const GROUP_SPEAKER_NAMES = new Set([
+    "all",
+    "chorus",
+    "duet",
+    "together",
+    "合",
+    "合唱",
+    "齐唱",
+    "齊唱",
+]);
+const PARENTHETICAL_VOCAL_REG = /[（(]([^()（）\r\n]+)[)）]/g;
+const GENERIC_LABEL_PREFIX_REG = /^\s*[^:：\r\n]{1,24}\s*[:：]/;
+const LEADING_CREDIT_WINDOW_SECONDS = 30;
+const LEADING_NAME_DURATION_SECONDS = 0.8;
+const DUET_TURN_GAP_SECONDS = 0.12;
 const ROMANIZATION_HINT_REG = /(?:shi|chi|tsu|kyo|kyu|kya|ryo|ryu|rya|sho|shu|sha|cho|chu|cha|jyo|jyu|jya|dzu|desu|boku|kimi|kono|sono|ano|yume|sora|kokoro|namida|hikari|kaze|hana|machi|sekai|mirai|hoshi|koe|uta|sarang|hae)/i;
 const CREDIT_ROMANIZATION_PREFIXES = new Set([
     "shi",
@@ -864,8 +888,725 @@ function isCreditSideLine(text: string) {
     return isLyricCreditLine(text) || isCreditRomanizationLine(text);
 }
 
+interface ISpeakerPrefix {
+    content: string;
+    explicitSide?: boolean;
+    isGroup: boolean;
+    name: string;
+    normalizedName: string;
+    prefixLength: number;
+}
+
+function normalizeSpeakerName(name: string) {
+    return name
+        .normalize("NFKC")
+        .toLowerCase()
+        .replace(/[\s._·・'"“”‘’-]/g, "");
+}
+
+function matchSpeakerPrefix(text: string): ISpeakerPrefix | null {
+    const match = text.match(/^\s*([^:：\r\n]{1,24}?)\s*[:：]\s*/);
+    if (!match) {
+        return null;
+    }
+
+    const name = match[1].trim();
+    if (
+        !name
+        || /[，,。.!！?？;；()[\]（）]/.test(name)
+        || isCreditSideLine(`${name}：`)
+        || NON_SPEAKER_LABEL_REG.test(name)
+    ) {
+        return null;
+    }
+
+    const normalizedName = normalizeSpeakerName(name);
+    const voiceMatch = normalizedName.match(/^v(\d+)$/);
+
+    return {
+        content: text.slice(match[0].length),
+        explicitSide: voiceMatch
+            ? Number.parseInt(voiceMatch[1], 10) !== 1
+            : undefined,
+        isGroup: GROUP_SPEAKER_NAMES.has(normalizedName),
+        name,
+        normalizedName,
+        prefixLength: match[0].length,
+    };
+}
+
+function removeLeadingTextFromWords(
+    words: ILyric.IWordData[] | undefined,
+    prefixLength: number,
+) {
+    if (!words?.length || prefixLength <= 0) {
+        return words;
+    }
+
+    let remaining = prefixLength;
+    const strippedWords: ILyric.IWordData[] = [];
+
+    words.forEach((word) => {
+        if (remaining >= word.text.length) {
+            remaining -= word.text.length;
+            return;
+        }
+
+        const text = remaining > 0
+            ? word.text.slice(remaining)
+            : word.text;
+        remaining = 0;
+        if (!text) {
+            return;
+        }
+
+        strippedWords.push({
+            ...word,
+            index: strippedWords.length,
+            space: !text.trim(),
+            text,
+        });
+    });
+
+    return strippedWords;
+}
+
+function stripMatchingSpeakerPrefix(
+    text: string | undefined,
+    normalizedSpeakerName: string,
+) {
+    if (!text) {
+        return text;
+    }
+
+    const prefix = matchSpeakerPrefix(text);
+    return prefix?.normalizedName === normalizedSpeakerName
+        ? prefix.content.trim()
+        : text;
+}
+
+function stripSpeakerPrefixFromItem(
+    item: IParsedLrcItem,
+    prefix: ISpeakerPrefix,
+) {
+    item.lrc = prefix.content.trim();
+    item.words = removeLeadingTextFromWords(item.words, prefix.prefixLength);
+    stripSpeakerPrefixFromSecondaryFields(item, prefix);
+}
+
+function stripSpeakerPrefixFromSecondaryFields(
+    item: IParsedLrcItem,
+    prefix: ISpeakerPrefix,
+) {
+    item.translation = stripMatchingSpeakerPrefix(
+        item.translation,
+        prefix.normalizedName,
+    );
+
+    const romanizationPrefix = item.romanization
+        ? matchSpeakerPrefix(item.romanization)
+        : null;
+    if (romanizationPrefix?.normalizedName === prefix.normalizedName) {
+        item.romanization = romanizationPrefix.content.trim();
+        item.romanizationWords = removeLeadingTextFromWords(
+            item.romanizationWords,
+            romanizationPrefix.prefixLength,
+        );
+    }
+}
+
+function prependSpeakerMarkerToItem(
+    item: IParsedLrcItem,
+    markerItem: IParsedLrcItem,
+) {
+    const markerText = markerItem.lrc.trim();
+    item.lrc = `${markerText}${item.lrc}`;
+    item.time = markerItem.time;
+    item.hasSingerLabel = true;
+
+    const synthesizedMarkerWords: ILyric.IWordData[] = !markerItem.words?.length
+        && item.words?.length
+        ? [{
+            duration: Math.max(0.01, item.words[0].startTime - markerItem.time),
+            endTime: Math.max(markerItem.time + 0.01, item.words[0].startTime),
+            index: 0,
+            isVirtual: true,
+            space: false,
+            startTime: markerItem.time,
+            text: markerText,
+        }]
+        : [];
+    if (markerItem.words?.length || synthesizedMarkerWords.length || item.words?.length) {
+        item.words = [
+            ...(markerItem.words ?? synthesizedMarkerWords),
+            ...(item.words ?? []),
+        ].map((word, index) => ({
+            ...word,
+            index,
+        }));
+        item.hasWordTimeline = !!markerItem.hasWordTimeline
+            || !!item.hasWordTimeline;
+    }
+
+    if (markerItem.translation?.trim()) {
+        item.translation = `${markerItem.translation}${item.translation ?? ""}`;
+    }
+    if (markerItem.romanization?.trim()) {
+        item.romanization = `${markerItem.romanization}${item.romanization ?? ""}`;
+    }
+    if (markerItem.romanizationWords?.length || item.romanizationWords?.length) {
+        item.romanizationWords = [
+            ...(markerItem.romanizationWords ?? []),
+            ...(item.romanizationWords ?? []),
+        ].map((word, index) => ({
+            ...word,
+            index,
+        }));
+        item.hasRomanizationWordTimeline = !!markerItem.hasRomanizationWordTimeline
+            || !!item.hasRomanizationWordTimeline;
+    }
+
+    if (item.endTime !== undefined) {
+        item.duration = item.endTime - item.time;
+    }
+}
+
+function getNormalizedArtists(artist?: string) {
+    return (artist ?? "")
+        .split(/\s*(?:,|，|、|\/|&|;|；|\bfeat\.?\b|\bwith\b)\s*/i)
+        .map(normalizeSpeakerName)
+        .filter(Boolean);
+}
+
+function getArtistSide(speakerName: string, artist?: string) {
+    const artists = getNormalizedArtists(artist);
+    if (!artists.length) {
+        return undefined;
+    }
+
+    const normalizedSpeaker = normalizeSpeakerName(speakerName);
+    const artistIndex = artists.findIndex((candidate) =>
+        candidate === normalizedSpeaker
+        || candidate.includes(normalizedSpeaker)
+        || normalizedSpeaker.includes(candidate),
+    );
+
+    if (artistIndex < 0) {
+        return undefined;
+    }
+    return artistIndex > 0;
+}
+
+function getRecognizedNaturalSpeakerNames(
+    prefixes: Array<ISpeakerPrefix | null>,
+    artist?: string,
+) {
+    const candidates = prefixes.filter((prefix): prefix is ISpeakerPrefix =>
+        !!prefix
+        && prefix.explicitSide === undefined
+        && !prefix.isGroup,
+    );
+    const artistSpeakerNames = new Set(
+        candidates
+            .filter((prefix) => getArtistSide(prefix.name, artist) !== undefined)
+            .map((prefix) => prefix.normalizedName),
+    );
+    const recognizedSpeakerNames = new Set(artistSpeakerNames);
+
+    if (artistSpeakerNames.size > 0) {
+        const counts = new Map<string, number>();
+        candidates.forEach((prefix) => {
+            counts.set(
+                prefix.normalizedName,
+                (counts.get(prefix.normalizedName) ?? 0) + 1,
+            );
+        });
+        counts.forEach((count, speakerName) => {
+            if (count >= 2) {
+                recognizedSpeakerNames.add(speakerName);
+            }
+        });
+    }
+
+    return {
+        artistSpeakerNames,
+        recognizedSpeakerNames,
+    };
+}
+
+function hasRecognizedSpeakerLayout(
+    items: IParsedLrcItem[],
+    artist?: string,
+) {
+    const prefixes = items.map((item) => matchSpeakerPrefix(item.lrc));
+    const {
+        artistSpeakerNames,
+        recognizedSpeakerNames,
+    } = getRecognizedNaturalSpeakerNames(prefixes, artist);
+
+    return prefixes.some((prefix) => !!prefix && (
+        prefix.explicitSide !== undefined
+        || recognizedSpeakerNames.has(prefix.normalizedName)
+        || (prefix.isGroup && artistSpeakerNames.size > 0)
+    ));
+}
+
+function applyDuetSpeakerLayout(
+    items: IParsedLrcItem[],
+    artist?: string,
+    preserveSingerLabels = true,
+) {
+    const prefixes = items.map((item) => matchSpeakerPrefix(item.lrc));
+    const {
+        artistSpeakerNames,
+        recognizedSpeakerNames,
+    } = getRecognizedNaturalSpeakerNames(prefixes, artist);
+    const speakerSides = new Map<string, boolean>();
+    const hasArtistSpeaker = artistSpeakerNames.size > 0;
+    let currentSide = false;
+    let hasCurrentSpeaker = false;
+    let lastSingerName: string | undefined;
+    let pendingSpeakerMarker: IParsedLrcItem | undefined;
+
+    return items.filter((item, index) => {
+        const prefix = prefixes[index];
+        const shouldUsePrefix = !!prefix && (
+            prefix.explicitSide !== undefined
+            || (prefix.isGroup && hasArtistSpeaker)
+            || recognizedSpeakerNames.has(prefix.normalizedName)
+        );
+
+        item.isBG = false;
+        if (prefix && !shouldUsePrefix) {
+            item.isDuet = false;
+            return true;
+        }
+        if (!prefix || !shouldUsePrefix) {
+            item.isDuet = hasCurrentSpeaker ? currentSide : false;
+            if (!prefix && pendingSpeakerMarker) {
+                prependSpeakerMarkerToItem(item, pendingSpeakerMarker);
+                pendingSpeakerMarker = undefined;
+            }
+            return true;
+        }
+
+        let lineSide = false;
+        if (prefix.explicitSide !== undefined) {
+            lineSide = prefix.explicitSide;
+            currentSide = lineSide;
+            hasCurrentSpeaker = true;
+        } else if (prefix.isGroup) {
+            currentSide = false;
+            hasCurrentSpeaker = true;
+        } else {
+            const knownSide = speakerSides.get(prefix.normalizedName);
+            if (knownSide !== undefined) {
+                lineSide = knownSide;
+            } else {
+                const artistSide = getArtistSide(prefix.name, artist);
+                lineSide = artistSide
+                    ?? Array.from(speakerSides.values()).some((side) => !side);
+                speakerSides.set(prefix.normalizedName, lineSide);
+            }
+            currentSide = lineSide;
+            hasCurrentSpeaker = true;
+        }
+
+        item.isDuet = lineSide;
+        item.hasSingerLabel = prefix.explicitSide === undefined;
+
+        const shouldPreserveLabel = preserveSingerLabels
+            && prefix.explicitSide === undefined
+            && prefix.normalizedName !== lastSingerName;
+        if (prefix.explicitSide === undefined) {
+            lastSingerName = prefix.normalizedName;
+        } else {
+            lastSingerName = undefined;
+        }
+        if (shouldPreserveLabel && !prefix.content.trim()) {
+            pendingSpeakerMarker = item;
+            return false;
+        }
+        if (!shouldPreserveLabel) {
+            stripSpeakerPrefixFromItem(item, prefix);
+        } else {
+            stripSpeakerPrefixFromSecondaryFields(item, prefix);
+        }
+
+        const isLineScopedRole = !!prefix.content.trim()
+            && prefix.explicitSide === undefined
+            && !prefix.isGroup
+            && !artistSpeakerNames.has(prefix.normalizedName);
+        if (isLineScopedRole) {
+            currentSide = false;
+            hasCurrentSpeaker = false;
+            lastSingerName = undefined;
+        }
+
+        return !!item.lrc.trim()
+            || !!item.translation?.trim()
+            || !!item.romanization?.trim();
+    });
+}
+
+interface IParentheticalVocalParts {
+    duetText: string;
+    mainText: string;
+}
+
+interface IParentheticalVocalMatch {
+    contentEnd: number;
+    contentStart: number;
+    duetText: string;
+    fullEnd: number;
+    fullStart: number;
+}
+
+function getParentheticalVocalMatches(text: string) {
+    const matches: IParentheticalVocalMatch[] = [];
+    const matcher = new RegExp(PARENTHETICAL_VOCAL_REG.source, "g");
+    let match: RegExpExecArray | null;
+
+    while ((match = matcher.exec(text)) !== null) {
+        const normalizedContent = match[1].trim();
+        if (
+            !normalizedContent
+            || KANA_REG.test(normalizedContent)
+            || HANGUL_REG.test(normalizedContent)
+        ) {
+            continue;
+        }
+
+        const leadingWhitespace = match[1].length - match[1].trimStart().length;
+        const trailingWhitespace = match[1].length - match[1].trimEnd().length;
+        matches.push({
+            contentEnd: match.index + match[0].length - 1 - trailingWhitespace,
+            contentStart: match.index + 1 + leadingWhitespace,
+            duetText: normalizedContent,
+            fullEnd: match.index + match[0].length,
+            fullStart: match.index,
+        });
+    }
+
+    return matches;
+}
+
+function splitParentheticalVocalText(text?: string): IParentheticalVocalParts | null {
+    if (!text) {
+        return null;
+    }
+
+    const matches = getParentheticalVocalMatches(text);
+    if (!matches.length) {
+        return null;
+    }
+
+    let cursor = 0;
+    const mainParts: string[] = [];
+    matches.forEach((match) => {
+        mainParts.push(text.slice(cursor, match.fullStart));
+        cursor = match.fullEnd;
+    });
+    mainParts.push(text.slice(cursor));
+
+    return {
+        duetText: matches.map((match) => match.duetText).join(" "),
+        mainText: mainParts.join("")
+            .replace(/\u00a0/g, " ")
+            .replace(/[ \t]{2,}/g, " ")
+            .trim(),
+    };
+}
+
+function splitParentheticalVocalWords(
+    words: ILyric.IWordData[] | undefined,
+) {
+    if (!words?.length) {
+        return null;
+    }
+
+    const fullText = words.map((word) => word.text).join("");
+    const matches = getParentheticalVocalMatches(fullText);
+    if (!matches.length) {
+        return null;
+    }
+
+    const mainWords: ILyric.IWordData[] = [];
+    const duetWords: ILyric.IWordData[] = [];
+    let wordOffset = 0;
+
+    words.forEach((word) => {
+        const wordStart = wordOffset;
+        const wordEnd = wordStart + word.text.length;
+        const boundaries = new Set([wordStart, wordEnd]);
+
+        matches.forEach((match) => {
+            [
+                match.fullStart,
+                match.contentStart,
+                match.contentEnd,
+                match.fullEnd,
+            ].forEach((boundary) => {
+                if (boundary > wordStart && boundary < wordEnd) {
+                    boundaries.add(boundary);
+                }
+            });
+        });
+
+        const sortedBoundaries = Array.from(boundaries).sort((a, b) => a - b);
+        const wordDuration = word.duration
+            ?? Math.max(0, word.endTime - word.startTime);
+
+        for (let index = 0; index < sortedBoundaries.length - 1; index++) {
+            const segmentStart = sortedBoundaries[index];
+            const segmentEnd = sortedBoundaries[index + 1];
+            const segmentText = word.text.slice(
+                segmentStart - wordStart,
+                segmentEnd - wordStart,
+            );
+            if (!segmentText) {
+                continue;
+            }
+
+            const match = matches.find((candidate) =>
+                segmentStart >= candidate.fullStart
+                && segmentEnd <= candidate.fullEnd,
+            );
+            if (
+                match
+                && !(
+                    segmentStart >= match.contentStart
+                    && segmentEnd <= match.contentEnd
+                )
+            ) {
+                continue;
+            }
+
+            const startRatio = word.text.length
+                ? (segmentStart - wordStart) / word.text.length
+                : 0;
+            const endRatio = word.text.length
+                ? (segmentEnd - wordStart) / word.text.length
+                : 1;
+            const startTime = word.startTime + wordDuration * startRatio;
+            const endTime = word.startTime + wordDuration * endRatio;
+            const target = match ? duetWords : mainWords;
+            target.push({
+                ...word,
+                duration: endTime - startTime,
+                endTime,
+                index: target.length,
+                space: !segmentText.trim(),
+                startTime,
+                text: segmentText,
+            });
+        }
+
+        wordOffset = wordEnd;
+    });
+
+    return {
+        duetWords,
+        mainWords,
+    };
+}
+
+function hasParentheticalDuetVocals(
+    items: IParsedLrcItem[],
+    artist?: string,
+) {
+    return getNormalizedArtists(artist).length >= 2
+        && items.some((item) =>
+            !isCreditSideLine(item.lrc)
+            && !!splitParentheticalVocalText(item.lrc),
+        );
+}
+
+function normalizeComparableText(text?: string) {
+    return (text ?? "")
+        .normalize("NFKC")
+        .toLowerCase()
+        .replace(/[\s._·・'"“”‘’\-—–/:：,，、()[\]（）《》「」]/g, "");
+}
+
+function isLeadingUnlabeledCredit(
+    item: IParsedLrcItem,
+    musicItem?: IMusic.IMusicItem,
+) {
+    const text = item.lrc.trim();
+    const duration = Math.max(0, (item.endTime ?? item.time) - item.time);
+    const normalizedTitle = normalizeComparableText(musicItem?.title);
+    const normalizedText = normalizeComparableText(text);
+    const isTitleLine = normalizedTitle.length >= 2
+        && normalizedText.startsWith(normalizedTitle)
+        && getNormalizedArtists(musicItem?.artist).some((artistName) =>
+            normalizedText.includes(artistName),
+        );
+
+    return !text
+        || GENERIC_LABEL_PREFIX_REG.test(text)
+        || isCreditSideLine(text)
+        || isTitleLine
+        || /[@／/]/.test(text)
+        || duration < LEADING_NAME_DURATION_SECONDS;
+}
+
+function applyUnlabeledDuetLayout(
+    items: IParsedLrcItem[],
+    musicItem?: IMusic.IMusicItem,
+) {
+    if (getNormalizedArtists(musicItem?.artist).length < 2) {
+        return;
+    }
+
+    let startIndex = 0;
+    items.forEach((item, index) => {
+        if (
+            item.time <= LEADING_CREDIT_WINDOW_SECONDS
+            && GENERIC_LABEL_PREFIX_REG.test(item.lrc)
+        ) {
+            startIndex = index + 1;
+        }
+    });
+
+    while (
+        startIndex < items.length
+        && isLeadingUnlabeledCredit(items[startIndex], musicItem)
+    ) {
+        startIndex++;
+    }
+
+    const vocalItems = items.slice(startIndex).filter((item) =>
+        !!item.lrc.trim()
+        && !GENERIC_LABEL_PREFIX_REG.test(item.lrc)
+        && !isCreditSideLine(item.lrc),
+    );
+    const openingDialogue = vocalItems.slice(0, 10);
+    const questionLineCount = openingDialogue.filter((item) =>
+        /[?？]/.test(item.lrc),
+    ).length;
+    if (vocalItems.length < 2 || questionLineCount < 2) {
+        return;
+    }
+
+    let currentSide = false;
+    let previousVocal: IParsedLrcItem | undefined;
+
+    items.slice(startIndex).forEach((item) => {
+        if (
+            !item.lrc.trim()
+            || GENERIC_LABEL_PREFIX_REG.test(item.lrc)
+            || isCreditSideLine(item.lrc)
+        ) {
+            item.isDuet = false;
+            return;
+        }
+
+        if (previousVocal) {
+            const hasRealTiming = !!previousVocal.hasWordTimeline
+                && !!item.hasWordTimeline;
+            const startsNewTurn = hasRealTiming
+                ? item.time - (previousVocal.endTime ?? previousVocal.time)
+                    > DUET_TURN_GAP_SECONDS
+                : true;
+            if (startsNewTurn) {
+                currentSide = !currentSide;
+            }
+        }
+
+        item.isDuet = currentSide;
+        previousVocal = item;
+    });
+}
+
+function expandParentheticalDuetVocals(
+    items: IParsedLrcItem[],
+    artist?: string,
+    hasSpeakerLayout = false,
+) {
+    if (getNormalizedArtists(artist).length < 2) {
+        return items;
+    }
+
+    const expandedItems: IParsedLrcItem[] = [];
+
+    items.forEach((item) => {
+        if (
+            isCreditSideLine(item.lrc)
+            || (hasSpeakerLayout && !item.hasSingerLabel)
+        ) {
+            expandedItems.push(item);
+            return;
+        }
+
+        const lyricParts = splitParentheticalVocalText(item.lrc);
+        if (!lyricParts) {
+            expandedItems.push(item);
+            return;
+        }
+
+        const translationParts = splitParentheticalVocalText(item.translation);
+        const romanizationParts = splitParentheticalVocalText(item.romanization);
+        const timedWordParts = splitParentheticalVocalWords(item.words);
+        const timedRomanizationParts = splitParentheticalVocalWords(
+            item.romanizationWords,
+        );
+
+        if (!lyricParts.mainText) {
+            expandedItems.push({
+                ...item,
+                hasRomanizationWordTimeline: !!timedRomanizationParts?.duetWords.length,
+                hasWordTimeline: !!timedWordParts?.duetWords.length,
+                isBG: false,
+                isDuet: !item.isDuet,
+                lrc: lyricParts.duetText,
+                romanization: romanizationParts?.duetText,
+                romanizationWords: timedRomanizationParts?.duetWords,
+                translation: translationParts?.duetText,
+                words: timedWordParts?.duetWords,
+            });
+            return;
+        }
+
+        expandedItems.push({
+            ...item,
+            hasRomanizationWordTimeline: timedRomanizationParts
+                ? !!timedRomanizationParts.mainWords.length
+                : item.hasRomanizationWordTimeline,
+            hasWordTimeline: timedWordParts
+                ? !!timedWordParts.mainWords.length
+                : item.hasWordTimeline,
+            lrc: lyricParts.mainText,
+            romanization: romanizationParts?.mainText ?? item.romanization,
+            romanizationWords: timedRomanizationParts?.mainWords
+                ?? item.romanizationWords,
+            translation: translationParts?.mainText ?? item.translation,
+            words: timedWordParts?.mainWords ?? item.words,
+        });
+        expandedItems.push({
+            ...item,
+            hasRomanizationWordTimeline: !!timedRomanizationParts?.duetWords.length,
+            hasWordTimeline: !!timedWordParts?.duetWords.length,
+            isBG: false,
+            isDuet: !item.isDuet,
+            isDuetPartner: true,
+            isVirtualWords: undefined,
+            lrc: lyricParts.duetText,
+            romanization: romanizationParts?.duetText,
+            romanizationWords: timedRomanizationParts?.duetWords,
+            translation: translationParts?.duetText,
+            words: timedWordParts?.duetWords,
+        });
+    });
+
+    return expandedItems;
+}
+
 function canReceiveLyricField(item: IParsedLrcItem) {
-    return !!item.lrc?.trim() && !isCreditSideLine(item.lrc);
+    return !!item.lrc?.trim()
+        && !item.isBG
+        && !item.isDuetPartner
+        && !isCreditSideLine(item.lrc);
 }
 
 function getLatinWords(text: string) {
@@ -928,6 +1669,9 @@ function chooseParallelMainIndex(group: IParsedLrcItem[]) {
 function cloneParsedLrcItem(item: IParsedLrcItem): IParsedLrcItem {
     return {
         ...item,
+        romanizationWords: item.romanizationWords
+            ? [...item.romanizationWords]
+            : undefined,
         words: item.words ? [...item.words] : undefined,
     };
 }
@@ -1026,7 +1770,43 @@ function collapseParallelContentGroup(group: IParsedLrcItem[]): ICollapseParalle
     };
 }
 
+function mergeParallelSpeakerMarkers(group: IParsedLrcItem[]) {
+    const mergedGroup = [...group];
+
+    for (let index = 0; index < mergedGroup.length; index++) {
+        const markerItem = mergedGroup[index];
+        const prefix = matchSpeakerPrefix(markerItem.lrc);
+        if (!prefix || prefix.content.trim()) {
+            continue;
+        }
+
+        const contentIndex = mergedGroup.findIndex((candidate, candidateIndex) =>
+            candidateIndex > index
+            && !!candidate.lrc.trim()
+            && !isCreditSideLine(candidate.lrc)
+            && !matchSpeakerPrefix(candidate.lrc),
+        );
+        if (contentIndex < 0) {
+            continue;
+        }
+
+        const contentItem = cloneParsedLrcItem(mergedGroup[contentIndex]);
+        prependSpeakerMarkerToItem(contentItem, markerItem);
+        mergedGroup[contentIndex] = contentItem;
+        mergedGroup.splice(index, 1);
+        index--;
+    }
+
+    return mergedGroup;
+}
+
 function collapseParallelGroup(group: IParsedLrcItem[]): ICollapseParallelResult {
+    const meaningfulItems = group.filter((item) => !!item.lrc.trim());
+    if (meaningfulItems.length && meaningfulItems.length !== group.length) {
+        group = meaningfulItems;
+    }
+    group = mergeParallelSpeakerMarkers(group);
+
     const lyricItems: IParsedLrcItem[] = [];
     const sequence: Array<{
         type: "item" | "lyric";
@@ -1127,6 +1907,69 @@ function collapseParallelGroup(group: IParsedLrcItem[]): ICollapseParallelResult
     };
 }
 
+function repairCreditCollisionTranslation(items: IParsedLrcItem[]) {
+    let repaired = false;
+
+    for (let index = 0; index < items.length; index++) {
+        const item = items[index];
+        if (
+            item.hasWordTimeline
+            || isCreditSideLine(item.lrc)
+            || !hasEastAsianScript(getTextScriptStats(item.lrc))
+        ) {
+            continue;
+        }
+
+        const sharesCreditTimestamp = items.some((candidate, candidateIndex) =>
+            candidateIndex !== index
+            && isCreditSideLine(candidate.lrc)
+            && Math.abs(candidate.time - item.time) <= PARALLEL_LINE_EPSILON,
+        );
+        if (!sharesCreditTimestamp) {
+            continue;
+        }
+
+        const nextIndex = items.findIndex((candidate, candidateIndex) =>
+            candidateIndex > index
+            && !!candidate.lrc.trim()
+            && !isCreditSideLine(candidate.lrc),
+        );
+        if (nextIndex < 0) {
+            continue;
+        }
+
+        const nextItem = items[nextIndex];
+        const timeDifference = nextItem.time - item.time;
+        if (
+            timeDifference <= PARALLEL_LINE_EPSILON
+            || timeDifference > LYRIC_FIELD_ANCHOR_EPSILON
+            || !isMostlyLatin(getTextScriptStats(nextItem.lrc))
+            || !!nextItem.translation?.trim()
+        ) {
+            continue;
+        }
+
+        const followingItem = items.find((candidate, candidateIndex) =>
+            candidateIndex > nextIndex
+            && !!candidate.lrc.trim()
+            && !isCreditSideLine(candidate.lrc),
+        );
+        if (
+            !followingItem
+            || !isMostlyLatin(getTextScriptStats(followingItem.lrc))
+        ) {
+            continue;
+        }
+
+        appendLyricField(nextItem, "translation", item.lrc);
+        items.splice(index, 1);
+        index--;
+        repaired = true;
+    }
+
+    return repaired;
+}
+
 function collapseParallelLyricItems(items: IParsedLrcItem[]): ICollapseParallelResult {
     const collapsedItems: IParsedLrcItem[] = [];
     let hasTranslation = false;
@@ -1149,6 +1992,9 @@ function collapseParallelLyricItems(items: IParsedLrcItem[]): ICollapseParallelR
         collapsedItems.push(...collapsed.items);
         index = nextIndex;
     }
+
+    hasTranslation = repairCreditCollisionTranslation(collapsedItems)
+        || hasTranslation;
 
     return {
         items: collapsedItems,
@@ -1374,8 +2220,13 @@ function mergeLyricField(
     raw: string,
     field: "translation" | "romanization",
     epsilon = LYRIC_FIELD_DIRECT_EPSILON,
+    artist?: string,
 ): boolean {
-    const sourceItems = parseLyricItemsByFormat(raw)
+    const sourceItems = applyDuetSpeakerLayout(
+        parseLyricItemsByFormat(raw),
+        artist,
+        false,
+    )
         .filter(isMergeableSecondaryLine);
 
     if (sourceItems.length === 0) {
@@ -1447,6 +2298,7 @@ export default class LyricParser {
     private _musicItem?: IMusic.IMusicItem;
     private meta: LyricMeta;
     private lrcItems: Array<IParsedLrcItem>;
+    private searchableLrcItems: Array<IParsedLrcItem>;
     private lastSearchIndex = 0;
 
     public hasTranslation = false;
@@ -1479,15 +2331,31 @@ export default class LyricParser {
         } = this.parseAll(raw || "");
         this.meta = meta;
         this.lrcItems = lrcItems;
+        const mainLrcItems = lrcItems.filter((item) =>
+            !item.isBG && !item.isDuetPartner,
+        );
+        this.searchableLrcItems = mainLrcItems.length ? mainLrcItems : lrcItems;
         this.hasTranslation = hasTranslation;
         this.hasRomanization = hasRomanization;
 
         if (translation) {
-            this.hasTranslation = mergeLyricField(this.lrcItems, translation, "translation")
+            this.hasTranslation = mergeLyricField(
+                this.lrcItems,
+                translation,
+                "translation",
+                LYRIC_FIELD_DIRECT_EPSILON,
+                this._musicItem?.artist,
+            )
                 || this.hasTranslation;
         }
         if (romanization) {
-            this.hasRomanization = mergeLyricField(this.lrcItems, romanization, "romanization")
+            this.hasRomanization = mergeLyricField(
+                this.lrcItems,
+                romanization,
+                "romanization",
+                LYRIC_FIELD_DIRECT_EPSILON,
+                this._musicItem?.artist,
+            )
                 || this.hasRomanization;
         }
     }
@@ -1514,13 +2382,37 @@ export default class LyricParser {
 
         const parsedItems = parseLyricItemsByFormat(raw);
         const {
-            items,
+            items: collapsedItems,
             hasTranslation,
             hasRomanization,
         } = collapseParallelLyricItems(parsedItems);
+        const hasSpeakerLayout = hasRecognizedSpeakerLayout(
+            collapsedItems,
+            this._musicItem?.artist,
+        );
+        const hasStructuredDuetLayout = hasSpeakerLayout
+            || hasParentheticalDuetVocals(
+                collapsedItems,
+                this._musicItem?.artist,
+            );
+        let items = applyDuetSpeakerLayout(collapsedItems, this._musicItem?.artist);
 
         // 补全 endTime
         fillEndTimes(items);
+
+        // 双歌手且没有演唱者标签时，从前置信息结束后按演唱段落交替布局。
+        // 制作信息和任意 A:BC 标签仅保留展示，不参与换边。
+        if (!hasStructuredDuetLayout) {
+            applyUnlabeledDuetLayout(items, this._musicItem);
+        }
+
+        // 行级 LRC 的括号内容按 AMLL 对唱另一方展开；逐字歌词中的括号
+        // 常用于日语注音，因此保留原样。
+        items = expandParentheticalDuetVocals(
+            items,
+            this._musicItem?.artist,
+            hasSpeakerLayout,
+        );
 
         // 为无词级时间轴的行生成伪逐字
         for (const item of items) {
@@ -1546,8 +2438,9 @@ export default class LyricParser {
     /** 获取当前行（兼容旧接口） */
     getPosition(position: number): IParsedLrcItem | null {
         position = position - (this.meta?.offset ?? 0);
+        const searchableItems = this.searchableLrcItems;
 
-        if (!this.lrcItems[0] || position < this.lrcItems[0].time) {
+        if (!searchableItems[0] || position < searchableItems[0].time) {
             this.lastSearchIndex = 0;
             return null;
         }
@@ -1555,33 +2448,33 @@ export default class LyricParser {
         // 从上次位置向后搜索
         for (
             let index = this.lastSearchIndex;
-            index < this.lrcItems.length - 1;
+            index < searchableItems.length - 1;
             ++index
         ) {
             if (
-                position >= this.lrcItems[index].time &&
-                position < this.lrcItems[index + 1].time
+                position >= searchableItems[index].time &&
+                position < searchableItems[index + 1].time
             ) {
                 this.lastSearchIndex = index;
-                return this.lrcItems[index];
+                return searchableItems[index];
             }
         }
 
         // 从头搜索
         for (let index = 0; index < this.lastSearchIndex; ++index) {
             if (
-                position >= this.lrcItems[index].time &&
-                position < this.lrcItems[index + 1].time
+                position >= searchableItems[index].time &&
+                position < searchableItems[index + 1].time
             ) {
                 this.lastSearchIndex = index;
-                return this.lrcItems[index];
+                return searchableItems[index];
             }
         }
 
         // 最后一行
-        const lastIdx = this.lrcItems.length - 1;
+        const lastIdx = searchableItems.length - 1;
         this.lastSearchIndex = lastIdx;
-        return this.lrcItems[lastIdx];
+        return searchableItems[lastIdx];
     }
 
     /** 获取词级活跃状态 */
@@ -1684,8 +2577,12 @@ export default class LyricParser {
                     return item.translation ?? "";
                 case "romanization":
                     return item.romanization ?? "";
-                default:
-                    return item.lrc ?? "";
+                default: {
+                    const text = item.lrc ?? "";
+                    return (item.isBG || item.isDuetPartner) && text
+                        ? `（${text}）`
+                        : text;
+                }
             }
         };
 

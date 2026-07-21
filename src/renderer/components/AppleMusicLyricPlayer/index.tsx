@@ -192,7 +192,15 @@ export default function AppleMusicLyricPlayer({
                 const wordsKey = line.words
                     ?.map((word) => `${word.word}${word.romanWord ?? ""}`)
                     .join("") ?? "";
-                return `${line.startTime}${wordsKey}${line.translatedLyric ?? ""}${line.romanLyric ?? ""}`;
+                return [
+                    line.startTime,
+                    line.endTime,
+                    Number(line.isBG),
+                    Number(line.isDuet),
+                    wordsKey,
+                    line.translatedLyric ?? "",
+                    line.romanLyric ?? "",
+                ].join("");
             })
             .join(""),
         [lyricLines],
