@@ -76,7 +76,7 @@ const routers: ISettingSectionMeta[] = [
     {
         id: "about",
         component: About,
-        icon: "identification",
+        icon: "app-mark",
         group: "system",
     },
 ];
