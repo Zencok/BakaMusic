@@ -65,14 +65,11 @@
     outline: none;
   }
 
-  // Chromium can keep :hover on the old hit target while a scroll gesture is
-  // still moving the content. Suppress that transient paint; real selection
-  // and playback highlights remain driven by their data attributes.
+  // While a wheel gesture keeps moving the content, leave the cheap grey
+  // row-hover background live so the highlight tracks the pointer instead of
+  // going dark until the scroll settles. Only the cover overlay is dropped:
+  // its blurred backdrop-filter layer would re-raster every frame otherwise.
   &[data-scrolling="true"] {
-    & .music-list-card:hover:not([data-active="true"]):not([data-playing="true"]) {
-      background: var(--musicListRowBg);
-    }
-
     & .music-list-card:hover .music-list-cover-overlay {
       opacity: 0;
       transition: none;

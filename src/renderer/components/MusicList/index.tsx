@@ -825,7 +825,7 @@ function MusicListComponent(props: IMusicListProps) {
             scrollEndTimer = setTimeout(() => {
                 delete container.dataset.scrolling;
                 scrollEndTimer = null;
-            }, 80);
+            }, 60);
         };
 
         scrollElement.addEventListener("scroll", handleScroll, { passive: true });
