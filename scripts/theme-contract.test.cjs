@@ -266,6 +266,11 @@ assert.match(globalStyleEntrySource, /@use '\.\/default-acrylic\.scss';/);
 assert.match(windowMaterialSource, /WINDOWS_ACRYLIC_MIN_BUILD\s*=\s*22621/);
 assert.match(windowMaterialSource, /ACRYLIC_TINT_DARK/);
 assert.match(windowMaterialSource, /getInitialWindowSurfaceOptions/);
+assert.match(
+    windowMaterialSource,
+    /if \(supportsNativeAcrylic\(\)\)[\s\S]*?transparent:\s*false[\s\S]*?backgroundMaterial:\s*"none"/,
+    "DWM Acrylic must not use Electron's layered transparent-window path",
+);
 assert.match(windowManagerSource, /getInitialWindowSurfaceOptions/);
 assert.match(musicBarComponentSource, /data-liquid-glass-svg/);
 assert.match(musicBarComponentSource, /LiquidGlassFilter/);

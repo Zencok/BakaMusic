@@ -51,12 +51,13 @@ export function getInitialWindowSurfaceOptions(): {
     backgroundMaterial: "none" | undefined;
 } {
     if (supportsNativeAcrylic()) {
-        // Acrylic-capable shells start transparent so enabling the compositor
-        // does not flash an opaque client fill. Pack themes restore opacity.
-        // Density comes from the renderer wash after the theme resolves.
+        // Do not combine Electron's transparent-window path with a DWM backdrop.
+        // setBackgroundMaterial("acrylic") makes the web contents transparent
+        // itself; transparent: true would additionally create a layered window.
+        // That unsupported resizable-window combination flickers on Win11 24H2.
         return {
-            transparent: true,
-            backgroundColor: "#00000000",
+            transparent: false,
+            backgroundColor: getOpaqueWindowBackground(),
             backgroundMaterial: "none",
         };
     }

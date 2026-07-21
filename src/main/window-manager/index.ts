@@ -205,9 +205,8 @@ class WindowManager implements IWindowManager {
                 navigateOnDragDrop: false,
             },
             frame: false,
-            // Only Acrylic-capable Windows shells start transparent. Older OS
-            // builds and non-Windows platforms keep an opaque client fill so
-            // the first paint never punches through to the desktop.
+            // DWM Acrylic owns backdrop translucency. Keep the BrowserWindow
+            // non-layered so the resizable main window remains stable on 24H2.
             ...getInitialWindowSurfaceOptions(),
             // Required for true OS fullscreen (F11 on music detail).
             fullscreenable: true,
