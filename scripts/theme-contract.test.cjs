@@ -11,6 +11,10 @@ const {
     matchesThemeSearch,
 } = require("../src/renderer/pages/main-page/views/theme-view/theme-search");
 const {
+    buildMusicBarPalette,
+    getContrastRatio,
+} = require("../src/renderer/components/MusicBar/palette");
+const {
     bindMediaToPlugin,
     buildPlayByIdMusicItem,
     createMusicIdentifierBase,
@@ -100,6 +104,24 @@ function extractStyleBlocks(source, selectorPattern) {
         match = re.exec(source);
     }
     return blocks;
+}
+
+function createSolidImageData(red, green, blue, count = 64) {
+    const data = new Uint8ClampedArray(count * 4);
+    for (let index = 0; index < count; index += 1) {
+        data.set([red, green, blue, 255], index * 4);
+    }
+    return data;
+}
+
+function parseRgbColor(value) {
+    const match = value.match(/^rgb\((\d+), (\d+), (\d+)\)$/);
+    assert.ok(match, `Expected RGB color, received: ${value}`);
+    return {
+        r: Number(match[1]),
+        g: Number(match[2]),
+        b: Number(match[3]),
+    };
 }
 
 function readDefaultThemeCss(exportName) {
@@ -268,6 +290,37 @@ assert.match(
     musicBarSliderStyleSource,
     /html\[data-ui-style="glass"\] \.music-bar--slider-container\s*\{[\s\S]*?& \.timeline-track\s*\{[^}]*position:\s*absolute;[^}]*top:\s*-2px;[^}]*left:\s*0;[^}]*right:\s*0;/,
 );
+
+const stableBluePixels = createSolidImageData(45, 105, 165, 1024);
+const stableBluePalette = buildMusicBarPalette(stableBluePixels, 32, 32);
+const outlierPixels = stableBluePixels.slice();
+outlierPixels.set([255, 0, 180, 255], 0);
+assert.deepEqual(
+    buildMusicBarPalette(outlierPixels, 32, 32),
+    stableBluePalette,
+    "a single saturated pixel must not destabilize the artwork palette",
+);
+
+for (const palette of [
+    stableBluePalette,
+    buildMusicBarPalette(createSolidImageData(225, 215, 185), 8, 8),
+]) {
+    assert.ok(palette);
+    const surface = parseRgbColor(palette["--musicBarSurface"]);
+    const accent = parseRgbColor(palette["--musicBarAccent"]);
+    const text = parseRgbColor(palette["--musicBarText"]);
+    const primaryText = parseRgbColor(palette["--musicBarPrimaryText"]);
+    assert.ok(getContrastRatio(text, surface) >= 4.5);
+    assert.ok(getContrastRatio(accent, surface) >= 3);
+    assert.ok(getContrastRatio(primaryText, accent) >= 4.5);
+}
+
+const transparentPixels = createSolidImageData(20, 20, 20, 16);
+for (let index = 3; index < transparentPixels.length; index += 4) {
+    transparentPixels[index] = 0;
+}
+assert.equal(buildMusicBarPalette(transparentPixels, 4, 4), null);
+
 assert.doesNotMatch(
     musicBarStyleSource,
     /\.music-bar-container,\s*\.music-bar-container\[data-detail-open="true"\]/,
