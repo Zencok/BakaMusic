@@ -409,6 +409,14 @@ for (const relativePath of clientOwnedDetailStyleFiles) {
     const stylesheet = fs.readFileSync(path.join(__dirname, "..", relativePath), "utf8");
     assert.doesNotMatch(stylesheet, /var\(--theme-detail-/);
 }
+const musicDetailStyles = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/MusicDetail/index.scss",
+), "utf8");
+assert.match(
+    musicDetailStyles,
+    /&\[aria-hidden="true"\]\s+\.music-detail-topbar\s*\{[^}]*-webkit-app-region:\s*no-drag;/s,
+);
 
 const flatUiStyles = fs.readFileSync(path.join(
     __dirname,

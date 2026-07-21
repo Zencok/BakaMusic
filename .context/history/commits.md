@@ -248,3 +248,11 @@
 - **Bug**: The first timed lyric could be swallowed by a parallel marker row; marker merging now precedes translation grouping.
 - **Files**: 6 files
 - **Tests**: lyric duet; download lyric export; TypeScript; ESLint; diff check
+
+## 2026-07-21T19:23:02.4974490+08:00 — fix(music-detail): clear hidden drag regions
+`pending`
+- **Context-Id**: 1a23087b-ecd9-458b-8da8-0197e73633bf
+- **Decision**: Withdraw the native topbar drag region whenever the retained MusicDetail overlay is hidden, preserving keepMounted and restoring it on reopen.
+- **Bug**: Closing MusicDetail left native drag hit slots over main-page controls because Electron ignores pointer-events/inert for app regions.
+- **Files**: 2 files
+- **Tests**: TypeScript; ESLint; full regression suite; diff check
