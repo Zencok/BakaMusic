@@ -105,9 +105,6 @@ export default function Slider() {
             className="music-bar--slider-container"
             data-seeking={seekPercent !== null}
         >
-            <span className="timeline-time timeline-time-current" aria-hidden="true">
-                {currentTimeText}
-            </span>
             <div
                 ref={sliderRef}
                 className="timeline-track"
@@ -147,8 +144,10 @@ export default function Slider() {
                     }}
                 ></div>
             </div>
-            <span className="timeline-time timeline-time-duration" aria-hidden="true">
-                {durationText}
+            <span className="timeline-time timeline-time-summary" aria-hidden="true">
+                <span className="timeline-time-elapsed">{currentTimeText}</span>
+                <span>/</span>
+                <span>{durationText}</span>
             </span>
         </div>
     );

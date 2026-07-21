@@ -79,16 +79,15 @@
   }
 }
 
-// Glass timeline: one slim rail attached to the top edge. Time labels flank the
-// seek surface without creating a second card or control island.
+// Glass timeline: the seek surface owns the complete top edge while elapsed and
+// total time share one A/B label on the right.
 html[data-ui-style="glass"] .music-bar--slider-container {
   top: 2px;
   bottom: auto;
   height: 22px;
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: flex-end;
   box-sizing: border-box;
   padding-left: 0;
   --slider-height: 3px;
@@ -105,26 +104,30 @@ html[data-ui-style="glass"] .music-bar--slider-container {
     color: color-mix(in srgb, var(--musicBarText) 50%, transparent);
   }
 
-  & .timeline-time-current {
+  & .timeline-time-summary {
     justify-content: flex-end;
+  }
+
+  & .timeline-time-elapsed {
     color: color-mix(in srgb, var(--musicBarAccent) 72%, var(--musicBarText));
   }
 
-  & .timeline-time-duration {
-    justify-content: flex-start;
-  }
-
   & .timeline-track {
-    position: relative;
-    inset: auto;
-    width: 100%;
-    height: 20px;
-    align-self: center;
+    position: absolute;
+    top: -2px;
+    left: 0;
+    right: 0;
+    width: auto;
+    height: 14px;
 
     &::after {
       content: "";
       position: absolute;
-      inset: 3px -5px;
+      top: -6px;
+      right: -5px;
+      left: -5px;
+      height: 12px;
+      box-sizing: border-box;
       border-radius: 999px;
       border: 1px solid transparent;
       transition: border-color 150ms ease, background-color 150ms ease;
@@ -143,6 +146,11 @@ html[data-ui-style="glass"] .music-bar--slider-container {
     }
   }
 
+  & .bar,
+  & .active-bar {
+    top: 0;
+  }
+
   & .bar {
     background: color-mix(in srgb, var(--musicBarText) 14%, transparent);
     box-shadow:
@@ -156,6 +164,7 @@ html[data-ui-style="glass"] .music-bar--slider-container {
   }
 
   & .thumb {
+    top: 0;
     width: 12px;
     height: 12px;
     border: 2px solid color-mix(in srgb, white 68%, transparent);

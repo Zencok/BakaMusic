@@ -153,14 +153,14 @@
 html[data-ui-style="glass"] .music-info-container {
   position: relative;
   flex: none;
-  height: 50px;
+  height: var(--musicBarInfoAreaHeight, 54px);
   gap: 10px;
   color: var(--musicBarText);
 
   & .music-cover-wrap,
   & .music-info-placeholder-icon {
-    width: 54px;
-    height: 54px;
+    width: var(--musicBarArtworkSize, 54px);
+    height: var(--musicBarArtworkSize, 54px);
     border-radius: 14px;
     border: 1px solid color-mix(in srgb, white 16%, transparent);
     box-shadow:
@@ -236,7 +236,7 @@ html[data-ui-style="glass"] .music-info-container {
     color: color-mix(in srgb, var(--musicBarText) 58%, transparent);
   }
 
-  // Time belongs to the full-width lower timeline in glass mode.
+  // Time belongs to the full-width top-edge timeline in glass mode.
   & .music-meta-row {
     display: none;
   }

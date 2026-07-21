@@ -83,6 +83,12 @@
   contain: layout style;
 }
 
+// Preserve the original flex participation outside glass mode. Glass promotes
+// this wrapper into the dedicated control area below the top-edge timeline.
+.music-bar-controls {
+  display: contents;
+}
+
 // ---------------------------------------------------------------------------
 // Glass floating rail
 // - One suspended plane spans the sidebar/content boundary
@@ -145,11 +151,8 @@ html[data-ui-style="glass"] {
     }
 
     .music-bar-shell {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
-      align-items: center;
-      gap: 16px;
-      padding: 21.5px 17.5px 5.5px;
+      display: block;
+      padding: 0;
       border: var(--liquidGlassEdgeWidth) solid color-mix(in srgb, white 18%, transparent);
       background: var(--liquidGlassSurface);
       box-shadow:
@@ -159,6 +162,29 @@ html[data-ui-style="glass"] {
       backdrop-filter: blur(28px) saturate(145%);
       isolation: isolate;
       overflow: visible;
+    }
+
+    .music-bar-controls {
+      position: absolute;
+      inset: 0 18px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
+      align-items: center;
+      gap: 16px;
+      min-width: 0;
+      // Every control family resolves its dimensions from this one centered
+      // area, so compact layouts scale without shifting the time labels.
+      --musicBarInfoAreaHeight: 54px;
+      --musicBarArtworkSize: 54px;
+      --musicBarTransportButtonSize: 38px;
+      --musicBarTransportIconSize: 22px;
+      --musicBarPrimaryButtonSize: 50px;
+      --musicBarPrimaryIconSize: 26px;
+      --musicBarEdgeButtonSize: 36px;
+      --musicBarEdgeIconSize: 19px;
+      --musicBarExtraButtonSize: 32px;
+      --musicBarExtraIconSize: 18px;
+      --musicBarExtraGroupHeight: 36px;
     }
 
     &[data-liquid-glass-svg="true"] .music-bar-shell {
@@ -172,23 +198,6 @@ html[data-ui-style="glass"] {
         url("#bakamusic-music-bar-liquid-glass")
         blur(6px)
         saturate(1.16);
-    }
-
-    // A quiet top highlight defines the material without introducing another layer.
-    .music-bar-shell::before {
-      content: "";
-      position: absolute;
-      inset: 0 18px auto;
-      height: 1px;
-      border-radius: 999px;
-      background: linear-gradient(
-        90deg,
-        color-mix(in srgb, white 12%, transparent),
-        color-mix(in srgb, white 46%, transparent) 50%,
-        color-mix(in srgb, white 12%, transparent)
-      );
-      pointer-events: none;
-      z-index: 0;
     }
 
     .music-bar-shell > * {
@@ -288,9 +297,8 @@ html[data-ui-style="glass"] {
 
 @container music-bar (max-width: 1040px) {
   html[data-ui-style="glass"] .music-bar-container {
-    .music-bar-shell {
+    .music-bar-controls {
       gap: 12px;
-      padding-inline: 18px;
     }
 
     .music-extra {
@@ -317,6 +325,21 @@ html[data-ui-style="glass"] {
 
 @container music-bar (max-width: 700px) {
   html[data-ui-style="glass"] .music-bar-container {
+    .music-bar-controls {
+      right: 16px;
+      left: 16px;
+      --musicBarArtworkSize: 48px;
+      --musicBarTransportButtonSize: 34px;
+      --musicBarTransportIconSize: 20px;
+      --musicBarPrimaryButtonSize: 46px;
+      --musicBarPrimaryIconSize: 23px;
+      --musicBarEdgeButtonSize: 32px;
+      --musicBarEdgeIconSize: 18px;
+      --musicBarExtraButtonSize: 30px;
+      --musicBarExtraIconSize: 17px;
+      --musicBarExtraGroupHeight: 34px;
+    }
+
     .music-info-copy {
       display: none;
     }

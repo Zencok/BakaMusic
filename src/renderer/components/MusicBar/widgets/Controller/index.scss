@@ -86,7 +86,7 @@
 
 html[data-ui-style="glass"] .music-controller {
   position: relative;
-  height: 50px;
+  height: 100%;
   gap: 4px;
   padding: 0;
   box-sizing: border-box;
@@ -101,12 +101,12 @@ html[data-ui-style="glass"] .music-controller {
   // Glass-only overrides — keep flat rules on .liquid-controller-* base selectors
   // so reusing ThemeSafeRoundButton does not bleed glass sizes into flat mode.
   & .liquid-controller-button {
-    width: 38px !important;
-    min-width: 38px !important;
-    max-width: 38px !important;
-    height: 38px !important;
-    min-height: 38px !important;
-    max-height: 38px !important;
+    width: var(--musicBarTransportButtonSize, 38px) !important;
+    min-width: var(--musicBarTransportButtonSize, 38px) !important;
+    max-width: var(--musicBarTransportButtonSize, 38px) !important;
+    height: var(--musicBarTransportButtonSize, 38px) !important;
+    min-height: var(--musicBarTransportButtonSize, 38px) !important;
+    max-height: var(--musicBarTransportButtonSize, 38px) !important;
     border: 0 !important;
     border-radius: 50% !important;
     color: var(--musicBarText) !important;
@@ -132,17 +132,22 @@ html[data-ui-style="glass"] .music-controller {
       outline: 2px solid color-mix(in srgb, var(--musicBarAccent) 50%, white) !important;
       outline-offset: 2px !important;
     }
+
+    & svg {
+      width: var(--musicBarTransportIconSize, 22px);
+      height: var(--musicBarTransportIconSize, 22px);
+    }
   }
 
   // The play action is the rail's single saturated object; surrounding actions
   // stay quiet so the control row reads as one hierarchy.
   & .liquid-controller-primary {
-    width: 50px !important;
-    min-width: 50px !important;
-    max-width: 50px !important;
-    height: 50px !important;
-    min-height: 50px !important;
-    max-height: 50px !important;
+    width: var(--musicBarPrimaryButtonSize, 50px) !important;
+    min-width: var(--musicBarPrimaryButtonSize, 50px) !important;
+    max-width: var(--musicBarPrimaryButtonSize, 50px) !important;
+    height: var(--musicBarPrimaryButtonSize, 50px) !important;
+    min-height: var(--musicBarPrimaryButtonSize, 50px) !important;
+    max-height: var(--musicBarPrimaryButtonSize, 50px) !important;
     margin: 0 2px;
     color: var(--musicBarPrimaryText) !important;
     background: var(--musicBarAccent) !important;
@@ -162,15 +167,20 @@ html[data-ui-style="glass"] .music-controller {
         0 9px 22px color-mix(in srgb, var(--musicBarAccent) 34%, transparent),
       0 6px 16px color-mix(in srgb, black 17%, transparent) !important;
     }
+
+    & svg {
+      width: var(--musicBarPrimaryIconSize, 26px);
+      height: var(--musicBarPrimaryIconSize, 26px);
+    }
   }
 
   & .liquid-controller-edge {
-    width: 36px !important;
-    min-width: 36px !important;
-    max-width: 36px !important;
-    height: 36px !important;
-    min-height: 36px !important;
-    max-height: 36px !important;
+    width: var(--musicBarEdgeButtonSize, 36px) !important;
+    min-width: var(--musicBarEdgeButtonSize, 36px) !important;
+    max-width: var(--musicBarEdgeButtonSize, 36px) !important;
+    height: var(--musicBarEdgeButtonSize, 36px) !important;
+    min-height: var(--musicBarEdgeButtonSize, 36px) !important;
+    max-height: var(--musicBarEdgeButtonSize, 36px) !important;
     border: 0 !important;
     color: color-mix(in srgb, var(--musicBarText) 68%, transparent) !important;
     background: transparent !important;
@@ -183,8 +193,8 @@ html[data-ui-style="glass"] .music-controller {
     }
 
     & svg {
-      width: 19px;
-      height: 19px;
+      width: var(--musicBarEdgeIconSize, 19px);
+      height: var(--musicBarEdgeIconSize, 19px);
     }
   }
 

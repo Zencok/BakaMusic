@@ -432,9 +432,11 @@ export default function MusicBar() {
                 <div className="music-bar-overlay"></div>
                 <div ref={shellRef} className="music-bar-shell">
                     <Slider></Slider>
-                    <MusicInfo></MusicInfo>
-                    <Controller></Controller>
-                    <Extra></Extra>
+                    <div className="music-bar-controls">
+                        <MusicInfo></MusicInfo>
+                        <Controller></Controller>
+                        <Extra></Extra>
+                    </div>
                 </div>
             </div>
         </div>

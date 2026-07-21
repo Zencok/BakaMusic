@@ -153,14 +153,14 @@
 
 html[data-ui-style="glass"] {
   .music-extra {
-    height: 50px;
+    height: 100%;
     gap: 10px;
 
     & .music-extra-group {
       display: flex;
       align-items: center;
       gap: 4px;
-      height: 36px;
+      height: var(--musicBarExtraGroupHeight, 36px);
       padding: 0;
       border: 0;
       background: transparent;
@@ -168,8 +168,8 @@ html[data-ui-style="glass"] {
     }
 
     & .extra-btn {
-      width: 32px;
-      height: 32px;
+      width: var(--musicBarExtraButtonSize, 32px);
+      height: var(--musicBarExtraButtonSize, 32px);
       border: 0;
       border-radius: 50%;
       color: color-mix(in srgb, var(--musicBarText) 70%, transparent);
@@ -193,7 +193,7 @@ html[data-ui-style="glass"] {
 
       &.quality-btn {
         min-width: 44px;
-        height: 32px;
+        height: var(--musicBarExtraButtonSize, 32px);
         padding: 0 8px;
         border: 0;
         border-radius: 999px;
@@ -212,6 +212,11 @@ html[data-ui-style="glass"] {
         color: color-mix(in srgb, var(--musicBarAccent) 76%, var(--musicBarText));
         background: color-mix(in srgb, var(--musicBarAccent) 13%, transparent);
         box-shadow: none;
+      }
+
+      & svg {
+        width: var(--musicBarExtraIconSize, 18px);
+        height: var(--musicBarExtraIconSize, 18px);
       }
     }
   }

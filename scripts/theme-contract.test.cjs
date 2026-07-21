@@ -55,6 +55,14 @@ const musicBarStyleSource = fs.readFileSync(path.join(
     __dirname,
     "../src/renderer/components/MusicBar/index.scss",
 ), "utf8");
+const musicBarSliderStyleSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/MusicBar/widgets/Slider/index.scss",
+), "utf8");
+const musicBarSliderComponentSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/MusicBar/widgets/Slider/index.tsx",
+), "utf8");
 const recommendSheetsViewSource = fs.readFileSync(path.join(
     __dirname,
     "../src/renderer/pages/main-page/views/recommend-sheets-view/index.tsx",
@@ -235,6 +243,11 @@ assert.match(
     musicBarStyleSource,
     /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+max-content\s+minmax\(0,\s*1fr\)/,
 );
+assert.match(musicBarComponentSource, /className="music-bar-controls"/);
+assert.match(
+    musicBarStyleSource,
+    /html\[data-ui-style="glass"\][\s\S]*?\.music-bar-controls\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0\s+18px;[^}]*align-items:\s*center;/,
+);
 assert.match(
     musicBarStyleSource,
     /html\[data-ui-style="glass"\][\s\S]*?\.music-bar-container\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?inset:\s*auto\s+0\s+0;/,
@@ -242,6 +255,18 @@ assert.match(
 assert.match(
     musicBarStyleSource,
     /html\[data-ui-style="glass"\][\s\S]*?\.music-bar--slider-container\s*\{[^}]*left:\s*18px;[^}]*right:\s*18px;/,
+);
+assert.match(
+    musicBarSliderStyleSource,
+    /html\[data-ui-style="glass"\] \.music-bar--slider-container\s*\{[^}]*display:\s*flex;[^}]*justify-content:\s*flex-end;/,
+);
+assert.match(
+    musicBarSliderComponentSource,
+    /className="timeline-time timeline-time-summary"[\s\S]*?\{currentTimeText\}[\s\S]*?<span>\/<\/span>[\s\S]*?\{durationText\}/,
+);
+assert.match(
+    musicBarSliderStyleSource,
+    /html\[data-ui-style="glass"\] \.music-bar--slider-container\s*\{[\s\S]*?& \.timeline-track\s*\{[^}]*position:\s*absolute;[^}]*top:\s*-2px;[^}]*left:\s*0;[^}]*right:\s*0;/,
 );
 assert.doesNotMatch(
     musicBarStyleSource,
