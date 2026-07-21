@@ -32,7 +32,7 @@ const routers: ISettingSectionMeta[] = [
     {
         id: "shortCut",
         component: ShortCut,
-        icon: "dashboard-speed",
+        icon: "keyboard",
         group: "experience",
     },
     // —— 媒体 ——
