@@ -78,4 +78,29 @@ const appStyleSource = fs.readFileSync(path.join(
 assert.match(appSource, /overflow: "clip"/);
 assert.match(appStyleSource, /\.app-container[\s\S]*overflow: clip/);
 
+const virtualListSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/hooks/useVirtualList.ts",
+), "utf8");
+assert.match(virtualListSource, /requestAnimationFrame/);
+assert.doesNotMatch(virtualListSource, /lodash\.throttle/);
+
+const musicListSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/MusicList/index.tsx",
+), "utf8");
+const musicListStyleSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/MusicList/index.scss",
+), "utf8");
+assert.match(musicListSource, /top:\s*virtualItem\.top/);
+assert.match(musicListSource, /container\.dataset\.scrolling = "true"/);
+assert.doesNotMatch(musicListSource, /translateY\(\$\{virtualController\.startTop\}/);
+assert.match(
+    musicListStyleSource,
+    /\.music-list-row-wrapper\s*\{[^}]*position:\s*absolute;[^}]*contain:\s*layout style;/,
+);
+assert.match(musicListStyleSource, /\[data-scrolling="true"\]/);
+assert.doesNotMatch(musicListStyleSource, /will-change:\s*transform/);
+
 console.log("runtime-performance: all assertions passed");

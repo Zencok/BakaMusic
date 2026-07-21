@@ -809,6 +809,35 @@ function MusicListComponent(props: IMusicListProps) {
             : virtualProps?.fallbackRenderCount ?? 50,
     });
 
+    useEffect(() => {
+        const container = tableContainerRef.current;
+        const scrollElement = getScrollElement();
+        if (!container || !scrollElement) {
+            return;
+        }
+
+        let scrollEndTimer: ReturnType<typeof setTimeout> | null = null;
+        const handleScroll = () => {
+            container.dataset.scrolling = "true";
+            if (scrollEndTimer) {
+                clearTimeout(scrollEndTimer);
+            }
+            scrollEndTimer = setTimeout(() => {
+                delete container.dataset.scrolling;
+                scrollEndTimer = null;
+            }, 80);
+        };
+
+        scrollElement.addEventListener("scroll", handleScroll, { passive: true });
+        return () => {
+            scrollElement.removeEventListener("scroll", handleScroll);
+            if (scrollEndTimer) {
+                clearTimeout(scrollEndTimer);
+            }
+            delete container.dataset.scrolling;
+        };
+    }, [getScrollElement]);
+
     const [activeItems, setActiveItems] = useState<Set<number>>(new Set());
     const lastActiveIndexRef = useRef(0);
     const localSheetType = musicSheet?.platform === localPluginName
@@ -951,9 +980,6 @@ function MusicListComponent(props: IMusicListProps) {
                 >
                     <div
                         className="music-list-virtual-content"
-                        style={{
-                            transform: `translateY(${virtualController.startTop}px)`,
-                        }}
                     >
                         {virtualController.virtualItems.map((virtualItem, index) => {
                             const row = virtualItem.dataItem;
@@ -984,6 +1010,9 @@ function MusicListComponent(props: IMusicListProps) {
                                 <div
                                     className="music-list-row-wrapper"
                                     key={`${musicItem.platform}-${musicItem.id}-${virtualItem.rowIndex}`}
+                                    style={{
+                                        top: virtualItem.top,
+                                    }}
                                 >
                                     <div
                                         className="music-list-card"

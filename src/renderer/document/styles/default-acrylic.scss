@@ -140,8 +140,10 @@ html[data-theme-source="builtin"] {
             background: var(--defaultAcrylicTexture), var(--musicListSurface) !important;
             border: 1px solid var(--appSurfaceBorder) !important;
             box-shadow: var(--appSurfaceShadowSoft) !important;
-            -webkit-backdrop-filter: var(--appGlassFilter) !important;
-            backdrop-filter: var(--appGlassFilter) !important;
+            // The spacer represents the full virtual height. Filtering it would
+            // create an oversized GPU layer and leave stale row rasters on scroll.
+            -webkit-backdrop-filter: none !important;
+            backdrop-filter: none !important;
         }
     }
 
@@ -332,8 +334,8 @@ html[data-theme-source="builtin"][data-ui-style="flat"] {
 
     .music-list-container:not([data-surface-mode="header-only"]) {
         --musicListSurface: var(--appSurface);
-        -webkit-backdrop-filter: var(--appGlassFilter) !important;
-        backdrop-filter: var(--appGlassFilter) !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
     }
 
     .music-list-container:not([data-surface-mode="header-only"]) .music-list-toolbar {
@@ -379,8 +381,8 @@ html[data-theme-source="builtin"][data-ui-style="glass"] {
 
     .music-list-container:not([data-surface-mode="header-only"]) {
         --musicListSurface: var(--appSurface);
-        -webkit-backdrop-filter: var(--appGlassFilter) !important;
-        backdrop-filter: var(--appGlassFilter) !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
     }
 
     .music-list-container:not([data-surface-mode="header-only"]) .music-list-toolbar {

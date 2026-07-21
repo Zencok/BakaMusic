@@ -1,11 +1,9 @@
 import {
     useCallback,
     useEffect,
-    useMemo,
     useRef,
     useState,
 } from "react";
-import throttle from "lodash.throttle";
 
 interface IVirtualListProps<T> {
     /** 滚动的容器 */
@@ -41,6 +39,7 @@ export default function useVirtualList<T>(props: IVirtualListProps<T>) {
     propsRef.current = props;
     const scrollElementRef = useRef<HTMLElement | null>(null);
     const resizeObserverRef = useRef<ResizeObserver | null>(null);
+    const animationFrameRef = useRef<number | null>(null);
     const [virtualItems, setVirtualItems] = useState<IVirtualItem<T>[]>([]);
 
     const commitVirtualItems = useCallback((nextItems: IVirtualItem<T>[]) => {
@@ -109,17 +108,30 @@ export default function useVirtualList<T>(props: IVirtualListProps<T>) {
         }));
     }, [commitVirtualItems]);
 
-    const throttledCalculate = useMemo(() => throttle(
-        calculateVirtualItems,
-        32,
-        { leading: true, trailing: true },
-    ), [calculateVirtualItems]);
+    const cancelScheduledCalculate = useCallback(() => {
+        if (animationFrameRef.current === null) {
+            return;
+        }
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+    }, []);
+
+    const scheduleCalculate = useCallback(() => {
+        if (animationFrameRef.current !== null) {
+            return;
+        }
+        animationFrameRef.current = requestAnimationFrame(() => {
+            animationFrameRef.current = null;
+            calculateVirtualItems();
+        });
+    }, [calculateVirtualItems]);
 
     const detachScrollElement = useCallback(() => {
-        scrollElementRef.current?.removeEventListener("scroll", throttledCalculate);
+        scrollElementRef.current?.removeEventListener("scroll", scheduleCalculate);
         resizeObserverRef.current?.disconnect();
         resizeObserverRef.current = null;
-    }, [throttledCalculate]);
+        cancelScheduledCalculate();
+    }, [cancelScheduledCalculate, scheduleCalculate]);
 
     const setScrollElement = useCallback((scrollElement: HTMLElement | null) => {
         if (scrollElementRef.current === scrollElement) {
@@ -130,16 +142,16 @@ export default function useVirtualList<T>(props: IVirtualListProps<T>) {
         detachScrollElement();
         scrollElementRef.current = scrollElement;
         if (scrollElement) {
-            scrollElement.addEventListener("scroll", throttledCalculate, {
+            scrollElement.addEventListener("scroll", scheduleCalculate, {
                 passive: true,
             });
             if (typeof ResizeObserver !== "undefined") {
-                resizeObserverRef.current = new ResizeObserver(throttledCalculate);
+                resizeObserverRef.current = new ResizeObserver(scheduleCalculate);
                 resizeObserverRef.current.observe(scrollElement);
             }
         }
         calculateVirtualItems();
-    }, [calculateVirtualItems, detachScrollElement, throttledCalculate]);
+    }, [calculateVirtualItems, detachScrollElement, scheduleCalculate]);
 
     useEffect(() => {
         calculateVirtualItems();
@@ -172,10 +184,6 @@ export default function useVirtualList<T>(props: IVirtualListProps<T>) {
         detachScrollElement,
         setScrollElement,
     ]);
-
-    useEffect(() => () => {
-        throttledCalculate.cancel();
-    }, [throttledCalculate]);
 
     const scrollToIndex = useCallback((index: number, behavior?: ScrollBehavior) => {
         const scrollElement = scrollElementRef.current;

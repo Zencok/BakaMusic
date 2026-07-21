@@ -254,6 +254,14 @@ assert.match(
     defaultAcrylicSource,
     /music-list-container\[data-surface-mode="header-only"\][\s\S]*music-list-virtual-spacer[\s\S]*margin-top:\s*12px\s*!important/,
 );
+assert.match(
+    defaultAcrylicSource,
+    /\.music-list-virtual-spacer\s*\{[^}]*backdrop-filter:\s*none\s*!important/,
+);
+assert.doesNotMatch(
+    defaultAcrylicSource,
+    /\.music-list-container:not\(\[data-surface-mode="header-only"\]\)\s*\{[^}]*backdrop-filter:\s*var\(--appGlassFilter\)/,
+);
 assert.match(globalStyleEntrySource, /@use '\.\/default-acrylic\.scss';/);
 assert.match(windowMaterialSource, /WINDOWS_ACRYLIC_MIN_BUILD\s*=\s*22621/);
 assert.match(windowMaterialSource, /ACRYLIC_TINT_DARK/);

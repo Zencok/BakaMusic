@@ -15,7 +15,10 @@
   background: var(--musicListSurface);
   border: 1px solid var(--appSurfaceBorder);
   box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
-  backdrop-filter: var(--appGlassFilter);
+  // A list can be tens of thousands of pixels tall. Blurring that whole layer
+  // makes Chromium continuously re-raster it while the viewport scrolls.
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   box-sizing: border-box;
 
   &[data-surface-mode="header-only"] {
@@ -53,13 +56,27 @@
       background: var(--musicListSurface);
       border: 1px solid var(--appSurfaceBorder);
       box-shadow: var(--appSurfaceShadowSoft);
-      -webkit-backdrop-filter: var(--appGlassFilter);
-      backdrop-filter: var(--appGlassFilter);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
     }
   }
 
   &:focus-visible {
     outline: none;
+  }
+
+  // Chromium can keep :hover on the old hit target while a scroll gesture is
+  // still moving the content. Suppress that transient paint; real selection
+  // and playback highlights remain driven by their data attributes.
+  &[data-scrolling="true"] {
+    & .music-list-card:hover:not([data-active="true"]):not([data-playing="true"]) {
+      background: var(--musicListRowBg);
+    }
+
+    & .music-list-card:hover .music-list-cover-overlay {
+      opacity: 0;
+      transition: none;
+    }
   }
 
   & .music-list-toolbar {
@@ -205,14 +222,18 @@
   }
 
   & .music-list-virtual-content {
-    will-change: transform;
+    position: absolute;
+    inset: 0;
   }
 
   & .music-list-row-wrapper {
-    position: relative;
+    position: absolute;
+    left: 0;
+    width: 100%;
     height: 84px;
     padding: 0 8px;
     box-sizing: border-box;
+    contain: layout style;
     z-index: 0;
 
     &::after {
@@ -249,7 +270,6 @@
     border: none;
     background: var(--musicListRowBg);
     box-shadow: none;
-    transition: background-color 160ms ease, color 160ms ease;
     overflow: hidden;
     cursor: default;
 
