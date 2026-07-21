@@ -437,6 +437,15 @@ assert.match(
     flatUiStyles,
     /\.statistics-track-row\s*\{[^}]*border-radius:\s*var\(--listRowRadius\)/s,
 );
+assert.match(
+    flatUiStyles,
+    /\.music-bar-controls\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) max-content minmax\(0, 1fr\);/s,
+);
+assert.match(
+    flatUiStyles,
+    /\.music-controller \.liquid-controller-edge\s*\{[^}]*color:\s*var\(--flatDockButtonColor\)\s*!important;/s,
+);
+assert.match(controllerSource, /"--flatDockButtonColor":\s*skipColor/);
 
 const statisticsViewSource = fs.readFileSync(path.join(
     __dirname,

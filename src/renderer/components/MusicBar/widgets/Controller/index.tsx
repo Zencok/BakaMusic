@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { isPlaybackActive, RepeatMode } from "@/common/constant";
 import { usePlayerState, useRepeatMode } from "@renderer/core/track-player/hooks";
 import { musicDetailShownStore } from "@renderer/components/MusicDetail/store";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import SvgAsset from "@/renderer/components/SvgAsset";
 import useAppConfig from "@/hooks/useAppConfig";
 import { appWindowUtil } from "@shared/utils/renderer";
@@ -75,6 +75,15 @@ export default function Controller() {
         ? `color-mix(in srgb, ${rootTheme.text} 12%, transparent)`
         : "color-mix(in srgb, var(--musicBarText) 12%, transparent)";
     const skipShadow = "inset 0 1px 0 color-mix(in srgb, white 10%, transparent)";
+    const controllerStyle = matchDockButtons
+        ? {
+            "--flatDockButtonColor": skipColor,
+            "--flatDockButtonBackground": skipBackground,
+            "--flatDockButtonHoverBackground": skipHoverBackground,
+            "--flatDockButtonBorder": skipBorder,
+            "--flatDockButtonShadow": skipShadow,
+        } as CSSProperties
+        : undefined;
 
     const primaryColor = matchDockButtons
         ? "#ffffff"
@@ -112,7 +121,7 @@ export default function Controller() {
             : "shuffle";
 
     return (
-        <div className="music-controller">
+        <div className="music-controller" style={controllerStyle}>
             <button
                 type="button"
                 className="liquid-controller-button liquid-controller-edge liquid-controller-repeat"

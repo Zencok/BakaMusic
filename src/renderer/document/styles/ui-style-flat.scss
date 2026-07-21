@@ -438,6 +438,39 @@
         --textColor: var(--musicBarText) !important;
     }
 
+    // Equal outer columns keep transport controls centered in the window,
+    // independent of the different widths of track info and utility actions.
+    .music-bar-controls {
+        flex: 1 1 auto;
+        width: 100%;
+        min-width: 0;
+        height: 100%;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
+        align-items: center;
+        gap: 12px;
+    }
+
+    .music-info-container {
+        grid-column: 1;
+        justify-self: start;
+        width: 100%;
+    }
+
+    .music-controller {
+        grid-column: 2;
+        justify-self: center;
+        width: max-content;
+        min-width: 0;
+        flex: none;
+    }
+
+    .music-extra {
+        grid-column: 3;
+        justify-self: end;
+        width: max-content;
+    }
+
     // Progress hairline flush to top of square dock
     .music-bar--slider-container {
         top: 0 !important;
@@ -816,6 +849,19 @@
 
         // Transport inherits --musicBarText (white) + soft surface mix via ThemeSafeRoundButton
         // Keep Lycia-like soft frosted play disc only; skip uses bar CSS variables
+        .music-controller .liquid-controller-edge {
+            color: var(--flatDockButtonColor) !important;
+            background: var(--flatDockButtonBackground) !important;
+            border-color: var(--flatDockButtonBorder) !important;
+            box-shadow: var(--flatDockButtonShadow) !important;
+
+            &:hover {
+                color: var(--flatDockButtonColor) !important;
+                background: var(--flatDockButtonHoverBackground) !important;
+                transform: none !important;
+            }
+        }
+
         .music-controller-primary {
             width: 44px !important;
             height: 44px !important;
