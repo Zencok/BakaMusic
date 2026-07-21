@@ -4,7 +4,7 @@ import { parseBackupPayload } from "./format";
 /** Validate and restore all sheets in one database transaction. */
 async function resume(
     data: string | Record<string, unknown>,
-    overwrite = false,
+    overwrite = true,
 ) {
     const musicSheets = parseBackupPayload(data);
     await MusicSheet.frontend.restoreSheetDetails(musicSheets, overwrite);

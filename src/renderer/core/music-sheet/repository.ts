@@ -185,8 +185,13 @@ function attachSheetMusicMeta<T extends IMusic.IMusicItem>(
     }
     const addedAt = relation?.addedAt ?? 0;
     const batchIndex = relation?.batchIndex ?? relation?.position ?? 0;
+    // Relation keys are authoritative when a stored row lost id/platform.
+    const id = musicItem.id ?? relation?.musicId;
+    const platform = musicItem.platform ?? relation?.platform;
     return {
         ...musicItem,
+        ...(id !== undefined ? { id } : {}),
+        ...(platform !== undefined ? { platform } : {}),
         [timeStampSymbol]: addedAt,
         [sortIndexSymbol]: batchIndex,
         $$addedAt: addedAt,
@@ -230,9 +235,26 @@ export async function queryAllSheets() {
             const normalizedDefaultSheet = stripEmbeddedMusicList(defaultSheet);
             await musicSheetDB.sheets.put(normalizedDefaultSheet);
             storedSheets.unshift(normalizedDefaultSheet);
-        } else if (defaultSheetIndex > 0) {
-            const [storedDefaultSheet] = storedSheets.splice(defaultSheetIndex, 1);
-            storedSheets.unshift(storedDefaultSheet);
+        } else {
+            if (defaultSheetIndex > 0) {
+                const [storedDefaultSheet] = storedSheets.splice(defaultSheetIndex, 1);
+                storedSheets.unshift(storedDefaultSheet);
+            }
+            // Heal legacy rows created before i18n was ready (title was undefined).
+            const favoriteSheet = storedSheets[0];
+            if (
+                favoriteSheet?.id === defaultSheet.id
+                && typeof favoriteSheet.title !== "string"
+            ) {
+                const healedTitle = defaultSheet.title;
+                await musicSheetDB.sheets.update(defaultSheet.id, {
+                    title: healedTitle,
+                });
+                storedSheets[0] = {
+                    ...favoriteSheet,
+                    title: healedTitle,
+                };
+            }
         }
 
         musicSheets = storedSheets;

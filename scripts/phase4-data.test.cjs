@@ -54,6 +54,28 @@ function testBackupFormat() {
         parseBackupPayload(createBackupPayload([untitledSheet], 1234)),
         [untitledSheet],
     );
+    // Legacy DBs / module-load race: favorite sheet may have missing title.
+    const missingTitleSheet = {
+        id: "favorite",
+        platform: "local",
+        musicList: [fixtureMusic("fav-1")],
+    };
+    const missingTitlePayload = createBackupPayload([missingTitleSheet], 1234);
+    assert.deepEqual(parseBackupPayload(missingTitlePayload), [{
+        ...missingTitleSheet,
+        title: "",
+    }]);
+    assert.equal(
+        JSON.parse(missingTitlePayload).data.musicSheets[0].title,
+        "",
+    );
+    assert.throws(
+        () => createBackupPayload([{
+            ...fixtureSheet(),
+            title: 123,
+        }]),
+        /musicSheets\[0\]\.title/,
+    );
     assert.equal(
         createBackupFileName(Date.UTC(2026, 6, 20, 12, 34, 56)),
         "BakaMusicBackup-2026-07-20T12-34-56Z.json",
@@ -68,12 +90,43 @@ function testBackupFormat() {
         })),
         /schema or version/,
     );
-    assert.throws(
-        () => createBackupPayload([{
-            ...fixtureSheet(),
-            musicList: [{ id: "missing-platform" }],
-        }]),
-        /platform/,
+    // Plugin tracks often use numeric ids; coerce instead of failing backup.
+    const numericIdSheet = {
+        id: "favorite",
+        platform: "netease",
+        title: "Favorites",
+        musicList: [{
+            id: 1234567890,
+            platform: "netease",
+            title: "Numeric id track",
+        }],
+    };
+    const numericPayload = createBackupPayload([numericIdSheet], 1234);
+    assert.deepEqual(parseBackupPayload(numericPayload), [{
+        ...numericIdSheet,
+        musicList: [{
+            id: "1234567890",
+            platform: "netease",
+            title: "Numeric id track",
+        }],
+    }]);
+
+    // Unusable tracks are dropped so one bad row cannot block the whole backup.
+    const mixedSheet = {
+        id: "mixed",
+        platform: "local",
+        title: "Mixed",
+        musicList: [
+            { id: "ok", platform: "local", title: "Keep" },
+            { id: "missing-platform", title: "Drop" },
+            null,
+            { platform: "local", title: "Drop missing id" },
+        ],
+    };
+    const mixedPayload = createBackupPayload([mixedSheet], 1234);
+    assert.deepEqual(
+        JSON.parse(mixedPayload).data.musicSheets[0].musicList,
+        [{ id: "ok", platform: "local", title: "Keep" }],
     );
 }
 

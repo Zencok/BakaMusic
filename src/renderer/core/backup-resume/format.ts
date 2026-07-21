@@ -36,54 +36,124 @@ function assertBoundedString(
     }
 }
 
+/** Coerce null/undefined titles from legacy DBs; still reject non-strings. */
+function normalizeOptionalTitle(value: unknown, name: string) {
+    if (value == null) {
+        return "";
+    }
+    assertBoundedString(value, name, 8_192, true);
+    return value as string;
+}
+
+/**
+ * Plugin payloads often store numeric ids. Coerce finite numbers / bigints to
+ * strings; reject empty or oversized values.
+ */
+function coerceIdentityString(value: unknown, maxLength = 512): string | null {
+    let text: string | null = null;
+    if (typeof value === "string") {
+        text = value;
+    } else if (typeof value === "number" && Number.isFinite(value)) {
+        text = String(value);
+    } else if (typeof value === "bigint") {
+        text = String(value);
+    } else {
+        return null;
+    }
+    if (!text.length || text.length > maxLength) {
+        return null;
+    }
+    return text;
+}
+
+function requireIdentityString(
+    value: unknown,
+    name: string,
+    maxLength = 512,
+): string {
+    const text = coerceIdentityString(value, maxLength);
+    if (text === null) {
+        throw new Error(`Invalid ${name}`);
+    }
+    return text;
+}
+
+function normalizeMusicItem(
+    musicItem: unknown,
+): IMusic.IMusicItem | null {
+    if (!isRecord(musicItem)) {
+        return null;
+    }
+    const id = coerceIdentityString(musicItem.id);
+    const platform = coerceIdentityString(musicItem.platform);
+    if (id === null || platform === null) {
+        // Drop unusable tracks instead of failing the whole backup/restore.
+        return null;
+    }
+    if (id === musicItem.id && platform === musicItem.platform) {
+        return musicItem as IMusic.IMusicItem;
+    }
+    return {
+        ...musicItem,
+        id,
+        platform,
+    } as IMusic.IMusicItem;
+}
+
 function validateMusicSheetList(value: unknown) {
     if (!Array.isArray(value) || value.length > MAX_BACKUP_SHEETS) {
         throw new Error("Invalid backup music sheet list");
     }
 
     let totalTracks = 0;
-    value.forEach((sheet, sheetIndex) => {
+    const normalizedSheets = value.map((sheet, sheetIndex) => {
         if (!isRecord(sheet)) {
             throw new Error(`Invalid music sheet at index ${sheetIndex}`);
         }
-        assertBoundedString(sheet.id, `musicSheets[${sheetIndex}].id`, 512);
-        assertBoundedString(sheet.platform, `musicSheets[${sheetIndex}].platform`, 512);
-        assertBoundedString(
+        const id = requireIdentityString(
+            sheet.id,
+            `musicSheets[${sheetIndex}].id`,
+        );
+        const platform = requireIdentityString(
+            sheet.platform,
+            `musicSheets[${sheetIndex}].platform`,
+        );
+        const title = normalizeOptionalTitle(
             sheet.title,
             `musicSheets[${sheetIndex}].title`,
-            8_192,
-            true,
         );
 
-        const musicList = sheet.musicList ?? [];
-        if (!Array.isArray(musicList)) {
+        const rawMusicList = sheet.musicList ?? [];
+        if (!Array.isArray(rawMusicList)) {
             throw new Error(`Invalid music list at sheet ${sheetIndex}`);
         }
+        const musicList = rawMusicList
+            .map((musicItem) => normalizeMusicItem(musicItem))
+            .filter((musicItem): musicItem is IMusic.IMusicItem => Boolean(musicItem));
         totalTracks += musicList.length;
         if (totalTracks > MAX_BACKUP_TRACKS) {
             throw new Error("Backup contains too many tracks");
         }
 
-        musicList.forEach((musicItem, musicIndex) => {
-            if (!isRecord(musicItem)) {
-                throw new Error(
-                    `Invalid music item at ${sheetIndex}:${musicIndex}`,
-                );
-            }
-            assertBoundedString(
-                musicItem.id,
-                `musicSheets[${sheetIndex}].musicList[${musicIndex}].id`,
-                512,
-            );
-            assertBoundedString(
-                musicItem.platform,
-                `musicSheets[${sheetIndex}].musicList[${musicIndex}].platform`,
-                512,
-            );
-        });
+        const sheetUnchanged =
+            id === sheet.id
+            && platform === sheet.platform
+            && title === sheet.title
+            && musicList.length === rawMusicList.length
+            && musicList.every((item, index) => item === rawMusicList[index]);
+        if (sheetUnchanged) {
+            return sheet as IMusic.IMusicSheetItem;
+        }
+        return {
+            ...sheet,
+            id,
+            platform,
+            title,
+            musicList,
+        } as IMusic.IMusicSheetItem;
     });
 
-    return value as IMusic.IMusicSheetItem[];
+    return normalizedSheets;
 }
 
 export function createBackupFileName(createdAt = Date.now()) {
@@ -98,12 +168,12 @@ export function createBackupPayload(
     musicSheets: IMusic.IMusicSheetItem[],
     createdAt = Date.now(),
 ) {
-    validateMusicSheetList(musicSheets);
+    const normalizedSheets = validateMusicSheetList(musicSheets);
     const envelope: IBackupEnvelope = {
         schema: BACKUP_SCHEMA,
         version: BACKUP_VERSION,
         createdAt,
-        data: { musicSheets },
+        data: { musicSheets: normalizedSheets },
     };
     const serialized = JSON.stringify(envelope);
     if (getUtf8Size(serialized) > MAX_BACKUP_BYTES) {

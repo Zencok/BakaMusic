@@ -1,9 +1,15 @@
 import { localPluginName } from "@/common/constant";
-import { i18n } from "@/shared/i18n/renderer";
 
+/**
+ * Default favorite playlist metadata.
+ *
+ * Do not call i18n here: this module is imported before setupI18n() runs, and
+ * i18next returns `undefined` for translations until initialized. The UI always
+ * localizes the favorite sheet title via `media.default_favorite_sheet_name`.
+ */
 export default {
     id: "favorite",
-    title: i18n.t("media.default_favorite_sheet_name"),
+    title: "Favorites",
     platform: localPluginName,
     musicList: [],
     $$sortIndex: -1,

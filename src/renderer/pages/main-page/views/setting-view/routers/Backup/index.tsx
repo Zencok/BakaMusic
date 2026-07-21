@@ -35,11 +35,13 @@ function BackupActionButton(props: IBackupActionButtonProps) {
     );
 }
 
-async function resumeSheetBackup(data: unknown, overwrite: boolean) {
+async function resumeSheetBackup(data: unknown) {
     if (typeof data !== "string") {
         throw new Error("Invalid backup payload");
     }
     const { default: BackupResume } = await import("@/renderer/core/backup-resume");
+    const overwrite =
+        AppConfig.getConfig("backup.resumeBehavior") === "overwrite";
     await BackupResume.resume(data, overwrite);
 }
 
@@ -108,10 +110,7 @@ export default function Backup() {
                     "utf-8",
                 )) as string;
 
-                await resumeSheetBackup(
-                    rawSheets,
-                    AppConfig.getConfig("backup.resumeBehavior") === "overwrite",
-                );
+                await resumeSheetBackup(rawSheets);
 
                 toast.success(t("settings.backup.resume_success"));
             } catch (e) {
@@ -165,10 +164,7 @@ export default function Backup() {
                         t("settings.backup.webdav_backup_file_not_exist"),
                     );
                 }
-                await resumeSheetBackup(
-                    resumeData,
-                    AppConfig.getConfig("backup.resumeBehavior") === "overwrite",
-                );
+                await resumeSheetBackup(resumeData);
                 toast.success(t("settings.backup.resume_success"));
             } else {
                 toast.error(t("settings.backup.webdav_data_not_complete"));
@@ -192,8 +188,8 @@ export default function Backup() {
                     keyPath="backup.resumeBehavior"
                     label={t("settings.backup.resume_behavior")}
                     options={[
-                        "append",
                         "overwrite",
+                        "append",
                     ]}
                     renderItem={(item) => t("settings.backup.resume_mode_" + item)}
                 ></RadioGroupSettingItem>

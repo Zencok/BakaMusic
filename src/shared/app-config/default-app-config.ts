@@ -41,7 +41,7 @@ const _defaultAppConfig: IAppConfig =  {
     "shortCut.enableGlobal": false,
     "download.concurrency": 5,
     "normal.musicListColumnsShown": [],
-    "backup.resumeBehavior": "append",
+    "backup.resumeBehavior": "overwrite",
     "localMusic.watchDir": [],
     "normal.language": "zh-CN",
     "normal.uiStyle": "glass",
