@@ -13,6 +13,7 @@ const darkSchemeMediaQuery = "(prefers-color-scheme: dark)";
 const reducedTransparencyMediaQuery = "(prefers-reduced-transparency: reduce)";
 export const themePathKey = "themepack-path";
 let themeBackgroundIframe: HTMLIFrameElement | null = null;
+let themeBackgroundIframeSource: string | null = null;
 let systemThemeQuery: MediaQueryList | null = null;
 let systemThemeChangeListener: (() => void) | null = null;
 let reducedTransparencyQuery: MediaQueryList | null = null;
@@ -76,12 +77,21 @@ function applyThemeDocumentAttributes(
 ) {
     const scheme = resolveThemeScheme(themePack, themeTokens);
     const source = isBuiltinDefaultTheme(themePack) ? "builtin" : "pack";
-    document.documentElement.setAttribute("data-theme-spec", "2");
-    document.documentElement.setAttribute("data-theme-scheme", scheme);
-    document.documentElement.setAttribute("data-theme-source", source);
-    document.body?.setAttribute("data-theme-spec", "2");
-    document.body?.setAttribute("data-theme-scheme", scheme);
-    document.body?.setAttribute("data-theme-source", source);
+    const attributes = {
+        "data-theme-spec": "2",
+        "data-theme-scheme": scheme,
+        "data-theme-source": source,
+    };
+    [document.documentElement, document.body].forEach((element) => {
+        if (!element) {
+            return;
+        }
+        Object.entries(attributes).forEach(([name, value]) => {
+            if (element.getAttribute(name) !== value) {
+                element.setAttribute(name, value);
+            }
+        });
+    });
 }
 
 function prefersReducedTransparency() {
@@ -142,6 +152,7 @@ function ensureReducedTransparencyFollow() {
 function clearThemeIframe() {
     themeBackgroundIframe?.remove();
     themeBackgroundIframe = null;
+    themeBackgroundIframeSource = null;
 }
 
 function stopFollowingSystemTheme() {
@@ -159,12 +170,18 @@ function applyThemeCss(themePack: ICommon.IThemePack, rawCss: string, bridge: IM
         themeNode = document.createElement("style");
         themeNode.id = themeNodeId;
     }
-    document.head.appendChild(themeNode);
-    applyThemeDocumentAttributes(themePack, parsed.tokens);
-    void syncBuiltinWindowMaterial(bridge, isBuiltinDefaultTheme(themePack));
-    themeNode.textContent = isBuiltinDefaultTheme(themePack)
+    if (themeNode.dataset.runtimeMounted !== "true") {
+        document.head.appendChild(themeNode);
+        themeNode.dataset.runtimeMounted = "true";
+    }
+    const nextCss = isBuiltinDefaultTheme(themePack)
         ? parsed.css
         : replaceThemeAlias(parsed.css, themePack.path);
+    applyThemeDocumentAttributes(themePack, parsed.tokens);
+    void syncBuiltinWindowMaterial(bridge, isBuiltinDefaultTheme(themePack));
+    if (themeNode.textContent !== nextCss) {
+        themeNode.textContent = nextCss;
+    }
 }
 
 function applyBuiltinDefaultTheme(themePack: ICommon.IThemePack, bridge: IMod) {
@@ -187,17 +204,26 @@ function applyBuiltinDefaultTheme(themePack: ICommon.IThemePack, bridge: IMod) {
 }
 
 function applyThemeIframe(themePack: ICommon.IThemePack, iframeHtml: string | null) {
-    clearThemeIframe();
     if (!themePack.iframe?.app || !iframeHtml) {
+        clearThemeIframe();
         return;
     }
+    const nextSource = replaceThemeAlias(iframeHtml, themePack.path);
+    if (
+        themeBackgroundIframe?.isConnected
+        && themeBackgroundIframeSource === nextSource
+    ) {
+        return;
+    }
+    clearThemeIframe();
     const iframe = document.createElement("iframe");
     iframe.setAttribute("sandbox", "allow-scripts");
     iframe.setAttribute("aria-hidden", "true");
     iframe.scrolling = "no";
-    iframe.srcdoc = replaceThemeAlias(iframeHtml, themePack.path);
+    iframe.srcdoc = nextSource;
     document.querySelector(".app-container")?.prepend(iframe);
     themeBackgroundIframe = iframe;
+    themeBackgroundIframeSource = nextSource;
 }
 
 export async function applyTheme(

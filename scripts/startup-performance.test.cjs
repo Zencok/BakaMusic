@@ -30,6 +30,13 @@ const runtimeRootSource = read("src/renderer/document/runtime-root.tsx");
 assert.match(runtimeRootSource, /import App from "\.\.\/app"/);
 assert.match(runtimeRootSource, /<ErrorBoundary/);
 
+const bootstrapHookSource = read("src/renderer/document/useBootstrap.ts");
+assert.match(
+    bootstrapHookSource,
+    /useLayoutEffect\(\(\) => \{\s*void Themepack\.setupThemePacks\(\);[\s\S]*?\}, \[\]\);/,
+);
+assert.match(bootstrapHookSource, /navigateRef\.current\(route\)/);
+
 const mainPageSource = read("src/renderer/pages/main-page/index.tsx");
 assert.match(mainPageSource, /lazy\(\(\) => import\("\.\/views\/search-view"\)\)/);
 assert.match(mainPageSource, /<Suspense/);
@@ -76,7 +83,12 @@ assert.match(themePreloadSource, /ipcRenderer\.invoke/);
 const themeRuntimeSource = read("src/shared/themepack/renderer-runtime.ts");
 assert.match(themeRuntimeSource, /applyThemeCss/);
 assert.match(themeRuntimeSource, /iframe\.setAttribute\("sandbox", "allow-scripts"\)/);
+assert.match(themeRuntimeSource, /themeNode\.dataset\.runtimeMounted !== "true"/);
+assert.match(themeRuntimeSource, /themeNode\.textContent !== nextCss/);
+assert.match(themeRuntimeSource, /themeBackgroundIframe\?\.isConnected/);
 assert.doesNotMatch(themeRuntimeSource, /from "(?:fs|path|rimraf|unzipper)/);
+const themeRendererSource = read("src/shared/themepack/renderer.ts");
+assert.match(themeRendererSource, /setupThemePacksPromise \?\?= setupThemePacksOnce\(\)/);
 
 const rendererWebpackSource = read("config/webpack.renderer.config.ts");
 assert.doesNotMatch(rendererWebpackSource, /rules\.push\(/);

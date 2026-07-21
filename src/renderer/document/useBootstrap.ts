@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import checkUpdate from "../utils/check-update";
 import Themepack from "@/shared/themepack/renderer";
@@ -11,16 +11,21 @@ import type { IAppConfig } from "@/types/app-config";
 
 export default function useBootstrap() {
     const navigate = useNavigate();
+    const navigateRef = useRef(navigate);
 
     useLayoutEffect(() => {
-        Themepack.setupThemePacks();
+        void Themepack.setupThemePacks();
         applyUiStyle(AppConfig.getConfig("normal.uiStyle"));
+    }, []);
+
+    useLayoutEffect(() => {
+        navigateRef.current = navigate;
         setAppNavigate(navigate);
     }, [navigate]);
 
     useEffect(() => {
         const disposeNavigate = messageBus.onCommand("Navigate", (route) => {
-            navigate(route);
+            navigateRef.current(route);
         });
 
         const onConfigUpdate = (patch: IAppConfig, config: IAppConfig) => {
@@ -39,5 +44,5 @@ export default function useBootstrap() {
             disposeNavigate?.();
             AppConfig.offConfigUpdate(onConfigUpdate);
         };
-    }, [navigate]);
+    }, []);
 }

@@ -89,7 +89,9 @@ async function selectThemeByHash(hash: string) {
 }
 
 let themePacksLoaded = false;
-async function setupThemePacks(): Promise<void> {
+let setupThemePacksPromise: Promise<void> | null = null;
+
+async function setupThemePacksOnce(): Promise<void> {
     try {
         const currentTheme = await mod.initCurrentTheme(
             localStorage.getItem(themePathKey),
@@ -113,6 +115,11 @@ async function setupThemePacks(): Promise<void> {
             return;
         }
     }
+}
+
+function setupThemePacks(): Promise<void> {
+    setupThemePacksPromise ??= setupThemePacksOnce();
+    return setupThemePacksPromise;
 }
 
 async function loadThemePacks(): Promise<void> {
