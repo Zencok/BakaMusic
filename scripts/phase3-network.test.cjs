@@ -11,6 +11,9 @@ const {
     validateCompletedDownload,
     validateMediaFileSignature,
 } = require("../src/webworkers/download-integrity");
+const {
+    getDownloadProgressPercent,
+} = require("../src/renderer/core/downloader/progress");
 const { classifyHlsError } = require(
     "../src/renderer/core/track-player/hls-error-policy",
 );
@@ -146,6 +149,11 @@ function waitForRpcReply(child, requestId) {
 }
 
 async function run() {
+    assert.equal(getDownloadProgressPercent(null), 0);
+    assert.equal(getDownloadProgressPercent({ downloaded: 50, total: 200 }), 25);
+    assert.equal(getDownloadProgressPercent({ downloaded: -1, total: 200 }), 0);
+    assert.equal(getDownloadProgressPercent({ downloaded: 250, total: 200 }), 100);
+
     const firstPart = createDownloadPartPath("C:/Music/song.mp3", "platform@track-1");
     const samePart = createDownloadPartPath("C:/Music/song.mp3", "platform@track-1");
     const secondPart = createDownloadPartPath("C:/Music/song.mp3", "platform@track-2");
@@ -298,6 +306,13 @@ async function run() {
         downloaderSource,
         /DownloadStatusUpdated,\s*musicItem,\s*null/,
     );
+
+    const downloadControlSource = readSource(
+        "src/renderer/components/MusicDownloaded/index.tsx",
+    );
+    assert.match(downloadControlSource, /role="progressbar"/);
+    assert.match(downloadControlSource, /strokeDashoffset=\{100 - percent\}/);
+    assert.doesNotMatch(downloadControlSource, /iconName = "rolling-1s"/);
 
     const nodeRuntimeSource = readSource("src/shared/node-runtime/main.ts");
     assert.match(nodeRuntimeSource, /utilityProcess\.fork/);

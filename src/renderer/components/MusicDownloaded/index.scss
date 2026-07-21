@@ -9,6 +9,35 @@
   }
 }
 
+.music-download-progress {
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+  transform: rotate(-90deg);
+
+  & circle {
+    fill: none;
+    stroke-width: 3;
+  }
+
+  & .music-download-progress-track {
+    stroke: currentColor;
+    opacity: 0.2;
+  }
+
+  & .music-download-progress-value {
+    stroke: currentColor;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 120ms linear;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-download-progress-value {
+    transition: none;
+  }
+}
+
 .music-downloaded {
   color: var(--infoColor, #0a95c8);
 }
