@@ -36,9 +36,9 @@ interface _IAppConfig {
     /** 锁定桌面歌词 */
     "lyric.lockLyric": boolean;
     /**
-     * 桌面歌词居中显示。
-     * - true：原文/翻译/罗马始终居中
-     * - false（默认）：对唱一方纯左、一方纯右，原文/翻译/罗马同侧对齐
+     * 桌面歌词强制居中。
+     * - true：原文/翻译/罗马始终居中（忽略对唱）
+     * - false（默认）：非对唱居中；对唱一方纯左、一方纯右，原文/翻译/罗马同侧对齐
      */
     "lyric.desktopLyricCenter": boolean;
     /** 字体 */

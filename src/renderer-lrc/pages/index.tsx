@@ -46,7 +46,7 @@ export default function LyricWindowPage() {
     const inactiveBrightnessConfig = useAppConfig("lyric.inactiveBrightness");
     const showTranslation = useAppConfig("lyric.showTranslation");
     const showRomanization = useAppConfig("lyric.showRomanization");
-    const alignCenter = !!desktopLyricCenter;
+    const forceCenterSetting = !!desktopLyricCenter;
     const [isHovered, setIsHovered] = useState(false);
     const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
     const dragStateRef = useRef<IDragState | null>(null);
@@ -119,24 +119,32 @@ export default function LyricWindowPage() {
         };
     }, []);
 
-    const lyricLines = useMemo(() => {
+    const { lyricLines, useDuetAlign } = useMemo(() => {
         const mappedLines = mapLyricLinesToAml(currentFullLyric ?? [], {
             includeTranslation: !!showTranslation,
             includeRomanization: !!showRomanization,
         });
 
-        // Center mode: strip duet flags so AMLL does not apply left/right layout.
-        // Duet mode: keep isDuet so one side is pure left and the other pure right.
-        const alignedLines = alignCenter
+        if (!mappedLines.length) {
+            return {
+                lyricLines: createFallbackAmlLyricLines(currentMusic),
+                useDuetAlign: false,
+            };
+        }
+
+        const hasDuet = mappedLines.some((line) => line.isDuet);
+        // Setting forces center always. Without duet content, always center.
+        // Only real duet tracks use pure left / pure right when the setting is off.
+        const shouldCenter = forceCenterSetting || !hasDuet;
+        const alignedLines = shouldCenter
             ? mappedLines.map((line) => (line.isDuet ? { ...line, isDuet: false } : line))
             : mappedLines;
 
-        if (alignedLines.length) {
-            return alignedLines;
-        }
-
-        return createFallbackAmlLyricLines(currentMusic);
-    }, [alignCenter, currentFullLyric, currentMusic, showRomanization, showTranslation]);
+        return {
+            lyricLines: alignedLines,
+            useDuetAlign: !shouldCenter,
+        };
+    }, [currentFullLyric, currentMusic, forceCenterSetting, showRomanization, showTranslation]);
 
     const title = currentMusic?.title || "BakaMusic";
     const artist = currentMusic?.artist;
@@ -249,8 +257,8 @@ export default function LyricWindowPage() {
                 "desktop-lyric-page": true,
                 locked: !!lockLyric,
                 hovered: isHovered,
-                "desktop-align-center": alignCenter,
-                "desktop-align-duet": !alignCenter,
+                "desktop-align-center": !useDuetAlign,
+                "desktop-align-duet": useDuetAlign,
             })}
             style={{
                 "--desktop-lyric-color": fontColorConfig || "#ffffff",
@@ -262,7 +270,7 @@ export default function LyricWindowPage() {
                 fontFamily: lyricFontFamily,
             } as CSSProperties}
             data-font-color-scope={applyFontColorOnlyToPlayedLines ? "played" : "all"}
-            data-desktop-align={alignCenter ? "center" : "duet"}
+            data-desktop-align={useDuetAlign ? "duet" : "center"}
         >
             <div className="desktop-lyric-page--header" data-no-drag="true">
                 <div className="desktop-lyric-page--info" title={songInfo}>
@@ -344,7 +352,7 @@ export default function LyricWindowPage() {
                     hoverBackgroundColor="transparent"
                     alignAnchor="center"
                     alignPosition={0.5}
-                    centerInterludeDots={alignCenter}
+                    centerInterludeDots={!useDuetAlign}
                     enableBlur={false}
                     enableScale={false}
                     enableSpring

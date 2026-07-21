@@ -515,7 +515,7 @@
             "enable_desktop_lyric": "Enable desktop lyric",
             "always_on_top": "Keep lyric window on top",
             "lock_desktop_lyric": "Lock desktop lyric",
-            "desktop_lyric_center": "Center desktop lyrics (off = duet left/right)",
+            "desktop_lyric_center": "Force-center desktop lyrics (off: solo center, duet left/right)",
             "show_translation": "Show Translation",
             "show_romanization": "Show Romanization",
             "mask_behavior": "Mask behavior",

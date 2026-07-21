@@ -353,7 +353,7 @@
         }
     }
 
-    // Center mode (opt-in): original / roman / translation all on the middle axis.
+    // Center layout: used for non-duet tracks, or when the force-center setting is on.
     &.desktop-align-center .apple-music-lyric-player {
         & .amll-lyric-player.dom {
             text-align: center;
@@ -387,8 +387,8 @@
         }
     }
 
-    // Duet mode (default): pure left for lead, pure right for partner.
-    // Original / roman / translation on the same side for each line.
+    // Duet layout (only when the track has duet lines and force-center is off):
+    // pure left for lead, pure right for partner; original / roman / translation same side.
     &.desktop-align-duet .apple-music-lyric-player {
         & .amll-lyric-player.dom {
             text-align: left;
