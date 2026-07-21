@@ -661,10 +661,20 @@
     },
     "fallback": {
         "title": "發生問題",
+        "recovery_mode": "復原模式",
+        "eyebrow": "執行已中斷",
+        "lead": "BakaMusic 已暫停目前介面，播放資料與診斷資訊仍被保留。",
         "reset": "重設設定與播放器狀態",
-        "description": "請點擊上方重設按鈕嘗試修復；問題持續時，請將錯誤資訊回報至 BakaMusic GitHub 儲存庫。",
+        "github": "前往 GitHub 回報",
+        "description": "請先重設設定與播放器狀態嘗試修復；問題持續時，請攜帶下方錯誤資訊前往 BakaMusic GitHub 儲存庫回報。",
+        "diagnostics_label": "執行內容",
+        "diagnostics": "診斷資訊",
+        "diagnostics_hint": "展開項目，查看用於排查問題的錯誤內容與播放器狀態。",
         "music_info": "歌曲資訊",
-        "error_info": "錯誤資訊"
+        "no_music": "目前沒有可用的歌曲資訊",
+        "error_info": "錯誤資訊",
+        "error_summary": "異常摘要",
+        "error_stack": "呼叫堆疊"
     },
     "main": {
         "previous_music": "上一首歌曲",

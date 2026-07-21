@@ -1,20 +1,38 @@
-// 错误边界页面样式
+/*
+ * Recovery console system
+ * Type: editorial display headings with compact technical metadata.
+ * Color: theme surfaces, primary recovery action, restrained danger signal.
+ * Rhythm: 8px base grid, square-edged sections, progressive disclosure.
+ */
 
-.fallback-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    min-height: 100vh;
-    max-height: 100vh;
-    padding: 24px;
-    background-color: var(--backgroundColor);
-    color: var(--textColor);
-    font-size: 14px;
-    line-height: 1.6;
+.fallback-page {
+    --fallback-max-width: 1120px;
+    --fallback-edge-padding: clamp(20px, 4vw, 52px);
+
+    position: fixed;
+    inset: 0;
+    box-sizing: border-box;
     overflow-y: auto;
+    padding: var(--fallback-edge-padding);
+    color: var(--appTextPrimary, var(--textColor));
+    background-color: var(--backgroundColor);
+    background-image:
+        linear-gradient(
+            color-mix(in srgb, var(--appTextPrimary, var(--textColor)) 3%, transparent) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            color-mix(in srgb, var(--appTextPrimary, var(--textColor)) 3%, transparent) 1px,
+            transparent 1px
+        );
+    background-size: 48px 48px;
 
-    // 为整个容器添加滚动条样式
+    &,
+    * {
+        box-sizing: border-box;
+    }
+
     &::-webkit-scrollbar {
         width: var(--scrollbarWidth);
     }
@@ -24,192 +42,465 @@
     }
 
     &::-webkit-scrollbar-thumb {
-        background: var(--dividerColor);
-        border-radius: 4px;
+        background: var(--appSurfaceBorderStrong, var(--dividerColor));
+        border-radius: 999px;
+    }
+}
+
+.fallback-page__frame {
+    width: min(100%, var(--fallback-max-width));
+    min-height: min(720px, calc(100vh - (var(--fallback-edge-padding) * 2)));
+    margin: auto;
+    overflow: hidden;
+    border: 1px solid var(--appSurfaceBorderStrong, var(--dividerColor));
+    background: color-mix(in srgb, var(--appSurface, var(--backgroundColor)) 96%, transparent);
+    box-shadow: var(--appSurfaceShadow, 0 24px 64px rgb(0 0 0 / 14%));
+}
+
+.fallback-page__header {
+    display: flex;
+    min-height: 76px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 0 32px;
+    border-bottom: 1px solid var(--appSurfaceBorder, var(--dividerColor));
+    -webkit-app-region: drag;
+}
+
+.fallback-page__brand {
+    width: 188px;
+    color: var(--primaryColor);
+
+    svg {
+        width: 188px !important;
+        height: 32px !important;
+    }
+}
+
+.fallback-page__mode {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--appTextSecondary, var(--textColor));
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    line-height: 1;
+    text-transform: uppercase;
+
+    > span {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--dangerColor);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--dangerColor) 14%, transparent);
+    }
+}
+
+.fallback-hero {
+    display: grid;
+    grid-template-columns: minmax(96px, 160px) minmax(0, 1fr);
+    gap: clamp(28px, 5vw, 72px);
+    padding: clamp(40px, 6vw, 72px);
+    border-bottom: 1px solid var(--appSurfaceBorder, var(--dividerColor));
+}
+
+.fallback-hero__signal {
+    position: relative;
+    display: grid;
+    width: clamp(80px, 10vw, 112px);
+    height: clamp(80px, 10vw, 112px);
+    place-items: center;
+    align-self: start;
+    border: 1px solid var(--appSurfaceBorderStrong, var(--dividerColor));
+    color: var(--dangerColor);
+    background: var(--appInteractiveSurface, var(--placeholderColor));
+
+    &::before,
+    &::after {
+        position: absolute;
+        content: "";
+        pointer-events: none;
     }
 
-    &::-webkit-scrollbar-thumb:hover {
-        background: var(--listActiveColor);
+    &::before {
+        inset: 7px;
+        border: 1px solid color-mix(in srgb, var(--dangerColor) 22%, transparent);
     }
 
-    .fallback-content {
-        max-width: 800px;
-        width: 100%;
-        background: var(--backgroundColor);
-        border-radius: 12px;
-        padding: 32px;
-        box-shadow: 0 4px 20px var(--shadowColor);
-        border: 1px solid var(--dividerColor);
-        margin: auto;
-        flex-shrink: 0;
+    &::after {
+        top: -1px;
+        left: -1px;
+        width: 32px;
+        height: 3px;
+        background: var(--dangerColor);
     }
 
-    .fallback-title {
-        font-size: 24px;
-        font-weight: 600;
-        color: var(--dangerColor);
-        margin-bottom: 16px;
-        text-align: center;
-        display: flex;
+    > span {
+        position: absolute;
+        right: 10px;
+        bottom: 8px;
+        color: var(--appTextTertiary, var(--textColor));
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+    }
+}
+
+.fallback-hero__content {
+    min-width: 0;
+    max-width: 760px;
+}
+
+.fallback-hero__eyebrow,
+.fallback-diagnostics__header > div > p {
+    margin: 0 0 12px;
+    color: var(--primaryColor);
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: 0.16em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.fallback-hero h1 {
+    margin: 0;
+    color: var(--appTextPrimary, var(--textColor));
+    font-size: clamp(40px, 6vw, 68px);
+    font-weight: 760;
+    letter-spacing: -0.055em;
+    line-height: 1.02;
+}
+
+.fallback-hero__lead {
+    max-width: 650px;
+    margin: 20px 0 0;
+    color: var(--appTextSecondary, var(--textColor));
+    font-size: clamp(16px, 2vw, 19px);
+    line-height: 1.65;
+}
+
+.fallback-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 32px;
+}
+
+.fallback-action {
+    display: inline-flex;
+    min-height: 46px;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 0 18px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    transition:
+        color var(--animate-duration) ease,
+        background-color var(--animate-duration) ease,
+        border-color var(--animate-duration) ease,
+        transform var(--animate-duration) ease;
+    -webkit-app-region: no-drag;
+
+    &:focus-visible {
+        outline: 2px solid var(--primaryColor);
+        outline-offset: 3px;
+    }
+
+    &:active {
+        transform: translateY(1px);
+    }
+}
+
+.fallback-action--primary {
+    color: var(--backgroundColor);
+    background: var(--primaryColor);
+
+    &:hover {
+        background: color-mix(in srgb, var(--primaryColor) 88%, var(--textColor));
+    }
+}
+
+.fallback-action--secondary {
+    border-color: var(--appSurfaceBorderStrong, var(--dividerColor));
+    color: var(--appTextPrimary, var(--textColor));
+    background: var(--appInteractiveSurface, transparent);
+
+    &:hover {
+        border-color: color-mix(in srgb, var(--primaryColor) 58%, transparent);
+        color: var(--primaryColor);
+        background: var(--appInteractiveHover, var(--placeholderColor));
+    }
+}
+
+.fallback-action__external {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1;
+}
+
+.fallback-hero__note {
+    max-width: 680px;
+    margin: 20px 0 0;
+    color: var(--appTextTertiary, var(--textColor));
+    font-size: 12px;
+    line-height: 1.75;
+}
+
+.fallback-diagnostics {
+    padding: clamp(32px, 5vw, 56px) clamp(28px, 6vw, 72px) clamp(40px, 6vw, 64px);
+}
+
+.fallback-diagnostics__header {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.7fr) minmax(240px, 1fr);
+    gap: 32px;
+    align-items: end;
+    margin-bottom: 24px;
+
+    h2 {
+        margin: 0;
+        color: var(--appTextPrimary, var(--textColor));
+        font-size: clamp(24px, 3vw, 32px);
+        font-weight: 720;
+        letter-spacing: -0.035em;
+        line-height: 1.1;
+    }
+}
+
+.fallback-diagnostics__hint {
+    margin: 0;
+    color: var(--appTextTertiary, var(--textColor));
+    font-size: 12px;
+    line-height: 1.65;
+}
+
+.fallback-diagnostics__list {
+    border-top: 1px solid var(--appSurfaceBorderStrong, var(--dividerColor));
+}
+
+.fallback-diagnostic {
+    border-bottom: 1px solid var(--appSurfaceBorderStrong, var(--dividerColor));
+
+    summary {
+        display: grid;
+        min-height: 78px;
+        grid-template-columns: 48px minmax(0, 1fr) 24px;
+        gap: 16px;
         align-items: center;
-        justify-content: center;
-        gap: 8px;
-
-        &::before {
-            content: "⚠️";
-            font-size: 28px;
-        }
-    }
-
-    .fallback-description {
-        color: var(--textColor);
-        margin-bottom: 24px;
-        text-align: center;
-        opacity: 0.8;
-        line-height: 1.8;
-    }
-
-    .fallback-section {
-        margin-bottom: 24px;
-
-        .section-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--textColor);
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid var(--dividerColor);
-        }
-
-        .section-content {
-            background: var(--placeholderColor);
-            border-radius: 8px;
-            padding: 16px;
-            border: 1px solid var(--dividerColor);
-            max-height: 300px;
-            overflow-y: auto;
-
-            &::-webkit-scrollbar {
-                width: var(--scrollbarWidth);
-            }
-
-            &::-webkit-scrollbar-track {
-                background: transparent;
-            }
-
-            &::-webkit-scrollbar-thumb {
-                background: var(--dividerColor);
-                border-radius: 4px;
-            }
-
-            &::-webkit-scrollbar-thumb:hover {
-                background: var(--listActiveColor);
-            }
-
-            pre {
-                margin: 0;
-                font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-                font-size: 12px;
-                line-height: 1.5;
-                white-space: pre-wrap;
-                word-break: break-word;
-                overflow-wrap: break-word;
-
-                &::-webkit-scrollbar {
-                    width: var(--scrollbarWidth);
-                }
-
-                &::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-
-                &::-webkit-scrollbar-thumb {
-                    background: var(--dividerColor);
-                    border-radius: 4px;
-                }
-
-                &::-webkit-scrollbar-thumb:hover {
-                    background: var(--listActiveColor);
-                }
-
-                &.error-message {
-                    color: var(--dangerColor);
-                    background: color-mix(in srgb, var(--dangerColor) 10%, transparent);
-                    padding: 12px;
-                    border-radius: 6px;
-                    border-left: 4px solid var(--dangerColor);
-                    margin-bottom: 8px;
-                }
-
-                &.music-info {
-                    color: var(--infoColor);
-                    background: color-mix(in srgb, var(--infoColor) 10%, transparent);
-                    padding: 12px;
-                    border-radius: 6px;
-                    border-left: 4px solid var(--infoColor);
-                }
-            }
-        }
-    }
-
-    .fallback-actions {
-        display: flex;
-        justify-content: center;
-        margin-top: 32px;
-        margin-bottom: 32px;
-    }
-
-    .reset-button {
-        background: linear-gradient(135deg, var(--dangerColor), #ff4757);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 12px 24px;
-        font-size: 14px;
-        font-weight: 600;
+        padding: 12px 8px;
+        color: var(--appTextPrimary, var(--textColor));
         cursor: pointer;
-        transition: all var(--animate-duration) ease;
-        box-shadow: 0 4px 12px rgba(252, 95, 95, 0.3);
-        display: flex;
-        align-items: center;
-        gap: 8px;
+        list-style: none;
+        transition: background-color var(--animate-duration) ease;
+        -webkit-app-region: no-drag;
+
+        &::-webkit-details-marker {
+            display: none;
+        }
 
         &:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(252, 95, 95, 0.4);
-            background: linear-gradient(135deg, #ff4757, var(--dangerColor));
+            background: var(--appInteractiveHover, var(--placeholderColor));
         }
 
-        &:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 8px rgba(252, 95, 95, 0.3);
-        }
-
-        &::before {
-            content: "🔄";
-            font-size: 16px;
+        &:focus-visible {
+            outline: 2px solid var(--primaryColor);
+            outline-offset: -2px;
         }
     }
 
-    // 响应式设计
-    @media (max-width: 768px) {
+    &[open] .fallback-diagnostic__toggle {
+        transform: rotate(45deg);
+    }
+}
+
+.fallback-diagnostic__index {
+    color: var(--appTextTertiary, var(--textColor));
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+
+.fallback-diagnostic__summary {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(120px, 0.35fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: baseline;
+
+    strong {
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    small {
+        overflow: hidden;
+        color: var(--appTextTertiary, var(--textColor));
+        font-size: 12px;
+        font-weight: 450;
+        line-height: 1.5;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+.fallback-diagnostic__toggle {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    transition: transform var(--animate-duration) ease;
+
+    &::before,
+    &::after {
+        position: absolute;
+        top: 8px;
+        left: 3px;
+        width: 12px;
+        height: 1px;
+        background: currentColor;
+        content: "";
+    }
+
+    &::after {
+        transform: rotate(90deg);
+    }
+}
+
+.fallback-diagnostic__body {
+    padding: 4px 48px 28px 72px;
+
+    pre {
+        max-height: 260px;
+        margin: 0;
+        overflow: auto;
         padding: 16px;
+        border: 1px solid var(--appSurfaceBorder, var(--dividerColor));
+        border-radius: 8px;
+        color: var(--appTextSecondary, var(--textColor));
+        background: var(--appSurfaceMuted, var(--placeholderColor));
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 11px;
+        line-height: 1.65;
+        overflow-wrap: break-word;
+        tab-size: 4;
+        white-space: pre-wrap;
+        word-break: break-word;
 
-        .fallback-content {
-            padding: 24px;
+        &::-webkit-scrollbar {
+            width: var(--scrollbarWidth);
+            height: var(--scrollbarWidth);
         }
 
-        .fallback-title {
-            font-size: 20px;
+        &::-webkit-scrollbar-thumb {
+            border-radius: 999px;
+            background: var(--appSurfaceBorderStrong, var(--dividerColor));
         }
+    }
+}
 
-        .section-content {
-            max-height: 250px;
+.fallback-diagnostic__label {
+    margin: 22px 0 8px;
+    color: var(--appTextTertiary, var(--textColor));
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    line-height: 1.2;
+    text-transform: uppercase;
 
-            pre {
-                font-size: 11px;
-            }
+    &:first-child {
+        margin-top: 0;
+    }
+}
+
+@media (max-width: 760px) {
+    .fallback-page {
+        --fallback-edge-padding: 12px;
+    }
+
+    .fallback-page__header {
+        min-height: 64px;
+        padding: 0 20px;
+    }
+
+    .fallback-page__brand {
+        width: 148px;
+
+        svg {
+            width: 148px !important;
+            height: auto !important;
         }
     }
 
+    .fallback-hero {
+        grid-template-columns: 1fr;
+        padding: 32px 24px 40px;
+    }
+
+    .fallback-hero__signal {
+        width: 68px;
+        height: 68px;
+    }
+
+    .fallback-hero h1 {
+        font-size: clamp(38px, 11vw, 54px);
+    }
+
+    .fallback-diagnostics {
+        padding: 32px 24px 40px;
+    }
+
+    .fallback-diagnostics__header {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .fallback-diagnostic__summary {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+
+    .fallback-diagnostic__body {
+        padding: 4px 8px 24px 64px;
+    }
+}
+
+@media (max-width: 480px) {
+    .fallback-page__mode {
+        font-size: 9px;
+        letter-spacing: 0.08em;
+    }
+
+    .fallback-hero__actions {
+        display: grid;
+    }
+
+    .fallback-action {
+        width: 100%;
+    }
+
+    .fallback-diagnostic summary {
+        grid-template-columns: 34px minmax(0, 1fr) 18px;
+        gap: 10px;
+    }
+
+    .fallback-diagnostic__body {
+        padding-left: 44px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fallback-action,
+    .fallback-diagnostic summary,
+    .fallback-diagnostic__toggle {
+        transition: none;
+    }
 }

@@ -661,10 +661,20 @@
     },
     "fallback": {
         "title": "Something went wrong",
+        "recovery_mode": "Recovery mode",
+        "eyebrow": "Runtime interrupted",
+        "lead": "BakaMusic paused the current interface while preserving playback and diagnostic context.",
         "reset": "Reset settings and player state",
-        "description": "Try the reset button above. If the issue continues, include the error details in a BakaMusic GitHub report.",
+        "github": "Report on GitHub",
+        "description": "Reset settings and player state first. If the issue continues, include the details below in a BakaMusic GitHub report.",
+        "diagnostics_label": "Runtime context",
+        "diagnostics": "Diagnostics",
+        "diagnostics_hint": "Expand an entry to inspect the error context and preserved player state.",
         "music_info": "Track information",
-        "error_info": "Error details"
+        "no_music": "No track information is available",
+        "error_info": "Error details",
+        "error_summary": "Exception summary",
+        "error_stack": "Stack trace"
     },
     "main": {
         "previous_music": "Previous Song",

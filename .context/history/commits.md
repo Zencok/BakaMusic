@@ -228,3 +228,12 @@
 - **Decision**: Cover the floating dock region and tune glass/flat panel opacity independently.
 - **Files**: 7 files
 - **Tests**: TypeScript; ESLint; full regression suite; Forge package; package smoke; Electron runtime visual and geometry audit; diff check
+
+## 2026-07-21T14:58:48.2422126+08:00 — feat(fallback): redesign crash recovery page
+`pending`
+- **Context-Id**: 1e0d0a11-17cb-4c01-a1b2-43081d706d23
+- **Decision**: Replace the legacy warning card with a branded, draggable recovery console.
+- **Decision**: Keep the error summary open and move track context into progressive disclosure.
+- **Decision**: Use shared theme tokens, responsive layouts, focus-visible states, and reduced-motion support.
+- **Files**: 5 files
+- **Tests**: TypeScript; ESLint; full regression suite; diff check
