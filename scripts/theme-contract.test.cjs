@@ -289,7 +289,7 @@ assert.match(
 );
 assert.match(
     musicBarStyleSource,
-    /html\[data-ui-style="glass"\][\s\S]*?\.music-bar--slider-container\s*\{[^}]*left:\s*18px;[^}]*right:\s*18px;/,
+    /html\[data-ui-style="glass"\][\s\S]*?\.music-bar--slider-container\s*\{[^}]*left:\s*22px;[^}]*right:\s*22px;/,
 );
 assert.match(
     musicBarSliderStyleSource,

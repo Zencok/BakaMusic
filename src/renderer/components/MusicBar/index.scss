@@ -228,8 +228,10 @@ html[data-ui-style="glass"] {
     }
 
     .music-bar--slider-container {
-      left: 18px;
-      right: 18px;
+      // Shell has a 26px corner radius; keeping the track ends inside that arc
+      // stops the progress bar from grazing the rounded left/right edges.
+      left: 22px;
+      right: 22px;
     }
   }
 
