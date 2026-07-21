@@ -515,6 +515,7 @@
             "enable_desktop_lyric": "啟用桌面歌詞",
             "always_on_top": "歌詞視窗置頂",
             "lock_desktop_lyric": "鎖定桌面歌詞",
+            "desktop_lyric_center": "桌面歌詞置中（關閉時對唱左/右分側）",
             "show_translation": "顯示翻譯",
             "show_romanization": "顯示羅馬音",
             "mask_behavior": "遮罩行為",

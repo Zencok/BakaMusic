@@ -35,6 +35,12 @@ interface _IAppConfig {
     "lyric.enableDesktopLyric": boolean;
     /** 锁定桌面歌词 */
     "lyric.lockLyric": boolean;
+    /**
+     * 桌面歌词居中显示。
+     * - true：原文/翻译/罗马始终居中
+     * - false（默认）：对唱一方纯左、一方纯右，原文/翻译/罗马同侧对齐
+     */
+    "lyric.desktopLyricCenter": boolean;
     /** 字体 */
     "lyric.fontData": FontData;
     /** 字体颜色 */

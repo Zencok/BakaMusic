@@ -30,6 +30,7 @@ const _defaultAppConfig: IAppConfig =  {
     "download.fileNamingMaxLength": 200,
     "lyric.enableDesktopLyric": false,
     "lyric.lockLyric": false,
+    "lyric.desktopLyricCenter": false,
     "lyric.fontData": defaultFont,
     "lyric.fontColor": "#fff",
     "lyric.applyFontColorOnlyToPlayedLines": false,

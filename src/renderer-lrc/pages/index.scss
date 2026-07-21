@@ -217,14 +217,63 @@
             font-family: var(--desktop-lyric-font-family, inherit);
         }
 
-        & .amll-lyric-player [class*="lyricLine"],
-        & .amll-lyric-player [class*="lyricBgLine"] {
-            align-items: center;
-            text-align: center !important;
-            transform-origin: center !important;
+        // Shared geometry: full-width lines so wrap measurement never shrink-wraps to 1 glyph.
+        & .amll-lyric-player [class*="lyricLineWrapper"] {
+            align-items: stretch !important;
+            padding-left: 0.4em !important;
+            padding-right: 0.4em !important;
         }
 
-        & .amll-lyric-player [class*="lyricLine"],
+        // Exclude lyricLineWrapper (also contains "lyricLine" in the hashed class name).
+        & .amll-lyric-player [class*="lyricLine"]:not([class*="lyricLineWrapper"]),
+        & .amll-lyric-player [class*="lyricBgLine"],
+        & .amll-lyric-player [class*="lyricDuetLine"] {
+            align-self: stretch !important;
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+            padding-left: 0.2em !important;
+            padding-right: 0.2em !important;
+            align-items: stretch;
+            box-sizing: border-box;
+        }
+
+        & .amll-lyric-player [class*="lyricMainLine"],
+        & .amll-lyric-player [class*="lyricSubLine"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            box-sizing: border-box;
+        }
+
+        // Drop AMLL word horizontal inflation so 原文 / 罗马 / 翻译 share one edge axis.
+        & .amll-lyric-player [class*="lyricMainLine"] {
+            & > span,
+            & [class*="emphasizeWrapper"],
+            & [class*="emphasize"],
+            & [class*="emphasize"] > span {
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+            }
+
+            & [class*="romanWord"] {
+                padding-inline-end: 0 !important;
+                width: 100%;
+            }
+
+            & [class*="wordWithRoman"],
+            & [class*="wordWithRuby"],
+            & [class*="wordBody"] {
+                align-items: center !important;
+            }
+        }
+
+        & .amll-lyric-player [class*="lyricLine"]:not([class*="lyricLineWrapper"]),
         & .amll-lyric-player [class*="lyricBgLine"],
         & .amll-lyric-player [class*="lyricMainLine"],
         & .amll-lyric-player [class*="lyricSubLine"],
@@ -240,7 +289,7 @@
         // 上方 [class*="word"] 选择器匹配不到这些无 class 的字符 span，且 text-shadow 不可继承，故必须用
         // 「后代 span + !important」下探到字符元素：!important 优先级高于 WAAPI 动画值，可稳定压制白光、
         // 统一为与普通字相同的黑色描边（缩放/浮动等强调动感由 transform 实现，不受影响，保留）。
-        & .amll-lyric-player [class*="lyricLine"] span,
+        & .amll-lyric-player [class*="lyricLine"]:not([class*="lyricLineWrapper"]) span,
         & .amll-lyric-player [class*="lyricBgLine"] span {
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 1px 1px rgba(0, 0, 0, 0.45) !important;
         }
@@ -286,7 +335,6 @@
             --amll-lp-line-padding-x: 0.08em;
             --amll-lp-bg-line-scale: 0.82;
             line-height: 1.16em;
-            text-align: center;
         }
 
         // AMLL applies an inline 0.2 opacity to non-dynamic group wrappers.
@@ -302,6 +350,122 @@
 
         & .amll-lyric-player [data-lyric-timing="line"][data-lyric-play-state="current"] {
             opacity: 1 !important;
+        }
+    }
+
+    // Center mode (opt-in): original / roman / translation all on the middle axis.
+    &.desktop-align-center .apple-music-lyric-player {
+        & .amll-lyric-player.dom {
+            text-align: center;
+        }
+
+        & .amll-lyric-player [class*="lyricLine"]:not([class*="lyricLineWrapper"]),
+        & .amll-lyric-player [class*="lyricBgLine"],
+        & .amll-lyric-player [class*="lyricDuetLine"] {
+            text-align: center !important;
+            transform-origin: center center !important;
+        }
+
+        & .amll-lyric-player [class*="lyricMainLine"],
+        & .amll-lyric-player [class*="lyricSubLine"] {
+            text-align: center !important;
+        }
+
+        & .amll-lyric-player [class*="lyricMainLine"] {
+            & > span,
+            & [class*="emphasizeWrapper"],
+            & [class*="emphasize"],
+            & [class*="emphasize"] > span,
+            & span {
+                text-align: center !important;
+                transform-origin: center bottom !important;
+            }
+
+            & [class*="romanWord"] {
+                justify-content: center;
+            }
+        }
+    }
+
+    // Duet mode (default): pure left for lead, pure right for partner.
+    // Original / roman / translation on the same side for each line.
+    &.desktop-align-duet .apple-music-lyric-player {
+        & .amll-lyric-player.dom {
+            text-align: left;
+        }
+
+        // Kill AMLL hasDuetLine 15% side padding so edges are pure left / pure right.
+        & .amll-lyric-player[class*="hasDuetLine"] [class*="lyricLine"]:not([class*="lyricLineWrapper"]),
+        & .amll-lyric-player[class*="hasDuetLine"] [class*="lyricDuetLine"] {
+            padding-left: 0.2em !important;
+            padding-right: 0.2em !important;
+        }
+
+        & .amll-lyric-player [class*="lyricLineWrapper"] {
+            align-items: stretch !important;
+        }
+
+        // Lead / non-duet: pure left. Main + sublines share text-align.
+        & .amll-lyric-player [class*="lyricLine"]:not([class*="lyricLineWrapper"]):not([class*="lyricDuetLine"]) {
+            text-align: left !important;
+            transform-origin: left center !important;
+
+            & [class*="lyricMainLine"],
+            & [class*="lyricSubLine"] {
+                text-align: left !important;
+            }
+
+            & [class*="lyricMainLine"] {
+                & > span,
+                & [class*="emphasizeWrapper"],
+                & [class*="emphasize"],
+                & [class*="emphasize"] > span,
+                & span {
+                    text-align: left !important;
+                    transform-origin: left bottom !important;
+                }
+
+                & [class*="romanWord"] {
+                    justify-content: flex-start;
+                }
+            }
+        }
+
+        // Partner / duet: pure right.
+        & .amll-lyric-player [class*="lyricDuetLine"] {
+            text-align: right !important;
+            transform-origin: right center !important;
+
+            & [class*="lyricMainLine"],
+            & [class*="lyricSubLine"] {
+                text-align: right !important;
+            }
+
+            & [class*="lyricMainLine"] {
+                & > span,
+                & [class*="emphasizeWrapper"],
+                & [class*="emphasize"],
+                & [class*="emphasize"] > span,
+                & span {
+                    text-align: right !important;
+                    transform-origin: right bottom !important;
+                }
+
+                & [class*="romanWord"] {
+                    justify-content: flex-end;
+                }
+            }
+        }
+
+        // Background vocal wrappers under a duet main line.
+        & .amll-lyric-player [class*="lyricLineWrapper"]:has([class*="lyricDuetLine"]) {
+            & [class*="bgWrapper"] {
+                transform-origin: right top !important;
+            }
+
+            & [class*="bgWrapperTop"] {
+                transform-origin: right bottom !important;
+            }
         }
     }
 

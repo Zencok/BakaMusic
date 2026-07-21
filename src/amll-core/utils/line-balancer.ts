@@ -34,10 +34,7 @@ export class LineBalancer {
 		if (this.isBalancing || !this.mainElement) return;
 
 		const computedStyle = getComputedStyle(this.mainElement);
-		const paddingLeft = Number.parseFloat(computedStyle.paddingLeft) || 0;
-		const paddingRight = Number.parseFloat(computedStyle.paddingRight) || 0;
-		const containerWidth =
-			this.mainElement.clientWidth - paddingLeft - paddingRight;
+		const containerWidth = this.resolveContainerWidth(computedStyle);
 
 		if (containerWidth <= 0) return;
 
@@ -56,6 +53,32 @@ export class LineBalancer {
 
 	public reset(): void {
 		this.lastBalancedContainerWidth = -1;
+	}
+
+	/**
+	 * Resolve usable line width for break balancing.
+	 *
+	 * IMPORTANT: Do not trust only `mainElement.clientWidth`. After previous
+	 * breaks (or with `align-items: center` shrink-wrapping), the main line can
+	 * collapse to ~1 glyph wide. Using that width re-inserts one-char-per-line
+	 * breaks forever. Prefer the nearest ancestor that still has a stable block
+	 * width (typically the lyric line / wrapper at width: 100%).
+	 */
+	private resolveContainerWidth(computedStyle: CSSStyleDeclaration): number {
+		const paddingLeft = Number.parseFloat(computedStyle.paddingLeft) || 0;
+		const paddingRight = Number.parseFloat(computedStyle.paddingRight) || 0;
+		const horizontalPadding = paddingLeft + paddingRight;
+
+		let rawWidth = this.mainElement.clientWidth;
+
+		let ancestor = this.mainElement.parentElement;
+		// lyricLine → lyricLineWrapper is enough in practice; cap walk depth.
+		for (let depth = 0; ancestor && depth < 3; depth += 1) {
+			rawWidth = Math.max(rawWidth, ancestor.clientWidth);
+			ancestor = ancestor.parentElement;
+		}
+
+		return rawWidth - horizontalPadding;
 	}
 
 	private executeLineBalance(
@@ -115,6 +138,20 @@ export class LineBalancer {
 			}
 
 			const safeContainerWidth = Math.max(1, containerWidth);
+
+			// If most atoms already overflow the container, width measurement is
+			// almost certainly wrong (shrink-wrap / padding). Skip rather than
+			// forcing one-atom-per-line breaks.
+			const measurableAtoms = childInfos.filter((child) => !child.isSpace);
+			if (measurableAtoms.length > 1) {
+				const overflowAtoms = measurableAtoms.filter(
+					(child) => child.width > safeContainerWidth,
+				).length;
+				if (overflowAtoms >= Math.ceil(measurableAtoms.length * 0.5)) {
+					this.lastBalancedContainerWidth = containerWidth;
+					return;
+				}
+			}
 
 			if (layoutWidth <= safeContainerWidth) {
 				this.lastBalancedContainerWidth = containerWidth;

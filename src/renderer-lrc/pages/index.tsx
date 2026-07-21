@@ -38,6 +38,7 @@ export default function LyricWindowPage() {
     const duration = useAppStatePartial("duration");
     const lyricClock = useAppStatePartial("lyricClock");
     const lockLyric = useAppConfig("lyric.lockLyric");
+    const desktopLyricCenter = useAppConfig("lyric.desktopLyricCenter");
     const fontDataConfig = useAppConfig("lyric.fontData");
     const fontSizeConfig = useAppConfig("lyric.fontSize");
     const fontColorConfig = useAppConfig("lyric.fontColor");
@@ -45,6 +46,7 @@ export default function LyricWindowPage() {
     const inactiveBrightnessConfig = useAppConfig("lyric.inactiveBrightness");
     const showTranslation = useAppConfig("lyric.showTranslation");
     const showRomanization = useAppConfig("lyric.showRomanization");
+    const alignCenter = !!desktopLyricCenter;
     const [isHovered, setIsHovered] = useState(false);
     const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
     const dragStateRef = useRef<IDragState | null>(null);
@@ -123,12 +125,18 @@ export default function LyricWindowPage() {
             includeRomanization: !!showRomanization,
         });
 
-        if (mappedLines.length) {
-            return mappedLines;
+        // Center mode: strip duet flags so AMLL does not apply left/right layout.
+        // Duet mode: keep isDuet so one side is pure left and the other pure right.
+        const alignedLines = alignCenter
+            ? mappedLines.map((line) => (line.isDuet ? { ...line, isDuet: false } : line))
+            : mappedLines;
+
+        if (alignedLines.length) {
+            return alignedLines;
         }
 
         return createFallbackAmlLyricLines(currentMusic);
-    }, [currentFullLyric, currentMusic, showRomanization, showTranslation]);
+    }, [alignCenter, currentFullLyric, currentMusic, showRomanization, showTranslation]);
 
     const title = currentMusic?.title || "BakaMusic";
     const artist = currentMusic?.artist;
@@ -241,6 +249,8 @@ export default function LyricWindowPage() {
                 "desktop-lyric-page": true,
                 locked: !!lockLyric,
                 hovered: isHovered,
+                "desktop-align-center": alignCenter,
+                "desktop-align-duet": !alignCenter,
             })}
             style={{
                 "--desktop-lyric-color": fontColorConfig || "#ffffff",
@@ -252,6 +262,7 @@ export default function LyricWindowPage() {
                 fontFamily: lyricFontFamily,
             } as CSSProperties}
             data-font-color-scope={applyFontColorOnlyToPlayedLines ? "played" : "all"}
+            data-desktop-align={alignCenter ? "center" : "duet"}
         >
             <div className="desktop-lyric-page--header" data-no-drag="true">
                 <div className="desktop-lyric-page--info" title={songInfo}>
@@ -333,7 +344,7 @@ export default function LyricWindowPage() {
                     hoverBackgroundColor="transparent"
                     alignAnchor="center"
                     alignPosition={0.5}
-                    centerInterludeDots
+                    centerInterludeDots={alignCenter}
                     enableBlur={false}
                     enableScale={false}
                     enableSpring

@@ -22,6 +22,7 @@ export default function Lyric() {
     const handleResetLyricConfig = () => {
         AppConfig.setConfig({
             "lyric.lockLyric": defaultAppConfig["lyric.lockLyric"],
+            "lyric.desktopLyricCenter": defaultAppConfig["lyric.desktopLyricCenter"],
             "lyric.showRomanization": defaultAppConfig["lyric.showRomanization"],
             "lyric.fontData": defaultAppConfig["lyric.fontData"],
             "lyric.fontSize": defaultAppConfig["lyric.fontSize"],
@@ -55,6 +56,10 @@ export default function Lyric() {
                 <CheckBoxSettingItem
                     label={t("settings.lyric.lock_desktop_lyric")}
                     keyPath="lyric.lockLyric"
+                ></CheckBoxSettingItem>
+                <CheckBoxSettingItem
+                    label={t("settings.lyric.desktop_lyric_center")}
+                    keyPath="lyric.desktopLyricCenter"
                 ></CheckBoxSettingItem>
             </SettingGroup>
 
