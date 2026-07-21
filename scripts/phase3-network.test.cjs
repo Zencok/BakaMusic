@@ -294,6 +294,10 @@ async function run() {
     assert.match(downloaderSource, /recoverDownloaderWorker/);
     assert.match(downloaderSource, /recoverDownloaderWorker\(toError\(error\)\)/);
     assert.match(downloaderSource, /queueTask\(taskControl\)/);
+    assert.match(
+        downloaderSource,
+        /DownloadStatusUpdated,\s*musicItem,\s*null/,
+    );
 
     const nodeRuntimeSource = readSource("src/shared/node-runtime/main.ts");
     assert.match(nodeRuntimeSource, /utilityProcess\.fork/);

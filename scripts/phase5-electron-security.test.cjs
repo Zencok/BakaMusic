@@ -112,6 +112,11 @@ function testIpcAndPathBoundaries() {
     assert.match(utilsMain, /sanitizeSaveDialogOptions/);
     assert.match(utilsMain, /sanitizeDialogDefaultPath/);
     assert.match(utilsMain, /Bare filename/);
+    assert.match(
+        utilsMain,
+        /fs-remove-file[\s\S]{0,300}assertPathAccess\(filePath, \{ allowMissing: true \}\)/,
+    );
+    assert.match(utilsMain, /fs-remove-file[\s\S]{0,500}ENOENT/);
     assert.match(utilsMain, /Only files may be removed through this bridge/);
 
     const appConfigMain = read("src/shared/app-config/main.ts");

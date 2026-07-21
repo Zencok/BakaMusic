@@ -511,8 +511,16 @@ class Utils {
 
         ipcMain.handle("@shared/utils/fs-remove-file", async (event, filePath) => {
             assertIpcSender(event, ["main"]);
-            const targetPath = assertPathAccess(filePath);
-            const stat = await fs.stat(targetPath);
+            const targetPath = assertPathAccess(filePath, { allowMissing: true });
+            let stat: fsSync.Stats;
+            try {
+                stat = await fs.stat(targetPath);
+            } catch (error) {
+                if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+                    return;
+                }
+                throw error;
+            }
             if (!stat.isFile()) {
                 throw new Error("Only files may be removed through this bridge");
             }

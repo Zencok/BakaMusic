@@ -197,12 +197,17 @@ function updateTaskStatus(
     syncTaskStore();
 }
 
+function clearTaskStatus(musicItem: IMusic.IMusicItem) {
+    downloadingProgress.delete(getMediaPrimaryKey(musicItem));
+    ee.emit(DownloadEvts.DownloadStatusUpdated, musicItem, null);
+}
+
 function finishTask(musicItem: IMusic.IMusicItem) {
     const taskId = getMediaPrimaryKey(musicItem);
     const taskControl = taskControls.get(taskId);
     taskControl?.release?.();
     taskControls.delete(taskId);
-    downloadingProgress.delete(taskId);
+    clearTaskStatus(musicItem);
     downloadingMusicStore.setValue((previous) =>
         previous.filter((item) => !isSameMedia(item, musicItem)),
     );
@@ -346,7 +351,7 @@ async function removeTask(musicItem: IMusic.IMusicItem) {
     taskControl.runId++;
     taskControl.release?.();
     taskControls.delete(taskId);
-    downloadingProgress.delete(taskId);
+    clearTaskStatus(musicItem);
     downloadingMusicStore.setValue((previous) =>
         previous.filter((item) => !isSameMedia(item, musicItem)),
     );
@@ -526,7 +531,10 @@ function useDownloadStatus(musicItem: IMusic.IMusicItem) {
 
     useEffect(() => {
         setDownloadStatus(downloadingProgress.get(getMediaPrimaryKey(musicItem)) || null);
-        const updateStatus = (item: IMusic.IMusicItem, status: IDownloadStatus) => {
+        const updateStatus = (
+            item: IMusic.IMusicItem,
+            status: IDownloadStatus | null,
+        ) => {
             if (isSameMedia(item, musicItem)) {
                 setDownloadStatus(status);
             }
