@@ -289,6 +289,16 @@ assert.match(
 );
 assert.match(
     musicBarStyleSource,
+    /html\[data-ui-style="glass"\][\s\S]*?\.music-bar-motion-layer\s*\{[^}]*pointer-events:\s*none;[^}]*\}[\s\S]*?\.music-bar-shell,\s*\.music-bar-hover-zone\s*\{[^}]*pointer-events:\s*auto;/,
+    "glass music bar gutters must pass pointer input through to page content",
+);
+assert.match(
+    musicBarStyleSource,
+    /html\[data-ui-style="glass"\]\s*\.music-bar-container\[data-auto-hide="true"\]\[data-revealed="true"\]\s*\{[^}]*pointer-events:\s*none;[\s\S]*?\.music-bar-motion-layer\s*\{[^}]*pointer-events:\s*none;[\s\S]*?\.music-bar-shell\s*\{[^}]*pointer-events:\s*auto;/,
+    "revealing the glass music bar must not reactivate its viewport-wide hitbox",
+);
+assert.match(
+    musicBarStyleSource,
     /html\[data-ui-style="glass"\][\s\S]*?\.music-bar--slider-container\s*\{[^}]*left:\s*22px;[^}]*right:\s*22px;/,
 );
 assert.match(

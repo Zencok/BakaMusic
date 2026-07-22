@@ -131,7 +131,13 @@ html[data-ui-style="glass"] {
     container-name: music-bar;
     container-type: inline-size;
 
-    .music-bar-motion-layer,
+    // The motion layer spans the full viewport width. Keep that transparent
+    // area click-through and opt only the visible rail back into hit testing.
+    .music-bar-motion-layer {
+      pointer-events: none;
+    }
+
+    .music-bar-shell,
     .music-bar-hover-zone {
       pointer-events: auto;
     }
@@ -464,6 +470,22 @@ html[data-ui-style="glass"] {
     .music-bar-hover-zone {
       display: none;
     }
+  }
+}
+
+// The generic revealed state above is also used by the in-flow flat dock and
+// therefore enables its full motion layer. Glass remains a floating rail: its
+// transparent left/right gutters must continue to pass clicks to page content.
+html[data-ui-style="glass"]
+  .music-bar-container[data-auto-hide="true"][data-revealed="true"] {
+  pointer-events: none;
+
+  .music-bar-motion-layer {
+    pointer-events: none;
+  }
+
+  .music-bar-shell {
+    pointer-events: auto;
   }
 }
 
