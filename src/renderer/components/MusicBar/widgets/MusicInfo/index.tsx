@@ -15,7 +15,7 @@ function StableArtwork(props: {
     src?: string;
     title?: string;
 }) {
-    const rawSrc = props.src ?? albumImg;
+    const rawSrc = props.src || albumImg;
     const [displaySrc, setDisplaySrc] = useState(rawSrc);
 
     useEffect(() => {
@@ -98,7 +98,7 @@ export default function MusicInfo() {
                 }}
             >
                 <StableArtwork
-                    src={musicItem.coverImg ?? musicItem.artwork ?? albumImg}
+                    src={musicItem.coverImg || musicItem.artwork || albumImg}
                     title={musicItem.title}
                 ></StableArtwork>
                 <div

@@ -35,7 +35,7 @@ export default function MusicComment(props: IProps) {
                 <img
                     alt={musicTitle}
                     className="music-comment-panel--hero-cover"
-                    src={musicItem?.artwork ?? albumImg}
+                    src={musicItem?.artwork || albumImg}
                     onError={setFallbackAlbum}
                 ></img>
                 <div className="music-comment-panel--hero-copy">

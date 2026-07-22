@@ -62,7 +62,7 @@ function SearchResult(props: ISearchResultProps) {
                                         >
                                             <img
                                                 alt={it.title}
-                                                src={it.artwork ?? albumImg}
+                                                src={it.artwork || albumImg}
                                                 onError={setFallbackAlbum}
                                             ></img>
                                             <div className="lyric-info">

@@ -98,7 +98,7 @@ function StatisticsTrackRow(props: IStatisticsTrackRowProps) {
     const isCurrent = currentMusic
         ? getListeningStatisticsKey(currentMusic) === getListeningStatisticsKey(entry.musicItem)
         : false;
-    const artwork = entry.musicItem.coverImg ?? entry.musicItem.artwork ?? albumImg;
+    const artwork = entry.musicItem.coverImg || entry.musicItem.artwork || albumImg;
     const qualityInfo = getBestMusicQualityInfo(entry.musicItem);
 
     return (

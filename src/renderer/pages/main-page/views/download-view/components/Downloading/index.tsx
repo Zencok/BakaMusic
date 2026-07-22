@@ -287,7 +287,7 @@ export default function Downloading() {
                                     <article className="downloading-item-card">
                                         <div className="downloading-item-cover">
                                             <img
-                                                src={musicItem.artwork ?? albumImg}
+                                                src={musicItem.artwork || albumImg}
                                                 alt=""
                                                 onError={setFallbackAlbum}
                                             ></img>

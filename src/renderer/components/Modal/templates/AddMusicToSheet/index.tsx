@@ -59,7 +59,7 @@ export default function AddMusicToSheet(props: IAddMusicToSheetProps) {
                         >
                             <img
                                 alt={sheet.title}
-                                src={sheet.artwork ?? albumImg}
+                                src={sheet.artwork || albumImg}
                                 onError={setFallbackAlbum}
                             ></img>
                             <span>

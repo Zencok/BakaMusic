@@ -26,6 +26,7 @@ export default function ThemeItem(props: IProps) {
 
     const { t } = useTranslation();
     const themeName = config.name || t("common.default");
+    const themePreview = config.preview?.trim();
 
     const selectTheme = async () => {
         try {
@@ -72,15 +73,17 @@ export default function ThemeItem(props: IProps) {
             }}
         >
             <div className="theme-thumb-container">
-                {config.preview?.startsWith("#") ? (
+                {themePreview?.startsWith("#") ? (
                     <div
                         className="theme-thumb"
                         style={{
-                            backgroundColor: config.preview,
+                            backgroundColor: themePreview,
                         }}
                     ></div>
+                ) : themePreview ? (
+                    <img src={themePreview} className="theme-thumb" alt={config.name}></img>
                 ) : (
-                    <img src={config.preview} className="theme-thumb" alt={config.name}></img>
+                    <div className="theme-thumb"></div>
                 )}
                 <IfTruthy condition={selected}>
                     <div className="theme-selected"></div>
