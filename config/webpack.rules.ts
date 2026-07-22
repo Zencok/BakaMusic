@@ -50,7 +50,7 @@ export const sourceRules: Required<ModuleOptions>["rules"] = [
     },
     {
         test: /\.jsx?$/,
-        exclude: /node_modules/,
+        exclude: /(node_modules|\.worklet\.js$)/,
         use: {
             loader: "babel-loader",
             options: {

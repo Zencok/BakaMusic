@@ -13,5 +13,7 @@ export default class ControllerBase {
     public onVolumeChange?: (volume: number) => void;
     // 速度改变
     public onSpeedChange?: (speed: number) => void;
+    // 升降调改变（半音）
+    public onPitchChange?: (semitones: number) => void;
 
 }

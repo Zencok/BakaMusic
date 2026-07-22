@@ -14,6 +14,8 @@ declare namespace IUserPreference {
     lastVolume: number;
     /** 倍速 */
     speed: number;
+    /** 升降调（半音） */
+    pitch: number;
     /** 订阅 */
     subscription: Array<{
       title?: string;

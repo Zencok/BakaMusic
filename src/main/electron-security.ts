@@ -49,11 +49,14 @@ function setResponseHeader(
     headers[name] = values;
 }
 
-function allowRendererImageCors(
+function allowRendererReadableMediaCors(
     details: Electron.OnHeadersReceivedListenerDetails,
     responseHeaders: Record<string, string[]>,
 ) {
-    if (details.resourceType !== "image") {
+    if (
+        details.resourceType !== "image"
+        && details.resourceType !== "media"
+    ) {
         return;
     }
     try {
@@ -61,8 +64,8 @@ function allowRendererImageCors(
         if (target.protocol !== "https:" && target.protocol !== "http:") {
             return;
         }
-        // Artwork is intentionally readable by the renderer for canvas-based
-        // palette/background processing. Keep this exception image-only.
+        // Artwork and decoded audio are intentionally readable by the renderer
+        // for palette extraction and the local Web Audio pitch-shift graph.
         setResponseHeader(responseHeaders, "Access-Control-Allow-Origin", ["*"]);
     } catch {
         // Ignore malformed response URLs.
@@ -102,7 +105,7 @@ export function setupSessionSecurity() {
     });
     appSession.webRequest.onHeadersReceived((details, callback) => {
         const responseHeaders = { ...details.responseHeaders };
-        allowRendererImageCors(details, responseHeaders);
+        allowRendererReadableMediaCors(details, responseHeaders);
         if (details.resourceType === "mainFrame" || details.resourceType === "subFrame") {
             setResponseHeader(responseHeaders, "Content-Security-Policy", [
                 app.isPackaged ? productionCsp : developmentCsp,

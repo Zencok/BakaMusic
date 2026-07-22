@@ -38,6 +38,9 @@ const lastVolumeStore = new Store(1);
 /** 速度 */
 const currentSpeedStore = new Store(1);
 
+/** 升降调（半音） */
+const currentPitchStore = new Store(0);
+
 /** 音质 */
 const currentQualityStore = new Store<IMusic.IQualityKey>("flac");
 
@@ -57,6 +60,7 @@ const _trackPlayerStore = {
     isMuteStore,
     lastVolumeStore,
     currentSpeedStore,
+    currentPitchStore,
     currentQualityStore,
     resetProgress,
 };

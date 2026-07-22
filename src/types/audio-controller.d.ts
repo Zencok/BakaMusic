@@ -33,6 +33,9 @@ export interface IAudioController {
     // 设置播放速度
     setSpeed(speed: number): void;
 
+    // 设置升降调（半音）
+    setPitch(semitones: number): void;
+
     // 设置输出设备id
     setSinkId(deviceId: string): Promise<void>;
 
@@ -53,6 +56,8 @@ export interface IAudioController {
     onVolumeChange?: (volume: number) => void;
     // 速度改变
     onSpeedChange?: (speed: number) => void;
+    // 升降调改变（半音）
+    onPitchChange?: (semitones: number) => void;
 
 }
 

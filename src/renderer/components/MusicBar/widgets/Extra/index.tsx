@@ -9,10 +9,21 @@ import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import { getQualityAbbr, getQualityDisplayText, resolveMusicQualityChoices } from "@/renderer/utils/music-quality";
 import { showQualitySelectPopover } from "@/renderer/components/QualitySelectPopover";
-import { useCurrentMusic, useIsMute, useQuality, useSpeed, useVolume } from "@renderer/core/track-player/hooks";
+import {
+    useCurrentMusic,
+    useIsMute,
+    usePitch,
+    useQuality,
+    useSpeed,
+    useVolume,
+} from "@renderer/core/track-player/hooks";
 import { musicDetailShownStore } from "@renderer/components/MusicDetail/store";
 import { createPortal } from "react-dom";
 import PluginManager from "@shared/plugin-manager/renderer";
+import {
+    MAX_PITCH_SEMITONES,
+    MIN_PITCH_SEMITONES,
+} from "@renderer/core/track-player/controller/pitch-shifter";
 
 export default function Extra() {
     const { t } = useTranslation();
@@ -21,6 +32,7 @@ export default function Extra() {
         <div className="music-extra">
             <div className="music-extra-group music-extra-status">
                 <QualityBtn></QualityBtn>
+                <PitchBtn></PitchBtn>
                 <SpeedBtn></SpeedBtn>
             </div>
             <div className="music-extra-group music-extra-tools">
@@ -49,6 +61,7 @@ export default function Extra() {
 
 const WHEEL_VOLUME_STEP = 0.01;
 const WHEEL_SPEED_STEP = 0.05;
+const WHEEL_PITCH_STEP = 1;
 const SPEED_MIN = 0.25;
 const SPEED_MAX = 2;
 const WHEEL_DELTA_UNIT = 100;
@@ -79,6 +92,8 @@ interface IInlineVerticalSliderProps {
     step: number;
     value: number;
     onChange: (value: number) => void;
+    ariaLabel: string;
+    getAriaValueText?: (value: number) => string;
 }
 
 function InlineVerticalSlider(props: IInlineVerticalSliderProps) {
@@ -88,6 +103,8 @@ function InlineVerticalSlider(props: IInlineVerticalSliderProps) {
         step,
         value,
         onChange,
+        ariaLabel,
+        getAriaValueText,
     } = props;
 
     const normalizedValue = clampSliderValue(value, min, max);
@@ -110,6 +127,8 @@ function InlineVerticalSlider(props: IInlineVerticalSliderProps) {
             aria-valuemin={min}
             aria-valuemax={max}
             aria-valuenow={normalizedValue}
+            aria-label={ariaLabel}
+            aria-valuetext={getAriaValueText?.(normalizedValue)}
             onClick={(event) => {
                 event.stopPropagation();
             }}
@@ -438,6 +457,8 @@ function VolumeBtn() {
                             min={0}
                             max={1}
                             step={0.01}
+                            ariaLabel={t("music_bar.volume")}
+                            getAriaValueText={(value) => `${Math.round(value * 100)}%`}
                             onChange={(val) => {
                                 trackPlayer.setVolume(val);
                             }}
@@ -450,6 +471,154 @@ function VolumeBtn() {
             <SvgAsset
                 title={muted ? t("music_bar.unmute") : t("music_bar.mute")}
                 iconName={muted ? "speaker-x-mark" : "speaker-wave"}
+            ></SvgAsset>
+        </button>
+    );
+}
+
+function formatSignedSemitones(semitones: number) {
+    return semitones > 0 ? `+${semitones}` : `${semitones}`;
+}
+
+function PitchBtn() {
+    const pitch = usePitch();
+    const [showPitchBubble, setShowPitchBubble] = useState(false);
+    const previousPitchRef = useRef(0);
+    const pitchRef = useRef(pitch);
+    const wheelDeltaRef = useRef(0);
+    const wheelStepRef = useRef(0);
+    const pitchBtnRef = useRef<HTMLButtonElement>(null);
+    const closeBubbleTimerRef = useRef<number | null>(null);
+    const { t } = useTranslation();
+    const pitchValueText = (value: number) => t("music_bar.pitch_semitones", {
+        value: formatSignedSemitones(value),
+    });
+    const flushWheelRef = useRef(
+        throttle(
+            () => {
+                if (!wheelStepRef.current) return;
+                const steps = wheelStepRef.current;
+                wheelStepRef.current = 0;
+                trackPlayer.setPitch(
+                    Math.max(
+                        MIN_PITCH_SEMITONES,
+                        Math.min(
+                            MAX_PITCH_SEMITONES,
+                            pitchRef.current + steps * WHEEL_PITCH_STEP,
+                        ),
+                    ),
+                );
+            },
+            WHEEL_THROTTLE_MS,
+            { leading: true, trailing: true },
+        ),
+    );
+
+    useEffect(() => {
+        pitchRef.current = pitch;
+    }, [pitch]);
+
+    useEffect(() => {
+        const el = pitchBtnRef.current;
+        if (!el) return;
+        const flushWheel = flushWheelRef.current;
+
+        const handleWheel = (event: WheelEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (!Number.isFinite(event.deltaY)) return;
+            wheelDeltaRef.current += -event.deltaY;
+            const stepCount = wheelDeltaRef.current >= 0
+                ? Math.floor(wheelDeltaRef.current / WHEEL_DELTA_UNIT)
+                : Math.ceil(wheelDeltaRef.current / WHEEL_DELTA_UNIT);
+            if (!stepCount) return;
+            wheelDeltaRef.current -= stepCount * WHEEL_DELTA_UNIT;
+            wheelStepRef.current += stepCount;
+            flushWheel();
+        };
+
+        el.addEventListener("wheel", handleWheel, { passive: false });
+        return () => {
+            el.removeEventListener("wheel", handleWheel);
+            flushWheel.cancel();
+        };
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (closeBubbleTimerRef.current !== null) {
+                window.clearTimeout(closeBubbleTimerRef.current);
+            }
+        };
+    }, []);
+
+    const openPitchBubble = () => {
+        if (closeBubbleTimerRef.current !== null) {
+            window.clearTimeout(closeBubbleTimerRef.current);
+            closeBubbleTimerRef.current = null;
+        }
+        setShowPitchBubble(true);
+    };
+
+    const closePitchBubble = () => {
+        if (closeBubbleTimerRef.current !== null) {
+            window.clearTimeout(closeBubbleTimerRef.current);
+        }
+        closeBubbleTimerRef.current = window.setTimeout(() => {
+            setShowPitchBubble(false);
+            closeBubbleTimerRef.current = null;
+        }, 80);
+    };
+
+    return (
+        <button
+            type="button"
+            className={`extra-btn pitch-btn ${pitch === 0 ? "" : "highlight"}`}
+            ref={pitchBtnRef}
+            title={t("music_bar.pitch_shift")}
+            aria-label={t("music_bar.pitch_shift")}
+            onMouseEnter={openPitchBubble}
+            onMouseLeave={closePitchBubble}
+            onClick={() => {
+                flushWheelRef.current.cancel();
+                wheelDeltaRef.current = 0;
+                wheelStepRef.current = 0;
+                if (pitch === 0) {
+                    trackPlayer.setPitch(previousPitchRef.current);
+                } else {
+                    previousPitchRef.current = pitch;
+                    trackPlayer.setPitch(0);
+                }
+            }}
+        >
+            <Condition condition={showPitchBubble}>
+                <FloatingBubble
+                    anchorRef={pitchBtnRef}
+                    visible={showPitchBubble}
+                    onMouseEnter={openPitchBubble}
+                    onMouseLeave={closePitchBubble}
+                >
+                    <div className="volume-slider-container">
+                        <InlineVerticalSlider
+                            min={MIN_PITCH_SEMITONES}
+                            max={MAX_PITCH_SEMITONES}
+                            step={1}
+                            ariaLabel={t("music_bar.pitch_shift")}
+                            getAriaValueText={pitchValueText}
+                            onChange={(value) => {
+                                trackPlayer.setPitch(value);
+                            }}
+                            value={pitch}
+                        ></InlineVerticalSlider>
+                    </div>
+                    <div className="volume-slider-tag">
+                        {pitchValueText(pitch)}
+                    </div>
+                </FloatingBubble>
+            </Condition>
+            <SvgAsset
+                title={t("music_bar.pitch_shift")}
+                iconName="pitch-shift"
             ></SvgAsset>
         </button>
     );
@@ -570,6 +739,8 @@ function SpeedBtn() {
                             min={0.25}
                             max={2}
                             step={0.05}
+                            ariaLabel={t("music_bar.playback_speed")}
+                            getAriaValueText={(value) => `${value.toFixed(2)}x`}
                             onChange={(val) => {
                                 trackPlayer.setSpeed(val);
                             }}

@@ -13,6 +13,13 @@ const isProduction = process.env.NODE_ENV === "production";
 const styleLoader = { loader: "style-loader" };
 
 const rendererRules: NonNullable<Configuration["module"]>["rules"] = [
+    {
+        test: /\.worklet\.js$/,
+        type: "asset/resource",
+        generator: {
+            filename: "audio-worklets/[name].[contenthash][ext]",
+        },
+    },
     ...sourceRules,
     {
         test: /\.module\.css$/,

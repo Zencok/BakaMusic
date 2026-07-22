@@ -521,6 +521,25 @@ async function run() {
             image.src = "";
             return loaded;
         })()`, "remote artwork CORS boundary");
+        const pitchShiftState = await mainSession.evaluate(`(async () => {
+            const button = document.querySelector(".pitch-btn");
+            if (!button) {
+                throw new Error("pitch shift control was not rendered");
+            }
+            button.dispatchEvent(new WheelEvent("wheel", {
+                bubbles: true,
+                cancelable: true,
+                deltaY: -100,
+            }));
+            const deadline = Date.now() + 10_000;
+            while (Date.now() < deadline) {
+                if (button.classList.contains("highlight")) {
+                    return { active: true };
+                }
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            return { active: false };
+        })()`, "pitch shift worklet");
         await mainSession.evaluate(
             `window["@shared/node-runtime"].closeWatcher()`,
             "node runtime watcher shutdown",
@@ -531,6 +550,7 @@ async function run() {
             ...rendererState,
             localMediaState,
             pluginResult,
+            pitchShiftState,
             remoteArtworkCors,
             themeState,
             webdavState,
@@ -548,6 +568,9 @@ async function run() {
                 protocol: "bakamusic-media:",
             },
             pluginResult: { isEnd: true, data: [] },
+            pitchShiftState: {
+                active: true,
+            },
             remoteArtworkCors: true,
             themeState: {
                 count: 1,

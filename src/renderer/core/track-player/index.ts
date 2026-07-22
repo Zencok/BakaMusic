@@ -63,6 +63,7 @@ const {
     isMuteStore,
     lastVolumeStore,
     currentSpeedStore,
+    currentPitchStore,
     currentQualityStore,
     resetProgress,
 } = _trackPlayerStore;
@@ -137,6 +138,10 @@ class TrackPlayer {
 
     get speed() {
         return currentSpeedStore.getValue();
+    }
+
+    get pitch() {
+        return currentPitchStore.getValue();
     }
 
     get volume() {
@@ -352,6 +357,11 @@ class TrackPlayer {
             setUserPreference("speed", speed);
         };
 
+        audioController.onPitchChange = (semitones) => {
+            currentPitchStore.setValue(semitones);
+            setUserPreference("pitch", semitones);
+        };
+
         audioController.onPlayerStateChanged = (state) => {
             this.setPlayerState(state);
         };
@@ -366,12 +376,13 @@ class TrackPlayer {
 
     public async setup() {
         // 1. Config
-        const [repeatMode, currentMusic, currentProgress, volume, speed, defaultQuality, mute, lastVol] = [
+        const [repeatMode, currentMusic, currentProgress, volume, speed, pitch, defaultQuality, mute, lastVol] = [
             getUserPreference("repeatMode"),
             getUserPreference("currentMusic"),
             getUserPreference("currentProgress"),
             getUserPreference("volume"),
             getUserPreference("speed"),
+            getUserPreference("pitch"),
             getUserPreference("currentQuality") || AppConfig.getConfig("playMusic.defaultQuality"),
             getUserPreference("mute"),
             getUserPreference("lastVolume"),
@@ -440,6 +451,10 @@ class TrackPlayer {
 
         if (speed) {
             this.setSpeed(speed);
+        }
+
+        if (pitch) {
+            this.setPitch(pitch);
         }
 
         // 4. fetch music source (lyrics already requested in setCurrentMusic)
@@ -780,6 +795,10 @@ class TrackPlayer {
 
     public setSpeed(speed: number) {
         this.audioController.setSpeed(speed);
+    }
+
+    public setPitch(semitones: number) {
+        this.audioController.setPitch(semitones);
     }
 
     public addNext(musicItems: IMusic.IMusicItem | IMusic.IMusicItem[]) {

@@ -47,6 +47,7 @@ export type SvgAssetIconNames =
     | "pause"
     | "pencil-square"
     | "picture-in-picture-line"
+    | "pitch-shift"
     | "play"
     | "playlist"
     | "plus"

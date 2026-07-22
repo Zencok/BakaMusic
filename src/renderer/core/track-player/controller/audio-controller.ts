@@ -11,10 +11,20 @@ import ControllerBase from "@renderer/core/track-player/controller/controller-ba
 import { ErrorReason } from "@renderer/core/track-player/enum";
 import voidCallback from "@/common/void-callback";
 import { IAudioController } from "@/types/audio-controller";
+import logger from "@shared/logger/renderer";
 import {
     classifyHlsError,
     IHlsRecoveryState,
 } from "../hls-error-policy";
+import {
+    normalizePitchSemitones,
+    PITCH_SHIFTER_PARAMETER_NAME,
+    PITCH_SHIFTER_PROCESSOR_NAME,
+} from "./pitch-shifter";
+
+interface ISinkSelectableAudioContext extends AudioContext {
+    setSinkId?: (sinkId: string) => Promise<void>;
+}
 
 
 class AudioController extends ControllerBase implements IAudioController {
@@ -23,6 +33,13 @@ class AudioController extends ControllerBase implements IAudioController {
     private sourceGeneration = 0;
     private sourceAbortController: AbortController | null = null;
     private playRequested = false;
+    private audioContext: ISinkSelectableAudioContext | null = null;
+    private mediaElementSource: MediaElementAudioSourceNode | null = null;
+    private pitchShifterNode: AudioWorkletNode | null = null;
+    private audioGraphSetupPromise: Promise<void> | null = null;
+    private pitchSemitones = 0;
+    private pitchShifterFailed = false;
+    private sinkId = "";
     private _playerState: PlayerState = PlayerState.None;
     get playerState() {
         return this._playerState;
@@ -46,6 +63,8 @@ class AudioController extends ControllerBase implements IAudioController {
         this.audio = new Audio();
         this.audio.preload = "metadata";
         this.audio.controls = false;
+        this.audio.crossOrigin = "anonymous";
+        this.audio.preservesPitch = true;
 
         ////// events
         this.audio.onplaying = () => {
@@ -209,7 +228,7 @@ class AudioController extends ControllerBase implements IAudioController {
             hls.on(HlsEvents.MANIFEST_PARSED, () => {
                 recoveryState.networkAttempts = 0;
                 if (this.playRequested && generation === this.sourceGeneration) {
-                    this.audio.play().catch(voidCallback);
+                    this.startAudioPlayback();
                 }
             });
             hls.on(HlsEvents.FRAG_LOADED, () => {
@@ -246,6 +265,16 @@ class AudioController extends ControllerBase implements IAudioController {
 
     destroy(): void {
         this.reset();
+        this.pitchShifterNode?.disconnect();
+        this.mediaElementSource?.disconnect();
+        this.pitchShifterNode = null;
+        this.mediaElementSource = null;
+        const audioContext = this.audioContext;
+        this.audioContext = null;
+        this.audioGraphSetupPromise = null;
+        if (audioContext && audioContext.state !== "closed") {
+            void audioContext.close();
+        }
     }
 
     pause(): void {
@@ -258,7 +287,7 @@ class AudioController extends ControllerBase implements IAudioController {
     play(): void {
         this.playRequested = true;
         if (this.hasSource) {
-            this.audio.play().catch(voidCallback);
+            this.startAudioPlayback();
         }
     }
 
@@ -284,12 +313,143 @@ class AudioController extends ControllerBase implements IAudioController {
     }
 
     setSinkId(deviceId: string): Promise<void> {
-        return (this.audio as any).setSinkId(deviceId);
+        this.sinkId = deviceId;
+        return Promise.all([
+            (this.audio as HTMLAudioElement & {
+                setSinkId: (id: string) => Promise<void>;
+            }).setSinkId(deviceId),
+            this.setAudioContextSinkId(deviceId),
+        ]).then(() => undefined);
     }
 
     setSpeed(speed: number): void {
         this.audio.defaultPlaybackRate = speed;
         this.audio.playbackRate = speed;
+    }
+
+    setPitch(semitones: number): void {
+        const normalizedSemitones = this.pitchShifterFailed
+            ? 0
+            : normalizePitchSemitones(semitones);
+        this.pitchSemitones = normalizedSemitones;
+
+        if (normalizedSemitones === 0 && !this.audioGraphSetupPromise) {
+            this.onPitchChange?.(0);
+            return;
+        }
+
+        void this.ensureAudioGraph()
+            .then(() => {
+                this.updatePitchParameter();
+                this.onPitchChange?.(this.pitchSemitones);
+                void this.resumeAudioContext().catch((error) => {
+                    logger.logInfo("pitch shifter is waiting for playback", error);
+                });
+            })
+            .catch((error) => {
+                logger.logError("pitch shifter setup failed", error);
+                this.pitchSemitones = 0;
+                this.onPitchChange?.(0);
+            });
+    }
+
+    private startAudioPlayback() {
+        const start = () => this.audio.play().catch(voidCallback);
+        if (!this.audioGraphSetupPromise && this.pitchSemitones === 0) {
+            start();
+            return;
+        }
+
+        void this.ensureAudioGraph()
+            .then(() => this.resumeAudioContext())
+            .catch((error) => logger.logError("audio graph resume failed", error))
+            .finally(start);
+    }
+
+    private ensureAudioGraph(): Promise<void> {
+        if (this.pitchShifterNode) {
+            return Promise.resolve();
+        }
+        this.audioGraphSetupPromise ??= this.setupAudioGraph();
+        return this.audioGraphSetupPromise;
+    }
+
+    private async setupAudioGraph() {
+        const audioContext = new AudioContext({
+            latencyHint: "interactive",
+        }) as ISinkSelectableAudioContext;
+        try {
+            const workletModuleUrl = new URL(
+                "./pitch-shifter.worklet.js",
+                import.meta.url,
+            );
+            await audioContext.audioWorklet.addModule(workletModuleUrl);
+
+            const pitchShifterNode = new AudioWorkletNode(
+                audioContext,
+                PITCH_SHIFTER_PROCESSOR_NAME,
+                {
+                    numberOfInputs: 1,
+                    numberOfOutputs: 1,
+                    outputChannelCount: [2],
+                    channelCount: 2,
+                    channelCountMode: "max",
+                },
+            );
+            const mediaElementSource = audioContext.createMediaElementSource(this.audio);
+            mediaElementSource.connect(pitchShifterNode).connect(audioContext.destination);
+
+            pitchShifterNode.onprocessorerror = () => {
+                logger.logError(
+                    "pitch shifter processor failed",
+                    new Error("AudioWorklet processor error"),
+                );
+                pitchShifterNode.disconnect();
+                mediaElementSource.disconnect();
+                mediaElementSource.connect(audioContext.destination);
+                this.pitchShifterFailed = true;
+                this.pitchSemitones = 0;
+                this.onPitchChange?.(0);
+            };
+
+            this.audioContext = audioContext;
+            this.mediaElementSource = mediaElementSource;
+            this.pitchShifterNode = pitchShifterNode;
+            this.updatePitchParameter();
+            await this.setAudioContextSinkId(this.sinkId).catch((error) => {
+                logger.logError("audio context output device setup failed", error);
+            });
+        } catch (error) {
+            await audioContext.close().catch(voidCallback);
+            this.audioGraphSetupPromise = null;
+            throw error;
+        }
+    }
+
+    private updatePitchParameter() {
+        const parameter = this.pitchShifterNode?.parameters.get(
+            PITCH_SHIFTER_PARAMETER_NAME,
+        );
+        if (parameter && this.audioContext) {
+            parameter.setValueAtTime(
+                this.pitchSemitones,
+                this.audioContext.currentTime,
+            );
+        }
+    }
+
+    private resumeAudioContext() {
+        if (this.audioContext?.state === "suspended") {
+            return this.audioContext.resume();
+        }
+        return Promise.resolve();
+    }
+
+    private setAudioContextSinkId(deviceId: string) {
+        if (!this.audioContext?.setSinkId) {
+            return Promise.resolve();
+        }
+        return this.audioContext.setSinkId(deviceId);
     }
 
     prepareTrack(musicItem: IMusic.IMusicItem) {

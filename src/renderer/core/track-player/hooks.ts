@@ -10,6 +10,7 @@ const {
     currentVolumeStore,
     isMuteStore,
     currentSpeedStore,
+    currentPitchStore,
     currentQualityStore,
 } = _trackPlayerStore;
 
@@ -30,5 +31,7 @@ export const useVolume = currentVolumeStore.useValue;
 export const useIsMute = isMuteStore.useValue;
 
 export const useSpeed = currentSpeedStore.useValue;
+
+export const usePitch = currentPitchStore.useValue;
 
 export const useQuality = currentQualityStore.useValue;
