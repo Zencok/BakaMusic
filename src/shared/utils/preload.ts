@@ -29,6 +29,13 @@ async function removeFile(path: string) {
     return true;
 }
 
+async function trashFile(path: string) {
+    return await ipcRenderer.invoke(
+        "@shared/utils/fs-trash-file",
+        path,
+    ) as boolean;
+}
+
 function getPathForFile(file: File) {
     const filePath = webUtils.getPathForFile(file);
     if (filePath) {
@@ -53,6 +60,7 @@ const fsUtil = {
     isFile,
     isFolder,
     rimraf: removeFile,
+    trashFile,
     addFileScheme,
     getPathForFile,
 };
@@ -248,4 +256,3 @@ const mod = {
 };
 
 exposeInMainWorld("@shared/utils", mod);
-

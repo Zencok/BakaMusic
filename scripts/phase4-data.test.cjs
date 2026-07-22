@@ -303,6 +303,17 @@ function testArchitectureGuards() {
         localMusicSource,
         /scanDirectories\(selectedDirs, \[\]\)[\s\S]*?musicSheetDB\.transaction\([\s\S]*?localMusicStore\.clear\(\)/,
     );
+    assert.match(
+        localMusicSource,
+        /trashLocalMusicFiles[\s\S]*?fsUtil\.trashFile\(filePath\)[\s\S]*?localMusicStore\.bulkDelete/,
+    );
+
+    const musicListSource = readSource("src/renderer/components/MusicList/index.tsx");
+    assert.match(
+        musicListSource,
+        /delete_local_file[\s\S]*?showModal\("Reconfirm"[\s\S]*?trashLocalMusicFiles/,
+    );
+
     const statisticsSource = readSource(
         "src/renderer/core/listening-statistics/index.ts"
     );

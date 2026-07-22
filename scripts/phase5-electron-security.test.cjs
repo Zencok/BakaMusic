@@ -118,6 +118,12 @@ function testIpcAndPathBoundaries() {
     );
     assert.match(utilsMain, /fs-remove-file[\s\S]{0,500}ENOENT/);
     assert.match(utilsMain, /Only files may be removed through this bridge/);
+    assert.match(
+        utilsMain,
+        /fs-trash-file[\s\S]{0,300}assertPathAccess\(filePath, \{ allowMissing: true \}\)/,
+    );
+    assert.match(utilsMain, /fs-trash-file[\s\S]{0,1200}shell\.trashItem\(targetPath\)/);
+    assert.match(utilsMain, /Only files may be moved to trash through this bridge/);
 
     const appConfigMain = read("src/shared/app-config/main.ts");
     assert.match(appConfigMain, /rendererWritableConfigKeys/);
@@ -137,6 +143,7 @@ function testPreloadCapabilitySurface() {
     assert.match(mainPreload, /@shared\/backup\/preload/);
     assert.doesNotMatch(extensionPreload, /plugin-manager|node-runtime|themepack|backup/);
     assert.doesNotMatch(utilsPreload, /from "(?:fs|fs\/promises|path|rimraf|unzipper)/);
+    assert.match(utilsPreload, /@shared\/utils\/fs-trash-file/);
     assert.doesNotMatch(themePreload, /from "(?:fs|fs\/promises|path|rimraf|unzipper)/);
     assert.match(themePreload, /ipcRenderer\.invoke/);
     assert.doesNotMatch(themePreload, /preload-runtime/);

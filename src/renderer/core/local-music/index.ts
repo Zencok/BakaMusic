@@ -14,6 +14,7 @@ import {
 } from "@/common/path-util";
 import nodeRuntime from "@shared/node-runtime/renderer";
 import AppConfig from "@shared/app-config/renderer";
+import { fsUtil } from "@shared/utils/renderer";
 
 type LocalMusicItem = IMusic.IMusicItem & { $$localPath: string };
 
@@ -69,6 +70,11 @@ function normalizeLocalMusicPath(musicItem: LocalMusicItem) {
 
 function getLocalMusicPrimaryKey(musicItem: LocalMusicItem) {
     return `${musicItem.platform}@${musicItem.id}`;
+}
+
+function getLocalMusicItemPath(musicItem: IMusic.IMusicItem) {
+    return (musicItem as IMusic.IMusicItem & { $$localPath?: string }).$$localPath
+        || musicItem.localPath;
 }
 
 function mergeLocalMusicItems(
@@ -415,10 +421,61 @@ async function clearAndRescanLocalMusic() {
     );
 }
 
+export async function trashLocalMusicFiles(musicItems: IMusic.IMusicItem[]) {
+    const candidates = musicItems.map((musicItem) => ({
+        musicItem,
+        filePath: musicItem.platform === localPluginName
+            ? getLocalMusicItemPath(musicItem)
+            : undefined,
+    }));
+    const results = await mapWithConcurrency(
+        candidates,
+        2,
+        async ({ musicItem, filePath }) => {
+            if (!filePath) {
+                return { musicItem, filePath, success: false };
+            }
+            try {
+                return {
+                    musicItem,
+                    filePath,
+                    success: await fsUtil.trashFile(filePath),
+                };
+            } catch {
+                return { musicItem, filePath, success: false };
+            }
+        },
+    );
+    const deletedResults = results.flatMap((result) =>
+        result.success && result.filePath
+            ? [{ ...result, filePath: result.filePath }]
+            : []);
+
+    if (deletedResults.length) {
+        await musicSheetDB.localMusicStore.bulkDelete(
+            deletedResults.map(({ musicItem }) => [
+                musicItem.platform,
+                musicItem.id,
+            ]),
+        );
+        const deletedPaths = new Set(
+            deletedResults.map(({ filePath }) => getRendererPathKey(filePath)),
+        );
+        localMusicListStore.setValue((previous) => previous.filter((musicItem) =>
+            !deletedPaths.has(getRendererPathKey(musicItem.$$localPath))));
+    }
+
+    return {
+        deletedCount: deletedResults.length,
+        failedCount: results.length - deletedResults.length,
+    };
+}
+
 export default {
     setupLocalMusic,
     releaseLocalMusic,
     changeWatchPath,
     scanLocalMusicChanges,
     clearAndRescanLocalMusic,
+    trashLocalMusicFiles,
 };

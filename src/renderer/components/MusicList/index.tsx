@@ -39,7 +39,7 @@ import Condition, { IfTruthy } from "../Condition";
 import { IContextMenuItem, showContextMenu } from "../ContextMenu";
 import DragReceiver, { startDrag } from "../DragReceiver";
 import Empty from "../Empty";
-import { showModal } from "../Modal";
+import { hideModal, showModal } from "../Modal";
 import MusicDownloaded from "../MusicDownloaded";
 import MusicFavorite from "../MusicFavorite";
 import SvgAsset from "../SvgAsset";
@@ -58,6 +58,7 @@ import LazyImage from "../LazyImage";
 import getCompactArtworkSrc from "@/renderer/utils/get-compact-artwork-src";
 import { getPlayCount } from "@/renderer/core/listening-statistics";
 import CurrentMusicLocator from "../CurrentMusicLocator";
+import { trashLocalMusicFiles } from "@/renderer/core/local-music";
 interface IMusicListProps {
     /** 音乐列表 */
     musicList: IMusic.IMusicItem[];
@@ -364,6 +365,9 @@ export function showMusicContextMenu(
 ) {
     const menuItems: IContextMenuItem[] = [];
     const isArray = Array.isArray(musicItems);
+    const selectedMusicItems = isArray ? musicItems : [musicItems];
+    const isLocalMusicSelection = selectedMusicItems.length > 0
+        && selectedMusicItems.every(isLocalMusic);
     if (!isArray) {
         const musicItem = musicItems;
         menuItems.push(
@@ -517,6 +521,44 @@ export function showMusicContextMenu(
                 } else if (info?.msg) {
                     toast.error(info.msg);
                 }
+            },
+        },
+        {
+            title: i18n.t("music_list_context_menu.delete_local_file"),
+            icon: "trash",
+            show: isLocalMusicSelection,
+            onClick() {
+                showModal("Reconfirm", {
+                    title: i18n.t("music_list_context_menu.delete_local_file"),
+                    content: i18n.t(
+                        "music_list_context_menu.delete_local_file_confirm",
+                        { count: selectedMusicItems.length },
+                    ),
+                    async onConfirm() {
+                        hideModal();
+                        const result = await trashLocalMusicFiles(
+                            selectedMusicItems,
+                        );
+                        if (!result.failedCount) {
+                            toast.success(i18n.t(
+                                "music_list_context_menu.delete_local_file_success",
+                                { count: result.deletedCount },
+                            ));
+                        } else if (result.deletedCount) {
+                            toast.warn(i18n.t(
+                                "music_list_context_menu.delete_local_file_partial",
+                                {
+                                    count: result.deletedCount,
+                                    failedCount: result.failedCount,
+                                },
+                            ));
+                        } else {
+                            toast.error(i18n.t(
+                                "music_list_context_menu.delete_local_file_failed",
+                            ));
+                        }
+                    },
+                });
             },
         },
         {

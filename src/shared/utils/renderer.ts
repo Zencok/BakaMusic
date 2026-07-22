@@ -5,6 +5,7 @@ interface IMod {
         isFile: (path: string) => Promise<boolean>;
         isFolder: (path: string) => Promise<boolean>;
         rimraf: (path: string) => Promise<boolean>;
+        trashFile: (path: string) => Promise<boolean>;
         addFileScheme: (filePath: string) => string;
         getPathForFile: (file: File) => string;
     },

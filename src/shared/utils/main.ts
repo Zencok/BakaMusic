@@ -526,6 +526,25 @@ class Utils {
             }
             await fs.rm(targetPath, { force: true });
         });
+
+        ipcMain.handle("@shared/utils/fs-trash-file", async (event, filePath) => {
+            assertIpcSender(event, ["main"]);
+            const targetPath = assertPathAccess(filePath, { allowMissing: true });
+            let stat: fsSync.Stats;
+            try {
+                stat = await fs.stat(targetPath);
+            } catch (error) {
+                if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+                    return true;
+                }
+                throw error;
+            }
+            if (!stat.isFile()) {
+                throw new Error("Only files may be moved to trash through this bridge");
+            }
+            await shell.trashItem(targetPath);
+            return true;
+        });
     }
 
     private abortUpdateDownload(senderId: number): void {
