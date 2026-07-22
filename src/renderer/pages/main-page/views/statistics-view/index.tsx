@@ -1,5 +1,6 @@
 import albumImg from "@/assets/imgs/album-cover.jpg";
 import { secondsToDuration } from "@/common/time-util";
+import { createSearchMatcher } from "@/common/search-matcher";
 import {
     getListeningDurationParts,
     getListeningStatisticsKey,
@@ -183,16 +184,15 @@ export default function StatisticsView() {
     const topEntry = mostPlayedEntries[0];
     const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
     const currentEntries = activeTab === "recent" ? recentEntries : mostPlayedEntries;
-    const normalizedSearch = searchText.trim().toLocaleLowerCase();
+    const normalizedSearch = searchText.trim();
     const visibleEntries = useMemo(() => {
-        if (!normalizedSearch) {
-            return currentEntries;
-        }
-
-        return currentEntries.filter(({ musicItem }) =>
-            [musicItem.title, musicItem.artist, musicItem.album]
-                .some((value) => value?.toLocaleLowerCase().includes(normalizedSearch)),
-        );
+        const matchesSearch = createSearchMatcher(normalizedSearch);
+        return currentEntries.filter(({ musicItem }) => matchesSearch([
+            musicItem.title,
+            musicItem.artist,
+            musicItem.album,
+            musicItem.platform,
+        ]));
     }, [currentEntries, normalizedSearch]);
     const getScrollElement = useCallback(() => pageRef.current, []);
     const getTrackListOffset = useCallback(

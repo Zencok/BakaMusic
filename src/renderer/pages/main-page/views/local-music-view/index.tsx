@@ -12,6 +12,7 @@ import AlbumView from "./views/album";
 import FolderView from "./views/folder";
 import AppConfig from "@shared/app-config/renderer";
 import localMusic from "@renderer/core/local-music";
+import { createSearchMatcher } from "@/common/search-matcher";
 
 enum DisplayView {
     LIST,
@@ -49,26 +50,18 @@ export default function LocalMusicView() {
                 const caseSensitive = AppConfig.getConfig(
                     "playMusic.caseSensitiveInSearch",
                 );
-                if (caseSensitive) {
-                    setFilterMusicList(
-                        localMusicList.filter(
-                            (item) =>
-                                item.title?.includes(inputSearch) ||
-                                item.artist?.includes(inputSearch) ||
-                                item.album?.includes(inputSearch),
-                        ),
-                    );
-                } else {
-                    const searchText = inputSearch.toLocaleLowerCase();
-                    setFilterMusicList(
-                        localMusicList.filter(
-                            (item) =>
-                                item.title?.toLocaleLowerCase()?.includes(searchText) ||
-                                item.artist?.toLocaleLowerCase()?.includes(searchText) ||
-                                item.album?.toLocaleLowerCase()?.includes(searchText),
-                        ),
-                    );
-                }
+                const matchesSearch = createSearchMatcher(inputSearch, {
+                    caseSensitive: caseSensitive === true,
+                });
+                setFilterMusicList(
+                    localMusicList.filter((item) => matchesSearch([
+                        item.title,
+                        item.artist,
+                        item.album,
+                        item.platform,
+                        item.$$localPath,
+                    ])),
+                );
             });
         }
     }, [inputSearch, localMusicList]);

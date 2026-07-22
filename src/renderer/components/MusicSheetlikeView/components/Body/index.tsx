@@ -12,6 +12,7 @@ import { offsetHeightStore } from "../../store";
 import MusicSheet from "@/renderer/core/music-sheet";
 import AppConfig from "@shared/app-config/renderer";
 import { useTranslation } from "react-i18next";
+import { createSearchMatcher } from "@/common/search-matcher";
 
 interface IProps {
     musicSheet: IMusic.IMusicSheetItem;
@@ -39,26 +40,17 @@ export default function Body(props: IProps) {
                 const caseSensitive = AppConfig.getConfig(
                     "playMusic.caseSensitiveInSearch",
                 );
-                if (caseSensitive) {
-                    setFilterMusicList(
-                        musicList.filter(
-                            (item) =>
-                                item.title?.includes(inputSearch) ||
-                                item.artist?.includes(inputSearch) ||
-                                item.album?.includes(inputSearch),
-                        ),
-                    );
-                } else {
-                    const searchText = inputSearch.toLocaleLowerCase();
-                    setFilterMusicList(
-                        musicList.filter(
-                            (item) =>
-                                item.title?.toLocaleLowerCase()?.includes(searchText) ||
-                                item.artist?.toLocaleLowerCase()?.includes(searchText) ||
-                                item.album?.toLocaleLowerCase()?.includes(searchText),
-                        ),
-                    );
-                }
+                const matchesSearch = createSearchMatcher(inputSearch, {
+                    caseSensitive: caseSensitive === true,
+                });
+                setFilterMusicList(
+                    musicList.filter((item) => matchesSearch([
+                        item.title,
+                        item.artist,
+                        item.album,
+                        item.platform,
+                    ])),
+                );
             });
         }
     }, [inputSearch, musicList]);

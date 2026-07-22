@@ -22,6 +22,7 @@
       "@/*": ["src/*"],
       "@main/*": ["src/main/*"],
       "@shared/*": ["src/shared/*"],
+      "opencc-js/t2cn": ["node_modules/opencc-js/types/full.d.ts"],
       "@native/*": ["src/main/native_modules/*"],
       "@renderer/*": ["src/renderer/*"],
       "@renderer-lrc/*": ["src/renderer-lrc/*"]

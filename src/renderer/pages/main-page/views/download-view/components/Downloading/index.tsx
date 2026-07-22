@@ -1,6 +1,7 @@
 import albumImg from "@/assets/imgs/album-cover.jpg";
 import { DownloadState } from "@/common/constant";
 import { normalizeFileSize } from "@/common/normalize-util";
+import { createSearchMatcher } from "@/common/search-matcher";
 import { secondsToDuration } from "@/common/time-util";
 import useVirtualList from "@/hooks/useVirtualList";
 import { hideModal, showModal } from "@/renderer/components/Modal";
@@ -137,15 +138,15 @@ export default function Downloading() {
         failed: tasks.filter(({ status }) => status.state === DownloadState.ERROR).length,
     }), [tasks]);
     const visibleTasks = useMemo(() => {
-        const normalizedQuery = query.trim().toLocaleLowerCase();
+        const matchesSearch = createSearchMatcher(query);
         return tasks.filter(({ musicItem }) => {
             const matchesState = shouldShowTasks(filter);
-            const matchesQuery = !normalizedQuery || [
+            const matchesQuery = matchesSearch([
                 musicItem.title,
                 musicItem.artist,
                 musicItem.album,
                 musicItem.platform,
-            ].some((value) => value?.toLocaleLowerCase().includes(normalizedQuery));
+            ]);
             return matchesState && matchesQuery;
         });
     }, [filter, query, tasks]);
@@ -153,16 +154,13 @@ export default function Downloading() {
         if (!["all", "downloaded"].includes(filter)) {
             return [];
         }
-        const normalizedQuery = query.trim().toLocaleLowerCase();
-        if (!normalizedQuery) {
-            return downloadedList;
-        }
-        return downloadedList.filter((musicItem) => [
+        const matchesSearch = createSearchMatcher(query);
+        return downloadedList.filter((musicItem) => matchesSearch([
             musicItem.title,
             musicItem.artist,
             musicItem.album,
             musicItem.platform,
-        ].some((value) => value?.toLocaleLowerCase().includes(normalizedQuery)));
+        ]));
     }, [downloadedList, filter, query]);
     const virtualController = useVirtualList({
         data: visibleTasks,
