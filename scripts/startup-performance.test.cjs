@@ -37,6 +37,13 @@ assert.match(
 );
 assert.match(bootstrapHookSource, /navigateRef\.current\(route\)/);
 
+const rendererBootstrapSource = read("src/renderer/document/bootstrap.ts");
+assert.match(
+    rendererBootstrapSource,
+    /messageBus\.onCommand\("SyncAppState",[\s\S]*?sendAppStateTo\(from\);[\s\S]*?sendAppStateTo\(\);/,
+    "restored extension windows must receive the initial player snapshot",
+);
+
 const mainPageSource = read("src/renderer/pages/main-page/index.tsx");
 assert.match(mainPageSource, /lazy\(\(\) => import\("\.\/views\/search-view"\)\)/);
 assert.match(mainPageSource, /<Suspense/);

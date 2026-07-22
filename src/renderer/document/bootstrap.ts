@@ -233,7 +233,7 @@ function setupCommandAndEvents() {
     });
 
 
-    const sendAppStateTo = (from: "main" | number) => {
+    const sendAppStateTo = (to?: "main" | number) => {
         const appState: IAppState = {
             repeatMode: trackPlayer.repeatMode || RepeatMode.Queue,
             playerState: trackPlayer.playerState || PlayerState.None,
@@ -251,13 +251,16 @@ function setupCommandAndEvents() {
             },
         };
 
-        messageBus.syncAppState(appState, from);
+        messageBus.syncAppState(appState, to);
     };
 
     messageBus.onCommand("SyncAppState", (_, from) => {
         sendAppStateTo(from);
     });
-    sendAppStateTo("main");
+    // A restored extension window can request state before this handler is ready.
+    // Broadcast once after registration so its cover and metadata are not lost
+    // even though MusicChanged already fired during TrackPlayer.setup().
+    sendAppStateTo();
 
     // 状态同步
     trackPlayer.on(PlayerEvents.StateChanged, state => {
