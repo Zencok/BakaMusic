@@ -111,6 +111,17 @@ function testPlaybackBoundaryIntegration() {
     assert.match(localMediaMain, /status: 416/);
     assert.match(localMediaMain, /const status = byteRange \? 206 : 200/);
     assert.match(localMediaMain, /signal: request\.signal/);
+    assert.match(localMediaMain, /resolveLocalMediaPlaybackFile\(filePath, fileStat\)/);
+
+    const alacTranscoder = read("src/shared/local-media/alac-transcoder.ts");
+    assert.match(alacTranscoder, /format\.codec\?\.trim\(\).*=== "alac"/s);
+    assert.match(alacTranscoder, /"-c:a",\s*"flac"/);
+    assert.match(alacTranscoder, /CACHE_MAX_BYTES/);
+    assert.match(alacTranscoder, /transcodeJobs/);
+
+    const forgeSource = read("forge.config.ts");
+    assert.match(forgeSource, /import ffmpegStaticPath from "ffmpeg-static"/);
+    assert.match(forgeSource, /extraResource:[\s\S]+ffmpegStaticPath/);
 
     const mainSource = read("src/main/index.ts");
     assert.ok(
@@ -146,7 +157,6 @@ function testPlaybackBoundaryIntegration() {
     assert.match(securitySource, /details\.resourceType !== "image"/);
     assert.match(securitySource, /"Access-Control-Allow-Origin", \["\*"\]/);
 
-    const forgeSource = read("forge.config.ts");
     assert.match(
         forgeSource,
         /media-src[^\n]+bakamusic-media:[^\n]+bakamusic-theme:/,

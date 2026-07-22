@@ -9,6 +9,11 @@ import {
     parseLocalMediaUrl,
     resolveLocalMediaByteRange,
 } from "./common";
+import {
+    cleanupLocalMediaPlaybackCache,
+    resolveLocalMediaPlaybackFile,
+} from "./alac-transcoder";
+import logger from "@shared/logger/main";
 
 const localMediaContentTypes: Readonly<Record<string, string>> = {
     ".aac": "audio/aac",
@@ -73,6 +78,19 @@ async function handleLocalMediaRequest(request: Request) {
         }
     } catch {
         return new Response("Local media file not found", { status: 404 });
+    }
+
+    try {
+        const playbackFile = await resolveLocalMediaPlaybackFile(filePath, fileStat);
+        filePath = playbackFile.filePath;
+        fileStat = playbackFile.fileStat;
+    } catch (error) {
+        logger.logError(
+            "Failed to prepare local media playback file",
+            error instanceof Error ? error : new Error(String(error)),
+            { requestedPath },
+        );
+        return new Response("Local media preparation failed", { status: 500 });
     }
 
     let byteRange;
@@ -148,4 +166,10 @@ export function setupLocalMediaMain() {
     }
     localMediaMainSetup = true;
     protocol.handle(LOCAL_MEDIA_PROTOCOL, handleLocalMediaRequest);
+    void cleanupLocalMediaPlaybackCache().catch((error) => {
+        logger.logError(
+            "Failed to clean local media playback cache",
+            error instanceof Error ? error : new Error(String(error)),
+        );
+    });
 }

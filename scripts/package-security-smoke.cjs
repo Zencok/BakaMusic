@@ -33,6 +33,14 @@ async function run() {
         false,
         "loose resources/app source tree must not be packaged",
     );
+    const ffmpegPath = path.join(
+        resourcesPath,
+        platform === "win32" ? "ffmpeg.exe" : "ffmpeg",
+    );
+    assert.ok(
+        fs.existsSync(ffmpegPath) && fs.statSync(ffmpegPath).size > 1_000_000,
+        "packaged ALAC compatibility runtime is missing",
+    );
 
     const fuses = await getCurrentFuseWire(executablePath);
     assert.equal(fuses[FuseV1Options.RunAsNode], disabled, "RunAsNode fuse must be disabled");
