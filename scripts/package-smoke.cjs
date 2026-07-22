@@ -38,6 +38,93 @@ function createSilentWav(durationSeconds = 1) {
     return wav;
 }
 
+function createAlacM4a() {
+    return Buffer.from(
+        "AAAAHGZ0eXBNNEEgAAACAE00QSBpc29taXNvMgAAAr9tb292AAAAbG12aGQAAAAAAAAA"
+        + "AAAAAAAAAAPoAAAA+gABAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAA"
+        + "AAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAB6XRyYWsAAABcdGto"
+        + "ZAAAAAMAAAAAAAAAAAAAAAEAAAAAAAAA+gAAAAAAAAAAAAAAAQEAAAAAAQAAAAAAAAAAAAAA"
+        + "AAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAACRlZHRzAAAAHGVsc3QAAAAAAAAA"
+        + "AQAAAPoAAAAAAAEAAAAAAWFtZGlhAAAAIG1kaGQAAAAAAAAAAAAAAAAAAKxEAAArEVXEAAAA"
+        + "AAAtaGRscgAAAAAAAAAAc291bgAAAAAAAAAAAAAAAFNvdW5kSGFuZGxlcgAAAAEMbWluZgAA"
+        + "ABBzbWhkAAAAAAAAAAAAAAAkZGluZgAAABxkcmVmAAAAAAAAAAEAAAAMdXJsIAAAAAEAAADQ"
+        + "c3RibAAAAFhzdHNkAAAAAAAAAAEAAABIYWxhYwAAAAAAAAABAAAAAAAAAAAAAQAQAAAAAKxE"
+        + "AAAAAAAkYWxhYwAAAAAAABAAABAoCg4BAAAAACAEAArEQAAArEQAAAAgc3R0cwAAAAAAAAAC"
+        + "AAAAAgAAEAAAAAABAAALEQAAABxzdHNjAAAAAAAAAAEAAAABAAAAAwAAAAEAAAAgc3RzegAA"
+        + "AAAAAAAAAAAAAwAAABMAAAATAAAAFwAAABRzdGNvAAAAAAAAAAEAAALrAAAAYnVkdGEAAABa"
+        + "bWV0YQAAAAAAAAAhaGRscgAAAAAAAAAAbWRpcmFwcGwAAAAAAAAAAAAAAAAtaWxzdAAAACWp"
+        + "dG9vAAAAHWRhdGEAAAABAAAAAExhdmY2Mi4xMi4xMDIAAAAIZnJlZQAAAEVtZGF0AAAAAAAP"
+        + "CAEAAAAAAAAA/4f/8AAAAAAADwgBAAAAAAAAAP+H//AAABAAABYiAAAPCAEAAAAAAAAA/4WI"
+        + "cA==",
+        "base64",
+    );
+}
+
+function encodeSyncSafeInteger(value) {
+    return Buffer.from([
+        (value >>> 21) & 0x7f,
+        (value >>> 14) & 0x7f,
+        (value >>> 7) & 0x7f,
+        value & 0x7f,
+    ]);
+}
+
+function createId3Frame(id, payload) {
+    const header = Buffer.alloc(10);
+    header.write(id, 0, 4, "ascii");
+    header.writeUInt32BE(payload.length, 4);
+    return Buffer.concat([header, payload]);
+}
+
+async function createLocalArtworkMp3() {
+    const sharp = require("sharp");
+    const width = 320;
+    const height = 320;
+    const pixels = Buffer.alloc(width * height * 3);
+    let seed = 0x12345678;
+    for (let index = 0; index < pixels.length; index++) {
+        seed ^= seed << 13;
+        seed ^= seed >>> 17;
+        seed ^= seed << 5;
+        pixels[index] = seed & 0xff;
+    }
+    const artwork = await sharp(pixels, {
+        raw: { width, height, channels: 3 },
+    }).png().toBuffer();
+    const titleFrame = createId3Frame(
+        "TIT2",
+        Buffer.concat([Buffer.from([3]), Buffer.from("Local Scan Smoke")]),
+    );
+    const artworkFrame = createId3Frame(
+        "APIC",
+        Buffer.concat([
+            Buffer.from([0]),
+            Buffer.from("image/png\0", "latin1"),
+            Buffer.from([3, 0]),
+            artwork,
+        ]),
+    );
+    const lyricFrame = createId3Frame(
+        "USLT",
+        Buffer.concat([
+            Buffer.from([3]),
+            Buffer.from("eng", "ascii"),
+            Buffer.from([0]),
+            Buffer.from(
+                "[00:01.230]First local lyric\n[00:04.560]Second local lyric",
+                "utf8",
+            ),
+            Buffer.from([0]),
+        ]),
+    );
+    const tagBody = Buffer.concat([titleFrame, artworkFrame, lyricFrame]);
+    const tagHeader = Buffer.concat([
+        Buffer.from("ID3\x03\x00\x00", "latin1"),
+        encodeSyncSafeInteger(tagBody.length),
+    ]);
+    return Buffer.concat([tagHeader, tagBody, Buffer.alloc(2048)]);
+}
+
 async function getFreePort() {
     const server = net.createServer();
     await new Promise((resolve, reject) => {
@@ -338,6 +425,14 @@ async function run() {
     );
     const localMediaPath = path.join(userDataPath, "local-media-smoke.wav");
     await fs.promises.writeFile(localMediaPath, createSilentWav());
+    const alacMediaPath = path.join(userDataPath, "local-media-alac-smoke.m4a");
+    await fs.promises.writeFile(alacMediaPath, createAlacM4a());
+    const localScanPath = path.join(userDataPath, "local-scan-smoke");
+    await fs.promises.mkdir(localScanPath, { recursive: true });
+    await fs.promises.writeFile(
+        path.join(localScanPath, "artwork-smoke.mp3"),
+        await createLocalArtworkMp3(),
+    );
     const themePath = path.join(userDataPath, "bakamusic-themepacks", "phase5-smoke");
     await fs.promises.mkdir(themePath, { recursive: true });
     await Promise.all([
@@ -402,6 +497,7 @@ async function run() {
             const pluginBridge = window["@shared/plugin-manager"];
             const nodeRuntime = window["@shared/node-runtime"];
             const backupBridge = window["@shared/backup"];
+            const fsBridge = window["@shared/utils"].fs;
             return {
                 processType: typeof window.process,
                 requireType: typeof window.require,
@@ -410,9 +506,31 @@ async function run() {
                 nodeRuntimeBridge: typeof nodeRuntime.closeWatcher,
                 backupWriteBridge: typeof backupBridge.backupToWebdav,
                 backupReadBridge: typeof backupBridge.restoreFromWebdav,
+                trashFileBridge: typeof fsBridge.trashFile,
                 pluginBridge: typeof pluginBridge.callPluginMethod,
             };
         })()`, "renderer boundary");
+        const localScanState = await mainSession.evaluate(`(async () => {
+            const result = await window["@shared/node-runtime"].scanDirectories(
+                [${JSON.stringify(localScanPath)}],
+                [],
+            );
+            const item = result.musicItems[0];
+            const freshLyric = await window["@shared/plugin-manager"].callPluginMethod(
+                { platform: "本地" },
+                "getLyric",
+                { ...item, rawLrc: "stale lyric without timestamps" },
+            );
+            return {
+                count: result.musicItems.length,
+                removedCount: result.removedFilePaths.length,
+                title: item?.title,
+                artworkType: item?.artwork?.slice(0, 23),
+                artworkBounded: (item?.artwork?.length ?? Infinity) < 96 * 1024,
+                scannedLyric: item?.rawLrc,
+                refreshedLyric: freshLyric?.rawLrc,
+            };
+        })()`, "local music metadata scan");
         const pluginResult = await mainSession.evaluate(`(async () => {
             const pluginBridge = window["@shared/plugin-manager"];
             await pluginBridge.reloadPlugins();
@@ -493,6 +611,38 @@ async function run() {
                 protocol: new URL(mediaUrl).protocol,
             };
         })()`, "local media boundary");
+        const alacMediaState = await mainSession.evaluate(`(async () => {
+            const mediaUrl = window["@shared/utils"].fs.addFileScheme(
+                ${JSON.stringify(alacMediaPath)}
+            );
+            const audio = new Audio();
+            audio.preload = "auto";
+            const loaded = await new Promise((resolve) => {
+                const timer = setTimeout(() => resolve(false), 30_000);
+                audio.oncanplay = () => {
+                    clearTimeout(timer);
+                    resolve(
+                        Number.isFinite(audio.duration)
+                        && audio.duration > 0
+                        && audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA
+                    );
+                };
+                audio.onerror = () => {
+                    clearTimeout(timer);
+                    resolve(false);
+                };
+                audio.src = mediaUrl;
+                audio.load();
+            });
+            const state = {
+                loaded,
+                protocol: new URL(mediaUrl).protocol,
+                nativeAlacSupport: audio.canPlayType('audio/mp4; codecs="alac"'),
+            };
+            audio.removeAttribute("src");
+            audio.load();
+            return state;
+        })()`, "ALAC local media boundary");
         const remoteArtworkCors = await mainSession.evaluate(`(async () => {
             const image = new Image();
             image.crossOrigin = "anonymous";
@@ -549,7 +699,9 @@ async function run() {
         const boundaryState = {
             ...rendererState,
             localMediaState,
+            alacMediaState,
             pluginResult,
+            localScanState,
             pitchShiftState,
             remoteArtworkCors,
             themeState,
@@ -563,11 +715,26 @@ async function run() {
             nodeRuntimeBridge: "function",
             backupWriteBridge: "function",
             backupReadBridge: "function",
+            trashFileBridge: "function",
             localMediaState: {
                 loaded: true,
                 protocol: "bakamusic-media:",
             },
+            alacMediaState: {
+                loaded: true,
+                protocol: "bakamusic-media:",
+                nativeAlacSupport: "",
+            },
             pluginResult: { isEnd: true, data: [] },
+            localScanState: {
+                count: 1,
+                removedCount: 0,
+                title: "Local Scan Smoke",
+                artworkType: "data:image/webp;base64,",
+                artworkBounded: true,
+                scannedLyric: "[00:01.230]First local lyric\n[00:04.560]Second local lyric",
+                refreshedLyric: "[00:01.230]First local lyric\n[00:04.560]Second local lyric",
+            },
             pitchShiftState: {
                 active: true,
             },

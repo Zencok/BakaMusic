@@ -271,6 +271,7 @@ function testPackagedBoundarySmokeContract() {
     assert.match(smokeSource, /nodeRuntimeBridge: "function"/);
     assert.match(smokeSource, /backupWriteBridge: "function"/);
     assert.match(smokeSource, /backupReadBridge: "function"/);
+    assert.match(smokeSource, /trashFileBridge: "function"/);
     assert.match(smokeSource, /WebDAV backup roundtrip/);
 }
 
