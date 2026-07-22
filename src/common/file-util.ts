@@ -1,7 +1,6 @@
 import {
     ICommonTagsResult,
     ILyricsTag,
-    IPicture,
     parseFile,
 } from "music-metadata";
 import path from "path";
@@ -16,6 +15,7 @@ import {
     createLocalMediaUrl,
     LOCAL_MEDIA_PROTOCOL,
 } from "../shared/local-media/common";
+import { createLocalArtworkDataUrl } from "./local-artwork";
 
 const LOCAL_METADATA_CONCURRENCY = 4;
 
@@ -35,35 +35,130 @@ export function getLocalPathComparisonKey(filePath: string) {
         : normalizedPath;
 }
 
-function getB64Picture(picture: IPicture) {
-    return `data:${picture.format};base64,${Buffer.from(picture.data).toString("base64")}`;
-}
-
 const specialEncoding = ["GB2312"];
 
-function normalizeLocalLyricText(lyrics?: Array<string | ILyricsTag> | null) {
-    const normalizedLyrics = lyrics
-        ?.flatMap((lyric) => {
-            if (typeof lyric === "string") {
-                return [lyric];
-            }
+const MILLISECOND_TIMESTAMP_FORMAT = 2;
+const LRC_TIMELINE_REG = /\[\d{1,3}:\d{2}(?:\.\d{1,3})?\]/g;
+const QRC_TIMELINE_REG = /\[\d+,\d+\]/g;
 
-            return [
-                lyric.text ?? "",
-                ...(lyric.syncText?.map((line) => line.text) ?? []),
-            ];
-        })
-        .map((lyric) => lyric.trim())
-        .filter(Boolean);
+interface ILocalLyricCandidate {
+    text: string;
+    priority: number;
+    averageLineLength: number;
+    timelineCount: number;
+}
 
-    if (!normalizedLyrics?.length) {
-        return undefined;
-    }
-
-    return normalizedLyrics
-        .join("\n")
+function normalizeLyricNewlines(lyric: string) {
+    return lyric
+        .trim()
         .replace(/\r/g, "")
         .replace(/\\r\\n|\\n|\\r/g, "\n");
+}
+
+function countTimelineTags(lyric: string) {
+    return (lyric.match(LRC_TIMELINE_REG)?.length ?? 0)
+        + (lyric.match(QRC_TIMELINE_REG)?.length ?? 0);
+}
+
+function createLyricCandidate(text: string, priority: number) {
+    const normalizedText = normalizeLyricNewlines(text);
+    if (!normalizedText) {
+        return null;
+    }
+
+    const lines = normalizedText.split("\n").filter(Boolean);
+    return {
+        text: normalizedText,
+        priority,
+        averageLineLength: normalizedText.length / Math.max(lines.length, 1),
+        timelineCount: countTimelineTags(normalizedText),
+    } satisfies ILocalLyricCandidate;
+}
+
+function formatLrcTimestamp(timestamp: number) {
+    const totalMilliseconds = Math.max(0, Math.round(timestamp));
+    const minutes = Math.floor(totalMilliseconds / 60_000);
+    const seconds = Math.floor((totalMilliseconds % 60_000) / 1_000);
+    const milliseconds = totalMilliseconds % 1_000;
+
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(milliseconds).padStart(3, "0")}`;
+}
+
+function createSynchronizedLyricCandidate(lyric: ILyricsTag) {
+    const synchronizedLines = lyric.syncText
+        ?.map((line) => {
+            const text = line.text.trim();
+            if (
+                lyric.timeStampFormat === MILLISECOND_TIMESTAMP_FORMAT
+                && typeof line.timestamp === "number"
+                && Number.isFinite(line.timestamp)
+            ) {
+                return `[${formatLrcTimestamp(line.timestamp)}]${text}`;
+            }
+            return text;
+        })
+        .filter(Boolean);
+
+    if (!synchronizedLines?.length) {
+        return null;
+    }
+
+    const hasMillisecondTimeline =
+        lyric.timeStampFormat === MILLISECOND_TIMESTAMP_FORMAT;
+    const isLyricContent = lyric.contentType === 1;
+    return createLyricCandidate(
+        synchronizedLines.join("\n"),
+        hasMillisecondTimeline ? (isLyricContent ? 300 : 200) : 100,
+    );
+}
+
+export function normalizeLocalLyricText(
+    lyrics?: Array<string | ILyricsTag> | null,
+) {
+    const candidates = lyrics
+        ?.flatMap((lyric) => {
+            if (typeof lyric === "string") {
+                const candidate = createLyricCandidate(lyric, 100);
+                if (candidate?.timelineCount) {
+                    candidate.priority = 400;
+                }
+                return candidate ? [candidate] : [];
+            }
+
+            if (lyric.syncText?.length) {
+                // music-metadata mirrors synchronized lyrics into `text` for
+                // several containers. Using both duplicates every line, while
+                // using `text` alone drops the outer line timestamp.
+                const candidate = createSynchronizedLyricCandidate(lyric);
+                return candidate ? [candidate] : [];
+            }
+
+            const candidate = createLyricCandidate(lyric.text ?? "", 100);
+            if (candidate?.timelineCount) {
+                // A complete USLT/Vorbis LRC is preferable to syllable-level
+                // SYLT entries when a file contains both representations.
+                candidate.priority = 400;
+            }
+            return candidate ? [candidate] : [];
+        }) ?? [];
+
+    return candidates.sort((left, right) =>
+        right.priority - left.priority
+        || right.averageLineLength - left.averageLineLength
+        || right.timelineCount - left.timelineCount
+        || right.text.length - left.text.length)[0]?.text;
+}
+
+export async function parseLocalMusicLyric(filePath: string) {
+    try {
+        const { common } = await parseFile(normalizeLocalFilePath(filePath), {
+            duration: false,
+            skipCovers: true,
+        });
+        return normalizeLocalLyricText(common.lyrics);
+    } catch {
+        return undefined;
+    }
 }
 
 function getLocalAudioQuality(format?: {
@@ -207,7 +302,7 @@ export async function parseLocalMusicItem(
             duration,
             artist: common.artist ?? "未知作者",
             artwork: common.picture?.[0]
-                ? getB64Picture(common.picture[0])
+                ? await createLocalArtworkDataUrl(common.picture[0])
                 : undefined,
             album: common.album ?? "未知专辑",
             url: addFileScheme(normalizedFilePath),

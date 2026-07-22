@@ -1,14 +1,20 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const LyricParser = require("../src/renderer/utils/lyric-parser.ts").default;
 
 const { mapWithConcurrency } = require(
     "../src/common/concurrency-util.ts"
 );
 const {
     getLocalPathComparisonKey,
+    normalizeLocalLyricText,
     normalizeLocalFilePath,
 } = require("../src/common/file-util.ts");
+const {
+    MAX_LOCAL_ARTWORK_BYTES,
+    createLocalArtworkDataUrl,
+} = require("../src/common/local-artwork.ts");
 const {
     BACKUP_SCHEMA,
     BACKUP_VERSION,
@@ -148,6 +154,42 @@ async function testConcurrencyLimit() {
     assert.deepEqual(results, [2, 4, 6, 8, 10, 12, 14]);
 }
 
+async function testLocalArtworkIsBoundedBeforeRuntimeTransfer() {
+    const sharp = require("sharp");
+    const width = 320;
+    const height = 320;
+    const pixels = Buffer.alloc(width * height * 3);
+    let seed = 0x12345678;
+    for (let index = 0; index < pixels.length; index++) {
+        seed ^= seed << 13;
+        seed ^= seed >>> 17;
+        seed ^= seed << 5;
+        pixels[index] = seed & 0xff;
+    }
+    const original = await sharp(pixels, {
+        raw: { width, height, channels: 3 },
+    }).png().toBuffer();
+    assert.ok(original.length > MAX_LOCAL_ARTWORK_BYTES);
+
+    const artwork = await createLocalArtworkDataUrl({
+        format: "image/png",
+        data: original,
+    });
+    assert.match(artwork, /^data:image\/webp;base64,/);
+    assert.ok(
+        Buffer.from(artwork.split(",", 2)[1], "base64").length
+            <= MAX_LOCAL_ARTWORK_BYTES,
+    );
+
+    assert.equal(
+        await createLocalArtworkDataUrl({
+            format: "image/png",
+            data: Buffer.alloc(MAX_LOCAL_ARTWORK_BYTES + 1, 0xff),
+        }),
+        undefined,
+    );
+}
+
 function testWindowsPathNormalization() {
     const normalized = normalizeLocalFilePath(
         path.join(process.cwd(), "fixture", "..", "fixture", "track.mp3"),
@@ -167,6 +209,65 @@ function testWindowsPathNormalization() {
 
     // Case-sensitive platforms keep the resolved path case as identity
     assert.equal(comparisonKey, normalized);
+}
+
+function testLocalSynchronizedLyricsKeepTheirTimeline() {
+    assert.equal(
+        normalizeLocalLyricText([{
+            contentType: 1,
+            timeStampFormat: 2,
+            text: "First line\nSecond line",
+            syncText: [
+                { timestamp: 1_230, text: "First line" },
+                { timestamp: 65_004, text: "Second line" },
+            ],
+        }]),
+        "[00:01.230]First line\n[01:05.004]Second line",
+    );
+
+    assert.equal(
+        normalizeLocalLyricText([{
+            contentType: 1,
+            timeStampFormat: 2,
+            syncText: [
+                { timestamp: 10_000, text: "逐" },
+                { timestamp: 10_200, text: "字" },
+            ],
+        }, {
+            contentType: 1,
+            timeStampFormat: 0,
+            text: "[00:10.000]完整歌词行\n[00:15.500]下一行",
+            syncText: [],
+        }]),
+        "[00:10.000]完整歌词行\n[00:15.500]下一行",
+    );
+
+    assert.equal(
+        normalizeLocalLyricText([{
+            contentType: 1,
+            timeStampFormat: 0,
+            text: "Line one\\nLine two",
+            syncText: [],
+        }]),
+        "Line one\nLine two",
+    );
+
+    const wordTimeline = normalizeLocalLyricText([{
+        contentType: 1,
+        timeStampFormat: 2,
+        text: "认[00:32.075]得[00:32.374]一[00:33.000]",
+        syncText: [{
+            timestamp: 31_824,
+            text: "认[00:32.075]得[00:32.374]一[00:33.000]",
+        }],
+    }]);
+    assert.equal(
+        wordTimeline,
+        "[00:31.824]认[00:32.075]得[00:32.374]一[00:33.000]",
+    );
+    const [parsedWordTimeline] = new LyricParser(wordTimeline).getLyricItems();
+    assert.equal(parsedWordTimeline.lrc, "认得一");
+    assert.equal(parsedWordTimeline.translation, undefined);
 }
 
 function readSource(relativePath) {
@@ -197,6 +298,11 @@ function testArchitectureGuards() {
     assert.match(watcherSource, /nextWatcher\.on\("change"/);
     assert.match(watcherSource, /LOCAL_METADATA_CONCURRENCY = 4/);
 
+    const localMusicSource = readSource("src/renderer/core/local-music/index.ts");
+    assert.match(
+        localMusicSource,
+        /scanDirectories\(selectedDirs, \[\]\)[\s\S]*?musicSheetDB\.transaction\([\s\S]*?localMusicStore\.clear\(\)/,
+    );
     const statisticsSource = readSource(
         "src/renderer/core/listening-statistics/index.ts"
     );
@@ -208,7 +314,9 @@ function testArchitectureGuards() {
 async function main() {
     testBackupFormat();
     await testConcurrencyLimit();
+    await testLocalArtworkIsBoundedBeforeRuntimeTransfer();
     testWindowsPathNormalization();
+    testLocalSynchronizedLyricsKeepTheirTimeline();
     testArchitectureGuards();
     console.log("Phase 4 data architecture tests passed.");
 }

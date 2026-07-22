@@ -24,7 +24,8 @@ assert.doesNotMatch(eslintSource, /"\*\*\/\*\.d\.ts"/);
 assert.match(eslintSource, /files: \["src\/\*\*\/\*\.d\.ts"\]/);
 
 const forgeSource = read("forge.config.ts");
-assert.match(forgeSource, /asar: true/);
+assert.match(forgeSource, /asar:\s*\{/);
+assert.match(forgeSource, /unpack:\s*"\*\*\/node_modules\/@img\/sharp-\*\/\*\*\/\*"/);
 assert.match(forgeSource, /new AutoUnpackNativesPlugin/);
 assert.match(forgeSource, /createFusesPlugin/);
 assert.match(forgeSource, /strictlyRequireAllFuses: true/);

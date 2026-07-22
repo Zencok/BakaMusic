@@ -23,6 +23,15 @@ async function main() {
     assert.equal(ignore("/node_modules/sharp/dist/index.mjs"), true);
     assert.equal(ignore("/node_modules/sharp/src/sharp.cc"), true);
 
+    const forgeSource = fs.readFileSync(
+        path.join(projectRoot, "forge.config.ts"),
+        "utf8",
+    );
+    assert.match(
+        forgeSource,
+        /unpack:\s*"\*\*\/node_modules\/@img\/sharp-\*\/\*\*\/\*"/,
+    );
+
     const sharpMetadata = JSON.parse(fs.readFileSync(
         path.join(projectRoot, "node_modules/sharp/package.json"),
         "utf8",

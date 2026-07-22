@@ -1,6 +1,11 @@
 import { localPluginHash, localPluginName } from "@/common/constant";
 import { Plugin } from "../plugin";
-import { addFileScheme, parseLocalMusicItem, parseLocalMusicItemFolder } from "@/common/file-util";
+import {
+    addFileScheme,
+    parseLocalMusicItem,
+    parseLocalMusicItemFolder,
+    parseLocalMusicLyric,
+} from "@/common/file-util";
 import url from "url";
 import {
     LOCAL_MEDIA_PROTOCOL,
@@ -56,8 +61,12 @@ function localPluginDefine(): IPlugin.IPluginInstance {
             };
         },
         async getLyric(musicItem) {
+            const localFilePath = getLocalMusicFilePath(musicItem);
+            const freshRawLrc = localFilePath
+                ? await parseLocalMusicLyric(localFilePath)
+                : undefined;
             return {
-                rawLrc: musicItem.rawLrc,
+                rawLrc: freshRawLrc ?? musicItem.rawLrc,
             };
         },
         async getMusicInfo(musicBase) {

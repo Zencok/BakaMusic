@@ -374,13 +374,18 @@ async function scanLocalMusicChanges() {
 async function clearAndRescanLocalMusic() {
     const setupToken = localMusicSetupToken;
     const selectedDirs = await getSelectedDirectories();
-    await musicSheetDB.localMusicStore.clear();
     if (setupToken !== localMusicSetupToken || !localMusicActive) {
         return;
     }
-    localMusicListStore.setValue([]);
+    if (!selectedDirs.length) {
+        await musicSheetDB.localMusicStore.clear();
+        if (setupToken === localMusicSetupToken && localMusicActive) {
+            localMusicListStore.setValue([]);
+        }
+        return;
+    }
     const worker = await getLocalFileWatcherWorker();
-    if (!worker || !selectedDirs.length) {
+    if (!worker) {
         return;
     }
     const scanResult = await worker.scanDirectories(selectedDirs, []);
@@ -388,9 +393,18 @@ async function clearAndRescanLocalMusic() {
     if (setupToken !== localMusicSetupToken || !localMusicActive) {
         return;
     }
-    if (optimized.optimizedMusicItems.length) {
-        await musicSheetDB.localMusicStore.bulkPut(optimized.optimizedMusicItems);
-    }
+    await musicSheetDB.transaction(
+        "readwrite",
+        musicSheetDB.localMusicStore,
+        async () => {
+            await musicSheetDB.localMusicStore.clear();
+            if (optimized.optimizedMusicItems.length) {
+                await musicSheetDB.localMusicStore.bulkPut(
+                    optimized.optimizedMusicItems,
+                );
+            }
+        },
+    );
     if (setupToken !== localMusicSetupToken || !localMusicActive) {
         return;
     }

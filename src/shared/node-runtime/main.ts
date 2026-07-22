@@ -45,11 +45,14 @@ interface WatcherState {
     knownPaths: string[];
 }
 
-function payloadBytes(value: unknown) {
+function payloadBytes(value: unknown): number | null {
     try {
-        return Buffer.byteLength(JSON.stringify(value), "utf8");
+        const serialized = JSON.stringify(value);
+        return serialized === undefined
+            ? null
+            : Buffer.byteLength(serialized, "utf8");
     } catch {
-        throw new Error("Node runtime payload is not serializable");
+        return null;
     }
 }
 
@@ -323,7 +326,10 @@ class NodeRuntimeManager {
         }
         this.pending.delete(message.requestId);
         clearTimeout(pending.timer);
-        if (payloadBytes(message) > MAX_RPC_BYTES) {
+        const responseBytes = payloadBytes(message);
+        if (responseBytes === null) {
+            pending.reject(new Error("Node runtime response is not serializable"));
+        } else if (responseBytes > MAX_RPC_BYTES) {
             pending.reject(new Error("Node runtime response exceeds the limit"));
         } else if (message.error) {
             const error = new Error(String(message.error.message ?? "Node runtime error"));
@@ -337,10 +343,12 @@ class NodeRuntimeManager {
 
     private sendToMainWindow(channel: string, payload: unknown) {
         const mainWindow = this.windowManager.mainWindow;
+        const bytes = payloadBytes(payload);
         if (
             mainWindow
             && !mainWindow.isDestroyed()
-            && payloadBytes(payload) <= MAX_RPC_BYTES
+            && bytes !== null
+            && bytes <= MAX_RPC_BYTES
         ) {
             mainWindow.webContents.send(channel, payload);
         }
@@ -360,7 +368,11 @@ class NodeRuntimeManager {
         }
         const requestId = `node-${++this.requestCounter}`;
         const message = { type: "request", requestId, operation, payload };
-        if (payloadBytes(message) > MAX_RPC_BYTES) {
+        const requestBytes = payloadBytes(message);
+        if (requestBytes === null) {
+            throw new Error("Node runtime request is not serializable");
+        }
+        if (requestBytes > MAX_RPC_BYTES) {
             throw new Error("Node runtime request exceeds the limit");
         }
         return new Promise<unknown>((resolve, reject) => {

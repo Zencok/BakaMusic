@@ -54,7 +54,11 @@ const nativeSourceIgnorePlugin = {
 const config: ForgeConfig = {
     packagerConfig: {
         appBundleId: "com.zencok.bakamusic",
-        asar: true,
+        asar: {
+            // sharp's native addon loads sibling DLL/shared-library files at
+            // runtime; the whole platform package must live outside app.asar.
+            unpack: "**/node_modules/@img/sharp-*/**/*",
+        },
         icon: path.resolve(__dirname, "res/logo"),
         executableName: "BakaMusic",
         extraResource: [path.resolve(__dirname, "res")],
