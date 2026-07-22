@@ -35,7 +35,7 @@ const defaultLyricOrder: DownloadLyricOrderItem[] = [
 
 export function getDefaultDownloadTagWriteOptions(): IDownloadTagWriteOptions {
     return {
-        writeMetadata: false,
+        writeMetadata: true,
         writeMetadataCover: true,
         writeMetadataLyric: true,
         downloadLyricFile: false,

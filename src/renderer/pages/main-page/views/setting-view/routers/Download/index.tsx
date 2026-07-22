@@ -307,7 +307,7 @@ function FileNamingSettingGroup() {
 
 export default function Download() {
     const { t } = useTranslation();
-    const writeMetadata = useAppConfig("download.writeMetadata") ?? false;
+    const writeMetadata = useAppConfig("download.writeMetadata") ?? true;
     const writeMetadataLyric = useAppConfig("download.writeMetadataLyric") ?? true;
     const downloadLyricFile = useAppConfig("download.downloadLyricFile") ?? false;
     const showLyricSettings = (writeMetadata && writeMetadataLyric) || downloadLyricFile;

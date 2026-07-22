@@ -17,7 +17,7 @@ const _defaultAppConfig: IAppConfig =  {
     "normal.maxHistoryLength": 30,
     "download.defaultQuality": "flac",
     "download.whenQualityMissing": "lower",
-    "download.writeMetadata": false,
+    "download.writeMetadata": true,
     "download.writeMetadataCover": true,
     "download.writeMetadataLyric": true,
     "download.downloadLyricFile": false,
