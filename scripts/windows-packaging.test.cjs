@@ -82,6 +82,15 @@ async function run() {
         packageJson.devDependencies["@electron-forge/maker-base"],
         "7.11.2",
     );
+    const nsisMakerSource = fs.readFileSync(
+        path.join(projectRoot, "config/forge-nsis-maker.ts"),
+        "utf8",
+    );
+    assert.match(
+        nsisMakerSource,
+        /publish:\s*"never"/,
+        "NSIS maker must disable electron-builder implicit tag publish",
+    );
     assert.match(workflowSource, /npm run make -- .*--skip-package/);
     assert.match(workflowSource, /\.nsis\.7z/);
     assert.match(workflowSource, /-web-setup\.exe/);

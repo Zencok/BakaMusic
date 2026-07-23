@@ -25,6 +25,16 @@ async function run() {
     );
     assert.equal(appImageMaker.config.appImage.compression, "xz");
 
+    const appImageMakerSource = fs.readFileSync(
+        path.join(projectRoot, "config/forge-appimage-maker.ts"),
+        "utf8",
+    );
+    assert.match(
+        appImageMakerSource,
+        /publish:\s*"never"/,
+        "AppImage maker must disable electron-builder implicit tag publish",
+    );
+
     assert.match(workflowSource, /find \.\/out\/make -name '\*\.AppImage'/);
     assert.match(workflowSource, /BakaMusic-\$\{VERSION\}-\$\{\{ matrix\.asset_suffix \}\}\.AppImage/);
     assert.match(workflowSource, /BakaMusic-\$\{VERSION\}-\$\{\{ matrix\.asset_suffix \}\}\.deb/);

@@ -67,6 +67,9 @@ export class MakerNsis extends MakerBase<MakerNsisConfig> {
         return buildForge(
             { dir: options.dir },
             {
+                // Release assets are uploaded by GitHub Actions (gh release),
+                // not by electron-builder's implicit on-tag publisher.
+                publish: "never",
                 win: targets.map((target) => `${target}:${options.targetArch}`),
                 config: {
                     appId: this.config.appId,
