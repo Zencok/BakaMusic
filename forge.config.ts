@@ -10,6 +10,8 @@ import { mainConfig } from "./config/webpack.main.config";
 import { rendererConfig } from "./config/webpack.renderer.config";
 import { createExternalRuntimePlugin } from "./config/forge-external-runtime-plugin";
 import { createFusesPlugin } from "./config/forge-fuses-plugin";
+import { MakerAppImage } from "./config/forge-appimage-maker";
+import { MakerNsis } from "./config/forge-nsis-maker";
 import path from "path";
 
 const requireReleaseSigning = process.env.REQUIRE_RELEASE_SIGNING === "true";
@@ -86,11 +88,37 @@ const config: ForgeConfig = {
     },
     rebuildConfig: {},
     makers: [
-        // new MakerSquirrel({
-        //   exe: "BakaMusic",
-        //   setupIcon: path.resolve(__dirname, "resources/logo.ico"),
-        //   setupMsi: "BakaMusicInstaller",
-        // }),
+        new MakerNsis({
+            appId: "com.zencok.bakamusic",
+            compression: "maximum",
+            targets: ["nsis", "nsis-web"],
+            webPackageBaseUrl: "https://github.com/Zencok/BakaMusic/releases/download",
+            webPackageName: "bakamusic",
+            win: {
+                icon: path.resolve(__dirname, "res/logo.ico"),
+            },
+            nsis: {
+                artifactName: "BakaMusic-${version}-win32-${arch}-setup.${ext}",
+                oneClick: false,
+                perMachine: false,
+                selectPerMachineByDefault: true,
+                allowElevation: true,
+                allowToChangeInstallationDirectory: true,
+                include: path.resolve(__dirname, "release/installer.nsh"),
+                installerIcon: path.resolve(__dirname, "res/logo.ico"),
+                uninstallerIcon: path.resolve(__dirname, "res/logo.ico"),
+                installerLanguages: ["en_US", "zh_CN"],
+                multiLanguageInstaller: true,
+                createDesktopShortcut: true,
+                createStartMenuShortcut: true,
+                shortcutName: "BakaMusic",
+                runAfterFinish: true,
+                deleteAppDataOnUninstall: false,
+            },
+            nsisWeb: {
+                artifactName: "BakaMusic-${version}-win32-${arch}-web-setup.${ext}",
+            },
+        }),
         new MakerZIP({}, ["darwin"]),
         new MakerDMG(
             {
@@ -105,6 +133,20 @@ const config: ForgeConfig = {
                 name: "BakaMusic",
                 bin: "BakaMusic",
                 mimeType: ["x-scheme-handler/bakamusic"],
+            },
+        }),
+        new MakerAppImage({
+            appId: "com.zencok.bakamusic",
+            compression: "maximum",
+            linux: {
+                category: "AudioVideo",
+                executableName: "BakaMusic",
+                icon: path.resolve(__dirname, "res/logo.png"),
+                mimeTypes: ["x-scheme-handler/bakamusic"],
+            },
+            appImage: {
+                artifactName: "BakaMusic-${version}-linux-${arch}.${ext}",
+                compression: "xz",
             },
         }),
     ],

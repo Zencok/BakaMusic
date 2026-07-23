@@ -1223,17 +1223,14 @@ function findReleaseAsset(
     arch: string,
 ): IGitHubReleaseAsset | undefined {
     if (platform === "win32") {
-        // 优先非 legacy 安装包，排除 portable
-        return (
-            assets.find((a) =>
-                a.name.includes("win32-x64") &&
-                a.name.endsWith("-setup.exe") &&
-                !a.name.includes("legacy"),
-            ) ||
-            assets.find((a) =>
-                a.name.includes("win32-x64") && a.name.endsWith("-setup.exe"),
-            )
+        // 应用内更新始终下载完整离线包，Web 安装器只用于首次安装。
+        const offlineInstallers = assets.filter((asset) =>
+            asset.name.includes("win32-x64")
+            && asset.name.endsWith("-setup.exe")
+            && !asset.name.includes("-web-setup"),
         );
+        return offlineInstallers.find((asset) => !asset.name.includes("legacy"))
+            ?? offlineInstallers[0];
     }
     if (platform === "darwin") {
         const archStr = arch === "arm64" ? "arm64" : "x64";

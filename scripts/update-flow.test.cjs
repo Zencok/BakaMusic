@@ -65,6 +65,7 @@ assert.match(updateMainSource, /"https:\/\/github\.com\/Zencok\/BakaMusic\/relea
 assert.match(updateMainSource, /throw new Error\("Release has no valid assets"\)/);
 assert.match(updateMainSource, /createReleaseFromLatestRedirect\(response\.headers\.location\)/);
 assert.match(updateMainSource, /BakaMusic-\$\{version\}-win32-x64-setup\.exe/);
+assert.match(updateMainSource, /!asset\.name\.includes\("-web-setup"\)/);
 assert.doesNotMatch(
     updateMainSource,
     /@shared\/utils\/install-update",\s*\(_,\s*filePath:/,
