@@ -198,6 +198,7 @@ function testPlaybackBoundaryIntegration() {
     assert.match(nativeHost, /runCommand\("loadfile", command\.url, "replace"\)/);
     assert.match(nativeHost, /http-header-fields/);
     assert.match(nativeHost, /rubberband=pitch=/);
+    assert.match(nativeHost, /\["autoload-files", "no"\]/);
     assert.doesNotMatch(nativeHost, /child_process|spawn\(/);
 
     const runtimeManifest = JSON.parse(read("scripts/media-runtime-manifest.json"));

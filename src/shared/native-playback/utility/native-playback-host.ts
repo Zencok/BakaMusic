@@ -163,6 +163,9 @@ for (const [name, value] of [
     ["pause", "yes"],
     ["video", "no"],
     ["audio-display", "no"],
+    // Lyrics and artwork are managed by BakaMusic. Avoid probing sibling
+    // subtitle files, whose guessed legacy encoding can produce lavf warnings.
+    ["autoload-files", "no"],
     ["audio-pitch-correction", "yes"],
 ] as const) {
     setOption(name, value);
