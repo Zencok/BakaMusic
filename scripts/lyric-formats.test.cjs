@@ -1,9 +1,18 @@
 const assert = require("node:assert/strict");
-const { DOMParser } = require("@xmldom/xmldom");
+const {
+    DOMImplementation,
+    DOMParser,
+    XMLSerializer,
+} = require("@xmldom/xmldom");
 
 global.DOMParser = DOMParser;
+global.document = { implementation: new DOMImplementation() };
+global.XMLSerializer = XMLSerializer;
 
 const LyricParser = require("../src/renderer/utils/lyric-parser").default;
+const {
+    serializeEmbeddedLyric,
+} = require("../src/renderer/utils/embedded-lyric");
 
 function parse(raw, format) {
     return new LyricParser(raw, { format }).getLyricItems();
@@ -179,6 +188,66 @@ function parse(raw, format) {
     assert.equal(lines[1].lrc, "背景");
     assert.equal(lines[1].isBG, true);
     assert.equal(parser.getMeta().musicName, "TTML Song");
+}
+
+{
+    const serialized = serializeEmbeddedLyric({
+        getLyricItems: () => [{
+            time: 1,
+            endTime: 2,
+            duration: 1,
+            index: 0,
+            lrc: "Main lyric",
+            translation: "主歌词",
+            romanization: "main lyric",
+            hasWordTimeline: true,
+            words: [{
+                text: "Main ",
+                startTime: 1,
+                endTime: 1.5,
+                duration: 0.5,
+                index: 0,
+                romanWord: "main ",
+            }, {
+                text: "lyric",
+                startTime: 1.5,
+                endTime: 2,
+                duration: 0.5,
+                index: 1,
+                romanWord: "lyric",
+            }],
+        }, {
+            time: 1.2,
+            endTime: 1.8,
+            duration: 0.6,
+            index: 1,
+            lrc: "Background",
+            isBG: true,
+        }],
+        getMeta: () => ({ musicName: "Embedded Fixture" }),
+    });
+    const roundTrip = new LyricParser(serialized, { format: "ttml" });
+    const lines = roundTrip.getLyricItems();
+
+    assert.match(serialized, /<tt[\s>]/);
+    assert.doesNotMatch(serialized, /xmlns=""/);
+    assert.equal(lines[0].lrc, "Main lyric");
+    assert.equal(lines[0].translation, "主歌词");
+    assert.equal(lines[0].romanization, "main lyric");
+    assert.equal(lines[0].hasWordTimeline, true);
+    assert.equal(lines[1].lrc, "Background");
+    assert.equal(lines[1].isBG, true);
+    assert.equal(roundTrip.getMeta().musicName, "Embedded Fixture");
+
+    const browserNamespaceReset = serialized
+        .replace("<head>", "<head xmlns=\"\">")
+        .replace("<body ", "<body xmlns=\"\" ");
+    const repairedLines = new LyricParser(
+        browserNamespaceReset,
+        { format: "ttml" },
+    ).getLyricItems();
+    assert.equal(repairedLines[0].lrc, "Main lyric");
+    assert.equal(repairedLines[1].lrc, "Background");
 }
 
 console.log("lyric-formats: all assertions passed");

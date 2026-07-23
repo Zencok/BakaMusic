@@ -194,6 +194,8 @@ async function writeMetadata(
         } catch {
             // pass
         }
+    } else {
+        Id3v2Settings.forceDefaultVersion = false;
     }
 
     const songFile = TagLibFile.createFromPath(filePath);

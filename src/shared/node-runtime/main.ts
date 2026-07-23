@@ -6,6 +6,7 @@ import {
 } from "electron";
 import path from "path";
 import type { IDownloadPostprocessPayload } from "@/common/download-postprocess";
+import { supportLocalMediaType } from "@/common/constant";
 import type { IWindowManager } from "@/types/window-manager";
 import {
     assertBoolean,
@@ -23,6 +24,7 @@ const MAX_PENDING_REQUESTS = 256;
 const MAX_RPC_BYTES = 128 * 1024 * 1024;
 const MAX_RUNTIME_WORKING_SET_KB = 512 * 1024;
 const MAX_MEDIA_HEADERS = 64;
+const MAX_EMBEDDED_LYRIC_BYTES = 16 * 1024 * 1024;
 const forbiddenMediaHeaders = new Set([
     "connection",
     "content-length",
@@ -163,6 +165,26 @@ class NodeRuntimeManager {
             return this.request("postprocess-download", {
                 filePath: targetPath,
                 payload: payload as IDownloadPostprocessPayload | null,
+            });
+        });
+        ipcMain.handle("@shared/node-runtime/overwrite-embedded-lyric", async (
+            event,
+            filePath,
+            lyricContent,
+        ) => {
+            assertIpcSender(event, ["main"]);
+            assertString(
+                lyricContent,
+                "embedded lyric content",
+                MAX_EMBEDDED_LYRIC_BYTES,
+            );
+            assertIpcPayload({ lyricContent }, MAX_EMBEDDED_LYRIC_BYTES);
+            const targetPath = assertPathAccess(filePath, {
+                extensions: supportLocalMediaType,
+            });
+            return this.request("overwrite-embedded-lyric", {
+                filePath: targetPath,
+                lyricContent,
             });
         });
         ipcMain.handle("@shared/node-runtime/watcher-setup", async (event, initPaths, knownPaths) => {

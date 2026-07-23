@@ -62,6 +62,14 @@ async function postprocessDownloadedFile(
     await ipcRenderer.invoke("@shared/node-runtime/postprocess-download", filePath, payload);
 }
 
+async function overwriteEmbeddedLyric(filePath: string, lyricContent: string) {
+    await ipcRenderer.invoke(
+        "@shared/node-runtime/overwrite-embedded-lyric",
+        filePath,
+        lyricContent,
+    );
+}
+
 async function setupWatcher(initPaths: string[] = [], knownPaths: string[] = []) {
     await ipcRenderer.invoke("@shared/node-runtime/watcher-setup", initPaths, knownPaths);
 }
@@ -94,6 +102,7 @@ export const mod = {
     downloadFile,
     abortDownload,
     postprocessDownloadedFile,
+    overwriteEmbeddedLyric,
     setupWatcher,
     closeWatcher,
     changeWatchPath,

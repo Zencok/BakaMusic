@@ -268,6 +268,28 @@ function testLocalSynchronizedLyricsKeepTheirTimeline() {
     const [parsedWordTimeline] = new LyricParser(wordTimeline).getLyricItems();
     assert.equal(parsedWordTimeline.lrc, "认得一");
     assert.equal(parsedWordTimeline.translation, undefined);
+
+    const embeddedTtml = "<tt xmlns=\"http://www.w3.org/ns/ttml\"><body><div>"
+        + "<p begin=\"00:01.000\" end=\"00:02.000\">完整歌词</p>"
+        + "</div></body></tt>";
+    assert.equal(
+        normalizeLocalLyricText([{
+            contentType: 1,
+            timeStampFormat: 2,
+            syncText: [
+                { timestamp: 1_000, text: "完" },
+                { timestamp: 1_200, text: "整" },
+                { timestamp: 1_400, text: "歌" },
+                { timestamp: 1_600, text: "词" },
+            ],
+        }, {
+            contentType: 1,
+            timeStampFormat: 0,
+            text: embeddedTtml,
+            syncText: [],
+        }]),
+        embeddedTtml,
+    );
 }
 
 function readSource(relativePath) {

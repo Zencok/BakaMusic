@@ -284,3 +284,13 @@ pending
 - **Bug**: Adjacent SYLT timestamps dropped originals; short romanization and PV metadata displaced main lyrics; zero-duration lines faded immediately.
 - **Files**: 2 files
 - **Tests**: five real local samples; TypeScript; ESLint; full regression suite; diff check
+
+## 2026-07-23T23:31:52.1532010+08:00 — feat(lyrics): write linked lyrics into local files
+pending
+- **Context-Id**: 420faf02-fcf1-4960-b367-e10b2b4dff01
+- **Decision**: Serialize the displayed linked lyric as rich TTML and clear the association only after a verified metadata write.
+- **Decision**: Route local tag mutation through validated NodeRuntime IPC with backup, rollback, and read-back verification.
+- **Decision**: Remove stale ID3 SYLT/USLT frames and prefer complete TTML, including compatibility repair for prior browser namespace resets.
+- **Bug**: Old synchronized frames were selected as hundreds of one-word lines after overwrite; complete TTML now wins and old frames are removed.
+- **Files**: 15 files
+- **Tests**: TypeScript; ESLint; full regression suite; FLAC/MP3/M4A/WAV metadata round-trip; diff check; package bundles built before active-dev finalization collision

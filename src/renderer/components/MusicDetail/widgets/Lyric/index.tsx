@@ -4,7 +4,7 @@ import { mapLyricLinesToAml } from "@/common/amll-lyric";
 import AppleMusicLyricPlayer from "@/renderer/components/AppleMusicLyricPlayer";
 import { showCustomContextMenu } from "@/renderer/components/ContextMenu";
 import Loading from "@/renderer/components/Loading";
-import { showModal } from "@/renderer/components/Modal";
+import { hideModal, showModal } from "@/renderer/components/Modal";
 import SvgAsset from "@/renderer/components/SvgAsset";
 import { getLinkedLyric, unlinkLyric } from "@/renderer/core/link-lyric";
 import trackPlayer from "@renderer/core/track-player";
@@ -40,6 +40,10 @@ import {
 } from "@/common/download-postprocess";
 import { resolveFilePath } from "@/common/path-util";
 import { getGlobalContext } from "@shared/global-context/renderer";
+import nodeRuntime from "@shared/node-runtime/renderer";
+import isLocalMusic from "@/renderer/utils/is-local-music";
+import { serializeEmbeddedLyric } from "@/renderer/utils/embedded-lyric";
+import { toError } from "@/common/error-util";
 
 type MusicDetailCoverStyle = "cover" | "vinyl";
 type MusicDetailVinylTonearm = "none" | "classic" | "glass";
@@ -99,7 +103,7 @@ export default function Lyric({ active, playerReady }: ILyricProps) {
             x,
             y,
             width: 244,
-            height: 328,
+            height: currentMusic && isLocalMusic(currentMusic) ? 366 : 328,
             component: (
                 <LyricContextMenu
                     lyricParser={lyricParser}
@@ -107,7 +111,7 @@ export default function Lyric({ active, playerReady }: ILyricProps) {
                 ></LyricContextMenu>
             ),
         });
-    }, [lyricParser]);
+    }, [currentMusic, lyricParser]);
 
     return (
         <div className="music-detail-lyric-panel">
@@ -405,6 +409,12 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
     const currentMusicRef = useRef<IMusic.IMusicItem>(
         trackPlayer.currentMusic ?? ({} as any),
     );
+    const currentMusic = currentMusicRef.current;
+    const localMusicPath = currentMusic.localPath || currentMusic.$$localPath;
+    const canOverwriteEmbeddedLyric = !!linkedLyricInfo
+        && !!lyricParser
+        && !!localMusicPath
+        && isLocalMusic(currentMusic);
 
     useEffect(() => {
         let cancelled = false;
@@ -502,6 +512,58 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
         } catch {
             toast.error(t("music_detail.lyric_ctx_download_fail"));
         }
+    }
+
+    function confirmOverwriteEmbeddedLyric() {
+        if (!canOverwriteEmbeddedLyric || !lyricParser || !localMusicPath) {
+            return;
+        }
+
+        let lyricContent = "";
+        try {
+            lyricContent = serializeEmbeddedLyric(lyricParser);
+        } catch (error) {
+            toast.error(
+                `${t("music_detail.overwrite_embedded_lyric_failed")}: ${
+                    toError(error).message
+                }`,
+            );
+            return;
+        }
+        if (!lyricContent.trim()) {
+            toast.error(t("music_detail.overwrite_embedded_lyric_failed"));
+            return;
+        }
+
+        showModal("Reconfirm", {
+            title: t("music_detail.overwrite_embedded_lyric"),
+            content: t("music_detail.overwrite_embedded_lyric_confirm", {
+                title: currentMusic.title,
+            }),
+            async onConfirm() {
+                hideModal();
+                try {
+                    await nodeRuntime.overwriteEmbeddedLyric(
+                        localMusicPath,
+                        lyricContent,
+                    );
+                    await unlinkLyric(currentMusic);
+                    setLinkedLyricInfo(null);
+                    if (trackPlayer.isCurrentMusic(currentMusic)) {
+                        await trackPlayer.fetchCurrentLyric(true);
+                    }
+                    toast.success(
+                        t("music_detail.overwrite_embedded_lyric_success"),
+                    );
+                } catch (error) {
+                    toast.error(
+                        `${t("music_detail.overwrite_embedded_lyric_failed")}: ${
+                            toError(error).message
+                        }`,
+                    );
+                }
+            },
+        });
     }
 
     return (
@@ -621,6 +683,16 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
                         : t("music_detail.search_lyric")}
                 </span>
             </div>
+            {isLocalMusic(currentMusic) ? (
+                <div
+                    className="lyric-ctx-menu--row-container"
+                    role="button"
+                    data-disabled={!canOverwriteEmbeddedLyric}
+                    onClick={confirmOverwriteEmbeddedLyric}
+                >
+                    {t("music_detail.overwrite_embedded_lyric")}
+                </div>
+            ) : null}
             <div
                 className="lyric-ctx-menu--row-container"
                 role="button"
@@ -632,8 +704,9 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
 
                     try {
                         await unlinkLyric(currentMusicRef.current);
+                        setLinkedLyricInfo(null);
                         if (trackPlayer.isCurrentMusic(currentMusicRef.current)) {
-                            trackPlayer.fetchCurrentLyric(true);
+                            await trackPlayer.fetchCurrentLyric(true);
                         }
                         toast.success(t("music_detail.toast_media_lyric_unlinked"));
                     } catch {

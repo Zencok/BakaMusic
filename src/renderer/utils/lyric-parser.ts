@@ -454,7 +454,11 @@ function parseWithAmlLibraries(
 
     try {
         if (format === "ttml") {
-            const ttmlResult = TTMLParser.parse(raw);
+            // Repair TTML emitted by browser XMLSerializer when a generator
+            // created child elements without an explicit namespace. Removing
+            // the empty reset lets them inherit the root TTML namespace.
+            const normalizedTtml = raw.replace(/\sxmlns=(?:""|'')/g, "");
+            const ttmlResult = TTMLParser.parse(normalizedTtml);
             const amllResult = toAmllLyrics(ttmlResult);
             const meta = Object.fromEntries(amllResult.metadata.map(([key, values]) => [
                 key,
@@ -462,8 +466,21 @@ function parseWithAmlLibraries(
             ]));
             const hasWordTimeline = ttmlResult.metadata.timingMode === "Word"
                 || amllResult.lines.some((line) => line.words.length > 1);
+            const items = convertAmlLyricLines(amllResult.lines, hasWordTimeline);
+            const ttmlLyricBases = ttmlResult.lines.flatMap((line) => [
+                line,
+                ...(line.backgroundVocal ? [line.backgroundVocal] : []),
+            ]);
+            items.forEach((item, index) => {
+                const romanization = ttmlLyricBases[index]?.romanizations?.[0]?.text;
+                if (romanization?.trim()) {
+                    // toAmllLyrics aligns word-level romanization onto words and
+                    // drops syllable spacing. Keep the source's complete text too.
+                    item.romanization = romanization;
+                }
+            });
             return {
-                items: convertAmlLyricLines(amllResult.lines, hasWordTimeline),
+                items,
                 meta,
                 preserveVocalLayout: true,
             };

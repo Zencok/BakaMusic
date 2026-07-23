@@ -114,4 +114,25 @@ assert.match(
 assert.match(musicListStyleSource, /\[data-scrolling="true"\]/);
 assert.doesNotMatch(musicListStyleSource, /will-change:\s*transform/);
 
+const lyricContextMenuSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/MusicDetail/widgets/Lyric/index.tsx",
+), "utf8");
+const nodeRuntimeMainSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/shared/node-runtime/main.ts",
+), "utf8");
+const embeddedLyricWriterSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/webworkers/embedded-lyric.ts",
+), "utf8");
+assert.match(lyricContextMenuSource, /overwriteEmbeddedLyric/);
+assert.match(lyricContextMenuSource, /await unlinkLyric\(currentMusic\)/);
+assert.match(nodeRuntimeMainSource, /@shared\/node-runtime\/overwrite-embedded-lyric/);
+assert.match(nodeRuntimeMainSource, /extensions: supportLocalMediaType/);
+assert.match(embeddedLyricWriterSource, /bakamusic-lyric-/);
+assert.match(embeddedLyricWriterSource, /Embedded lyric verification failed/);
+assert.match(embeddedLyricWriterSource, /songFile\.dispose\(\)/);
+assert.match(embeddedLyricWriterSource, /removeFrames\(Id3v2FrameIdentifiers\.SYLT\)/);
+
 console.log("runtime-performance: all assertions passed");

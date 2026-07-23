@@ -40,6 +40,7 @@ const specialEncoding = ["GB2312"];
 const MILLISECOND_TIMESTAMP_FORMAT = 2;
 const LRC_TIMELINE_REG = /\[\d{1,3}:\d{2}(?:\.\d{1,3})?\]/g;
 const QRC_TIMELINE_REG = /\[\d+,\d+\]/g;
+const TTML_LYRIC_REG = /<(?:[a-zA-Z][\w.-]*:)?tt(?:\s|>)/i;
 
 interface ILocalLyricCandidate {
     text: string;
@@ -73,6 +74,18 @@ function createLyricCandidate(text: string, priority: number) {
         averageLineLength: normalizedText.length / Math.max(lines.length, 1),
         timelineCount: countTimelineTags(normalizedText),
     } satisfies ILocalLyricCandidate;
+}
+
+function prioritizeCompleteLyric(candidate: ILocalLyricCandidate) {
+    if (TTML_LYRIC_REG.test(candidate.text)) {
+        // A newly embedded AMLL TTML document is the complete source. Some
+        // MP3 files also retain an older SYLT frame whose entries are words,
+        // and selecting that frame would render every word as a separate line.
+        candidate.priority = 500;
+    } else if (candidate.timelineCount) {
+        candidate.priority = 400;
+    }
+    return candidate;
 }
 
 function formatLrcTimestamp(timestamp: number) {
@@ -119,10 +132,7 @@ export function normalizeLocalLyricText(
         ?.flatMap((lyric) => {
             if (typeof lyric === "string") {
                 const candidate = createLyricCandidate(lyric, 100);
-                if (candidate?.timelineCount) {
-                    candidate.priority = 400;
-                }
-                return candidate ? [candidate] : [];
+                return candidate ? [prioritizeCompleteLyric(candidate)] : [];
             }
 
             if (lyric.syncText?.length) {
@@ -134,12 +144,9 @@ export function normalizeLocalLyricText(
             }
 
             const candidate = createLyricCandidate(lyric.text ?? "", 100);
-            if (candidate?.timelineCount) {
-                // A complete USLT/Vorbis LRC is preferable to syllable-level
-                // SYLT entries when a file contains both representations.
-                candidate.priority = 400;
-            }
-            return candidate ? [candidate] : [];
+            // A complete USLT/Vorbis lyric is preferable to syllable-level
+            // SYLT entries when a file contains both representations.
+            return candidate ? [prioritizeCompleteLyric(candidate)] : [];
         }) ?? [];
 
     return candidates.sort((left, right) =>

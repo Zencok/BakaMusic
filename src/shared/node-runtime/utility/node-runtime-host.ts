@@ -11,6 +11,7 @@ import {
     scanDirectories,
     setupWatcher,
 } from "@/webworkers/local-file-watcher";
+import { overwriteEmbeddedLyric } from "@/webworkers/embedded-lyric";
 
 interface RuntimeRequest {
     type: "request";
@@ -53,6 +54,8 @@ async function handleRequest(request: RuntimeRequest) {
             return abortDownload(payload.taskId, payload.removePartial);
         case "postprocess-download":
             return postprocessDownloadedFile(payload.filePath, payload.payload);
+        case "overwrite-embedded-lyric":
+            return overwriteEmbeddedLyric(payload.filePath, payload.lyricContent);
         case "watcher-setup":
             return setupWatcher(payload.initPaths, payload.knownPaths);
         case "watcher-close":
