@@ -114,7 +114,7 @@
     }
   }
 
-  &[data-ai="true"] {
+  &[data-featured="true"] {
     background:
       linear-gradient(135deg, var(--theme-panel-row-bg), transparent),
       var(--theme-panel-row-bg);
@@ -168,13 +168,13 @@
 .quality-select-popover-option-title {
   font-size: 0.86rem;
   font-weight: 650;
-  line-height: 1;
+  line-height: 1.25;
 }
 
 .quality-select-popover-option-size {
   font-size: 0.72rem;
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.25;
   color: var(--theme-popover-text-secondary);
 }
 

@@ -75,9 +75,9 @@
         "music_quality_flac24bit": "無損音質 FLAC Hires",
         "music_quality_hires": "無損音質 Hires",
         "music_quality_vinyl": "無損音質 Vinyl",
-        "music_quality_dolby": "無損音質 Dolby",
-        "music_quality_atmos": "無損音質 Atmos",
-        "music_quality_atmos_plus": "無損音質 Atmos 2.0",
+        "music_quality_dolby": "空間音訊 Dolby",
+        "music_quality_atmos": "空間音訊 Atmos",
+        "music_quality_atmos_plus": "空間音訊 Atmos 2.0",
         "music_quality_master": "無損音質 Master",
         "music_repeat_mode": "重複模式",
         "music_repeat_mode_loop": "單曲重複",
@@ -93,7 +93,8 @@
         "sort_desc": "降序",
         "sort_by": "排序",
         "sort_custom": "自訂",
-        "ai_upscale": "AI 升頻"
+        "spatial_audio": "空間音訊",
+        "master_quality": "Master"
     },
     "plugin": {
         "prop_user_variable": "用戶變量",

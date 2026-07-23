@@ -4,6 +4,19 @@ const {
     formatQualitySize,
     getBestMusicQualityInfo,
 } = require("../src/renderer/utils/music-quality-metadata.ts");
+const {
+    qualityKeys,
+    qualityText,
+} = require("../src/common/constant.ts");
+
+assert.deepEqual(qualityKeys.slice(-4), [
+    "dolby",
+    "atmos",
+    "atmos_plus",
+    "master",
+]);
+assert.equal(qualityText.dolby, "空间音频 Dolby");
+assert.equal(qualityText.master, "无损音质 Master");
 
 function music(overrides = {}) {
     return {
@@ -35,6 +48,16 @@ assert.deepEqual(getBestMusicQualityInfo(music({
     quality: "master",
     label: "MS",
     sizeText: "10.0MB",
+});
+
+assert.deepEqual(getBestMusicQualityInfo(music({
+    source: {
+        dolby: { url: "fixture://dolby", size: 8 * 1024 * 1024 },
+    },
+})), {
+    quality: "dolby",
+    label: "DB",
+    sizeText: "8.0MB",
 });
 
 assert.deepEqual(getBestMusicQualityInfo(music({

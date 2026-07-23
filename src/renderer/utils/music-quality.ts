@@ -22,14 +22,18 @@ interface IResolvedMusicQualityChoices {
     choices: IMusicQualityChoice[];
 }
 
-const aiUpscaleQualityKeys: IMusic.IQualityKey[] = [
-    "master",
-    "atmos_plus",
+const spatialAudioQualityKeys: IMusic.IQualityKey[] = [
+    "dolby",
     "atmos",
+    "atmos_plus",
 ];
 
-export function isAiUpscaleQuality(quality: IMusic.IQualityKey) {
-    return aiUpscaleQualityKeys.includes(quality);
+export function isSpatialAudioQuality(quality: IMusic.IQualityKey) {
+    return spatialAudioQualityKeys.includes(quality);
+}
+
+export function isMasterQuality(quality: IMusic.IQualityKey) {
+    return quality === "master";
 }
 
 export function getQualityDisplayText(

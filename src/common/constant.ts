@@ -49,7 +49,7 @@ export enum RequestStateCode {
     ERROR = 0b10000000,
 }
 
-/** 音质列表 */
+/** 音质列表（从低到高；空间音频档从 Dolby 开始） */
 export const qualityKeys: IMusic.IQualityKey[] = [
     "mgg",
     "128k",
@@ -75,9 +75,9 @@ export const qualityText: Record<IMusic.IQualityKey, string> = {
     "flac24bit": "无损音质 FLAC Hires",
     "hires": "无损音质 Hires",
     "vinyl": "无损音质 Vinyl",
-    "dolby": "无损音质 Dolby",
-    "atmos": "无损音质 Atmos",
-    "atmos_plus": "无损音质 Atmos 2.0",
+    "dolby": "空间音频 Dolby",
+    "atmos": "空间音频 Atmos",
+    "atmos_plus": "空间音频 Atmos 2.0",
     "master": "无损音质 Master",
 };
 

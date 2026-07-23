@@ -2,7 +2,8 @@ import Store from "@/common/store";
 import SvgAsset, { SvgAssetIconNames } from "@/renderer/components/SvgAsset";
 import {
     getQualityAbbr,
-    isAiUpscaleQuality,
+    isMasterQuality,
+    isSpatialAudioQuality,
     type IMusicQualityChoice,
 } from "@/renderer/utils/music-quality";
 import { CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -31,7 +32,7 @@ interface IShowQualitySelectPopoverPayload extends Omit<IQualitySelectPopoverSta
 }
 
 interface IQualityGroup {
-    key: "ai" | "standard";
+    key: "master" | "spatial" | "standard";
     choices: IMusicQualityChoice[];
 }
 
@@ -59,8 +60,12 @@ function normalizeAnchorRect(anchor?: HTMLElement | DOMRect | IAnchorRect | null
 }
 
 function getQualityIconName(quality: IMusic.IQualityKey): SvgAssetIconNames {
-    if (isAiUpscaleQuality(quality)) {
+    if (isMasterQuality(quality)) {
         return "sparkles";
+    }
+
+    if (isSpatialAudioQuality(quality)) {
+        return "speaker-wave";
     }
 
     switch (quality) {
@@ -76,7 +81,6 @@ function getQualityIconName(quality: IMusic.IQualityKey): SvgAssetIconNames {
         case "hires":
             return "sq";
         case "vinyl":
-        case "dolby":
             return "cd";
         default:
             return "headphone";
@@ -111,13 +115,20 @@ export default function QualitySelectPopover() {
 
     const groups = useMemo<IQualityGroup[]>(() => {
         const choices = popoverState?.choices ?? [];
-        const aiChoices = choices.filter((choice) => isAiUpscaleQuality(choice.value));
-        const standardChoices = choices.filter((choice) => !isAiUpscaleQuality(choice.value));
+        const masterChoices = choices.filter((choice) => isMasterQuality(choice.value));
+        const spatialChoices = choices.filter((choice) => isSpatialAudioQuality(choice.value));
+        const standardChoices = choices.filter((choice) => (
+            !isMasterQuality(choice.value) && !isSpatialAudioQuality(choice.value)
+        ));
 
         return [
             {
-                key: "ai" as const,
-                choices: aiChoices,
+                key: "master" as const,
+                choices: masterChoices,
+            },
+            {
+                key: "spatial" as const,
+                choices: spatialChoices,
             },
             {
                 key: "standard" as const,
@@ -235,10 +246,14 @@ export default function QualitySelectPopover() {
                             className="quality-select-popover-group"
                             key={group.key}
                         >
-                            {group.key === "standard" && groupIndex > 0 ? (
+                            {groupIndex > 0 && groups[groupIndex - 1].key !== "standard" ? (
                                 <div className="quality-select-popover-divider">
                                     <span></span>
-                                    <em>{t("media.ai_upscale")}</em>
+                                    <em>
+                                        {groups[groupIndex - 1].key === "master"
+                                            ? t("media.master_quality")
+                                            : t("media.spatial_audio")}
+                                    </em>
                                     <span></span>
                                 </div>
                             ) : null}
@@ -250,7 +265,10 @@ export default function QualitySelectPopover() {
                                     <div
                                         className="quality-select-popover-option"
                                         data-active={selected}
-                                        data-ai={isAiUpscaleQuality(choice.value)}
+                                        data-featured={
+                                            isMasterQuality(choice.value)
+                                            || isSpatialAudioQuality(choice.value)
+                                        }
                                         key={choice.value}
                                         role="button"
                                         title={choice.label}

@@ -75,10 +75,10 @@
         "music_quality_flac24bit": "FLAC Hires",
         "music_quality_hires": "Hires",
         "music_quality_vinyl": "Vinyl",
-        "music_quality_dolby": "Dolby",
-        "music_quality_atmos": "Atmos",
-        "music_quality_atmos_plus": "Atmos 2.0",
-        "music_quality_master": "Master",
+        "music_quality_dolby": "Spatial Audio Dolby",
+        "music_quality_atmos": "Spatial Audio Atmos",
+        "music_quality_atmos_plus": "Spatial Audio Atmos 2.0",
+        "music_quality_master": "Lossless Master",
         "music_repeat_mode": "Repeat Mode",
         "music_repeat_mode_loop": "Single Loop",
         "music_repeat_mode_queue": "Queue Loop",
@@ -93,7 +93,8 @@
         "sort_desc": "Descending",
         "sort_by": "Sort",
         "sort_custom": "Custom",
-        "ai_upscale": "AI Upscaling"
+        "spatial_audio": "Spatial Audio",
+        "master_quality": "Master"
     },
     "plugin": {
         "prop_user_variable": "User Variable",
