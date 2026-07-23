@@ -109,8 +109,8 @@ const HAN_REG = /[\u3400-\u9fff\uf900-\ufaff]/;
 const KANA_REG = /[\u3040-\u30ff\u31f0-\u31ff]/;
 const HANGUL_REG = /[\uac00-\ud7af]/;
 const LATIN_REG = /[A-Za-z\u00c0-\u024f]/;
-const CREDIT_LINE_REG = /^(?:(?:作)?词|(?:作)?詞|曲|作曲|编曲|編曲|词曲|詞曲|原唱|演唱|歌手|制作(?:人)?|製作(?:人)?|出品|发行|發行|策划|策劃|统筹|統籌|监制|監製|导演|導演|混音|母带|母帶|录音|錄音|和声|和聲|翻唱|原曲|歌名|歌曲|专辑|專輯|标题|標題|written\s+by|vocal|lyrics?|lyricist|composer|music|arrange(?:r|ment)?|producer|produced\s+by|mix|master(?:ing)?|recording|staff)\s*[:：]/i;
-const NON_SPEAKER_LABEL_REG = /^(?:制作|出品|发行|發行|策划|策劃|监制|監製|混音|母带|母帶|录音|錄音|和声|和聲|翻唱|原曲|歌名|歌曲|专辑|專輯|标题|標題|artist|album|title|producer|produced\s+by|mix|master(?:ing)?|staff)$/i;
+const CREDIT_LINE_REG = /^(?:(?:作)?词|(?:作)?詞|曲|作曲|编曲|編曲|词曲|詞曲|原唱|演唱|歌手|制作(?:人)?|製作(?:人)?|出品|发行|發行|策划|策劃|统筹|統籌|监制|監製|导演|導演|混音|母带|母帶|录音|錄音|和声|和聲|翻唱|原曲|歌名|歌曲|专辑|專輯|标题|標題|调教|調教|调声|調聲|曲绘|曲繪|曲絵|绘图|繪圖|画师|畫師|视频|視頻|映像|动画|動畫|written\s+by|vocal|lyrics?|lyricist|composer|music|arrange(?:r|ment)?|producer|produced\s+by|mix|master(?:ing)?|recording|staff|pv|mv|movie|video|animation|illustration|illustrator)\s*[:：]/i;
+const NON_SPEAKER_LABEL_REG = /^(?:制作|出品|发行|發行|策划|策劃|监制|監製|混音|母带|母帶|录音|錄音|和声|和聲|翻唱|原曲|歌名|歌曲|专辑|專輯|标题|標題|调教|調教|调声|調聲|曲绘|曲繪|曲絵|绘图|繪圖|画师|畫師|视频|視頻|映像|动画|動畫|artist|album|title|producer|produced\s+by|mix|master(?:ing)?|staff|pv|mv|movie|video|animation|illustration|illustrator)$/i;
 const GROUP_SPEAKER_NAMES = new Set([
     "all",
     "chorus",
@@ -990,8 +990,19 @@ function parseLyricItemsByFormat(
     hint?: ILyric.LyricFormat,
 ): IParsedLyricContent {
     raw = sanitizeLyricRaw(normalizeRawLyricText(raw));
+    const amlFormat = detectAmlLyricFormat(raw, hint);
     const amlParsed = parseWithAmlLibraries(raw, hint);
     if (amlParsed) {
+        if (amlFormat === "eslrc") {
+            const compatibleItems = parseMixedTimestampLyric(raw);
+            if (compatibleItems.length > amlParsed.items.length) {
+                // Embedded SYLT commonly contains adjacent end/start tags such
+                // as [00:01.000][00:01.001]. They preserve a word gap but are
+                // rejected as empty words by strict ESLRC parsing. Keep AMLL
+                // for canonical ESLRC and fall back only when it loses lines.
+                return { items: compatibleItems };
+            }
+        }
         return amlParsed;
     }
     const format = detectLyricFormat(raw);
@@ -1863,9 +1874,15 @@ function looksLikeRomanizationText(text: string) {
 }
 
 function chooseParallelMainIndex(group: IParsedLrcItem[]) {
-    if (group.length >= 3 && looksLikeRomanizationText(group[0].lrc)) {
+    if (
+        group.length >= 3
+        && isMostlyLatin(getTextScriptStats(group[0].lrc))
+        && (group[0].words?.length ?? 0) > 1
+    ) {
         const kanaOrHangulIndex = group.findIndex((item, index) =>
-            index > 0 && hasKanaOrHangul(getTextScriptStats(item.lrc)),
+            index > 0
+            && hasKanaOrHangul(getTextScriptStats(item.lrc))
+            && (item.words?.length ?? 0) > 1,
         );
 
         if (kanaOrHangulIndex > 0) {
@@ -2501,9 +2518,16 @@ function generateVirtualWords(
 
 function fillEndTimes(items: IParsedLrcItem[]): void {
     for (let i = 0; i < items.length; i++) {
-        if (items[i].endTime == null) {
-            const next = items[i + 1];
-            const endTime = next ? next.time : items[i].time + 3;
+        const current = items[i];
+        if (
+            current.endTime == null
+            || !Number.isFinite(current.endTime)
+            || current.endTime <= current.time
+        ) {
+            const next = items.slice(i + 1).find((item) =>
+                item.time > current.time + PARALLEL_LINE_EPSILON,
+            );
+            const endTime = next ? next.time : current.time + 3;
             items[i].endTime = endTime;
             items[i].duration = endTime - items[i].time;
         }

@@ -66,6 +66,44 @@ function parse(raw, format) {
 }
 
 {
+    const lines = parse([
+        "[00:10.000]da [00:10.100][00:10.150]'t te[00:10.500]",
+        "[00:10.000]だ[00:10.100][00:10.150]って[00:10.500]",
+        "[00:10.000]原文翻译[00:10.800]",
+        "[00:11.000]保[00:11.200][00:11.201]留[00:11.500]",
+    ].join("\n"), "eslrc");
+
+    assert.equal(lines.length, 2);
+    assert.equal(lines[0].lrc, "だって");
+    assert.equal(lines[0].romanization, "da 't te");
+    assert.equal(lines[0].translation, "原文翻译");
+    assert.equal(lines[1].lrc, "保留");
+}
+
+{
+    const lines = parse([
+        "[00:45.850]Original",
+        "[00:45.850]Translation",
+        "[00:49.600]Next line",
+    ].join("\n"), "lrc");
+
+    assert.equal(lines[0].endTime, 49.6);
+    assert.equal(lines[0].duration, 3.75);
+}
+
+{
+    const lines = parse([
+        "[00:15.268]p[00:15.268]v[00:15.268]：[00:15.268]Fixture[00:15.278]",
+        "[00:15.288]首[00:15.608]句[00:16.000]",
+    ].join("\n"), "eslrc");
+
+    assert.equal(lines.length, 2);
+    assert.equal(lines[0].lrc, "pv：Fixture");
+    assert.equal(lines[0].translation, undefined);
+    assert.equal(lines[1].lrc, "首句");
+}
+
+{
     const [line] = parse(
         "[type:LyricifyLines]\n[1000,2000]Lyricify Lines",
         "lyl",

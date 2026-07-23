@@ -274,3 +274,13 @@ pending
 - **Bug**: Native HTML dragging did not scroll the page-level virtual container while custom sorting songs.
 - **Files**: 3 files
 - **Tests**: TypeScript; ESLint; full regression suite; diff check; package blocked by running development Electron file lock
+
+## 2026-07-23T23:05:58.3169549+08:00 — fix(lyrics): preserve embedded lyric structure
+pending
+- **Context-Id**: 7af82f4a-e6e5-465a-b551-b8c55cc6dab8
+- **Decision**: Keep AMLL for canonical ESLRC and use mixed-timestamp compatibility output only when strict parsing loses embedded rows.
+- **Decision**: Prefer timed Kana/Hangul originals over short Latin romanization and classify expanded production labels independently.
+- **Decision**: Extend invalid or zero-duration folded lines to the next distinct timestamp.
+- **Bug**: Adjacent SYLT timestamps dropped originals; short romanization and PV metadata displaced main lyrics; zero-duration lines faded immediately.
+- **Files**: 2 files
+- **Tests**: five real local samples; TypeScript; ESLint; full regression suite; diff check
