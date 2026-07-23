@@ -56,6 +56,10 @@ jobs:
             runner: ubuntu-latest
             arch: x64
             asset_suffix: linux-amd64
+          - platform: linux
+            runner: ubuntu-24.04-arm
+            arch: arm64
+            asset_suffix: linux-arm64
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
@@ -262,7 +266,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-assets
-          DEB_FILE="$(find ./out/make/deb/x64 -name '*.deb' -print -quit)"
+          DEB_FILE="$(find ./out/make/deb/${{ matrix.arch }} -name '*.deb' -print -quit)"
           test -n "$DEB_FILE"
           mv "$DEB_FILE" "./release-assets/BakaMusic-${VERSION}-${{ matrix.asset_suffix }}.deb"
 

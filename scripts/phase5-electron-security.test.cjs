@@ -141,7 +141,11 @@ function testPreloadCapabilitySurface() {
 
     assert.match(mainPreload, /@shared\/node-runtime\/preload/);
     assert.match(mainPreload, /@shared\/backup\/preload/);
-    assert.doesNotMatch(extensionPreload, /plugin-manager|node-runtime|themepack|backup/);
+    assert.match(mainPreload, /@shared\/native-playback\/preload/);
+    assert.doesNotMatch(
+        extensionPreload,
+        /plugin-manager|node-runtime|native-playback|themepack|backup/,
+    );
     assert.doesNotMatch(utilsPreload, /from "(?:fs|fs\/promises|path|rimraf|unzipper)/);
     assert.match(utilsPreload, /@shared\/utils\/fs-trash-file/);
     assert.doesNotMatch(themePreload, /from "(?:fs|fs\/promises|path|rimraf|unzipper)/);
@@ -250,6 +254,14 @@ function testThemeAndNodeRuntimeIsolation() {
     assert.match(nodeRuntime, /this\.rejectPending/);
     assert.match(nodeRuntime, /this\.watcherState/);
 
+    const nativePlayback = read("src/shared/native-playback/main.ts");
+    assert.match(nativePlayback, /utilityProcess\.fork/);
+    assert.match(nativePlayback, /assertIpcSender\(event, \["main"\]\)/);
+    assert.match(nativePlayback, /parseLocalMediaUrl/);
+    assert.match(nativePlayback, /assertPathAccess/);
+    assert.match(nativePlayback, /MAX_PENDING_REQUESTS/);
+    assert.match(nativePlayback, /MAX_RUNTIME_WORKING_SET_KB/);
+
     assert.match(downloader, /coverDownloadSemaphore = new Semaphore\(3\)/);
     assert.match(downloader, /coverDownloadTimeoutMs = 15_000/);
     assert.match(downloader, /invalid cover file signature/);
@@ -269,6 +281,8 @@ function testPackagedBoundarySmokeContract() {
     }
     assert.match(smokeSource, /pluginResult: \{ isEnd: true, data: \[\] \}/);
     assert.match(smokeSource, /nodeRuntimeBridge: "function"/);
+    assert.match(smokeSource, /nativeProbeBridge: "function"/);
+    assert.match(smokeSource, /nativeCommandBridge: "function"/);
     assert.match(smokeSource, /backupWriteBridge: "function"/);
     assert.match(smokeSource, /backupReadBridge: "function"/);
     assert.match(smokeSource, /trashFileBridge: "function"/);

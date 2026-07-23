@@ -12,6 +12,7 @@ export const mainConfig: Configuration = {
         index: "./src/main/index.ts",
         plugin_host: "./src/shared/plugin-manager/utility/plugin-host.ts",
         node_runtime_host: "./src/shared/node-runtime/utility/node-runtime-host.ts",
+        native_playback_host: "./src/shared/native-playback/utility/native-playback-host.ts",
     },
     // Put your normal webpack config below here
     module: {
@@ -32,5 +33,6 @@ export const mainConfig: Configuration = {
     externals: {
         sharp: "commonjs2 sharp",
         "get-windows": "commonjs2 get-windows",
+        koffi: "commonjs2 koffi",
     },
 };

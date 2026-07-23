@@ -34,6 +34,7 @@ build/Release
 native/
 !res/.service/native/
 !res/.service/native/*.node
+res/.runtime/
 
 # Dependency directories
 node_modules/

@@ -1,0 +1,56 @@
+name: Update media runtime
+
+on:
+  schedule:
+    - cron: "43 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      manifest_url:
+        description: "Optional immutable runtime-manifest-v1.json URL"
+        required: false
+        type: string
+
+permissions: {}
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24.15.0"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Pin latest complete runtime release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MANIFEST_URL: ${{ inputs.manifest_url }}
+        run: |
+          if [ -n "$MANIFEST_URL" ]; then
+            node scripts/update-media-runtime-manifest.cjs "--manifest-url=$MANIFEST_URL"
+          else
+            node scripts/update-media-runtime-manifest.cjs
+          fi
+      - name: Verify playback and packaging contracts
+        run: |
+          npm run test:playback-boundary
+          npm run test:runtime-packaging
+      - name: Create runtime update pull request
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
+        with:
+          branch: automation/mpv-libre-runtime
+          delete-branch: true
+          commit-message: "build(runtime): update mpv LibreMPEG artifacts"
+          title: "build(runtime): update mpv LibreMPEG artifacts"
+          body: |
+            Pins the latest complete MpvLibre Runtime release.
+
+            All desktop target artifacts are immutable and SHA-256 verified.
+          labels: dependencies

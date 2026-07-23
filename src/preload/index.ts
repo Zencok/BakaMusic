@@ -12,3 +12,4 @@ import "@shared/message-bus/preload/main";
 import "@shared/short-cut/preload";
 import "@shared/node-runtime/preload";
 import "@shared/backup/preload";
+import "@shared/native-playback/preload";

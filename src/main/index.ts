@@ -54,6 +54,7 @@ import {
     registerLocalMediaProtocolScheme,
     setupLocalMediaMain,
 } from "@shared/local-media/main";
+import NativePlaybackManager from "@shared/native-playback/main";
 
 registerThemeProtocolScheme();
 registerLocalMediaProtocolScheme();
@@ -160,6 +161,7 @@ app.whenReady().then(async () => {
     utils.setup(windowManager);
     setupBackupMain();
     NodeRuntimeManager.setup(windowManager);
+    NativePlaybackManager.setup(windowManager);
     PluginManager.setup(windowManager);
     TrayManager.setup(windowManager);
     shortCut.setup().then(voidCallback);

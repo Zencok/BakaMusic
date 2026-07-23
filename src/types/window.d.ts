@@ -1,7 +1,8 @@
 /** 某些没有类型的新特性 */
 interface Window {
     /** 获取本地字体 */
-  queryLocalFonts: () => Promise<FontData[]>
+    queryLocalFonts: () => Promise<FontData[]>;
+    "@shared/native-playback": import("@shared/native-playback/type").IMod;
 }
 
 

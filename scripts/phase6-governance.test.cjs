@@ -46,6 +46,7 @@ assert.match(read("res/.service/service-ipc.cjs"), /process\.parentPort/);
 for (const workflowPath of [
     ".github/workflows/build.yml",
     ".github/workflows/release.yml",
+    ".github/workflows/runtime-update.yml",
 ]) {
     const source = read(workflowPath);
     assert.doesNotThrow(() => YAML.parse(source));

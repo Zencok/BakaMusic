@@ -7,6 +7,10 @@ const path = require("node:path");
 const { spawn, spawnSync } = require("node:child_process");
 
 const appPath = path.resolve(__dirname, "../out/BakaMusic-win32-x64/BakaMusic.exe");
+const ac4FixturePath = path.resolve(
+    __dirname,
+    "fixtures/native-media-ac4-smoke.ac4",
+);
 const targetNames = ["main_window", "lrc_window", "minimode_window"];
 const serviceNames = ["request-forwarder", "mflac-proxy", "luna-proxy"];
 
@@ -427,6 +431,9 @@ async function run() {
     await fs.promises.writeFile(localMediaPath, createSilentWav());
     const alacMediaPath = path.join(userDataPath, "local-media-alac-smoke.m4a");
     await fs.promises.writeFile(alacMediaPath, createAlacM4a());
+    assert.ok(fs.existsSync(ac4FixturePath), "AC-4 playback fixture is missing");
+    const ac4MediaPath = path.join(userDataPath, "native-media-ac4-smoke.ac4");
+    await fs.promises.copyFile(ac4FixturePath, ac4MediaPath);
     const localScanPath = path.join(userDataPath, "local-scan-smoke");
     await fs.promises.mkdir(localScanPath, { recursive: true });
     await fs.promises.writeFile(
@@ -497,6 +504,7 @@ async function run() {
             const pluginBridge = window["@shared/plugin-manager"];
             const nodeRuntime = window["@shared/node-runtime"];
             const backupBridge = window["@shared/backup"];
+            const nativePlayback = window["@shared/native-playback"];
             const fsBridge = window["@shared/utils"].fs;
             return {
                 processType: typeof window.process,
@@ -504,6 +512,8 @@ async function run() {
                 dirnameType: typeof window.__dirname,
                 legacyPathBridgeType: typeof window.path,
                 nodeRuntimeBridge: typeof nodeRuntime.closeWatcher,
+                nativeProbeBridge: typeof nativePlayback.probe,
+                nativeCommandBridge: typeof nativePlayback.command,
                 backupWriteBridge: typeof backupBridge.backupToWebdav,
                 backupReadBridge: typeof backupBridge.restoreFromWebdav,
                 trashFileBridge: typeof fsBridge.trashFile,
@@ -643,6 +653,47 @@ async function run() {
             audio.load();
             return state;
         })()`, "ALAC local media boundary");
+        const nativePlaybackState = await mainSession.evaluate(`(async () => {
+            const bridge = window["@shared/native-playback"];
+            const mediaUrl = window["@shared/utils"].fs.addFileScheme(
+                ${JSON.stringify(ac4MediaPath)}
+            );
+            const capabilities = await bridge.getCapabilities();
+            const probe = await bridge.probe(mediaUrl);
+            const sourceId = "package-smoke-ac4";
+            const reachedPlaying = new Promise((resolve) => {
+                const timer = setTimeout(() => {
+                    cleanup();
+                    resolve(false);
+                }, 15_000);
+                const cleanup = bridge.onSnapshot((snapshot) => {
+                    if (snapshot.sourceId !== sourceId) return;
+                    if (snapshot.state === "playing") {
+                        clearTimeout(timer);
+                        cleanup();
+                        resolve(true);
+                    } else if (snapshot.state === "error") {
+                        clearTimeout(timer);
+                        cleanup();
+                        resolve(false);
+                    }
+                });
+            });
+            await bridge.command({ operation: "load", sourceId, url: mediaUrl });
+            await bridge.command({ operation: "volume", sourceId, volume: 0 });
+            await bridge.command({ operation: "play", sourceId });
+            const playing = await reachedPlaying;
+            await bridge.command({ operation: "stop", sourceId });
+            return {
+                available: capabilities.available,
+                clientApiVersion: capabilities.clientApiVersion,
+                mediaBackend: capabilities.mediaBackend,
+                engine: probe.engine,
+                reason: probe.reason,
+                codec: probe.streams.find((stream) => stream.type === "audio")?.codec,
+                playing,
+            };
+        })()`, "libmpv + LibreMPEG AC-4 playback boundary");
         const remoteArtworkCors = await mainSession.evaluate(`(async () => {
             const image = new Image();
             image.crossOrigin = "anonymous";
@@ -700,6 +751,7 @@ async function run() {
             ...rendererState,
             localMediaState,
             alacMediaState,
+            nativePlaybackState,
             pluginResult,
             localScanState,
             pitchShiftState,
@@ -713,6 +765,8 @@ async function run() {
             dirnameType: "undefined",
             legacyPathBridgeType: "undefined",
             nodeRuntimeBridge: "function",
+            nativeProbeBridge: "function",
+            nativeCommandBridge: "function",
             backupWriteBridge: "function",
             backupReadBridge: "function",
             trashFileBridge: "function",
@@ -724,6 +778,15 @@ async function run() {
                 loaded: true,
                 protocol: "bakamusic-media:",
                 nativeAlacSupport: "",
+            },
+            nativePlaybackState: {
+                available: true,
+                clientApiVersion: "2.5",
+                mediaBackend: "librempeg",
+                engine: "libmpv",
+                reason: "native-codec",
+                codec: "ac4",
+                playing: true,
             },
             pluginResult: { isEnd: true, data: [] },
             localScanState: {

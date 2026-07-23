@@ -82,9 +82,17 @@ export const qualityText: Record<IMusic.IQualityKey, string> = {
 };
 
 export const supportLocalMediaType = [
+    ".ac3",
+    ".ac4",
+    ".dts",
+    ".dtshd",
+    ".eac3",
+    ".ec3",
     ".mp3",
     ".mp4",
     ".m4s",
+    ".mka",
+    ".mlp",
     ".flac",
     ".wma",
     ".wav",
@@ -92,6 +100,7 @@ export const supportLocalMediaType = [
     ".ogg",
     ".acc",
     ".aac",
+    ".truehd",
     // ".ape",
     ".opus",
 ];

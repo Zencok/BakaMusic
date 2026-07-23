@@ -1,0 +1,5 @@
+Source: https://samples.ffmpeg.org/A-codecs/ac-4/believer.mp4
+Source SHA-256: 234a21fc965ddbc6e3a2a53f5eb7e0297eb2600129e74cb420c21f693ee98e8e
+Derivation: first two seconds of the audio stream, copied without re-encoding.
+Fixture SHA-256: 5d0698909f2d39ba5aa84f699229472aeb93bda41b56a6276f755c8d437938fa
+Purpose: packaged libmpv plus LibreMPEG AC-4 decode regression.

@@ -33,14 +33,50 @@ async function run() {
         false,
         "loose resources/app source tree must not be packaged",
     );
-    const ffmpegPath = path.join(
+    const mediaRuntimeRoot = path.join(
         resourcesPath,
-        platform === "win32" ? "ffmpeg.exe" : "ffmpeg",
+        "res",
+        ".runtime",
     );
-    assert.ok(
-        fs.existsSync(ffmpegPath) && fs.statSync(ffmpegPath).size > 1_000_000,
-        "packaged ALAC compatibility runtime is missing",
-    );
+    const platformRuntimeKey = `${platform}-${arch}`;
+    const mpvRoot = path.join(mediaRuntimeRoot, "mpv", platformRuntimeKey);
+    const libraryPath = platform === "win32"
+        ? "libmpv-2.dll"
+        : platform === "darwin"
+            ? path.join("lib", "libmpv.2.dylib")
+            : path.join("lib", "libmpv.so.2");
+    const executableSuffix = platform === "win32" ? ".exe" : "";
+    for (const relativePath of [
+        libraryPath,
+        `ffmpeg${executableSuffix}`,
+        `ffprobe${executableSuffix}`,
+        "runtime.json",
+    ]) {
+        assert.ok(
+            fs.existsSync(path.join(mpvRoot, relativePath)),
+            `packaged libmpv runtime entry is missing: ${relativePath}`,
+        );
+    }
+    const mpvManifest = JSON.parse(fs.readFileSync(
+        path.join(mpvRoot, "runtime.json"),
+        "utf8",
+    ));
+    assert.equal(mpvManifest.engine, "libmpv");
+    assert.equal(mpvManifest.mediaBackend, "librempeg");
+    assert.ok(mpvManifest.decoders.includes("ac4"));
+
+    if (platform === "win32" && arch === "x64") {
+        const koffiAddon = path.join(
+            resourcesPath,
+            "app.asar.unpacked",
+            "node_modules",
+            "@koromix",
+            "koffi-win32-x64",
+            "win32_x64",
+            "koffi.node",
+        );
+        assert.ok(fs.existsSync(koffiAddon), "packaged Koffi native addon is missing");
+    }
 
     const fuses = await getCurrentFuseWire(executablePath);
     assert.equal(fuses[FuseV1Options.RunAsNode], disabled, "RunAsNode fuse must be disabled");

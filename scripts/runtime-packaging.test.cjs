@@ -11,6 +11,7 @@ async function main() {
     const plugin = createExternalRuntimePlugin([
         "sharp",
         "get-windows",
+        "koffi",
     ]);
     plugin.init(projectRoot);
 
@@ -31,6 +32,22 @@ async function main() {
         forgeSource,
         /unpack:\s*"\*\*\/node_modules\/@img\/sharp-\*\/\*\*\/\*"/,
     );
+
+    const buildWorkflow = fs.readFileSync(
+        path.join(projectRoot, ".github", "workflows", "build.yml"),
+        "utf8",
+    );
+    for (const target of [
+        "win32-x64",
+        "darwin-x64",
+        "darwin-arm64",
+        "linux-amd64",
+        "linux-arm64",
+    ]) {
+        assert.match(buildWorkflow, new RegExp(`asset_suffix: ${target}`));
+    }
+    assert.match(buildWorkflow, /runner: ubuntu-24\.04-arm/);
+    assert.match(buildWorkflow, /out\/make\/deb\/\$\{\{ matrix\.arch \}\}/);
 
     const sharpMetadata = JSON.parse(fs.readFileSync(
         path.join(projectRoot, "node_modules/sharp/package.json"),
@@ -56,6 +73,11 @@ async function main() {
     assert.equal(ignore("/node_modules/detect-libc/lib/detect-libc.js"), false);
     assert.equal(ignore("/node_modules/nopt/lib/nopt-lib.js"), false);
     assert.equal(ignore("/node_modules/semver/index.js"), false);
+    assert.equal(ignore("/node_modules/koffi/index.cjs"), false);
+    assert.equal(
+        ignore("/node_modules/@koromix/koffi-win32-x64/win32_x64/koffi.node"),
+        process.platform === "win32" && process.arch === "x64" ? false : true,
+    );
 
     for (const packageName of [
         "https-proxy-agent",

@@ -5,6 +5,7 @@ import fs from "fs/promises";
 import type { Stats } from "fs";
 import path from "path";
 import { parseFile } from "music-metadata";
+import { getFfmpegExecutablePath } from "@shared/native-playback/runtime-path";
 
 const CACHE_DIRECTORY_NAME = "bakamusic-alac-cache";
 const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
@@ -59,13 +60,6 @@ async function isAlacFile(filePath: string, fileStat: Stats) {
     const isAlac = format.codec?.trim().toLocaleLowerCase() === "alac";
     rememberAlacDetection(identity, isAlac);
     return isAlac;
-}
-
-function getFfmpegExecutablePath() {
-    const executableName = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-    return app.isPackaged
-        ? path.join(process.resourcesPath, executableName)
-        : path.join(process.cwd(), "node_modules", "ffmpeg-static", executableName);
 }
 
 function transcodeToFlac(inputPath: string, outputPath: string) {

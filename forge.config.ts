@@ -11,7 +11,6 @@ import { rendererConfig } from "./config/webpack.renderer.config";
 import { createExternalRuntimePlugin } from "./config/forge-external-runtime-plugin";
 import { createFusesPlugin } from "./config/forge-fuses-plugin";
 import path from "path";
-import ffmpegStaticPath from "ffmpeg-static";
 
 const requireReleaseSigning = process.env.REQUIRE_RELEASE_SIGNING === "true";
 const windowsSigningConfigured = !!(
@@ -24,10 +23,6 @@ const macNotarizationConfigured = !!(
     && process.env.APPLE_API_KEY_ID
     && process.env.APPLE_API_ISSUER
 );
-
-if (!ffmpegStaticPath) {
-    throw new Error(`ffmpeg-static has no binary for ${process.platform}-${process.arch}`);
-}
 
 // Sign when credentials exist. Tagged CI builds must still package if secrets
 // are missing — do not hard-fail release matrix jobs on signing alone.
@@ -66,10 +61,7 @@ const config: ForgeConfig = {
         },
         icon: path.resolve(__dirname, "res/logo"),
         executableName: "BakaMusic",
-        extraResource: [
-            path.resolve(__dirname, "res"),
-            ffmpegStaticPath,
-        ],
+        extraResource: [path.resolve(__dirname, "res")],
         protocols: [
             {
                 name: "BakaMusic",
@@ -178,6 +170,7 @@ const config: ForgeConfig = {
         createExternalRuntimePlugin([
             "sharp",
             "get-windows",
+            "koffi",
         ]),
         // Keep fuses last: they are flipped after the app copy and before code signing.
         createFusesPlugin({

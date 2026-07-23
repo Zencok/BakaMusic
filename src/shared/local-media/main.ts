@@ -16,15 +16,24 @@ import {
 import logger from "@shared/logger/main";
 
 const localMediaContentTypes: Readonly<Record<string, string>> = {
+    ".ac3": "audio/ac3",
+    ".ac4": "audio/ac4",
     ".aac": "audio/aac",
     ".acc": "audio/aac",
+    ".dts": "audio/vnd.dts",
+    ".dtshd": "audio/vnd.dts.hd",
+    ".eac3": "audio/eac3",
+    ".ec3": "audio/eac3",
     ".flac": "audio/flac",
     ".m4a": "audio/mp4",
     ".m4s": "video/iso.segment",
+    ".mka": "audio/x-matroska",
+    ".mlp": "audio/vnd.dolby.mlp",
     ".mp3": "audio/mpeg",
     ".mp4": "video/mp4",
     ".ogg": "audio/ogg",
     ".opus": "audio/opus",
+    ".truehd": "audio/vnd.dolby.mlp",
     ".wav": "audio/wav",
     ".wma": "audio/x-ms-wma",
 };

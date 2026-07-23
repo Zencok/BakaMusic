@@ -1,7 +1,10 @@
 import { app, ipcMain, utilityProcess, UtilityProcess } from "electron";
 import path from "path";
 import { IWindowManager } from "@/types/window-manager";
-import { ServiceName } from "@shared/service-manager/common";
+import {
+    resolveManagedMediaProxyUrl,
+    ServiceName,
+} from "@shared/service-manager/common";
 import getResourcePath from "@/common/get-resource-path";
 import logger from "@shared/logger/main";
 import {
@@ -252,6 +255,13 @@ class ServiceManager {
 
     stopService(serviceName: ServiceName) {
         this.serviceMap.get(serviceName)?.instance?.stop?.();
+    }
+
+    resolveManagedMediaProxyUrl(value: string) {
+        return resolveManagedMediaProxyUrl(value, {
+            [ServiceName.MflacProxy]: this.serviceMap.get(ServiceName.MflacProxy)?.host,
+            [ServiceName.LunaProxy]: this.serviceMap.get(ServiceName.LunaProxy)?.host,
+        });
     }
 
     private stopAllServices(): void {
