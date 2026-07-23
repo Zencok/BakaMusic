@@ -53,3 +53,10 @@ export interface INativePlaybackCapabilities {
     mediaBackend?: string;
     decoders?: string[];
 }
+
+/** Entry from mpv `audio-device-list` (name is the value for `audio-device`). */
+export interface INativeAudioOutputDevice {
+    /** mpv device id, e.g. `auto` or `wasapi/{guid}` */
+    id: string;
+    description: string;
+}

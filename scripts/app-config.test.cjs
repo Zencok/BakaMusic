@@ -50,12 +50,22 @@ const hostSource = fs.readFileSync(path.join(
 assert.match(hostSource, /audio-exclusive/);
 assert.match(hostSource, /ao", "wasapi"/);
 assert.match(hostSource, /BAKAMUSIC_WASAPI_EXCLUSIVE/);
+assert.match(hostSource, /audio-device-list/);
+assert.match(hostSource, /list-audio-devices/);
 
 const playbackCommonSource = fs.readFileSync(path.join(
     __dirname,
     "../src/shared/native-playback/common.ts",
 ), "utf8");
 assert.match(playbackCommonSource, /operation: "audio-exclusive"/);
+assert.match(playbackCommonSource, /INativeAudioOutputDevice/);
+
+const mediaDevicesHookSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/hooks/useMediaDevices.ts",
+), "utf8");
+assert.match(mediaDevicesHookSource, /listAudioDevices/);
+assert.match(mediaDevicesHookSource, /fromNativeDevices/);
 
 const defaultConfigSource = fs.readFileSync(path.join(
     __dirname,

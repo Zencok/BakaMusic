@@ -1,6 +1,7 @@
 import { ipcRenderer } from "electron";
 import exposeInMainWorld from "@/preload/expose-in-main-world";
 import type {
+    INativeAudioOutputDevice,
     INativePlaybackCapabilities,
     INativePlaybackSnapshot,
     NativePlaybackCommand,
@@ -10,6 +11,12 @@ async function getCapabilities() {
     return ipcRenderer.invoke(
         "@shared/native-playback/capabilities",
     ) as Promise<INativePlaybackCapabilities>;
+}
+
+async function listAudioDevices() {
+    return ipcRenderer.invoke(
+        "@shared/native-playback/list-audio-devices",
+    ) as Promise<INativeAudioOutputDevice[]>;
 }
 
 async function command(value: NativePlaybackCommand) {
@@ -26,6 +33,7 @@ function onSnapshot(callback: (snapshot: INativePlaybackSnapshot) => void) {
 
 export const mod = {
     getCapabilities,
+    listAudioDevices,
     command,
     onSnapshot,
 };

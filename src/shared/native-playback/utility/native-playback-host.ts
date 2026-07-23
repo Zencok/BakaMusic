@@ -1,6 +1,7 @@
 import path from "path";
 import koffi from "koffi";
 import type {
+    INativeAudioOutputDevice,
     INativePlaybackCapabilities,
     INativePlaybackSnapshot,
     NativePlaybackRuntimeCommand,
@@ -10,7 +11,7 @@ import type {
 interface RuntimeRequest {
     type: "request";
     requestId: string;
-    operation: "capabilities" | "command";
+    operation: "capabilities" | "command" | "list-audio-devices";
     payload?: NativePlaybackRuntimeCommand;
 }
 
@@ -216,6 +217,42 @@ function getDecoderList() {
         return Array.isArray(value) ? value as DecoderDescription[] : [];
     } catch {
         return [];
+    }
+}
+
+function listAudioDevices(): INativeAudioOutputDevice[] {
+    const rawValue = getStringProperty("audio-device-list");
+    if (!rawValue) {
+        return [{ id: "auto", description: "Default" }];
+    }
+    try {
+        const value = JSON.parse(rawValue) as unknown;
+        if (!Array.isArray(value)) {
+            return [{ id: "auto", description: "Default" }];
+        }
+        const devices: INativeAudioOutputDevice[] = [];
+        for (const entry of value) {
+            if (!entry || typeof entry !== "object") {
+                continue;
+            }
+            const row = entry as { name?: unknown; description?: unknown };
+            if (typeof row.name !== "string" || !row.name) {
+                continue;
+            }
+            devices.push({
+                id: row.name,
+                description:
+                    typeof row.description === "string" && row.description
+                        ? row.description
+                        : row.name,
+            });
+        }
+        if (!devices.some((device) => device.id === "auto")) {
+            devices.unshift({ id: "auto", description: "Default" });
+        }
+        return devices.length ? devices : [{ id: "auto", description: "Default" }];
+    } catch {
+        return [{ id: "auto", description: "Default" }];
     }
 }
 
@@ -547,6 +584,10 @@ parentPort.on("message", (event) => {
     try {
         if (request.operation === "capabilities") {
             respond(request.requestId, capabilities);
+            return;
+        }
+        if (request.operation === "list-audio-devices") {
+            respond(request.requestId, listAudioDevices());
             return;
         }
         if (request.operation !== "command" || !request.payload) {

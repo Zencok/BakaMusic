@@ -27,6 +27,7 @@ import {
     hasNativePlaybackRuntime,
 } from "./runtime-path";
 import {
+    INativeAudioOutputDevice,
     INativePlaybackCapabilities,
     INativePlaybackSnapshot,
     NativePlaybackRuntimeCommand,
@@ -211,6 +212,10 @@ class NativePlaybackManager {
             assertIpcSender(event, ["main"]);
             return this.getCapabilities();
         });
+        ipcMain.handle("@shared/native-playback/list-audio-devices", (event) => {
+            assertIpcSender(event, ["main"]);
+            return this.listAudioDevices();
+        });
         ipcMain.handle("@shared/native-playback/command", async (event, command) => {
             assertIpcSender(event, ["main"]);
             return this.request("command", validateCommand(command));
@@ -223,6 +228,21 @@ class NativePlaybackManager {
             return { available: false, engine: "libmpv" };
         }
         return this.request("capabilities", null) as Promise<INativePlaybackCapabilities>;
+    }
+
+    private async listAudioDevices(): Promise<INativeAudioOutputDevice[]> {
+        if (!hasNativePlaybackRuntime()) {
+            return [{ id: "auto", description: "Default" }];
+        }
+        try {
+            const devices = await this.request("list-audio-devices", null) as INativeAudioOutputDevice[];
+            if (Array.isArray(devices) && devices.length) {
+                return devices;
+            }
+        } catch (error) {
+            logger.logError("list native audio devices failed", error instanceof Error ? error : new Error(String(error)));
+        }
+        return [{ id: "auto", description: "Default" }];
     }
 
     private async ensureStarted() {

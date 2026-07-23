@@ -94,12 +94,24 @@ export default function Playback() {
                         if (!item) {
                             return;
                         }
-                        await trackPlayer.setAudioOutputDevice(item.deviceId);
+                        // mpv ids: "auto" or "wasapi/{guid}"; empty/default → auto
+                        const deviceId = !item.deviceId
+                            || item.deviceId === "default"
+                            ? "auto"
+                            : item.deviceId;
+                        await trackPlayer.setAudioOutputDevice(
+                            deviceId === "auto" ? "" : deviceId,
+                        );
                         AppConfig.setConfig({
-                            "playMusic.audioOutputDevice": item.toJSON(),
+                            "playMusic.audioOutputDevice": {
+                                deviceId,
+                                label: item.label || deviceId,
+                                kind: "audiooutput",
+                                groupId: "",
+                            } as MediaDeviceInfo,
                         });
                     }}
-                    options={audioDevices}
+                    options={audioDevices as MediaDeviceInfo[] | null}
                 ></ListBoxSettingItem>
                 <RadioGroupSettingItem
                     label={t("settings.play_music.when_device_removed")}
