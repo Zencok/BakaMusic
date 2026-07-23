@@ -58,9 +58,18 @@
         }
     }
 
-    &[data-fullscreen="true"][data-cursor-hidden="true"],
-    &[data-fullscreen="true"][data-cursor-hidden="true"] * {
+    // Immersive idle hides the cursor, but lyric seek needs a visible default arrow.
+    &[data-fullscreen="true"][data-cursor-hidden="true"] {
         cursor: none !important;
+
+        *:not(.music-detail-lyric-stage):not(.music-detail-lyric-stage *) {
+            cursor: none !important;
+        }
+
+        .music-detail-lyric-stage,
+        .music-detail-lyric-stage * {
+            cursor: default !important;
+        }
     }
 
     & .music-detail-background,

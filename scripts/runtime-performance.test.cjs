@@ -9,6 +9,9 @@ const {
     shouldRunLyricAnimation,
 } = require("../src/renderer/components/AppleMusicLyricPlayer/animation-state");
 const {
+    lyricStartMsToSeekSeconds,
+} = require("../src/renderer/components/AppleMusicLyricPlayer/line-seek");
+const {
     getDragAutoScrollDelta,
 } = require("../src/renderer/components/MusicList/drag-auto-scroll");
 
@@ -21,6 +24,9 @@ assert.equal(shouldRunLyricAnimation(true, true, true), true);
 assert.equal(shouldRunLyricAnimation(false, true, true), false);
 assert.equal(shouldRunLyricAnimation(true, false, true), false);
 assert.equal(shouldRunLyricAnimation(true, true, false), false);
+assert.equal(lyricStartMsToSeekSeconds(12_500), 12.5);
+assert.equal(lyricStartMsToSeekSeconds(-500), 0);
+assert.equal(lyricStartMsToSeekSeconds(Number.NaN), null);
 
 assert.equal(getDragAutoScrollDelta(100, 100, 600), -24);
 assert.equal(getDragAutoScrollDelta(350, 100, 600), 0);
@@ -49,12 +55,18 @@ const lyricPlayerSource = fs.readFileSync(path.join(
 assert.match(lyricPlayerSource, /document\.visibilityState/);
 assert.match(lyricPlayerSource, /shouldRunLyricAnimation/);
 assert.match(lyricPlayerSource, /settlePausedLyricLayout/);
+// Line seek is React-layer only: listen to existing AMLL line-click, no core chrome.
+assert.match(lyricPlayerSource, /"line-click"/);
+assert.match(lyricPlayerSource, /apple-music-lyric-player--line-seek/);
+assert.doesNotMatch(lyricPlayerSource, /setLineClickEnabled/);
 
 const amllDomPlayerSource = fs.readFileSync(path.join(
     __dirname,
     "../src/amll-core/lyric-player/dom/index.ts",
 ), "utf8");
 assert.match(amllDomPlayerSource, /calcLayout\(true, true\)/);
+assert.doesNotMatch(amllDomPlayerSource, /setLineClickEnabled/);
+assert.doesNotMatch(amllDomPlayerSource, /dataset\.clickable/);
 
 const amllScrollSource = fs.readFileSync(path.join(
     __dirname,
@@ -159,6 +171,8 @@ const embeddedLyricWriterSource = fs.readFileSync(path.join(
 ), "utf8");
 assert.match(lyricContextMenuSource, /overwriteEmbeddedLyric/);
 assert.match(lyricContextMenuSource, /await unlinkLyric\(currentMusic\)/);
+assert.match(lyricContextMenuSource, /onLineClick=\{handleLyricLineClick\}/);
+assert.match(lyricContextMenuSource, /lyricStartMsToSeekSeconds/);
 assert.match(nodeRuntimeMainSource, /@shared\/node-runtime\/overwrite-embedded-lyric/);
 assert.match(nodeRuntimeMainSource, /extensions: supportLocalMediaType/);
 assert.match(embeddedLyricWriterSource, /bakamusic-lyric-/);

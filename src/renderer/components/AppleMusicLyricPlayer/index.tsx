@@ -28,6 +28,19 @@ interface IAppleMusicLyricPlayerProps {
     wordFadeWidth?: number;
     inactiveBrightness?: number;
     markLinePlayState?: boolean;
+    /**
+     * Fired when a lyric line is activated (AMLL already emits `line-click`).
+     * Does not alter AMLL line chrome — only receives the existing event.
+     */
+    onLineClick?: (line: LyricLine, lineIndex: number) => void;
+}
+
+/** Subset of AMLL LyricLineMouseEvent used for seek wiring (no core changes). */
+interface IAmlLineClickEvent extends Event {
+    lineIndex: number;
+    line: {
+        getLine: () => LyricLine;
+    };
 }
 
 type LyricLinePlayState = "played" | "current" | "future";
@@ -112,6 +125,7 @@ export default function AppleMusicLyricPlayer({
     wordFadeWidth = 0.68,
     inactiveBrightness = 0.2,
     markLinePlayState = false,
+    onLineClick,
 }: IAppleMusicLyricPlayerProps) {
     const stageRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<DomLyricPlayer | null>(null);
@@ -123,6 +137,7 @@ export default function AppleMusicLyricPlayer({
     const lastPropTimeRef = useRef(currentTimeMs);
     const currentTimePropRef = useRef(currentTimeMs);
     const lyricLinesRef = useRef(lyricLines);
+    const onLineClickRef = useRef(onLineClick);
     const playingRef = useRef(playing);
     const speedRef = useRef(speed);
     const [documentVisible, setDocumentVisible] = useState(
@@ -131,8 +146,10 @@ export default function AppleMusicLyricPlayer({
 
     currentTimePropRef.current = currentTimeMs;
     lyricLinesRef.current = lyricLines;
+    onLineClickRef.current = onLineClick;
 
     const hasLyricLines = lyricLines.length > 0;
+    const lineClickEnabled = typeof onLineClick === "function";
 
     const cssVars = useMemo(() => ({
         ...(style || {}),
@@ -158,12 +175,33 @@ export default function AppleMusicLyricPlayer({
         }
 
         const player = new DomLyricPlayer();
+        // AMLL already dispatches `line-click` from its click handler; we only listen.
+        const handleLineClick = (event: Event) => {
+            const handler = onLineClickRef.current;
+            if (!handler) {
+                return;
+            }
+            const lyricEvent = event as IAmlLineClickEvent;
+            const line = lyricEvent.line?.getLine?.();
+            if (!line || !Number.isFinite(lyricEvent.lineIndex)) {
+                return;
+            }
+            handler(line, lyricEvent.lineIndex);
+        };
         playerRef.current = player;
         player.setMaskObsceneWords(MaskObsceneWordsMode.Disabled);
+        (player as unknown as EventTarget).addEventListener(
+            "line-click",
+            handleLineClick,
+        );
         stage.appendChild(player.getElement());
 
         return () => {
             cancelAnimationFrame(rafRef.current);
+            (player as unknown as EventTarget).removeEventListener(
+                "line-click",
+                handleLineClick,
+            );
             player.dispose();
             playerRef.current = null;
         };
@@ -332,13 +370,14 @@ export default function AppleMusicLyricPlayer({
         };
     }, [active, documentVisible, hasLyricLines, markLinePlayState, playing]);
 
+    const rootClassName = [
+        "apple-music-lyric-player",
+        lineClickEnabled ? "apple-music-lyric-player--line-seek" : "",
+        className || "",
+    ].filter(Boolean).join(" ");
+
     return (
-        <div
-            className={className
-                ? `apple-music-lyric-player ${className}`
-                : "apple-music-lyric-player"}
-            style={cssVars}
-        >
+        <div className={rootClassName} style={cssVars}>
             <div ref={stageRef} className="apple-music-lyric-player--stage"></div>
             {!hasLyricLines && placeholder ? (
                 <div className="apple-music-lyric-player--placeholder">{placeholder}</div>

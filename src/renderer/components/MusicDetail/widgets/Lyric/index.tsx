@@ -2,6 +2,7 @@ import "./index.scss";
 import { getMediaPrimaryKey } from "@/common/media-util";
 import { mapLyricLinesToAml } from "@/common/amll-lyric";
 import AppleMusicLyricPlayer from "@/renderer/components/AppleMusicLyricPlayer";
+import { lyricStartMsToSeekSeconds } from "@/renderer/components/AppleMusicLyricPlayer/line-seek";
 import { showCustomContextMenu } from "@/renderer/components/ContextMenu";
 import Loading from "@/renderer/components/Loading";
 import { hideModal, showModal } from "@/renderer/components/Modal";
@@ -44,6 +45,7 @@ import nodeRuntime from "@shared/node-runtime/renderer";
 import isLocalMusic from "@/renderer/utils/is-local-music";
 import { serializeEmbeddedLyric } from "@/renderer/utils/embedded-lyric";
 import { toError } from "@/common/error-util";
+import type { LyricLine } from "@amll-core/interfaces";
 
 type MusicDetailCoverStyle = "cover" | "vinyl";
 type MusicDetailVinylTonearm = "none" | "classic" | "glass";
@@ -113,6 +115,14 @@ export default function Lyric({ active, playerReady }: ILyricProps) {
         });
     }, [currentMusic, lyricParser]);
 
+    const handleLyricLineClick = useCallback((line: LyricLine) => {
+        const seconds = lyricStartMsToSeekSeconds(line.startTime);
+        if (seconds === null) {
+            return;
+        }
+        trackPlayer.seekTo(seconds);
+    }, []);
+
     return (
         <div className="music-detail-lyric-panel">
             <div className="music-detail-lyric-toolbar">
@@ -176,6 +186,7 @@ export default function Lyric({ active, playerReady }: ILyricProps) {
                         enableScale
                         enableSpring
                         wordFadeWidth={0.66}
+                        onLineClick={handleLyricLineClick}
                     ></AppleMusicLyricPlayer>
                 ) : lyricParser ? (
                     <div className="music-detail-lyric-loading">
