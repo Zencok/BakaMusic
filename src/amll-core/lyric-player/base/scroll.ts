@@ -71,6 +71,9 @@ export interface AttachPlayerScrollHandlersCallbacks {
 	clickTarget: (target: HTMLElement) => void;
 }
 
+/** 滚轮停止后结束 isUserScrolling 的空闲时间（ms） */
+const WHEEL_IDLE_END_MS = 140;
+
 /**
  * 向指定元素挂载歌词滚动相关的交互处理器。
  *
@@ -82,6 +85,11 @@ export interface AttachPlayerScrollHandlersCallbacks {
  *
  * 只更新 {@link PlayerScrollState} 并通过回调通知宿主执行布局或其它副作用，
  * 不直接依赖具体的播放器类实现。
+ *
+ * 手动滚动策略：
+ * - 触摸 / 滚轮输入合并到 animation frame 后再布局，避免同一帧多次 calcLayout
+ * - 手动偏移走弹簧目标（force=false），与自动跟唱同一套连续动画
+ * - 滚轮会设置 isUserScrolling，结束后再恢复模糊等表现
  */
 export function attachPlayerScrollHandlers(
 	element: HTMLElement,
@@ -99,9 +107,81 @@ export function attachPlayerScrollHandlers(
 	let scrollSpeed = 0;
 	let curScrollId = 0;
 
+	let wheelFrame = 0;
+	let pendingWheelDelta = 0;
+	let wheelIdleTimer: ReturnType<typeof setTimeout> | undefined;
+
+	let touchFrame = 0;
+	let pendingTouchOffset: number | null = null;
+
+	const layoutAnimated = () => {
+		// force=false：把偏移交给 Y 弹簧，保留与自动跟唱一致的连续动画
+		// sync=true：关闭行间 delay 错落，整页一起跟手滑动
+		callbacks.onLayout(true, false);
+	};
+
+	const flushTouchMove = () => {
+		touchFrame = 0;
+		if (pendingTouchOffset === null) return;
+		scrollState.scrollOffset = pendingTouchOffset;
+		pendingTouchOffset = null;
+		clampPlayerScrollOffset(scrollState);
+		layoutAnimated();
+	};
+
+	const scheduleTouchMove = (nextOffset: number) => {
+		pendingTouchOffset = nextOffset;
+		if (touchFrame === 0) {
+			touchFrame = requestAnimationFrame(flushTouchMove);
+		}
+	};
+
+	const endWheelInteraction = () => {
+		wheelIdleTimer = undefined;
+		if (pendingWheelDelta !== 0 || wheelFrame !== 0) {
+			// 还有未刷出的位移时先交给 flush，结束标记在下一空闲再发
+			wheelIdleTimer = setTimeout(endWheelInteraction, WHEEL_IDLE_END_MS);
+			return;
+		}
+		if (!scrollState.isUserScrolling) return;
+		scrollState.isUserScrolling = false;
+		callbacks.onEndScroll();
+	};
+
+	const scheduleWheelEnd = () => {
+		clearTimeout(wheelIdleTimer);
+		wheelIdleTimer = setTimeout(endWheelInteraction, WHEEL_IDLE_END_MS);
+	};
+
+	const flushWheel = () => {
+		wheelFrame = 0;
+		if (pendingWheelDelta === 0) return;
+
+		scrollState.scrollOffset += pendingWheelDelta;
+		pendingWheelDelta = 0;
+		clampPlayerScrollOffset(scrollState);
+		layoutAnimated();
+		scheduleWheelEnd();
+	};
+
+	const scheduleWheel = (delta: number) => {
+		pendingWheelDelta += delta;
+		if (wheelFrame === 0) {
+			wheelFrame = requestAnimationFrame(flushWheel);
+		}
+	};
+
 	element.addEventListener("touchstart", (evt) => {
 		if (callbacks.onBeginScroll()) {
+			// 取消滚轮空闲结束，避免触摸与滚轮状态交错
+			clearTimeout(wheelIdleTimer);
+			wheelIdleTimer = undefined;
+			cancelAnimationFrame(wheelFrame);
+			wheelFrame = 0;
+			pendingWheelDelta = 0;
+
 			scrollState.isUserScrolling = true;
+			curScrollId++;
 
 			evt.preventDefault();
 			startScrollY = scrollState.scrollOffset;
@@ -114,107 +194,114 @@ export function attachPlayerScrollHandlers(
 
 			startScrollTime = Date.now();
 			scrollSpeed = 0;
+			pendingTouchOffset = null;
+			cancelAnimationFrame(touchFrame);
+			touchFrame = 0;
 
-			callbacks.onLayout(true, true);
+			layoutAnimated();
 		}
 	});
 
 	element.addEventListener("touchmove", (evt) => {
-		if (callbacks.onBeginScroll()) {
-			evt.preventDefault();
-			const currentY = evt.touches[0].screenY;
+		if (!callbacks.onBeginScroll()) return;
+		scrollState.isUserScrolling = true;
+		evt.preventDefault();
+		const currentY = evt.touches[0].screenY;
 
-			const deltaY = currentY - startTouchPosY;
-			scrollState.scrollOffset = startScrollY - deltaY;
-			clampPlayerScrollOffset(scrollState);
+		const deltaY = currentY - startTouchPosY;
+		const nextOffset = startScrollY - deltaY;
 
-			const now = Date.now();
-			const dt = now - startScrollTime;
-			if (dt > 0) {
-				scrollSpeed = (currentY - lastMoveY) / dt;
-			}
-			lastMoveY = currentY;
-			startScrollTime = now;
-
-			callbacks.onLayout(true, true);
+		const now = Date.now();
+		const dt = now - startScrollTime;
+		if (dt > 0) {
+			scrollSpeed = (currentY - lastMoveY) / dt;
 		}
+		lastMoveY = currentY;
+		startScrollTime = now;
+
+		scheduleTouchMove(nextOffset);
 	});
 
 	element.addEventListener("touchend", (evt) => {
-		if (callbacks.onBeginScroll()) {
-			evt.preventDefault();
+		if (!scrollState.isUserScrolling) {
+			return;
+		}
+		evt.preventDefault();
 
-			const touch = evt.changedTouches[0];
-			const moveX = Math.abs(touch.screenX - startTouchStartX);
-			const moveY = Math.abs(touch.screenY - startTouchStartY);
+		// 刷出最后一次 touchmove
+		if (touchFrame !== 0) {
+			cancelAnimationFrame(touchFrame);
+			flushTouchMove();
+		}
 
-			if (moveX < 10 && moveY < 10) {
-				const target = document.elementFromPoint(touch.clientX, touch.clientY);
-				if (target instanceof HTMLElement && callbacks.containsTarget(target)) {
-					callbacks.clickTarget(target);
-				}
-				scrollState.isUserScrolling = false;
-				callbacks.onEndScroll();
+		const touch = evt.changedTouches[0];
+		const moveX = Math.abs(touch.screenX - startTouchStartX);
+		const moveY = Math.abs(touch.screenY - startTouchStartY);
+
+		if (moveX < 10 && moveY < 10) {
+			const target = document.elementFromPoint(touch.clientX, touch.clientY);
+			if (target instanceof HTMLElement && callbacks.containsTarget(target)) {
+				callbacks.clickTarget(target);
+			}
+			scrollState.isUserScrolling = false;
+			callbacks.onEndScroll();
+			return;
+		}
+
+		startTouchPosY = 0;
+		const scrollId = ++curScrollId;
+
+		if (Math.abs(scrollSpeed) < 0.1) scrollSpeed = 0;
+
+		let lastFrameTime = performance.now();
+
+		const onScrollFrame = (time: number) => {
+			if (scrollId !== curScrollId) return;
+
+			const dt = time - lastFrameTime;
+			lastFrameTime = time;
+
+			if (dt <= 0 || dt > 100) {
+				requestAnimationFrame(onScrollFrame);
 				return;
 			}
 
-			startTouchPosY = 0;
-			const scrollId = ++curScrollId;
+			if (Math.abs(scrollSpeed) > 0.05) {
+				scrollState.scrollOffset -= scrollSpeed * dt;
 
-			if (Math.abs(scrollSpeed) < 0.1) scrollSpeed = 0;
+				clampPlayerScrollOffset(scrollState);
 
-			let lastFrameTime = performance.now();
+				const frictionFactor = 0.95 ** (dt / 16);
+				scrollSpeed *= frictionFactor;
 
-			const onScrollFrame = (time: number) => {
-				if (scrollId !== curScrollId) return;
+				layoutAnimated();
 
-				const dt = time - lastFrameTime;
-				lastFrameTime = time;
+				requestAnimationFrame(onScrollFrame);
+			} else {
+				scrollState.isUserScrolling = false;
+				callbacks.onEndScroll();
+			}
+		};
 
-				if (dt <= 0 || dt > 100) {
-					requestAnimationFrame(onScrollFrame);
-					return;
-				}
-
-				if (Math.abs(scrollSpeed) > 0.05) {
-					scrollState.scrollOffset -= scrollSpeed * dt;
-
-					clampPlayerScrollOffset(scrollState);
-
-					const frictionFactor = 0.95 ** (dt / 16);
-					scrollSpeed *= frictionFactor;
-
-					callbacks.onLayout(true, true);
-
-					requestAnimationFrame(onScrollFrame);
-				} else {
-					scrollState.isUserScrolling = false;
-					callbacks.onEndScroll();
-				}
-			};
-
-			requestAnimationFrame(onScrollFrame);
-		} else {
-			scrollState.isUserScrolling = false;
-		}
+		requestAnimationFrame(onScrollFrame);
 	});
 
 	element.addEventListener(
 		"wheel",
 		(evt) => {
-			if (callbacks.onBeginScroll()) {
-				evt.preventDefault();
+			if (!callbacks.onBeginScroll()) return;
+			evt.preventDefault();
 
-				if (evt.deltaMode === evt.DOM_DELTA_PIXEL) {
-					scrollState.scrollOffset += evt.deltaY;
-					clampPlayerScrollOffset(scrollState);
-					callbacks.onLayout(true, false);
-				} else {
-					scrollState.scrollOffset += evt.deltaY * 50;
-					clampPlayerScrollOffset(scrollState);
-					callbacks.onLayout(false, false);
-				}
-			}
+			// 取消触摸惯性，避免两套输入叠加速度
+			curScrollId++;
+			scrollState.isUserScrolling = true;
+
+			const delta =
+				evt.deltaMode === evt.DOM_DELTA_PIXEL
+					? evt.deltaY
+					: evt.deltaY * 50;
+			scheduleWheel(delta);
+			scheduleWheelEnd();
 		},
 		{ passive: false },
 	);

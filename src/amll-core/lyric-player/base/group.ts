@@ -8,6 +8,8 @@ export interface LyricPlayerFlags {
 	getEnableScale(): boolean;
 	getIsPlaying(): boolean;
 	getAlwaysPostpositionBackground(): boolean;
+	/** 用户手势/滚轮滚动中：只跟手位移，跳过缩放等次要样式重算 */
+	getIsUserScrolling(): boolean;
 }
 
 export abstract class LyricLineGroupBase<
@@ -61,9 +63,13 @@ export abstract class LyricLineGroupBase<
 		this.opacity = opacity;
 		this.blur = blur;
 
-		this.setLineTransformations(force, delay);
-
 		const enableSpring = this.lyricPlayer.getEnableSpring();
+		const isUserScrolling = this.lyricPlayer.getIsUserScrolling();
+		// 手动跟手时只搬位移，缩放/遮罩留给松手后的弹簧恢复，避免每帧全量 setTransform
+		if (!isUserScrolling) {
+			this.setLineTransformations(force, delay);
+		}
+
 		const alwaysPostposition =
 			this.lyricPlayer.getAlwaysPostpositionBackground();
 		const shouldBgFirst = alwaysPostposition ? false : this.isBgFirst;
@@ -75,7 +81,9 @@ export abstract class LyricLineGroupBase<
 
 		if (force || !enableSpring) {
 			this.posY.setPosition(top);
-			this.bgSlideY.setPosition(targetBgSlideY);
+			if (!isUserScrolling) {
+				this.bgSlideY.setPosition(targetBgSlideY);
+			}
 			this.renderStyles();
 		} else {
 			this.posY.setTargetPosition(top, delay);

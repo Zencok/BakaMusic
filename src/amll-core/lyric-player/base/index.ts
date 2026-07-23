@@ -130,6 +130,9 @@ export abstract class LyricPlayerBase
 		this.isPageVisible = false;
 	};
 	private scrolledHandler: ReturnType<typeof setTimeout> | undefined;
+	/** 暂停时驱动手动滚动/松手后的弹簧连续动画 */
+	private scrollAnimFrame = 0;
+	private lastScrollAnimTime = 0;
 	/** @internal */
 	resizeObserver: ResizeObserver = new ResizeObserver(((entries) => {
 		let shouldRelayout = false;
@@ -207,7 +210,18 @@ export abstract class LyricPlayerBase
 		attachPlayerScrollHandlers(this.element, this.scrollState, {
 			onBeginScroll: () => this.beginScrollHandler(),
 			onEndScroll: () => this.endScrollHandler(),
-			onLayout: (sync, force) => this.calcLayout(sync, force),
+			onLayout: (sync, force) => {
+				void this.calcLayout(sync, force);
+				if (force) {
+					// 强制贴位时立刻 paint，保证 show()/hide 同步
+					this.update(0);
+					return;
+				}
+				// 弹簧路径：播放中由宿主 RAF 推进；暂停时本地泵帧保持连续动画
+				if (!this.timelineState.isPlaying) {
+					this.ensureScrollAnimation();
+				}
+			},
 			containsTarget: (target) => this.element.contains(target),
 			clickTarget: (target) => target.click(),
 		});
@@ -221,11 +235,58 @@ export abstract class LyricPlayerBase
 			this.scrolledHandler = setTimeout(() => {
 				this.scrollState.isScrolled = false;
 				this.scrollState.scrollOffset = 0;
+				// 回到自动跟唱：用弹簧平滑对齐当前播放行
+				void this.calcLayout(false, false);
+				if (!this.timelineState.isPlaying) {
+					this.ensureScrollAnimation();
+				}
 			}, 5000);
 		}
 		return allowed;
 	}
-	private endScrollHandler() {}
+	private endScrollHandler() {
+		// 结束手动滚动后恢复模糊等表现；force=false 保持弹簧连续动画
+		void this.calcLayout(true, false);
+		if (!this.timelineState.isPlaying) {
+			this.ensureScrollAnimation();
+		}
+	}
+
+	/** 在暂停态为手动滚动/松手回弹提供本地 animation frame */
+	private ensureScrollAnimation(): void {
+		if (this.scrollAnimFrame !== 0) return;
+		this.lastScrollAnimTime = 0;
+		this.scrollAnimFrame = requestAnimationFrame(this.onScrollAnimationFrame);
+	}
+
+	private onScrollAnimationFrame = (time: number) => {
+		this.scrollAnimFrame = 0;
+		if (this.timelineState.isPlaying) {
+			this.lastScrollAnimTime = 0;
+			return;
+		}
+
+		const last = this.lastScrollAnimTime || time;
+		const delta = Math.max(0, Math.min(time - last, 48));
+		this.lastScrollAnimTime = time;
+		this.update(delta);
+
+		const keepGoing =
+			this.scrollState.isUserScrolling || this.hasUnsettledLineSprings();
+		if (keepGoing) {
+			this.scrollAnimFrame = requestAnimationFrame(this.onScrollAnimationFrame);
+		} else {
+			this.lastScrollAnimTime = 0;
+		}
+	};
+
+	private hasUnsettledLineSprings(): boolean {
+		if (!this.getEnableSpring()) return false;
+		for (const group of this.currentLyricGroups) {
+			if (!group.posY.arrived()) return true;
+		}
+		return !this.bottomLine.lineTransforms.posY.arrived();
+	}
 
 	/**
 	 * 设置文字动画的渐变宽度，单位以歌词行的主文字字体大小的倍数为单位，默认为 0.5，即一个全角字符的一半宽度
@@ -493,6 +554,11 @@ export abstract class LyricPlayerBase
 	 */
 	public getIsPlaying(): boolean {
 		return this.timelineState.isPlaying;
+	}
+
+	/** 是否处于用户手势/滚轮滚动（含惯性）过程中 */
+	public getIsUserScrolling(): boolean {
+		return this.scrollState.isUserScrolling;
 	}
 
 	/**
@@ -875,6 +941,10 @@ export abstract class LyricPlayerBase
 		return this.element;
 	}
 	dispose(): void {
+		cancelAnimationFrame(this.scrollAnimFrame);
+		this.scrollAnimFrame = 0;
+		this.lastScrollAnimTime = 0;
+		clearTimeout(this.scrolledHandler);
 		this.element.remove();
 		window.removeEventListener("pageshow", this.onPageShow);
 		window.removeEventListener("pagehide", this.onPageHide);

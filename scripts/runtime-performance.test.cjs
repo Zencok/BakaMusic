@@ -56,6 +56,37 @@ const amllDomPlayerSource = fs.readFileSync(path.join(
 ), "utf8");
 assert.match(amllDomPlayerSource, /calcLayout\(true, true\)/);
 
+const amllScrollSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/amll-core/lyric-player/base/scroll.ts",
+), "utf8");
+// Manual scroll must rAF-coalesce input and keep spring continuous animation.
+assert.match(amllScrollSource, /requestAnimationFrame\(flushWheel\)/);
+assert.match(amllScrollSource, /requestAnimationFrame\(flushTouchMove\)/);
+assert.match(amllScrollSource, /callbacks\.onLayout\(true, false\)/);
+assert.match(amllScrollSource, /WHEEL_IDLE_END_MS/);
+
+const amllDomGroupSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/amll-core/lyric-player/dom/lyric-group.ts",
+), "utf8");
+// Off-screen lines unmount but must keep built word DOM for smooth re-entry.
+assert.match(amllDomGroupSource, /element\.remove\(\)/);
+assert.doesNotMatch(
+    amllDomGroupSource.slice(
+        amllDomGroupSource.indexOf("hide():"),
+        amllDomGroupSource.indexOf("override update"),
+    ),
+    /teardownContent/,
+);
+
+const amllBasePlayerSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/amll-core/lyric-player/base/index.ts",
+), "utf8");
+assert.match(amllBasePlayerSource, /ensureScrollAnimation\(\)/);
+assert.match(amllBasePlayerSource, /getIsUserScrolling\(\)/);
+
 const watchLocalDirSource = fs.readFileSync(path.join(
     __dirname,
     "../src/renderer/components/Modal/templates/WatchLocalDir/index.tsx",

@@ -8,6 +8,9 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 	public element: HTMLElement;
 	public bgWrapper?: HTMLElement;
 	private lastIsActive?: boolean;
+	private lastTransform = "";
+	private lastOpacity = "";
+	private lastFilter = "";
 
 	constructor(
 		public lyricPlayer: DomLyricPlayer,
@@ -19,7 +22,7 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 		this.element.appendChild(mainLine.getElement());
 		this.posY.setPosition(window.innerHeight * 2);
 
-		lyricPlayer.resizeObserver.observe(this.element);
+		// 仅在真正挂载到播放器时观察尺寸，避免构造期对未展示节点的无效观测
 	}
 
 	get isInSight(): boolean {
@@ -27,7 +30,11 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 
 		let h = this.lyricPlayer.lyricGroupSize?.get(this)?.[1];
 		if (h === undefined || h === 0) {
-			h = this.element.clientHeight || 0;
+			// 未测量时用字号估算，避免读 clientHeight 触发布局
+			const fontSize = Number.isFinite(this.lyricPlayer.baseFontSize)
+				? this.lyricPlayer.baseFontSize
+				: 24;
+			h = fontSize * 1.6;
 		}
 
 		const pb = this.lyricPlayer.size[1];
@@ -65,9 +72,8 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 		if (this.element.parentElement) {
 			this.lyricPlayer.resizeObserver.unobserve(this.element);
 			this.element.remove();
-
-			this.mainLine.teardownContent();
-			this.bgLine?.teardownContent();
+			// 保留已构建的逐词 DOM。手动快滑时反复 teardown/rebuild 是前几秒掉帧主因；
+			// 换歌 dispose 时仍会完整释放。
 		}
 	}
 
@@ -125,10 +131,23 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 
 	protected renderStyles(): void {
 		const y = this.posY.getCurrentPosition().toFixed(1);
+		const transform = `translateY(${y}px)`;
+		const opacity = this.opacity.toString();
+		const filter = `blur(${Math.min(5, this.blur)}px)`;
 
-		this.element.style.transform = `translateY(${y}px)`;
-		this.element.style.opacity = this.opacity.toString();
-		this.element.style.filter = `blur(${Math.min(5, this.blur)}px)`;
+		// 手动滚动每帧 force 定位时，跳过未变化的 style 写入可显著降复合成本
+		if (transform !== this.lastTransform) {
+			this.lastTransform = transform;
+			this.element.style.transform = transform;
+		}
+		if (opacity !== this.lastOpacity) {
+			this.lastOpacity = opacity;
+			this.element.style.opacity = opacity;
+		}
+		if (filter !== this.lastFilter) {
+			this.lastFilter = filter;
+			this.element.style.filter = filter;
+		}
 
 		if (!this.lyricPlayer.getEnableSpring()) {
 			this.element.style.transitionDelay = `${this.delay}ms`;
