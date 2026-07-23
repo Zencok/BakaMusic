@@ -148,6 +148,18 @@ declare namespace IArtist {
 }
 
 declare namespace ILyric {
+  type LyricFormat =
+    | "ttml"
+    | "lrc"
+    | "lrc-a2"
+    | "yrc"
+    | "qrc"
+    | "eslrc"
+    | "lyl"
+    | "lys"
+    | "lqe"
+    | "plain";
+
   interface ILyricItem extends IMusic.IMusicItem {
     /** 歌词（无时间戳） */
     rawLrcTxt?: string;
@@ -156,8 +168,16 @@ declare namespace ILyric {
   interface ILyricSource {
     lrc?: string;
     rawLrc?: string;
+    /** 原始歌词格式；本地侧车文件会根据扩展名提供 */
+    format?: LyricFormat;
     translation?: string;
     romanization?: string;
+  }
+
+  interface IRubyWordData {
+    text: string;
+    startTime: number;
+    endTime: number;
   }
 
   /** 逐字时间轴数据 */
@@ -176,6 +196,12 @@ declare namespace ILyric {
     space?: boolean;
     /** 是否为伪逐字（均分生成） */
     isVirtual?: boolean;
+    /** TTML 逐字音译 */
+    romanWord?: string;
+    /** TTML Ruby 注音 */
+    ruby?: IRubyWordData[];
+    /** TTML 不雅词标记 */
+    obscene?: boolean;
   }
 }
 

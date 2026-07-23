@@ -1077,6 +1077,7 @@ class TrackPlayer {
             }
             const parser = new LyricParser(lyricSource.rawLrc ?? "", {
                 musicItem: currentMusic,
+                format: lyricSource.format,
                 translation: lyricSource.translation,
                 romanization: lyricSource.romanization,
             });

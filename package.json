@@ -11,7 +11,7 @@
     "clean": "rimraf .webpack out tmp",
     "runtime:install": "node scripts/install-media-runtimes.cjs",
     "runtime:install:dev": "node scripts/install-media-runtimes.cjs --only=mpv",
-    "test": "npm run test:theme-contract && npm run test:music-quality-metadata && npm run test:listening-statistics && npm run test:phase4-data && npm run test:lyric-window-z-order && npm run test:lyric-duet && npm run test:update-flow && npm run test:app-config && npm run test:file-naming && npm run test:download-lyric-export && npm run test:runtime-performance && npm run test:phase3-network && npm run test:service-manager && npm run test:startup-performance && npm run test:playback-boundary && npm run test:search-matching && npm run test:pitch-shift && npm run test:phase5-security && npm run test:phase6-governance && npm run test:runtime-packaging && npm run test:toolchain",
+    "test": "npm run test:theme-contract && npm run test:music-quality-metadata && npm run test:listening-statistics && npm run test:phase4-data && npm run test:lyric-window-z-order && npm run test:lyric-duet && npm run test:lyric-formats && npm run test:update-flow && npm run test:app-config && npm run test:file-naming && npm run test:download-lyric-export && npm run test:runtime-performance && npm run test:phase3-network && npm run test:service-manager && npm run test:startup-performance && npm run test:playback-boundary && npm run test:search-matching && npm run test:pitch-shift && npm run test:phase5-security && npm run test:phase6-governance && npm run test:runtime-packaging && npm run test:toolchain",
     "start": "npm run runtime:install:dev && chcp 65001 >nul 2>&1 & cross-env NODE_ENV=development electron-forge start",
     "dev": "npm run runtime:install:dev && chcp 65001 >nul 2>&1 & cross-env NODE_ENV=development electron-forge start --inspect-electron",
     "package": "npm run runtime:install && cross-env NODE_ENV=production electron-forge package",
@@ -31,6 +31,7 @@
     "test:phase4-data": "node -r ts-node/register/transpile-only scripts/phase4-data.test.cjs",
     "test:lyric-window-z-order": "node -r ts-node/register/transpile-only scripts/lyric-window-z-order.test.cjs",
     "test:lyric-duet": "node -r ts-node/register/transpile-only scripts/lyric-duet.test.cjs",
+    "test:lyric-formats": "node -r ts-node/register/transpile-only scripts/lyric-formats.test.cjs",
     "test:update-flow": "node -r ts-node/register/transpile-only scripts/update-flow.test.cjs",
     "test:app-config": "node -r ts-node/register/transpile-only scripts/app-config.test.cjs",
     "test:file-naming": "node -r ts-node/register/transpile-only scripts/file-naming-formatter.test.cjs",
@@ -81,6 +82,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/unzipper": "^0.10.11",
     "@vercel/webpack-asset-relocator-loader": "^1.10.0",
+    "@xmldom/xmldom": "^0.9.10",
     "7zip-bin": "^5.2.0",
     "babel-loader": "^10.1.1",
     "cross-env": "^10.1.0",
@@ -109,6 +111,8 @@
     "typescript-eslint": "^8.64.0"
   },
   "dependencies": {
+    "@applemusic-like-lyrics/lyric": "^1.0.2",
+    "@applemusic-like-lyrics/ttml": "^1.0.1",
     "@headlessui/react": "^2.2.10",
     "@tanstack/react-table": "^8.21.3",
     "@ungap/structured-clone": "^1.3.3",

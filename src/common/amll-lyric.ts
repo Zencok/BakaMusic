@@ -21,6 +21,13 @@ export interface IAmlLyricWordSource {
     text: string;
     startTime: number;
     endTime: number;
+    romanWord?: string;
+    ruby?: Array<{
+        text: string;
+        startTime: number;
+        endTime: number;
+    }>;
+    obscene?: boolean;
 }
 
 export interface IAmlLyricLineSource {
@@ -85,14 +92,21 @@ function mapWords(
         const romanWordMap = includeRomanization ? getRomanWordMap(line) : null;
 
         return line.words.map((word, index) => {
-            const romanWord = romanWordMap?.get(index) ?? "";
+            const romanWord = includeRomanization
+                ? word.romanWord ?? romanWordMap?.get(index) ?? ""
+                : "";
 
             return {
                 word: word.text,
                 startTime: toMs(word.startTime),
                 endTime: Math.max(toMs(word.startTime) + 120, toMs(word.endTime)),
                 romanWord: romanWord || undefined,
-                obscene: false,
+                ruby: word.ruby?.map((ruby) => ({
+                    word: ruby.text,
+                    startTime: toMs(ruby.startTime),
+                    endTime: Math.max(toMs(ruby.startTime), toMs(ruby.endTime)),
+                })),
+                obscene: !!word.obscene,
             };
         });
     }

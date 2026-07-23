@@ -1,16 +1,43 @@
 /**
  * 多格式歌词解析器
- * 支持: QRC [ms,dur]text(ms,dur) / 尖括号 [mm:ss.xxx]<mm:ss.xxx>text / LRC / 纯文本
+ * 支持 AMLL lyric/ttml 的 TTML、LRC、LRC A2、YRC、QRC、
+ * ESLyric、LYL、LYS、LQE，以及兼容旧插件的混合时间戳和纯文本。
  */
 
+import {
+    parseEslrc,
+    parseLqe,
+    parseLrc,
+    parseLrcA2,
+    parseLyl,
+    parseLys,
+    parseQrc,
+    parseYrc,
+    type LyricLine as AmlLyricLine,
+} from "@applemusic-like-lyrics/lyric";
+import {
+    TTMLParser,
+    toAmllLyrics,
+    type AmllLyricLine,
+} from "@applemusic-like-lyrics/ttml";
+
 type LyricMeta = Record<string, any>;
-type LyricFormat = "qrc" | "angle" | "word-lrc" | "inline-word-lrc" | "lrc" | "plain";
+type LegacyLyricFormat = "qrc" | "angle" | "word-lrc" | "inline-word-lrc" | "lrc" | "plain";
 
 interface IOptions {
     musicItem?: IMusic.IMusicItem;
+    format?: ILyric.LyricFormat;
     translation?: string;
     romanization?: string;
 }
+
+interface IParsedLyricContent {
+    items: IParsedLrcItem[];
+    meta?: LyricMeta;
+    preserveVocalLayout?: boolean;
+}
+
+type AmlLyricLineLike = AmlLyricLine | AmllLyricLine;
 
 export interface IParsedLrcItem {
     /** 时间 s */
@@ -67,6 +94,11 @@ const WORD_LRC_REG = /\[\d{2}:\d{2}(?:\.\d{2,3})?\][^[\r\n]+\[\d{2}:\d{2}(?:\.\d
 const WORD_LRC_ENTRY_REG = /\[(\d{2}:\d{2}(?:\.\d{2,3})?)\]([^[\r\n]*)/g;
 const INLINE_WORD_TIME_REG = /\[[\d:.]+\][^\r\n]*\(\d+,\d+(?:,\d+)?\)/;
 const LRC_TIME_REG = /\[\d{2}:\d{2}(?:\.\d{2,3})?\]/;
+const TTML_REG = /<(?:[a-zA-Z][\w.-]*:)?tt(?:\s|>)/i;
+const LQE_REG = /^\s*\[Lyricify Quick Export\]/i;
+const LYL_REG = /^\s*\[type:LyricifyLines\]/im;
+const LYS_REG = /^\s*\[[0-8]\].+?\(\d+,\d+\)/m;
+const YRC_WORD_REG = /\(\d+,\d+,0\)/;
 const META_REG = /\[([a-zA-Z]+):([^\]]+)\]/g;
 const PARALLEL_LINE_EPSILON = 0.03;
 const LYRIC_FIELD_DIRECT_EPSILON = 0.3;
@@ -295,13 +327,192 @@ function normalizeRawLyricText(raw: string) {
         .replace(/\\r\\n|\\n|\\r/g, "\n");
 }
 
-function detectLyricFormat(raw: string): LyricFormat {
+function detectLyricFormat(raw: string): LegacyLyricFormat {
     if (QRC_LINE_REG.test(raw) && QRC_WORD_REG.test(raw)) return "qrc";
     if (ANGLE_REG.test(raw)) return "angle";
     if (containsWordLrc(raw)) return "word-lrc";
     if (INLINE_WORD_TIME_REG.test(raw)) return "inline-word-lrc";
     if (LRC_TIME_REG.test(raw)) return "lrc";
     return "plain";
+}
+
+function detectAmlLyricFormat(
+    raw: string,
+    hint?: ILyric.LyricFormat,
+): ILyric.LyricFormat | null {
+    if (TTML_REG.test(raw)) return "ttml";
+    if (LQE_REG.test(raw)) return "lqe";
+    if (LYL_REG.test(raw)) return "lyl";
+    if (YRC_WORD_REG.test(raw) && QRC_LINE_REG.test(raw)) return "yrc";
+    if (QRC_LINE_REG.test(raw) && QRC_WORD_REG.test(raw)) {
+        return hint === "lys" ? "lys" : "qrc";
+    }
+    if (LYS_REG.test(raw)) return hint === "lqe" ? "lqe" : "lys";
+    if (ANGLE_REG.test(raw)) return "lrc-a2";
+    if (containsWordLrc(raw)) return "eslrc";
+    if (LRC_TIME_REG.test(raw)) {
+        if (hint === "eslrc" || hint === "lrc-a2") {
+            return hint;
+        }
+        return "lrc";
+    }
+    if (hint && hint !== "plain") return hint;
+    return null;
+}
+
+function compactAmlWords(words: AmlLyricLineLike["words"]) {
+    const compacted: typeof words = [];
+    let leadingSpace = "";
+
+    words.forEach((word) => {
+        if (!word.word.trim()) {
+            if (compacted.length) {
+                compacted[compacted.length - 1].word += word.word;
+            } else {
+                leadingSpace += word.word;
+            }
+            return;
+        }
+
+        compacted.push({
+            ...word,
+            word: `${leadingSpace}${word.word}`,
+        });
+        leadingSpace = "";
+    });
+
+    if (leadingSpace && compacted.length) {
+        compacted[compacted.length - 1].word += leadingSpace;
+    }
+    return compacted;
+}
+
+function convertAmlLyricLines(
+    lines: AmlLyricLineLike[],
+    hasWordTimeline: boolean,
+): IParsedLrcItem[] {
+    return lines.map((line, index) => {
+        const sourceWords = compactAmlWords(line.words);
+        const words = sourceWords.map((word, wordIndex): ILyric.IWordData => {
+            const startTime = word.startTime / 1000;
+            const endTime = Math.max(startTime, word.endTime / 1000);
+            return {
+                text: word.word,
+                startTime,
+                duration: endTime - startTime,
+                endTime,
+                index: wordIndex,
+                space: !word.word.trim(),
+                romanWord: word.romanWord || undefined,
+                ruby: "ruby" in word
+                    ? word.ruby?.map((ruby) => ({
+                        text: ruby.word,
+                        startTime: ruby.startTime / 1000,
+                        endTime: ruby.endTime / 1000,
+                    }))
+                    : undefined,
+                obscene: "obscene" in word ? word.obscene : undefined,
+            };
+        });
+        const lrc = words.map((word) => word.text).join("");
+        const startTime = line.startTime / 1000;
+        const hasOpenEndedLine = !hasWordTimeline && line.endTime >= 60_000_000;
+        const endTime = hasOpenEndedLine
+            ? undefined
+            : Math.max(startTime, line.endTime / 1000);
+        const wordRomanization = sourceWords
+            .map((word) => word.romanWord ?? "")
+            .join("")
+            .trim();
+        const hasUsableWordTimeline = hasWordTimeline
+            && sourceWords.some((word) => word.endTime > word.startTime);
+
+        return {
+            time: startTime,
+            endTime,
+            duration: endTime === undefined ? undefined : endTime - startTime,
+            lrc,
+            translation: line.translatedLyric || undefined,
+            romanization: line.romanLyric || wordRomanization || undefined,
+            index,
+            words: words.length ? words : undefined,
+            hasWordTimeline: hasUsableWordTimeline && words.length > 0,
+            isBG: line.isBG,
+            isDuet: line.isDuet,
+        };
+    }).filter((line) => !!line.lrc.trim());
+}
+
+function parseWithAmlLibraries(
+    raw: string,
+    hint?: ILyric.LyricFormat,
+): IParsedLyricContent | null {
+    const format = detectAmlLyricFormat(raw, hint);
+    if (!format) {
+        return null;
+    }
+
+    try {
+        if (format === "ttml") {
+            const ttmlResult = TTMLParser.parse(raw);
+            const amllResult = toAmllLyrics(ttmlResult);
+            const meta = Object.fromEntries(amllResult.metadata.map(([key, values]) => [
+                key,
+                values.length === 1 ? values[0] : values,
+            ]));
+            const hasWordTimeline = ttmlResult.metadata.timingMode === "Word"
+                || amllResult.lines.some((line) => line.words.length > 1);
+            return {
+                items: convertAmlLyricLines(amllResult.lines, hasWordTimeline),
+                meta,
+                preserveVocalLayout: true,
+            };
+        }
+
+        let lines: AmlLyricLine[];
+        switch (format) {
+            case "lrc-a2":
+                lines = parseLrcA2(raw);
+                break;
+            case "yrc":
+                lines = parseYrc(raw);
+                break;
+            case "qrc":
+                lines = parseQrc(raw);
+                break;
+            case "eslrc":
+                lines = parseEslrc(raw);
+                break;
+            case "lyl":
+                lines = parseLyl(raw);
+                break;
+            case "lys":
+                lines = parseLys(raw);
+                break;
+            case "lqe":
+                lines = parseLqe(raw);
+                break;
+            default:
+                lines = parseLrc(raw);
+        }
+
+        if (!lines.length) {
+            return null;
+        }
+        const hasNativeVocalLayout = lines.some((line) => line.isBG || line.isDuet);
+        return {
+            items: convertAmlLyricLines(
+                lines,
+                !["lrc", "lyl"].includes(format),
+            ),
+            preserveVocalLayout: ["lqe", "lys"].includes(format)
+                || hasNativeVocalLayout,
+        };
+    } catch {
+        return format === "ttml"
+            ? { items: [], preserveVocalLayout: true }
+            : null;
+    }
 }
 
 // ============ 工具函数 ============
@@ -774,21 +985,28 @@ function parsePlainTextLyric(raw: string): IParsedLrcItem[] {
         }));
 }
 
-function parseLyricItemsByFormat(raw: string): IParsedLrcItem[] {
+function parseLyricItemsByFormat(
+    raw: string,
+    hint?: ILyric.LyricFormat,
+): IParsedLyricContent {
     raw = sanitizeLyricRaw(normalizeRawLyricText(raw));
+    const amlParsed = parseWithAmlLibraries(raw, hint);
+    if (amlParsed) {
+        return amlParsed;
+    }
     const format = detectLyricFormat(raw);
 
     switch (format) {
         case "qrc":
-            return parseQrcLyric(raw);
+            return { items: parseQrcLyric(raw) };
         case "angle":
         case "word-lrc":
         case "inline-word-lrc":
-            return parseMixedTimestampLyric(raw);
+            return { items: parseMixedTimestampLyric(raw) };
         case "lrc":
-            return parseLrcLyric(raw);
+            return { items: parseLrcLyric(raw) };
         default:
-            return parsePlainTextLyric(raw);
+            return { items: parsePlainTextLyric(raw) };
     }
 }
 
@@ -2223,7 +2441,7 @@ function mergeLyricField(
     artist?: string,
 ): boolean {
     const sourceItems = applyDuetSpeakerLayout(
-        parseLyricItemsByFormat(raw),
+        parseLyricItemsByFormat(raw).items,
         artist,
         false,
     )
@@ -2296,6 +2514,7 @@ function fillEndTimes(items: IParsedLrcItem[]): void {
 
 export default class LyricParser {
     private _musicItem?: IMusic.IMusicItem;
+    private format?: ILyric.LyricFormat;
     private meta: LyricMeta;
     private lrcItems: Array<IParsedLrcItem>;
     private searchableLrcItems: Array<IParsedLrcItem>;
@@ -2310,6 +2529,7 @@ export default class LyricParser {
 
     constructor(raw: string, options?: IOptions) {
         this._musicItem = options?.musicItem;
+        this.format = options?.format;
         let translation = options?.translation;
         let romanization = options?.romanization;
 
@@ -2380,22 +2600,36 @@ export default class LyricParser {
         const metaPrefix = extractMetaPrefix(raw);
         const meta = parseMeta(metaPrefix);
 
-        const parsedItems = parseLyricItemsByFormat(raw);
-        const {
-            items: collapsedItems,
-            hasTranslation,
-            hasRomanization,
-        } = collapseParallelLyricItems(parsedItems);
+        const parsedContent = parseLyricItemsByFormat(raw, this.format);
+        const parsedItems = parsedContent.items;
+        Object.assign(meta, parsedContent.meta);
+        const collapsed = parsedContent.preserveVocalLayout
+            ? {
+                items: parsedItems,
+                hasTranslation: parsedItems.some((item) => !!item.translation?.trim()),
+                hasRomanization: parsedItems.some((item) => !!item.romanization?.trim()),
+            }
+            : collapseParallelLyricItems(parsedItems);
+        const collapsedItems = collapsed.items;
+        const hasTranslation = collapsed.hasTranslation
+            || collapsedItems.some((item) => !!item.translation?.trim());
+        const hasRomanization = collapsed.hasRomanization
+            || collapsedItems.some((item) => !!item.romanization?.trim());
+        const preserveVocalLayout = !!parsedContent.preserveVocalLayout
+            || collapsedItems.some((item) => !!item.isBG || !!item.isDuet);
         const hasSpeakerLayout = hasRecognizedSpeakerLayout(
             collapsedItems,
             this._musicItem?.artist,
         );
-        const hasStructuredDuetLayout = hasSpeakerLayout
+        const hasStructuredDuetLayout = preserveVocalLayout
+            || hasSpeakerLayout
             || hasParentheticalDuetVocals(
                 collapsedItems,
                 this._musicItem?.artist,
             );
-        let items = applyDuetSpeakerLayout(collapsedItems, this._musicItem?.artist);
+        let items = preserveVocalLayout
+            ? collapsedItems
+            : applyDuetSpeakerLayout(collapsedItems, this._musicItem?.artist);
 
         // 补全 endTime
         fillEndTimes(items);
@@ -2408,11 +2642,13 @@ export default class LyricParser {
 
         // 行级 LRC 的括号内容按 AMLL 对唱另一方展开；逐字歌词中的括号
         // 常用于日语注音，因此保留原样。
-        items = expandParentheticalDuetVocals(
-            items,
-            this._musicItem?.artist,
-            hasSpeakerLayout,
-        );
+        if (!preserveVocalLayout) {
+            items = expandParentheticalDuetVocals(
+                items,
+                this._musicItem?.artist,
+                hasSpeakerLayout,
+            );
+        }
 
         // 为无词级时间轴的行生成伪逐字
         for (const item of items) {

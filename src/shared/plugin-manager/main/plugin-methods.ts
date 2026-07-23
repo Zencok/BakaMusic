@@ -46,6 +46,53 @@ const validAudioExtSet = new Set([
     ".m4s",
 ]);
 
+const localLyricSidecarExtensions = [
+    ".ttml", ".TTML",
+    ".xml", ".XML",
+    ".lqe", ".LQE",
+    ".lys", ".LYS",
+    ".yrc", ".YRC",
+    ".qrc", ".QRC",
+    ".alrc", ".ALRC",
+    ".eslrc", ".ESLRC",
+    ".lyl", ".LYL",
+    ".lrc", ".LRC",
+    ".txt", ".TXT",
+];
+const secondaryLyricSidecarExtensions = [".lrc", ".LRC", ".txt", ".TXT"];
+
+function getLyricFormat(filePath: string): ILyric.LyricFormat {
+    let normalizedPath = filePath;
+    try {
+        normalizedPath = new URL(filePath).pathname;
+    } catch {
+        // 本地路径直接交给 path.extname。
+    }
+    switch (path.extname(normalizedPath).toLowerCase()) {
+        case ".ttml":
+        case ".xml":
+            return "ttml";
+        case ".alrc":
+            return "lrc-a2";
+        case ".yrc":
+            return "yrc";
+        case ".qrc":
+            return "qrc";
+        case ".eslrc":
+            return "eslrc";
+        case ".lyl":
+            return "lyl";
+        case ".lys":
+            return "lys";
+        case ".lqe":
+            return "lqe";
+        case ".lrc":
+            return "lrc";
+        default:
+            return "plain";
+    }
+}
+
 function normalizeSourceExt(ext?: string | null) {
     if (!ext) {
         return null;
@@ -330,7 +377,10 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
                 for (const ext of exts) {
                     const filePath = basePath + ext;
                     if ((await safeStat(filePath))?.isFile()) {
-                        return decodeTextFile(filePath);
+                        return {
+                            format: getLyricFormat(filePath),
+                            text: await decodeTextFile(filePath),
+                        };
                     }
                 }
             }
@@ -338,9 +388,11 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
         };
 
         let rawLrc = mergeLyricText(undefined, musicItem.rawLrc);
+        let rawLrcFormat: ILyric.LyricFormat | undefined;
         let lrcUrl = musicItem.lrc;
         let translation: string | undefined;
         let romanization: string | undefined;
+        let hasLocalSidecar = false;
 
         const localPath =
             getInternalData<IMusic.IMusicItemInternalData>(musicItem as IMedia.IMediaBase, "downloadData")
@@ -348,7 +400,6 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
         if (localPath) {
             const fileName = path.parse(localPath).name;
             const localDir = path.dirname(localPath);
-            const exts = [".lrc", ".LRC", ".txt"];
             const translationBasePaths = [
                 path.join(localDir, `${fileName}-tr`),
                 path.join(localDir, `${fileName}.tran`),
@@ -357,9 +408,23 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
                 path.join(localDir, `${fileName}.roma`),
                 path.join(localDir, `${fileName}-roma`),
             ];
-            rawLrc = rawLrc ?? await readLocalLyric([path.join(localDir, fileName)], exts);
-            translation = translation ?? await readLocalLyric(translationBasePaths, exts);
-            romanization = romanization ?? await readLocalLyric(romanizationBasePaths, exts);
+            const localLyric = await readLocalLyric(
+                [path.join(localDir, fileName)],
+                localLyricSidecarExtensions,
+            );
+            if (localLyric?.text.trim()) {
+                rawLrc = localLyric.text;
+                rawLrcFormat = localLyric.format;
+                hasLocalSidecar = true;
+            }
+            translation = translation ?? (await readLocalLyric(
+                translationBasePaths,
+                secondaryLyricSidecarExtensions,
+            ))?.text;
+            romanization = romanization ?? (await readLocalLyric(
+                romanizationBasePaths,
+                secondaryLyricSidecarExtensions,
+            ))?.text;
         }
 
         try {
@@ -370,7 +435,13 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
                 resetMediaItem(musicItem as IMedia.IMediaBase, undefined, true),
             );
 
-            rawLrc = mergeLyricText(rawLrc, lrcSource?.rawLrc);
+            if (!hasLocalSidecar) {
+                const mergedRawLrc = mergeLyricText(rawLrc, lrcSource?.rawLrc);
+                if (lrcSource?.rawLrc?.trim()) {
+                    rawLrcFormat = lrcSource?.format;
+                }
+                rawLrc = mergedRawLrc;
+            }
             translation = mergeLyricText(translation, lrcSource?.translation);
             romanization = mergeLyricText(romanization, lrcSource?.romanization);
 
@@ -388,6 +459,7 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
                     rawLrc,
                     (await axios.get(lrcUrl, { timeout: 5000 })).data,
                 );
+                rawLrcFormat ??= getLyricFormat(lrcUrl);
             } catch {
                 lrcUrl = undefined;
             }
@@ -400,6 +472,7 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
         if (rawLrc || translation || romanization) {
             return {
                 rawLrc,
+                format: rawLrcFormat,
                 translation,
                 romanization,
                 lrc: lrcUrl,
