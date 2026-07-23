@@ -15,13 +15,15 @@ export function createNsisWebPackageUrl(
     packageName: string,
     version: string,
     arch: string,
+    urlPrefix = "",
 ) {
     const encodedVersion = encodeURIComponent(version);
-    return [
+    const packageUrl = [
         baseUrl.replace(/\/$/, ""),
         `v${encodedVersion}`,
         `${packageName}-${encodedVersion}-${arch}.nsis.7z`,
     ].join("/");
+    return `${urlPrefix}${packageUrl}`;
 }
 
 export interface MakerNsisConfig {
@@ -32,6 +34,7 @@ export interface MakerNsisConfig {
     targets?: MakerNsisTarget[];
     webPackageBaseUrl?: string;
     webPackageName?: string;
+    webPackageUrlPrefix?: string;
     win?: WindowsConfiguration;
 }
 
@@ -58,6 +61,7 @@ export class MakerNsis extends MakerBase<MakerNsisConfig> {
                 this.config.webPackageName ?? options.packageJSON.name,
                 version,
                 options.targetArch,
+                this.config.webPackageUrlPrefix,
             );
 
         return buildForge(

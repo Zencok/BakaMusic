@@ -5,6 +5,9 @@ const path = require("node:path");
 const projectRoot = path.join(__dirname, "..");
 const packageJson = require(path.join(projectRoot, "package.json"));
 const {
+    githubAcceleratorPrefixes,
+} = require(path.join(projectRoot, "src/common/constant.ts"));
+const {
     createNsisWebPackageUrl,
 } = require(path.join(projectRoot, "config/forge-nsis-maker.ts"));
 const forgeConfig = require(path.join(projectRoot, "forge.config.ts")).default;
@@ -25,6 +28,10 @@ async function run() {
     assert.equal(
         nsisMaker.config.webPackageBaseUrl,
         "https://github.com/Zencok/BakaMusic/releases/download",
+    );
+    assert.equal(
+        nsisMaker.config.webPackageUrlPrefix,
+        githubAcceleratorPrefixes[0],
     );
     assert.equal(nsisMaker.config.nsis.oneClick, false);
     assert.equal(nsisMaker.config.nsis.perMachine, false);
@@ -52,6 +59,19 @@ async function run() {
             nsisMaker.config.webPackageName,
             packageJson.version,
             "x64",
+            githubAcceleratorPrefixes[0],
+        ),
+        `${githubAcceleratorPrefixes[0]}`
+        + "https://github.com/Zencok/BakaMusic/releases/download/"
+        + "v1.0.0/bakamusic-1.0.0-x64.nsis.7z",
+    );
+    assert.equal(
+        createNsisWebPackageUrl(
+            nsisMaker.config.webPackageBaseUrl,
+            nsisMaker.config.webPackageName,
+            packageJson.version,
+            "x64",
+            "",
         ),
         "https://github.com/Zencok/BakaMusic/releases/download/"
         + "v1.0.0/bakamusic-1.0.0-x64.nsis.7z",

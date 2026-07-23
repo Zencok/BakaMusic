@@ -8,6 +8,7 @@ import { FuseV1Options, FuseVersion } from "@electron/fuses";
 
 import { mainConfig } from "./config/webpack.main.config";
 import { rendererConfig } from "./config/webpack.renderer.config";
+import { githubAcceleratorPrefixes } from "./src/common/constant";
 import { createExternalRuntimePlugin } from "./config/forge-external-runtime-plugin";
 import { createFusesPlugin } from "./config/forge-fuses-plugin";
 import { MakerAppImage } from "./config/forge-appimage-maker";
@@ -25,6 +26,8 @@ const macNotarizationConfigured = !!(
     && process.env.APPLE_API_KEY_ID
     && process.env.APPLE_API_ISSUER
 );
+const nsisWebGithubAccelerator = process.env.NSIS_WEB_GITHUB_ACCELERATOR
+    ?? githubAcceleratorPrefixes[0];
 
 // Sign when credentials exist. Tagged CI builds must still package if secrets
 // are missing — do not hard-fail release matrix jobs on signing alone.
@@ -94,6 +97,7 @@ const config: ForgeConfig = {
             targets: ["nsis", "nsis-web"],
             webPackageBaseUrl: "https://github.com/Zencok/BakaMusic/releases/download",
             webPackageName: "bakamusic",
+            webPackageUrlPrefix: nsisWebGithubAccelerator,
             win: {
                 icon: path.resolve(__dirname, "res/logo.ico"),
             },
