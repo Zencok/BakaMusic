@@ -242,7 +242,7 @@
         "open_album_failed": "Unable to open album page"
     },
     "search_result_page": {
-        "search_result_title": "Search Results: <highlight>{{query}}</highlight>",
+        "search_result_title": "Search Results <highlight>{{query}}</highlight>",
         "refresh_current_platform": "Refresh current platform"
     },
     "side_bar": {
