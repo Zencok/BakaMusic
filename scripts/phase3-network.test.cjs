@@ -14,9 +14,6 @@ const {
 const {
     getDownloadProgressPercent,
 } = require("../src/renderer/core/downloader/progress");
-const { classifyHlsError } = require(
-    "../src/renderer/core/track-player/hls-error-policy",
-);
 const {
     assertSafeTargetUrlSync,
     createByteLimitTransform,
@@ -65,24 +62,6 @@ function lookup(hostname, options) {
             resolve({ address, family });
         });
     });
-}
-
-async function startRequestForwarder() {
-    const child = fork(path.join(__dirname, "../res/.service/request-forwarder.cjs"), [], {
-        env: { ...process.env, REQUEST_FORWARDER_PORT: "0" },
-        silent: true,
-    });
-    const port = await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error("request-forwarder start timeout")), 5_000);
-        child.once("error", reject);
-        child.on("message", (message) => {
-            if (message?.type === "port") {
-                clearTimeout(timeout);
-                resolve(message.port);
-            }
-        });
-    });
-    return { child, port };
 }
 
 function canLoadProxyNative(fileName) {
@@ -208,23 +187,6 @@ async function run() {
         /Media signature/,
     );
 
-    assert.equal(classifyHlsError({ fatal: false, type: "networkError" }, {
-        networkAttempts: 0,
-        mediaAttempts: 0,
-    }), "ignore");
-    assert.equal(classifyHlsError({ fatal: true, type: "networkError" }, {
-        networkAttempts: 0,
-        mediaAttempts: 0,
-    }), "restart-load");
-    assert.equal(classifyHlsError({ fatal: true, type: "mediaError" }, {
-        networkAttempts: 0,
-        mediaAttempts: 0,
-    }), "recover-media");
-    assert.equal(classifyHlsError({ fatal: true, type: "networkError" }, {
-        networkAttempts: 2,
-        mediaAttempts: 0,
-    }), "fail");
-
     assert.throws(() => assertSafeTargetUrlSync("file:///tmp/music"), /HTTP/);
     assert.throws(() => assertSafeTargetUrlSync("http://127.0.0.1/music"), /Private/);
     assert.throws(() => assertSafeTargetUrlSync("http://localhost/music"), /Private/);
@@ -322,14 +284,12 @@ async function run() {
     assert.match(nodeRuntimeSource, /if \(this\.watcherState\)/);
     assert.match(nodeRuntimeSource, /"watcher-setup", this\.watcherState/);
 
-    const audioControllerSource = readSource(
-        "src/renderer/core/track-player/controller/audio-controller.ts",
+    const nativeControllerSource = readSource(
+        "src/renderer/core/track-player/controller/libmpv-audio-controller.ts",
     );
-    assert.match(audioControllerSource, /class ForwardingHlsLoader extends XhrLoader/);
-    assert.match(audioControllerSource, /x-bakamusic-final-url/);
-    assert.match(audioControllerSource, /\|\| originalContext\.url/);
-    assert.match(audioControllerSource, /sourceAbortController\?\.abort\(\)/);
-    assert.match(audioControllerSource, /classifyHlsError/);
+    assert.match(nativeControllerSource, /operation: "load"/);
+    assert.match(nativeControllerSource, /normalizeHeaders/);
+    assert.doesNotMatch(nativeControllerSource, /HTMLAudioElement|hls\.js|AudioContext/);
 
     for (const servicePath of [
         "res/.service/mflac-proxy.cjs",
@@ -342,18 +302,6 @@ async function run() {
         assert.match(serviceSource, /req\.once\("aborted", cancel\)/);
         assert.match(serviceSource, /upstream\.pause\(\)/);
         assert.match(serviceSource, /res\.once\("drain"/);
-    }
-
-    const { child, port } = await startRequestForwarder();
-    try {
-        assert.deepEqual(await request(port, "/heartbeat"), { status: 200, body: "OK" });
-        const blocked = await request(
-            port,
-            `/?url=${encodeURIComponent("http://127.0.0.1/private")}`,
-        );
-        assert.equal(blocked.status, 502);
-    } finally {
-        child.kill();
     }
 
     for (const proxy of [

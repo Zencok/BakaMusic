@@ -16,20 +16,6 @@ export function getMpvRuntimeDirectory() {
     ));
 }
 
-export function getFfmpegExecutablePath() {
-    return path.join(
-        getMpvRuntimeDirectory(),
-        process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg",
-    );
-}
-
-export function getFfprobeExecutablePath() {
-    return path.join(
-        getMpvRuntimeDirectory(),
-        process.platform === "win32" ? "ffprobe.exe" : "ffprobe",
-    );
-}
-
 export function getMpvLibraryPath() {
     const directory = getMpvRuntimeDirectory();
     return process.platform === "win32"
@@ -41,11 +27,7 @@ export function getMpvLibraryPath() {
 
 export function hasNativePlaybackRuntime() {
     const directory = getMpvRuntimeDirectory();
-    if (
-        !fs.existsSync(getMpvLibraryPath())
-        || !fs.existsSync(getFfmpegExecutablePath())
-        || !fs.existsSync(getFfprobeExecutablePath())
-    ) {
+    if (!fs.existsSync(getMpvLibraryPath())) {
         return false;
     }
     try {

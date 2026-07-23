@@ -50,14 +50,9 @@ import {
 } from "@shared/themepack/main";
 import NodeRuntimeManager from "@shared/node-runtime/main";
 import { setupBackupMain } from "@shared/backup/main";
-import {
-    registerLocalMediaProtocolScheme,
-    setupLocalMediaMain,
-} from "@shared/local-media/main";
 import NativePlaybackManager from "@shared/native-playback/main";
 
 registerThemeProtocolScheme();
-registerLocalMediaProtocolScheme();
 
 // portable
 if (process.platform === "win32") {
@@ -134,7 +129,6 @@ app.whenReady().then(async () => {
     setupIpcSecurity(windowManager);
     setupSessionSecurity();
     await setupThemePackMain();
-    setupLocalMediaMain();
     setupGlobalContext();
     await AppConfig.setup(windowManager);
 

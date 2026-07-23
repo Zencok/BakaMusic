@@ -200,7 +200,8 @@ function getDecoderList() {
     }
 }
 
-const hasAc4Decoder = getDecoderList().some(
+const decoderList = getDecoderList();
+const hasAc4Decoder = decoderList.some(
     (decoder) => decoder.codec === "ac4" || decoder.driver === "ac4",
 );
 if (!hasAc4Decoder) {
@@ -216,7 +217,13 @@ const capabilities: INativePlaybackCapabilities = {
     version: getStringProperty("mpv-version") ?? undefined,
     clientApiVersion: `${(rawClientApiVersion >>> 16) & 0xffff}.${rawClientApiVersion & 0xffff}`,
     mediaBackend: "librempeg",
-    decoders: ["ac4"],
+    decoders: Array.from(new Set(decoderList.flatMap((decoder) => [
+        decoder.codec,
+        decoder.driver,
+    ]).filter((name): name is string =>
+        typeof name === "string"
+        && /^(?:ac4|dsd_(?:lsbf|msbf)(?:_planar)?|dst)$/.test(name),
+    ))),
 };
 
 let sourceId = "";
@@ -237,6 +244,25 @@ function runCommand(...args: string[]) {
 
 function setProperty(name: string, value: string) {
     checkMpv(api.setPropertyString(player, name, value), `libmpv property ${name}`);
+}
+
+function escapeMpvListValue(value: string) {
+    return value.replace(/\\/g, "\\\\").replace(/,/g, "\\,");
+}
+
+function applyRequestHeaders(headers?: Record<string, string>) {
+    const fields = Object.entries(headers ?? {}).map(
+        ([name, value]) => escapeMpvListValue(`${name}: ${value}`),
+    );
+    setProperty("http-header-fields", fields.join(","));
+}
+
+function applyPitch(semitones: number) {
+    const normalized = Math.max(-12, Math.min(12, Math.round(semitones)));
+    const filter = normalized === 0
+        ? ""
+        : `lavfi=[rubberband=pitch=${(2 ** (normalized / 12)).toFixed(8)}]`;
+    setProperty("af", filter);
 }
 
 function applySeek(seconds: number) {
@@ -375,6 +401,9 @@ function handleCommand(command: NativePlaybackRuntimeCommand) {
             pendingSeek = null;
             playbackSpeed = 1;
             setProperty("pause", "yes");
+            applyRequestHeaders(
+                command.sourceType === "location" ? command.headers : undefined,
+            );
             runCommand("loadfile", command.url, "replace");
             break;
         case "play":
@@ -408,6 +437,9 @@ function handleCommand(command: NativePlaybackRuntimeCommand) {
         case "speed":
             setProperty("speed", String(command.speed));
             playbackSpeed = command.speed;
+            break;
+        case "pitch":
+            applyPitch(command.semitones);
             break;
         case "loop":
             setProperty("loop-file", command.enabled ? "inf" : "no");

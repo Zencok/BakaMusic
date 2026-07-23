@@ -23,7 +23,7 @@ import { createIndexMap, IIndexMap } from "@/common/index-map";
 import _trackPlayerStore from "./store";
 import EventEmitter from "eventemitter3";
 import { IAudioController } from "@/types/audio-controller";
-import DualAudioController from "@renderer/core/track-player/controller/dual-audio-controller";
+import LibmpvAudioController from "@renderer/core/track-player/controller/libmpv-audio-controller";
 import logger from "@shared/logger/renderer";
 import voidCallback from "@/common/void-callback";
 import { delay } from "@/common/time-util";
@@ -193,7 +193,7 @@ class TrackPlayer {
     constructor() {
         this.indexMap = createIndexMap();
         this.ee = new EventEmitter();
-        this.audioController = new DualAudioController();
+        this.audioController = new LibmpvAudioController();
     }
 
     private beginMediaLoad() {
@@ -314,7 +314,7 @@ class TrackPlayer {
 
 
     private createAudioController() {
-        const audioController = new DualAudioController();
+        const audioController = new LibmpvAudioController();
         // 播放结束
         audioController.onEnded = () => {
             this.resetProgress();

@@ -100,7 +100,8 @@ function dropHandler() {
                     );
                 }
             } else if (
-                supportLocalMediaType.some((postfix) => filePath.endsWith(postfix))
+                supportLocalMediaType.some((postfix) =>
+                    filePath.toLocaleLowerCase().endsWith(postfix))
             ) {
                 const importedMusicItem = await PluginManager.callPluginDelegateMethod(
                     {

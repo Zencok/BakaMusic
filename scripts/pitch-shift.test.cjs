@@ -27,21 +27,22 @@ assert.equal(semitonesToPitchRatio(0), 1);
 assert.equal(semitonesToPitchRatio(12), 2);
 
 const controllerSource = read(
-    "src/renderer/core/track-player/controller/audio-controller.ts",
+    "src/renderer/core/track-player/controller/libmpv-audio-controller.ts",
 );
-assert.match(controllerSource, /createMediaElementSource\(this\.audio\)/);
-assert.match(controllerSource, /audioWorklet\.addModule/);
-assert.match(controllerSource, /this\.audio\.preservesPitch = true/);
+assert.match(controllerSource, /normalizePitchSemitones\(semitones\)/);
+assert.match(controllerSource, /operation: "pitch"/);
 assert.match(controllerSource, /setPitch\(semitones: number\)/);
 
-const workletSource = read(
-    "src/renderer/core/track-player/controller/pitch-shifter.worklet.js",
+const nativeHostSource = read(
+    "src/shared/native-playback/utility/native-playback-host.ts",
 );
-assert.match(workletSource, /registerProcessor\(PROCESSOR_NAME/);
-assert.match(workletSource, /2 \*\* \(semitones \/ 12\)/);
-assert.match(workletSource, /firstWindow/);
-assert.match(workletSource, /secondWindow/);
-assert.doesNotMatch(workletSource, /playbackRate/);
+assert.match(nativeHostSource, /rubberband=pitch=/);
+assert.match(nativeHostSource, /2 \*\* \(normalized \/ 12\)/);
+assert.doesNotMatch(nativeHostSource, /AudioWorklet|createMediaElementSource/);
+assert.equal(fs.existsSync(path.join(
+    projectRoot,
+    "src/renderer/core/track-player/controller/pitch-shifter.worklet.js",
+)), false);
 
 const playerSource = read("src/renderer/core/track-player/index.ts");
 assert.match(playerSource, /setUserPreference\("pitch", semitones\)/);

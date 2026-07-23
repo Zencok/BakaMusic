@@ -12,7 +12,7 @@ const ac4FixturePath = path.resolve(
     "fixtures/native-media-ac4-smoke.ac4",
 );
 const targetNames = ["main_window", "lrc_window", "minimode_window"];
-const serviceNames = ["request-forwarder", "mflac-proxy", "luna-proxy"];
+const serviceNames = ["mflac-proxy", "luna-proxy"];
 
 function delay(milliseconds) {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -40,6 +40,36 @@ function createSilentWav(durationSeconds = 1) {
     wav.write("data", 36, "ascii");
     wav.writeUInt32LE(dataSize, 40);
     return wav;
+}
+
+function createSilentDsf(durationSeconds = 0.25) {
+    const channelCount = 2;
+    const sampleRate = 2_822_400;
+    const sampleCount = Math.round(sampleRate * durationSeconds);
+    const blockSizePerChannel = 4096;
+    const bytesPerChannel = Math.ceil(sampleCount / 8);
+    const blockCount = Math.ceil(bytesPerChannel / blockSizePerChannel);
+    const audioBytes = blockCount * blockSizePerChannel * channelCount;
+    const fileSize = 28 + 52 + 12 + audioBytes;
+    const dsf = Buffer.alloc(fileSize, 0x69);
+    dsf.write("DSD ", 0, "ascii");
+    dsf.writeBigUInt64LE(28n, 4);
+    dsf.writeBigUInt64LE(BigInt(fileSize), 12);
+    dsf.writeBigUInt64LE(0n, 20);
+    dsf.write("fmt ", 28, "ascii");
+    dsf.writeBigUInt64LE(52n, 32);
+    dsf.writeUInt32LE(1, 40);
+    dsf.writeUInt32LE(0, 44);
+    dsf.writeUInt32LE(2, 48);
+    dsf.writeUInt32LE(channelCount, 52);
+    dsf.writeUInt32LE(sampleRate, 56);
+    dsf.writeUInt32LE(1, 60);
+    dsf.writeBigUInt64LE(BigInt(sampleCount), 64);
+    dsf.writeUInt32LE(blockSizePerChannel, 72);
+    dsf.writeUInt32LE(0, 76);
+    dsf.write("data", 80, "ascii");
+    dsf.writeBigUInt64LE(BigInt(12 + audioBytes), 84);
+    return dsf;
 }
 
 function createAlacM4a() {
@@ -302,6 +332,21 @@ async function run() {
     let webdavDirectoryExists = false;
     let webdavBackupData = null;
     const resourceServer = http.createServer((request, response) => {
+        if (request.url === "/native-audio.wav") {
+            if (request.headers["x-bakamusic-smoke"] !== "libmpv") {
+                response.writeHead(403);
+                response.end("Missing native playback header");
+                return;
+            }
+            const audio = createSilentWav();
+            response.writeHead(200, {
+                "Accept-Ranges": "bytes",
+                "Content-Length": String(audio.length),
+                "Content-Type": "audio/wav",
+            });
+            response.end(audio);
+            return;
+        }
         if (request.url === "/pixel.png" || request.url?.endsWith("/pixel.png")) {
             response.writeHead(200, {
                 "Cache-Control": "no-store",
@@ -431,6 +476,8 @@ async function run() {
     await fs.promises.writeFile(localMediaPath, createSilentWav());
     const alacMediaPath = path.join(userDataPath, "local-media-alac-smoke.m4a");
     await fs.promises.writeFile(alacMediaPath, createAlacM4a());
+    const dsfMediaPath = path.join(userDataPath, "local-media-dsf-smoke.dsf");
+    await fs.promises.writeFile(dsfMediaPath, createSilentDsf());
     assert.ok(fs.existsSync(ac4FixturePath), "AC-4 playback fixture is missing");
     const ac4MediaPath = path.join(userDataPath, "native-media-ac4-smoke.ac4");
     await fs.promises.copyFile(ac4FixturePath, ac4MediaPath);
@@ -591,107 +638,62 @@ async function run() {
                 assetLoaded: themeAssetLoaded,
             };
         })()`, "theme boundary");
-        const localMediaState = await mainSession.evaluate(`(async () => {
-            const mediaUrl = window["@shared/utils"].fs.addFileScheme(
-                ${JSON.stringify(localMediaPath)}
-            );
-            const audio = new Audio();
-            audio.preload = "auto";
-            const loaded = await new Promise((resolve) => {
-                const timer = setTimeout(() => resolve(null), 10_000);
-                audio.oncanplay = () => {
-                    clearTimeout(timer);
-                    resolve(
-                        Number.isFinite(audio.duration)
-                        && audio.duration > 0
-                        && audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA
-                    );
-                };
-                audio.onerror = () => {
-                    clearTimeout(timer);
-                    resolve(null);
-                };
-                audio.src = mediaUrl;
-                audio.load();
-            });
-            audio.removeAttribute("src");
-            audio.load();
-            return {
-                loaded,
-                protocol: new URL(mediaUrl).protocol,
-            };
-        })()`, "local media boundary");
-        const alacMediaState = await mainSession.evaluate(`(async () => {
-            const mediaUrl = window["@shared/utils"].fs.addFileScheme(
-                ${JSON.stringify(alacMediaPath)}
-            );
-            const audio = new Audio();
-            audio.preload = "auto";
-            const loaded = await new Promise((resolve) => {
-                const timer = setTimeout(() => resolve(false), 30_000);
-                audio.oncanplay = () => {
-                    clearTimeout(timer);
-                    resolve(
-                        Number.isFinite(audio.duration)
-                        && audio.duration > 0
-                        && audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA
-                    );
-                };
-                audio.onerror = () => {
-                    clearTimeout(timer);
-                    resolve(false);
-                };
-                audio.src = mediaUrl;
-                audio.load();
-            });
-            const state = {
-                loaded,
-                protocol: new URL(mediaUrl).protocol,
-                nativeAlacSupport: audio.canPlayType('audio/mp4; codecs="alac"'),
-            };
-            audio.removeAttribute("src");
-            audio.load();
-            return state;
-        })()`, "ALAC local media boundary");
         const nativePlaybackState = await mainSession.evaluate(`(async () => {
             const bridge = window["@shared/native-playback"];
-            const mediaUrl = window["@shared/utils"].fs.addFileScheme(
-                ${JSON.stringify(ac4MediaPath)}
-            );
             const capabilities = await bridge.getCapabilities();
-            const probe = await bridge.probe(mediaUrl);
-            const sourceId = "package-smoke-ac4";
-            const reachedPlaying = new Promise((resolve) => {
-                const timer = setTimeout(() => {
-                    cleanup();
-                    resolve(false);
-                }, 15_000);
-                const cleanup = bridge.onSnapshot((snapshot) => {
-                    if (snapshot.sourceId !== sourceId) return;
-                    if (snapshot.state === "playing") {
-                        clearTimeout(timer);
-                        cleanup();
-                        resolve(true);
-                    } else if (snapshot.state === "error") {
-                        clearTimeout(timer);
+            const sources = [
+                ["wav", ${JSON.stringify(localMediaPath)}, false],
+                ["alac", ${JSON.stringify(alacMediaPath)}, false],
+                ["dsf", ${JSON.stringify(dsfMediaPath)}, false],
+                ["ac4", ${JSON.stringify(ac4MediaPath)}, false],
+                ["remote", ${JSON.stringify(`${resourceOrigin}/native-audio.wav`)}, true],
+            ];
+            const results = {};
+            for (const [name, source, isRemote] of sources) {
+                const sourceId = "package-smoke-" + name;
+                const mediaUrl = isRemote
+                    ? source
+                    : window["@shared/utils"].fs.addFileScheme(source);
+                const reachedPlaying = new Promise((resolve) => {
+                    const timer = setTimeout(() => {
                         cleanup();
                         resolve(false);
-                    }
+                    }, 15_000);
+                    const cleanup = bridge.onSnapshot((snapshot) => {
+                        if (snapshot.sourceId !== sourceId) return;
+                        if (snapshot.state === "playing") {
+                            clearTimeout(timer);
+                            cleanup();
+                            resolve(true);
+                        } else if (snapshot.state === "error") {
+                            clearTimeout(timer);
+                            cleanup();
+                            resolve(false);
+                        }
+                    });
                 });
-            });
-            await bridge.command({ operation: "load", sourceId, url: mediaUrl });
-            await bridge.command({ operation: "volume", sourceId, volume: 0 });
-            await bridge.command({ operation: "play", sourceId });
-            const playing = await reachedPlaying;
-            await bridge.command({ operation: "stop", sourceId });
+                await bridge.command({
+                    operation: "load",
+                    sourceId,
+                    url: mediaUrl,
+                    ...(isRemote ? {
+                        headers: { "x-bakamusic-smoke": "libmpv" },
+                    } : {}),
+                });
+                await bridge.command({ operation: "volume", sourceId, volume: 0 });
+                if (name === "wav") {
+                    await bridge.command({ operation: "pitch", sourceId, semitones: 1 });
+                }
+                await bridge.command({ operation: "play", sourceId });
+                results[name] = await reachedPlaying;
+                await bridge.command({ operation: "stop", sourceId });
+            }
             return {
                 available: capabilities.available,
                 clientApiVersion: capabilities.clientApiVersion,
                 mediaBackend: capabilities.mediaBackend,
-                engine: probe.engine,
-                reason: probe.reason,
-                codec: probe.streams.find((stream) => stream.type === "audio")?.codec,
-                playing,
+                engine: capabilities.engine,
+                playing: results,
             };
         })()`, "libmpv + LibreMPEG AC-4 playback boundary");
         const remoteArtworkCors = await mainSession.evaluate(`(async () => {
@@ -749,8 +751,6 @@ async function run() {
         assert.equal(_pluginBridge, "function");
         const boundaryState = {
             ...rendererState,
-            localMediaState,
-            alacMediaState,
             nativePlaybackState,
             pluginResult,
             localScanState,
@@ -765,28 +765,23 @@ async function run() {
             dirnameType: "undefined",
             legacyPathBridgeType: "undefined",
             nodeRuntimeBridge: "function",
-            nativeProbeBridge: "function",
+            nativeProbeBridge: "undefined",
             nativeCommandBridge: "function",
             backupWriteBridge: "function",
             backupReadBridge: "function",
             trashFileBridge: "function",
-            localMediaState: {
-                loaded: true,
-                protocol: "bakamusic-media:",
-            },
-            alacMediaState: {
-                loaded: true,
-                protocol: "bakamusic-media:",
-                nativeAlacSupport: "",
-            },
             nativePlaybackState: {
                 available: true,
                 clientApiVersion: "2.5",
                 mediaBackend: "librempeg",
                 engine: "libmpv",
-                reason: "native-codec",
-                codec: "ac4",
-                playing: true,
+                playing: {
+                    wav: true,
+                    alac: true,
+                    dsf: true,
+                    ac4: true,
+                    remote: true,
+                },
             },
             pluginResult: { isEnd: true, data: [] },
             localScanState: {

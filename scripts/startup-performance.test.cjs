@@ -50,11 +50,19 @@ assert.match(mainPageSource, /<Suspense/);
 assert.doesNotMatch(mainPageSource, /import SearchView from/);
 
 const audioControllerSource = read(
-    "src/renderer/core/track-player/controller/audio-controller.ts",
+    "src/renderer/core/track-player/controller/libmpv-audio-controller.ts",
 );
-assert.match(audioControllerSource, /await import\("hls\.js"\)/);
 assert.match(audioControllerSource, /sourceGeneration/);
-assert.doesNotMatch(audioControllerSource, /from "hls\.js";/);
+assert.match(audioControllerSource, /nativePlayback\.onSnapshot/);
+assert.doesNotMatch(audioControllerSource, /new Audio\(|AudioContext|hls\.js/);
+assert.equal(
+    fs.existsSync(path.join(
+        __dirname,
+        "..",
+        "src/renderer/core/track-player/controller/audio-controller.ts",
+    )),
+    false,
+);
 
 const backupSource = read(
     "src/renderer/pages/main-page/views/setting-view/routers/Backup/index.tsx",

@@ -7,15 +7,13 @@ const {
     parseLocalMediaUrl,
     resolveLocalMediaByteRange,
 } = require("../src/shared/local-media/common.ts");
+const { supportLocalMediaType } = require("../src/common/constant.ts");
 const { autoDecryptLyric } = require(
     "../src/shared/plugin-manager/main/lyric-decrypt.ts",
 );
 const pakoForPlugins = require(
     "../src/shared/plugin-manager/utility/pako-compat.ts",
 ).default;
-const { shouldUseNativePlayback } = require(
-    "../src/shared/native-playback/common.ts",
-);
 const {
     getManagedMediaProxyServiceName,
     resolveManagedMediaProxyUrl,
@@ -29,6 +27,16 @@ function read(relativePath) {
 }
 
 function testLocalMediaUrlContract() {
+    for (const extension of [
+        ".ape",
+        ".dff",
+        ".dsf",
+        ".tak",
+        ".tta",
+        ".wv",
+    ]) {
+        assert.ok(supportLocalMediaType.includes(extension), extension);
+    }
     const paths = [
         "C:\\Music\\Baka 音乐\\song.flac",
         "/home/music/Baka Music/song.ogg",
@@ -90,6 +98,17 @@ function testLocalMediaRanges() {
     }
 }
 
+function testLocalFormatCoverage() {
+    assert.equal(new Set(supportLocalMediaType).size, supportLocalMediaType.length);
+    for (const extension of [
+        ".aac", ".ac4", ".aiff", ".alac", ".ape", ".dff", ".dsf",
+        ".dts", ".flac", ".m4a", ".mka", ".mp3", ".ogg", ".opus",
+        ".tak", ".tta", ".wav", ".webm", ".wma", ".wv", ".xm",
+    ]) {
+        assert.ok(supportLocalMediaType.includes(extension), extension);
+    }
+}
+
 function testLyricDecryptionCompatibility() {
     const syntheticQrc = "0C8D67DD3E549974B64ED2680459F13881AA15D10DB4CC8"
         + "324B86311D0D741BD6AF5D8724F2B7571B2B2BF976BE395E454A23CCB367E4"
@@ -107,33 +126,6 @@ function testLyricDecryptionCompatibility() {
     );
     assert.ok(pakoForPlugins.inflate(compressed) instanceof Uint8Array);
     assert.equal(pakoForPlugins.default, pakoForPlugins);
-}
-
-function testPlaybackEngineRouting() {
-    assert.equal(shouldUseNativePlayback([{
-        index: 0,
-        type: "audio",
-        codec: "ac4",
-        channels: 2,
-    }]), "native-codec");
-    assert.equal(shouldUseNativePlayback([{
-        index: 0,
-        type: "audio",
-        codec: "eac3",
-        channels: 6,
-    }]), "native-codec");
-    assert.equal(shouldUseNativePlayback([{
-        index: 0,
-        type: "audio",
-        codec: "aac",
-        channels: 8,
-    }]), "multichannel");
-    assert.equal(shouldUseNativePlayback([{
-        index: 0,
-        type: "audio",
-        codec: "flac",
-        channels: 2,
-    }]), null);
 }
 
 function testManagedMediaProxyRouting() {
@@ -170,41 +162,29 @@ function testManagedMediaProxyRouting() {
 }
 
 function testPlaybackBoundaryIntegration() {
-    const localMediaMain = read("src/shared/local-media/main.ts");
-    assert.match(localMediaMain, /registerSchemesAsPrivileged/);
-    assert.match(localMediaMain, /protocol\.handle\(LOCAL_MEDIA_PROTOCOL/);
-    assert.match(localMediaMain, /assertPathAccess\(requestedPath/);
-    assert.match(localMediaMain, /extensions: supportLocalMediaType/);
-    assert.match(localMediaMain, /fileStat\.isFile\(\)/);
-    assert.match(localMediaMain, /status: 416/);
-    assert.match(localMediaMain, /const status = byteRange \? 206 : 200/);
-    assert.match(localMediaMain, /signal: request\.signal/);
-    assert.match(localMediaMain, /resolveLocalMediaPlaybackFile\(filePath, fileStat\)/);
-
-    const alacTranscoder = read("src/shared/local-media/alac-transcoder.ts");
-    assert.match(alacTranscoder, /format\.codec\?\.trim\(\).*=== "alac"/s);
-    assert.match(alacTranscoder, /"-c:a",\s*"flac"/);
-    assert.match(alacTranscoder, /CACHE_MAX_BYTES/);
-    assert.match(alacTranscoder, /transcodeJobs/);
+    assert.equal(fs.existsSync(path.join(
+        projectRoot,
+        "src/shared/local-media/alac-transcoder.ts",
+    )), false);
 
     const forgeSource = read("forge.config.ts");
     assert.match(forgeSource, /extraResource: \[path\.resolve\(__dirname, "res"\)\]/);
     assert.match(forgeSource, /createExternalRuntimePlugin\([\s\S]+"koffi"/);
 
     const runtimePathSource = read("src/shared/native-playback/runtime-path.ts");
-    assert.match(runtimePathSource, /getFfmpegExecutablePath/);
-    assert.match(runtimePathSource, /getFfprobeExecutablePath/);
     assert.match(runtimePathSource, /getMpvRuntimeDirectory/);
     assert.match(runtimePathSource, /libmpv-2\.dll/);
     assert.match(runtimePathSource, /mediaBackend === "librempeg"/);
+    assert.doesNotMatch(runtimePathSource, /ffmpeg|ffprobe/i);
 
     const nativeMain = read("src/shared/native-playback/main.ts");
     assert.match(nativeMain, /utilityProcess\.fork/);
     assert.match(nativeMain, /assertIpcSender\(event, \["main"\]\)/);
     assert.match(nativeMain, /resolveNativeSource/);
     assert.match(nativeMain, /resolveManagedMediaProxyUrl/);
-    assert.match(nativeMain, /NO_PROXY: "127\.0\.0\.1,localhost"/);
-    assert.match(nativeMain, /runFfprobe/);
+    assert.match(nativeMain, /assertUrl\(/);
+    assert.match(nativeMain, /validateHeaders/);
+    assert.doesNotMatch(nativeMain, /runFfprobe|native-playback\/probe/);
     assert.match(nativeMain, /MAX_RUNTIME_WORKING_SET_KB/);
 
     const nativeHost = read(
@@ -216,6 +196,8 @@ function testPlaybackBoundaryIntegration() {
     assert.match(nativeHost, /mpv_get_property/);
     assert.match(nativeHost, /LibreMPEG AC-4 decoder/);
     assert.match(nativeHost, /runCommand\("loadfile", command\.url, "replace"\)/);
+    assert.match(nativeHost, /http-header-fields/);
+    assert.match(nativeHost, /rubberband=pitch=/);
     assert.doesNotMatch(nativeHost, /child_process|spawn\(/);
 
     const runtimeManifest = JSON.parse(read("scripts/media-runtime-manifest.json"));
@@ -251,6 +233,7 @@ function testPlaybackBoundaryIntegration() {
     assert.match(runtimeInstaller, /validateReleaseDescriptor/);
     assert.match(runtimeInstaller, /platformDescriptor\.size/);
     assert.match(runtimeInstaller, /releaseManifest: descriptor\.releaseManifest/);
+    assert.match(runtimeInstaller, /pruneMpvCommandLineTools/);
     const runtimeUpdater = read("scripts/update-media-runtime-manifest.cjs");
     assert.match(runtimeUpdater, /value\.complete === true/);
     assert.match(runtimeUpdater, /value\.phase === "complete"/);
@@ -260,27 +243,18 @@ function testPlaybackBoundaryIntegration() {
     assert.match(packageJson.scripts.make, /runtime:install/);
     assert.equal(fs.existsSync(path.join(projectRoot, "scripts/media-runtime")), false);
 
-    const dualController = read(
-        "src/renderer/core/track-player/controller/dual-audio-controller.ts",
+    const nativeController = read(
+        "src/renderer/core/track-player/controller/libmpv-audio-controller.ts",
     );
-    assert.match(dualController, /probe\(trackSource\.url\)/);
-    assert.match(dualController, /probe\.engine === "libmpv"/);
-    assert.match(dualController, /getManagedMediaProxyServiceName/);
-    assert.match(dualController, /activateBrowser/);
-    assert.match(dualController, /activateNative/);
-
-    const mainSource = read("src/main/index.ts");
-    assert.ok(
-        mainSource.indexOf("registerLocalMediaProtocolScheme();")
-            < mainSource.indexOf("app.whenReady().then"),
-        "the local-media scheme must be registered before app ready",
-    );
-    const readySource = mainSource.slice(mainSource.indexOf("app.whenReady().then"));
-    assert.ok(
-        readySource.indexOf("setupLocalMediaMain();")
-            < readySource.indexOf("windowManager.showMainWindow();"),
-        "the local-media handler must be installed before the first window",
-    );
+    assert.match(nativeController, /class LibmpvAudioController/);
+    assert.match(nativeController, /operation: "load"/);
+    assert.match(nativeController, /headers: this\.normalizeHeaders/);
+    assert.match(nativeController, /operation: "pitch"/);
+    assert.doesNotMatch(nativeController, /activateBrowser|new Audio\(|\.probe\(/);
+    assert.equal(fs.existsSync(path.join(
+        projectRoot,
+        "src/renderer/core/track-player/controller/audio-controller.ts",
+    )), false);
 
     const pluginHost = read("src/shared/plugin-manager/main/plugin-host-client.ts");
     const environmentSource = pluginHost.slice(
@@ -296,17 +270,11 @@ function testPlaybackBoundaryIntegration() {
     assert.match(localPlugin, /grantPathAccess\(localFilePath\)/);
 
     const securitySource = read("src/main/electron-security.ts");
-    assert.match(
-        securitySource,
-        /media-src[^\n]+bakamusic-media:[^\n]+bakamusic-theme:/,
-    );
+    assert.doesNotMatch(securitySource, /bakamusic-media:/);
     assert.match(securitySource, /details\.resourceType !== "image"/);
     assert.match(securitySource, /"Access-Control-Allow-Origin", \["\*"\]/);
 
-    assert.match(
-        forgeSource,
-        /media-src[^\n]+bakamusic-media:[^\n]+bakamusic-theme:/,
-    );
+    assert.doesNotMatch(forgeSource, /bakamusic-media:/);
 
     const mySheetsSource = read(
         "src/renderer/pages/main-page/components/SideBar/widgets/MySheets/index.tsx",
@@ -321,8 +289,8 @@ function testPlaybackBoundaryIntegration() {
 
 testLocalMediaUrlContract();
 testLocalMediaRanges();
+testLocalFormatCoverage();
 testLyricDecryptionCompatibility();
-testPlaybackEngineRouting();
 testManagedMediaProxyRouting();
 testPlaybackBoundaryIntegration();
 

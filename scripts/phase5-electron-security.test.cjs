@@ -281,7 +281,7 @@ function testPackagedBoundarySmokeContract() {
     }
     assert.match(smokeSource, /pluginResult: \{ isEnd: true, data: \[\] \}/);
     assert.match(smokeSource, /nodeRuntimeBridge: "function"/);
-    assert.match(smokeSource, /nativeProbeBridge: "function"/);
+    assert.match(smokeSource, /nativeProbeBridge: "undefined"/);
     assert.match(smokeSource, /nativeCommandBridge: "function"/);
     assert.match(smokeSource, /backupWriteBridge: "function"/);
     assert.match(smokeSource, /backupReadBridge: "function"/);

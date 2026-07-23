@@ -6,7 +6,6 @@ import {
 } from "electron";
 import fs from "fs";
 import path from "path";
-import { spawn } from "child_process";
 import { supportLocalMediaType } from "@/common/constant";
 import type { IWindowManager } from "@/types/window-manager";
 import {
@@ -17,40 +16,46 @@ import {
     assertPathAccess,
     assertPlainObject,
     assertString,
+    assertUrl,
 } from "@shared/ipc-security/main";
 import { parseLocalMediaUrl } from "@shared/local-media/common";
 import logger from "@shared/logger/main";
 import ServiceManager from "@shared/service-manager/main";
 import {
-    getFfprobeExecutablePath,
     getMpvRuntimeDirectory,
     hasNativePlaybackRuntime,
 } from "./runtime-path";
 import {
-    INativeMediaProbe,
-    INativeMediaStream,
     INativePlaybackCapabilities,
     INativePlaybackSnapshot,
     NativePlaybackRuntimeCommand,
-    shouldUseNativePlayback,
 } from "./common";
 
 const REQUEST_TIMEOUT_MS = 20_000;
-const PROBE_TIMEOUT_MS = 20_000;
 const MAX_PENDING_REQUESTS = 32;
 const MAX_RPC_BYTES = 512 * 1024;
-const MAX_PROBE_BYTES = 4 * 1024 * 1024;
 const MAX_RUNTIME_WORKING_SET_KB = 2 * 1024 * 1024;
+const MAX_MEDIA_HEADERS = 64;
+const forbiddenMediaHeaders = new Set([
+    "connection",
+    "content-length",
+    "host",
+    "proxy-authorization",
+    "te",
+    "trailer",
+    "transfer-encoding",
+    "upgrade",
+]);
 
-function createLocalMediaEnvironment(): NodeJS.ProcessEnv {
+function createPlaybackEnvironment(): NodeJS.ProcessEnv {
+    const noProxy = process.env.NO_PROXY ?? process.env.no_proxy ?? "";
+    const localNoProxy = [noProxy, "127.0.0.1", "localhost"]
+        .filter(Boolean)
+        .join(",");
     return {
         ...process.env,
-        HTTP_PROXY: "",
-        HTTPS_PROXY: "",
-        NO_PROXY: "127.0.0.1,localhost",
-        http_proxy: "",
-        https_proxy: "",
-        no_proxy: "127.0.0.1,localhost",
+        NO_PROXY: localNoProxy,
+        no_proxy: localNoProxy,
     };
 }
 
@@ -60,28 +65,6 @@ interface PendingRequest {
     timer: NodeJS.Timeout;
 }
 
-interface FfprobeStream {
-    index?: unknown;
-    codec_name?: unknown;
-    codec_type?: unknown;
-    profile?: unknown;
-    channels?: unknown;
-    channel_layout?: unknown;
-    sample_rate?: unknown;
-    width?: unknown;
-    height?: unknown;
-    pix_fmt?: unknown;
-}
-
-interface FfprobeDocument {
-    streams?: FfprobeStream[];
-    format?: {
-        format_name?: unknown;
-        duration?: unknown;
-        bit_rate?: unknown;
-    };
-}
-
 function payloadBytes(value: unknown) {
     try {
         const serialized = JSON.stringify(value);
@@ -89,11 +72,6 @@ function payloadBytes(value: unknown) {
     } catch {
         return null;
     }
-}
-
-function toOptionalNumber(value: unknown) {
-    const numberValue = typeof value === "number" ? value : Number(value);
-    return Number.isFinite(numberValue) && numberValue >= 0 ? numberValue : undefined;
 }
 
 function validateSourceId(value: unknown) {
@@ -113,6 +91,17 @@ function resolveNativeSource(value: unknown) {
             value: managedMediaUrl,
         };
     }
+    if (value.startsWith("http:") || value.startsWith("https:")) {
+        return {
+            sourceType: "location" as const,
+            value: assertUrl(
+                value,
+                ["https:", "http:"],
+                32_768,
+                { allowCredentials: true },
+            ).toString(),
+        };
+    }
     const requestedPath = parseLocalMediaUrl(value);
     const grantedPath = assertPathAccess(requestedPath, {
         extensions: supportLocalMediaType,
@@ -128,98 +117,30 @@ function resolveNativeSource(value: unknown) {
     };
 }
 
-function normalizeStream(value: FfprobeStream): INativeMediaStream {
-    const rawType = typeof value.codec_type === "string" ? value.codec_type : "other";
-    const type: INativeMediaStream["type"] = ["audio", "video", "subtitle"].includes(rawType)
-        ? rawType as INativeMediaStream["type"]
-        : "other";
-    return {
-        index: Math.max(0, Math.trunc(toOptionalNumber(value.index) ?? 0)),
-        type,
-        codec: typeof value.codec_name === "string"
-            ? value.codec_name.toLocaleLowerCase("en-US")
-            : "unknown",
-        ...(typeof value.profile === "string" ? { profile: value.profile } : {}),
-        ...(toOptionalNumber(value.channels) !== undefined
-            ? { channels: toOptionalNumber(value.channels) }
-            : {}),
-        ...(typeof value.channel_layout === "string"
-            ? { channelLayout: value.channel_layout }
-            : {}),
-        ...(toOptionalNumber(value.sample_rate) !== undefined
-            ? { sampleRate: toOptionalNumber(value.sample_rate) }
-            : {}),
-        ...(toOptionalNumber(value.width) !== undefined
-            ? { width: toOptionalNumber(value.width) }
-            : {}),
-        ...(toOptionalNumber(value.height) !== undefined
-            ? { height: toOptionalNumber(value.height) }
-            : {}),
-        ...(typeof value.pix_fmt === "string" ? { pixelFormat: value.pix_fmt } : {}),
-    };
-}
-
-function runFfprobe(filePath: string) {
-    return new Promise<FfprobeDocument>((resolve, reject) => {
-        const child = spawn(getFfprobeExecutablePath(), [
-            "-v",
-            "error",
-            "-show_format",
-            "-show_streams",
-            "-of",
-            "json",
-            filePath,
-        ], {
-            stdio: ["ignore", "pipe", "pipe"],
-            windowsHide: true,
-            env: createLocalMediaEnvironment(),
-        });
-        const stdout: Buffer[] = [];
-        const stderr: Buffer[] = [];
-        let outputBytes = 0;
-        let settled = false;
-        const finish = (callback: () => void) => {
-            if (settled) {
-                return;
-            }
-            settled = true;
-            clearTimeout(timer);
-            callback();
-        };
-        const timer = setTimeout(() => {
-            child.kill();
-            finish(() => reject(new Error("FFprobe media inspection timed out")));
-        }, PROBE_TIMEOUT_MS);
-        child.stdout.on("data", (chunk: Buffer) => {
-            outputBytes += chunk.length;
-            if (outputBytes > MAX_PROBE_BYTES) {
-                child.kill();
-                finish(() => reject(new Error("FFprobe output exceeds the limit")));
-                return;
-            }
-            stdout.push(chunk);
-        });
-        child.stderr.on("data", (chunk: Buffer) => {
-            if (Buffer.concat(stderr).length < 64 * 1024) {
-                stderr.push(chunk);
-            }
-        });
-        child.once("error", (error) => finish(() => reject(error)));
-        child.once("exit", (code) => finish(() => {
-            if (code !== 0) {
-                reject(new Error(
-                    Buffer.concat(stderr).toString("utf8").trim()
-                    || `FFprobe exited with code ${code}`,
-                ));
-                return;
-            }
-            try {
-                resolve(JSON.parse(Buffer.concat(stdout).toString("utf8")));
-            } catch (error) {
-                reject(error);
-            }
-        }));
-    });
+function validateHeaders(value: unknown) {
+    if (value === undefined) {
+        return undefined;
+    }
+    assertPlainObject(value, "native playback headers");
+    const entries = Object.entries(value);
+    if (entries.length > MAX_MEDIA_HEADERS) {
+        throw new Error("Native playback has too many headers");
+    }
+    return Object.fromEntries(entries.map(([rawName, rawValue]) => {
+        const name = rawName.toLocaleLowerCase("en-US");
+        if (
+            !/^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,64}$/.test(rawName)
+            || forbiddenMediaHeaders.has(name)
+            || name.startsWith("proxy-")
+            || name.startsWith("sec-")
+            || typeof rawValue !== "string"
+            || rawValue.length > 8192
+            || /[\r\n]/.test(rawValue)
+        ) {
+            throw new Error("Native playback header is not accepted");
+        }
+        return [rawName, rawValue];
+    })) as Record<string, string>;
 }
 
 function validateCommand(value: unknown): NativePlaybackRuntimeCommand {
@@ -235,6 +156,9 @@ function validateCommand(value: unknown): NativePlaybackRuntimeCommand {
                 sourceId,
                 url: source.value,
                 sourceType: source.sourceType,
+                ...(value.headers !== undefined
+                    ? { headers: validateHeaders(value.headers) }
+                    : {}),
             };
         }
         case "play":
@@ -250,6 +174,9 @@ function validateCommand(value: unknown): NativePlaybackRuntimeCommand {
         case "speed":
             assertFiniteNumber(value.speed, "native playback speed", 0.25, 4);
             return { operation: "speed", sourceId, speed: value.speed };
+        case "pitch":
+            assertFiniteNumber(value.semitones, "native playback pitch", -12, 12);
+            return { operation: "pitch", sourceId, semitones: value.semitones };
         case "loop":
             assertBoolean(value.enabled, "native playback loop state");
             return { operation: "loop", sourceId, enabled: value.enabled };
@@ -276,10 +203,6 @@ class NativePlaybackManager {
             assertIpcSender(event, ["main"]);
             return this.getCapabilities();
         });
-        ipcMain.handle("@shared/native-playback/probe", async (event, url) => {
-            assertIpcSender(event, ["main"]);
-            return this.probe(resolveNativeSource(url).value);
-        });
         ipcMain.handle("@shared/native-playback/command", async (event, command) => {
             assertIpcSender(event, ["main"]);
             return this.request("command", validateCommand(command));
@@ -292,33 +215,6 @@ class NativePlaybackManager {
             return { available: false, engine: "libmpv" };
         }
         return this.request("capabilities", null) as Promise<INativePlaybackCapabilities>;
-    }
-
-    private async probe(filePath: string): Promise<INativeMediaProbe> {
-        const document = await runFfprobe(filePath);
-        const streams = Array.isArray(document.streams)
-            ? document.streams.slice(0, 128).map(normalizeStream)
-            : [];
-        const nativeReason = shouldUseNativePlayback(streams);
-        const nativeRuntimeAvailable = hasNativePlaybackRuntime();
-        const format = typeof document.format?.format_name === "string"
-            ? document.format.format_name.split(",").slice(0, 16)
-            : [];
-        return {
-            engine: nativeReason && nativeRuntimeAvailable ? "libmpv" : "browser",
-            nativeRuntimeAvailable,
-            format,
-            streams,
-            ...(toOptionalNumber(document.format?.duration) !== undefined
-                ? { duration: toOptionalNumber(document.format?.duration) }
-                : {}),
-            ...(toOptionalNumber(document.format?.bit_rate) !== undefined
-                ? { bitRate: toOptionalNumber(document.format?.bit_rate) }
-                : {}),
-            reason: nativeReason
-                ? nativeRuntimeAvailable ? nativeReason : "runtime-missing"
-                : "browser-default",
-        };
     }
 
     private async ensureStarted() {
@@ -348,7 +244,7 @@ class NativePlaybackManager {
                 serviceName: "BakaMusic libmpv Playback",
                 execArgv: ["--max-old-space-size=256"],
                 env: {
-                    ...createLocalMediaEnvironment(),
+                    ...createPlaybackEnvironment(),
                     BAKAMUSIC_MPV_DIR: runtimeDirectory,
                     PATH: `${runtimeDirectory}${path.delimiter}${process.env.PATH ?? ""}`,
                 },

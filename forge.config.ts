@@ -111,7 +111,7 @@ const config: ForgeConfig = {
     plugins: [
         new WebpackPlugin({
             loggerPort: 9200,
-            devContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: file: bakamusic-theme: https: http:; media-src 'self' data: blob: file: bakamusic-media: bakamusic-theme: https: http:; font-src 'self' data: file: bakamusic-theme:; connect-src 'self' https: http: ws: wss:; worker-src 'self' blob:; frame-src 'self' data: blob: bakamusic-theme:; object-src 'none'; base-uri 'none'; form-action 'none';",
+            devContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: file: bakamusic-theme: https: http:; media-src 'self' data: blob: file: bakamusic-theme: https: http:; font-src 'self' data: file: bakamusic-theme:; connect-src 'self' https: http: ws: wss:; worker-src 'self' blob:; frame-src 'self' data: blob: bakamusic-theme:; object-src 'none'; base-uri 'none'; form-action 'none';",
             devServer: {
                 // Keep liveReload so SCSS/TSX rebuilds still refresh when HMR cannot
                 // apply (common after the async bootstrap/runtime-root split).

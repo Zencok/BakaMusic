@@ -358,7 +358,6 @@ class ServiceManager {
         app.on("before-quit", () => this.stopAllServices());
 
         // put services here
-        this.addService(ServiceName.RequestForwarder).start();
         this.addService(ServiceName.MflacProxy).start();
         this.addService(ServiceName.LunaProxy).start();
 

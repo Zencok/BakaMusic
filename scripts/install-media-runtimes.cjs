@@ -284,6 +284,13 @@ function validateMpvRuntime(directory) {
     }
 }
 
+async function pruneMpvCommandLineTools(directory) {
+    const executableSuffix = process.platform === "win32" ? ".exe" : "";
+    await Promise.all(["ffmpeg", "ffprobe"].map((name) =>
+        fsp.rm(path.join(directory, `${name}${executableSuffix}`), { force: true }),
+    ));
+}
+
 function validateReleaseDescriptor(descriptor, platformDescriptor) {
     if (!/^runtime-mpv-[A-Za-z0-9._-]+$/.test(descriptor.build)) {
         throw new Error("Invalid mpv-libre-runtime release tag");
@@ -336,6 +343,9 @@ async function installRuntime(name, descriptor, platformDescriptor) {
                 || (installed.url === platformDescriptor.url && metadataMatches)
             )
         ) {
+            if (name === "mpv") {
+                await pruneMpvCommandLineTools(destination);
+            }
             return false;
         }
     } catch {
@@ -390,6 +400,7 @@ async function installRuntime(name, descriptor, platformDescriptor) {
         }
         if (name === "mpv") {
             validateMpvRuntime(temporaryRoot);
+            await pruneMpvCommandLineTools(temporaryRoot);
         }
         await fsp.writeFile(
             path.join(temporaryRoot, "runtime.json"),

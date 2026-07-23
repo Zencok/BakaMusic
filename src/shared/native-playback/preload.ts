@@ -1,7 +1,6 @@
 import { ipcRenderer } from "electron";
 import exposeInMainWorld from "@/preload/expose-in-main-world";
 import type {
-    INativeMediaProbe,
     INativePlaybackCapabilities,
     INativePlaybackSnapshot,
     NativePlaybackCommand,
@@ -11,13 +10,6 @@ async function getCapabilities() {
     return ipcRenderer.invoke(
         "@shared/native-playback/capabilities",
     ) as Promise<INativePlaybackCapabilities>;
-}
-
-async function probe(url: string) {
-    return ipcRenderer.invoke(
-        "@shared/native-playback/probe",
-        url,
-    ) as Promise<INativeMediaProbe>;
 }
 
 async function command(value: NativePlaybackCommand) {
@@ -34,7 +26,6 @@ function onSnapshot(callback: (snapshot: INativePlaybackSnapshot) => void) {
 
 export const mod = {
     getCapabilities,
-    probe,
     command,
     onSnapshot,
 };

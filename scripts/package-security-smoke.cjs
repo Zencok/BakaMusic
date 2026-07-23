@@ -45,11 +45,8 @@ async function run() {
         : platform === "darwin"
             ? path.join("lib", "libmpv.2.dylib")
             : path.join("lib", "libmpv.so.2");
-    const executableSuffix = platform === "win32" ? ".exe" : "";
     for (const relativePath of [
         libraryPath,
-        `ffmpeg${executableSuffix}`,
-        `ffprobe${executableSuffix}`,
         "runtime.json",
     ]) {
         assert.ok(
