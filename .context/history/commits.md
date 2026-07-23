@@ -265,3 +265,12 @@ pending
 - **Decision**: Add README navigation and reorganize runtime, plugin, theme, and development guidance.
 - **Files**: 1 file
 - **Tests**: diff check
+
+## 2026-07-23T22:42:53.2298426+08:00 — fix(music-list): auto-scroll during custom sorting
+pending
+- **Context-Id**: 3cbf2e2f-20f0-4b82-91da-c91c882fa3d8
+- **Decision**: Scroll the resolved page container with a proportional requestAnimationFrame loop near either drag edge.
+- **Decision**: Track drag position at document scope so virtual row replacement does not interrupt scrolling.
+- **Bug**: Native HTML dragging did not scroll the page-level virtual container while custom sorting songs.
+- **Files**: 3 files
+- **Tests**: TypeScript; ESLint; full regression suite; diff check; package blocked by running development Electron file lock

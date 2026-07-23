@@ -8,6 +8,9 @@ const {
     settlePausedLyricLayout,
     shouldRunLyricAnimation,
 } = require("../src/renderer/components/AppleMusicLyricPlayer/animation-state");
+const {
+    getDragAutoScrollDelta,
+} = require("../src/renderer/components/MusicList/drag-auto-scroll");
 
 assert.equal(shouldPersistPlaybackProgress(-Infinity, 0, false), true);
 assert.equal(shouldPersistPlaybackProgress(1_000, 2_000, false), false);
@@ -18,6 +21,12 @@ assert.equal(shouldRunLyricAnimation(true, true, true), true);
 assert.equal(shouldRunLyricAnimation(false, true, true), false);
 assert.equal(shouldRunLyricAnimation(true, false, true), false);
 assert.equal(shouldRunLyricAnimation(true, true, false), false);
+
+assert.equal(getDragAutoScrollDelta(100, 100, 600), -24);
+assert.equal(getDragAutoScrollDelta(350, 100, 600), 0);
+assert.equal(getDragAutoScrollDelta(600, 100, 600), 24);
+assert.equal(getDragAutoScrollDelta(120, 100, 180), -12);
+assert.equal(getDragAutoScrollDelta(Number.NaN, 100, 600), 0);
 
 {
     const deltas = [];
@@ -95,6 +104,8 @@ const musicListStyleSource = fs.readFileSync(path.join(
 ), "utf8");
 assert.match(musicListSource, /top:\s*virtualItem\.top/);
 assert.match(musicListSource, /container\.dataset\.scrolling = "true"/);
+assert.match(musicListSource, /document\.addEventListener\("dragover", handleDragOver\)/);
+assert.match(musicListSource, /startDragAutoScroll\(e\.clientY\)/);
 assert.doesNotMatch(musicListSource, /translateY\(\$\{virtualController\.startTop\}/);
 assert.match(
     musicListStyleSource,

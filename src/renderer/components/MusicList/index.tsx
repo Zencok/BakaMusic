@@ -59,6 +59,8 @@ import getCompactArtworkSrc from "@/renderer/utils/get-compact-artwork-src";
 import { getPlayCount } from "@/renderer/core/listening-statistics";
 import CurrentMusicLocator from "../CurrentMusicLocator";
 import { trashLocalMusicFiles } from "@/renderer/core/local-music";
+import { getDragAutoScrollDelta } from "./drag-auto-scroll";
+
 interface IMusicListProps {
     /** 音乐列表 */
     musicList: IMusic.IMusicItem[];
@@ -839,6 +841,81 @@ function MusicListComponent(props: IMusicListProps) {
             tableContainerRef.current?.closest<HTMLElement>(".page-container") ?? null,
         [virtualGetScrollElement],
     );
+    const dragAutoScrollFrameRef = useRef<number | null>(null);
+    const dragAutoScrollActiveRef = useRef(false);
+    const dragPointerYRef = useRef<number | null>(null);
+    const dragAutoScrollTickRef = useRef<() => void>(() => undefined);
+
+    const stopDragAutoScroll = useCallback(() => {
+        dragAutoScrollActiveRef.current = false;
+        dragPointerYRef.current = null;
+        if (dragAutoScrollFrameRef.current !== null) {
+            cancelAnimationFrame(dragAutoScrollFrameRef.current);
+            dragAutoScrollFrameRef.current = null;
+        }
+    }, []);
+
+    const runDragAutoScroll = useCallback(() => {
+        dragAutoScrollFrameRef.current = null;
+        const pointerY = dragPointerYRef.current;
+        const scrollElement = getScrollElement();
+        if (!dragAutoScrollActiveRef.current || pointerY === null || !scrollElement) {
+            return;
+        }
+
+        const viewport = scrollElement.getBoundingClientRect();
+        const delta = getDragAutoScrollDelta(pointerY, viewport.top, viewport.bottom);
+        const maxScrollTop = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
+        const nextScrollTop = Math.min(
+            maxScrollTop,
+            Math.max(0, scrollElement.scrollTop + delta),
+        );
+        if (delta === 0 || nextScrollTop === scrollElement.scrollTop) {
+            return;
+        }
+
+        scrollElement.scrollTop = nextScrollTop;
+        dragAutoScrollFrameRef.current = requestAnimationFrame(
+            dragAutoScrollTickRef.current,
+        );
+    }, [getScrollElement]);
+    dragAutoScrollTickRef.current = runDragAutoScroll;
+
+    const scheduleDragAutoScroll = useCallback(() => {
+        if (dragAutoScrollFrameRef.current !== null) {
+            return;
+        }
+        dragAutoScrollFrameRef.current = requestAnimationFrame(
+            dragAutoScrollTickRef.current,
+        );
+    }, []);
+
+    const startDragAutoScroll = useCallback((pointerY: number) => {
+        dragAutoScrollActiveRef.current = true;
+        dragPointerYRef.current = pointerY;
+        scheduleDragAutoScroll();
+    }, [scheduleDragAutoScroll]);
+
+    useEffect(() => {
+        const handleDragOver = (event: DragEvent) => {
+            if (!dragAutoScrollActiveRef.current) {
+                return;
+            }
+            dragPointerYRef.current = event.clientY;
+            scheduleDragAutoScroll();
+        };
+
+        document.addEventListener("dragover", handleDragOver);
+        document.addEventListener("drop", stopDragAutoScroll);
+        document.addEventListener("dragend", stopDragAutoScroll);
+        return () => {
+            document.removeEventListener("dragover", handleDragOver);
+            document.removeEventListener("drop", stopDragAutoScroll);
+            document.removeEventListener("dragend", stopDragAutoScroll);
+            stopDragAutoScroll();
+        };
+    }, [scheduleDragAutoScroll, stopDragAutoScroll]);
+
     const virtualController = useVirtualList({
         data: table.getRowModel().rows,
         getScrollElement,
@@ -1118,7 +1195,9 @@ function MusicListComponent(props: IMusicListProps) {
                                         draggable={enableDrag && sortField === "custom"}
                                         onDragStart={(e) => {
                                             startDrag(e, virtualItem.rowIndex, "musiclist");
+                                            startDragAutoScroll(e.clientY);
                                         }}
+                                        onDragEnd={stopDragAutoScroll}
                                     >
                                         <div className="music-list-leading">
                                             <IfTruthy condition={!hiddenRows.has("index")}>
