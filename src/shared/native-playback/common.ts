@@ -31,7 +31,9 @@ export type NativePlaybackCommand =
     | { operation: "speed"; sourceId: string; speed: number }
     | { operation: "pitch"; sourceId: string; semitones: number }
     | { operation: "loop"; sourceId: string; enabled: boolean }
-    | { operation: "output-device"; sourceId: string; deviceId: string };
+    | { operation: "output-device"; sourceId: string; deviceId: string }
+    /** Windows WASAPI exclusive mode via mpv audio-exclusive */
+    | { operation: "audio-exclusive"; sourceId: string; enabled: boolean };
 
 export type NativePlaybackRuntimeCommand =
     | Exclude<NativePlaybackCommand, { operation: "load" }>

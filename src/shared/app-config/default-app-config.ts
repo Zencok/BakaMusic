@@ -10,6 +10,7 @@ const _defaultAppConfig: IAppConfig =  {
     "playMusic.newSheetDefaultSort": "time",
     "playMusic.playError": "skip",
     "playMusic.whenDeviceRemoved": "play",
+    "playMusic.wasapiExclusive": false,
     "normal.taskbarThumb": "window",
     "normal.closeBehavior": "minimize",
     "normal.checkUpdate": true,

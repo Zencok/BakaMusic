@@ -483,7 +483,9 @@
             "sort_by_collected_oldest": "按收藏時間從舊到新排序",
             "audio_output_device": "音頻輸出設備",
             "when_device_removed": "當音頻裝置被移除時",
-            "continue_playing": "繼續播放"
+            "continue_playing": "繼續播放",
+            "wasapi_exclusive": "WASAPI 獨佔模式（Windows）",
+            "wasapi_exclusive_desc": "以獨佔工作階段輸出，降低系統混音干擾與延遲；其他程式可能無法使用同一裝置"
         },
         "download": {
             "download_folder": "下載文件夾",
@@ -637,7 +639,7 @@
             "playback_behavior": "播放行為",
             "playback_behavior_desc": "失敗處理、雙擊列表與搜尋",
             "audio_device": "音訊輸出",
-            "audio_device_desc": "輸出裝置與熱插拔行為",
+            "audio_device_desc": "輸出裝置、WASAPI 獨佔與熱插拔行為",
             "sheet_defaults": "歌單預設",
             "sheet_defaults_desc": "新建歌單時的排序方式",
             "lyric_window": "歌詞視窗",

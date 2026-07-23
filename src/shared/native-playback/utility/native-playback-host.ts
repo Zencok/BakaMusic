@@ -151,7 +151,7 @@ function setOption(name: string, value: string) {
     checkMpv(api.setOptionString(player, name, value), `libmpv option ${name}`);
 }
 
-for (const [name, value] of [
+const bootstrapOptions: Array<[string, string]> = [
     ["config", "no"],
     ["load-scripts", "no"],
     ["terminal", "no"],
@@ -167,11 +167,27 @@ for (const [name, value] of [
     // subtitle files, whose guessed legacy encoding can produce lavf warnings.
     ["autoload-files", "no"],
     ["audio-pitch-correction", "yes"],
-] as const) {
+];
+
+// Windows: pin WASAPI and optionally open the device in exclusive mode so the
+// session is not mixed by the Windows audio engine (lower latency, direct path).
+const wasapiExclusiveRequested =
+    process.platform === "win32"
+    && process.env.BAKAMUSIC_WASAPI_EXCLUSIVE === "1";
+if (process.platform === "win32") {
+    bootstrapOptions.push(["ao", "wasapi"]);
+    if (wasapiExclusiveRequested) {
+        bootstrapOptions.push(["audio-exclusive", "yes"]);
+    }
+}
+
+for (const [name, value] of bootstrapOptions) {
     setOption(name, value);
 }
 checkMpv(api.initialize(player), "libmpv core initialization");
 checkMpv(api.requestLogMessages(player, "warn"), "libmpv log subscription");
+
+let currentAudioDevice = "auto";
 
 function getStringProperty(name: string) {
     const value = api.getPropertyString(player, name);
@@ -382,9 +398,29 @@ function postSnapshot(force = false) {
 }
 
 function assertCurrentSource(command: NativePlaybackRuntimeCommand) {
+    // Device / exclusive mode are player-global; allow empty or matching sourceId.
+    if (
+        command.operation === "output-device"
+        || command.operation === "audio-exclusive"
+    ) {
+        if (command.sourceId && sourceId && command.sourceId !== sourceId) {
+            throw new Error("Native playback command belongs to a stale source");
+        }
+        return;
+    }
     if (command.operation !== "load" && command.sourceId !== sourceId) {
         throw new Error("Native playback command belongs to a stale source");
     }
+}
+
+function applyAudioExclusive(enabled: boolean) {
+    if (process.platform !== "win32") {
+        return;
+    }
+    const next = !!enabled;
+    // Property is supported after initialize; re-set device so WASAPI reopens.
+    setProperty("audio-exclusive", next ? "yes" : "no");
+    setProperty("audio-device", currentAudioDevice || "auto");
 }
 
 function handleCommand(command: NativePlaybackRuntimeCommand) {
@@ -450,7 +486,11 @@ function handleCommand(command: NativePlaybackRuntimeCommand) {
             endedPending = false;
             break;
         case "output-device":
-            setProperty("audio-device", command.deviceId || "auto");
+            currentAudioDevice = command.deviceId || "auto";
+            setProperty("audio-device", currentAudioDevice);
+            break;
+        case "audio-exclusive":
+            applyAudioExclusive(command.enabled);
             break;
     }
     postSnapshot(true);

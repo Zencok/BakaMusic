@@ -483,7 +483,9 @@
             "sort_by_collected_oldest": "Sort by collection time, oldest first",
             "audio_output_device": "Audio output device",
             "when_device_removed": "When device is removed",
-            "continue_playing": "Continue playing"
+            "continue_playing": "Continue playing",
+            "wasapi_exclusive": "WASAPI exclusive mode (Windows)",
+            "wasapi_exclusive_desc": "Open the output device exclusively to reduce mixer interference and latency; other apps may be unable to use the same device"
         },
         "download": {
             "download_folder": "Download Directory",
@@ -637,7 +639,7 @@
             "playback_behavior": "Playback behavior",
             "playback_behavior_desc": "Errors, double-click and search",
             "audio_device": "Audio output",
-            "audio_device_desc": "Output device and hot-unplug behavior",
+            "audio_device_desc": "Output device, WASAPI exclusive mode, and hot-unplug behavior",
             "sheet_defaults": "Playlist defaults",
             "sheet_defaults_desc": "Default sort for new playlists",
             "lyric_window": "Lyric window",

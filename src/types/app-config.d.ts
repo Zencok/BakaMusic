@@ -28,6 +28,11 @@ interface _IAppConfig {
     "playMusic.audioOutputDevice": MediaDeviceInfo | null;
     /** 设备变化时 */
     "playMusic.whenDeviceRemoved": "pause" | "play";
+    /**
+     * [win32 only] WASAPI 独占模式。
+     * 开启后由 libmpv 以 audio-exclusive 占用输出设备，可降低系统混音干扰与延迟。
+     */
+    "playMusic.wasapiExclusive": boolean;
 
     /** [darwin only] 显示状态栏歌词 */
     "lyric.enableStatusBarLyric": boolean;

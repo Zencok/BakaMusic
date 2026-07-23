@@ -41,6 +41,21 @@ assert.match(mainSource, /grantPathAccess\(directory, true\)/);
 assert.match(mainSource, /"download\.fileNamingType"/);
 assert.match(mainSource, /"download\.fileNamingPreset"/);
 assert.match(mainSource, /"download\.fileNamingCustom"/);
+assert.match(mainSource, /"playMusic\.wasapiExclusive"/);
+
+const hostSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/shared/native-playback/utility/native-playback-host.ts",
+), "utf8");
+assert.match(hostSource, /audio-exclusive/);
+assert.match(hostSource, /ao", "wasapi"/);
+assert.match(hostSource, /BAKAMUSIC_WASAPI_EXCLUSIVE/);
+
+const playbackCommonSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/shared/native-playback/common.ts",
+), "utf8");
+assert.match(playbackCommonSource, /operation: "audio-exclusive"/);
 
 const defaultConfigSource = fs.readFileSync(path.join(
     __dirname,

@@ -39,6 +39,12 @@ export interface IAudioController {
     // 设置输出设备id
     setSinkId(deviceId: string): Promise<void>;
 
+    /**
+     * Windows WASAPI exclusive mode (no-op / shared on other platforms).
+     * When enabled, the device is locked for this process via libmpv.
+     */
+    setAudioExclusive?(enabled: boolean): Promise<void>;
+
     // 清空当前播放的歌曲
     reset(): void;
 

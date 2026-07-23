@@ -21,6 +21,7 @@ import {
 import { parseLocalMediaUrl } from "@shared/local-media/common";
 import logger from "@shared/logger/main";
 import ServiceManager from "@shared/service-manager/main";
+import AppConfig from "@shared/app-config/main";
 import {
     getMpvRuntimeDirectory,
     hasNativePlaybackRuntime,
@@ -52,10 +53,14 @@ function createPlaybackEnvironment(): NodeJS.ProcessEnv {
     const localNoProxy = [noProxy, "127.0.0.1", "localhost"]
         .filter(Boolean)
         .join(",");
+    const wasapiExclusive = process.platform === "win32"
+        && !!AppConfig.getConfig("playMusic.wasapiExclusive");
     return {
         ...process.env,
         NO_PROXY: localNoProxy,
         no_proxy: localNoProxy,
+        // Consumed by the libmpv host before initialize (Windows WASAPI exclusive).
+        BAKAMUSIC_WASAPI_EXCLUSIVE: wasapiExclusive ? "1" : "0",
     };
 }
 
@@ -183,6 +188,9 @@ function validateCommand(value: unknown): NativePlaybackRuntimeCommand {
         case "output-device":
             assertString(value.deviceId, "native playback output device", 512, true);
             return { operation: "output-device", sourceId, deviceId: value.deviceId };
+        case "audio-exclusive":
+            assertBoolean(value.enabled, "native playback audio exclusive state");
+            return { operation: "audio-exclusive", sourceId, enabled: value.enabled };
         default:
             throw new Error("Native playback operation is not supported");
     }

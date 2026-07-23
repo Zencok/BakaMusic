@@ -432,6 +432,16 @@ class TrackPlayer {
             this.setAudioOutputDevice(deviceId);
         }
 
+        // Windows WASAPI exclusive: apply preference before first play.
+        if (AppConfig.getConfig("playMusic.wasapiExclusive")) {
+            void this.setWasapiExclusive(true);
+        }
+        AppConfig.onConfigUpdate((patch) => {
+            if (Object.prototype.hasOwnProperty.call(patch, "playMusic.wasapiExclusive")) {
+                void this.setWasapiExclusive(!!patch["playMusic.wasapiExclusive"]);
+            }
+        });
+
         if (volume !== null && volume !== undefined) {
             this.audioController.setVolume(this.normalizeVolume(volume));
         }
@@ -1001,6 +1011,18 @@ class TrackPlayer {
             await this.audioController.setSinkId(deviceId ?? "");
         } catch (e) {
             logger.logError("设置音频输出设备失败", toError(e));
+        }
+    }
+
+    /**
+     * Enable or disable Windows WASAPI exclusive mode on the libmpv audio path.
+     * No-op on non-Windows builds where the host ignores the exclusive flag.
+     */
+    public async setWasapiExclusive(enabled: boolean) {
+        try {
+            await this.audioController.setAudioExclusive?.(enabled);
+        } catch (e) {
+            logger.logError("设置 WASAPI 独占模式失败", toError(e));
         }
     }
 

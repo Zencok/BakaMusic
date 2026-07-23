@@ -7,11 +7,13 @@ import trackPlayer from "@renderer/core/track-player";
 import { useTranslation } from "react-i18next";
 import AppConfig from "@shared/app-config/renderer";
 import { MusicSheetSortType } from "@/common/constant";
+import { getGlobalContext } from "@shared/global-context/renderer";
 
 /** Playback quality, devices, and queue behavior (formerly PlayMusic). */
 export default function Playback() {
     const audioDevices = useOutputAudioDevices();
     const { t } = useTranslation();
+    const isWindows = getGlobalContext().platform === "win32";
 
     return (
         <div className="setting-view--playback-container">
@@ -110,6 +112,15 @@ export default function Playback() {
                     }}
                     options={["pause", "play"]}
                 ></RadioGroupSettingItem>
+                {isWindows ? (
+                    <CheckBoxSettingItem
+                        keyPath="playMusic.wasapiExclusive"
+                        label={t("settings.play_music.wasapi_exclusive")}
+                        onChange={(_event, checked) => {
+                            void trackPlayer.setWasapiExclusive(checked);
+                        }}
+                    ></CheckBoxSettingItem>
+                ) : null}
             </SettingGroup>
 
             <SettingGroup

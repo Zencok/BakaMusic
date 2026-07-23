@@ -23,6 +23,8 @@ class LibmpvAudioController extends ControllerBase implements IAudioController {
     private pitch = 0;
     private loop = false;
     private sinkId = "";
+    /** Windows WASAPI exclusive mode preference (applied via libmpv audio-exclusive). */
+    private audioExclusive = false;
     private _playerState = PlayerState.None;
 
     public musicItem: IMusic.IMusicItem | null = null;
@@ -140,6 +142,16 @@ class LibmpvAudioController extends ControllerBase implements IAudioController {
                 operation: "output-device",
                 sourceId,
                 deviceId: this.sinkId,
+            });
+        }
+        // Re-apply exclusive after load so runtime toggles survive track changes.
+        if (this.audioExclusive) {
+            await this.runNativeCommand({
+                operation: "audio-exclusive",
+                sourceId,
+                enabled: true,
+            }, false).catch((error) => {
+                logger.logError("WASAPI exclusive mode failed to apply", error);
             });
         }
         if (this.pendingSeek !== null) {
@@ -336,6 +348,16 @@ class LibmpvAudioController extends ControllerBase implements IAudioController {
                 deviceId,
             });
         }
+    }
+
+    async setAudioExclusive(enabled: boolean) {
+        this.audioExclusive = !!enabled;
+        // Always send: host allows exclusive/device ops without a loaded track.
+        await this.runNativeCommand({
+            operation: "audio-exclusive",
+            sourceId: this.sourceId || "session",
+            enabled: this.audioExclusive,
+        }, false);
     }
 
     reset() {
