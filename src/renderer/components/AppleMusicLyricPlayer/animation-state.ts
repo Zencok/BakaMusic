@@ -6,17 +6,14 @@ export function shouldRunLyricAnimation(
     return hasLyricLines && playing && documentVisible;
 }
 
-export const MAX_LYRIC_FRAME_DELTA_MS = 48;
-
 /**
- * Keep spring integration stable after a long main-thread frame. The lyric
- * clock still advances to the real playback position; only the visual spring
- * catches up over subsequent frames instead of jumping by the whole stall.
+ * AMLL springs use an analytical solver, so advancing them by the real RAF
+ * interval preserves the intended duration without numerical instability.
+ * Invalid or reset frame anchors intentionally produce no movement.
  */
 export function getLyricFrameDelta(
     timestamp: number,
     previousTimestamp: number,
-    maxDeltaMs = MAX_LYRIC_FRAME_DELTA_MS,
 ): number {
     if (!Number.isFinite(timestamp) || !Number.isFinite(previousTimestamp)) {
         return 0;
@@ -24,7 +21,7 @@ export function getLyricFrameDelta(
     if (previousTimestamp <= 0 || timestamp <= previousTimestamp) {
         return 0;
     }
-    return Math.min(timestamp - previousTimestamp, Math.max(0, maxDeltaMs));
+    return timestamp - previousTimestamp;
 }
 
 /**

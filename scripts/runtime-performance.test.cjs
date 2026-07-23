@@ -26,7 +26,7 @@ assert.equal(shouldRunLyricAnimation(false, true, true), false);
 assert.equal(shouldRunLyricAnimation(true, false, true), false);
 assert.equal(shouldRunLyricAnimation(true, true, false), false);
 assert.equal(getLyricFrameDelta(1_016, 1_000), 16);
-assert.equal(getLyricFrameDelta(1_200, 1_000), 48);
+assert.equal(getLyricFrameDelta(1_200, 1_000), 200);
 assert.equal(getLyricFrameDelta(900, 1_000), 0);
 assert.equal(getLyricFrameDelta(Number.NaN, 1_000), 0);
 assert.equal(getLyricLineSeekTimeSeconds(12_500), 12.5);
