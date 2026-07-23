@@ -143,8 +143,8 @@ export class DomLyricPlayer extends LyricPlayerBase {
 	override setWordFadeWidth(value = 0.5): void {
 		super.setWordFadeWidth(value);
 		for (const group of this.currentLyricGroups) {
-			group.mainLine.updateMaskImageSync();
-			group.bgLine?.updateMaskImageSync();
+			group.mainLine.updateMaskImageSync(true);
+			group.bgLine?.updateMaskImageSync(true);
 		}
 	}
 
@@ -190,10 +190,16 @@ export class DomLyricPlayer extends LyricPlayerBase {
 		this.setLinePosYSpringParams({});
 		this.setLineScaleSpringParams({});
 		this.setCurrentTime(initialTime, true);
+		const hasViewport = this.measureViewport();
+		this.onResize();
+		if (!hasViewport) {
+			return;
+		}
 		// Force-sync geometry so lines are show()'d while paused. Without force,
 		// springs start at off-screen positions and only advance during RAF —
 		// which does not run when playback is paused (startup restore case).
 		this.calcLayout(true, true);
+		this.completeInitialViewportLayout();
 		this.update(0);
 	}
 

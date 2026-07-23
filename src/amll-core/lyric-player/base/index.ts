@@ -38,6 +38,12 @@ export type { LyricLineBase } from "./line.ts";
 export type { PlayerScrollState } from "./scroll.ts";
 export type { PlayerTimelineState } from "./timeline.ts";
 
+function getObservedBorderBoxSize(entry: ResizeObserverEntry): [number, number] {
+	const borderSize = entry.borderBoxSize[0];
+	if (borderSize) return [borderSize.inlineSize, borderSize.blockSize];
+	return [entry.target.clientWidth, entry.target.clientHeight];
+}
+
 /**
  * 歌词播放器的基类，已经包含了有关歌词操作和排版的功能，
  * 子类需要为其实现对应的显示展示操作
@@ -130,25 +136,36 @@ export abstract class LyricPlayerBase
 		this.isPageVisible = false;
 	};
 	private scrolledHandler: ReturnType<typeof setTimeout> | undefined;
+	private detachScrollHandlers: () => void = () => {};
+	private resizeCommitFrame = 0;
+	private resizeNeedsLayout = false;
+	private resizeNeedsPlayerStyle = false;
+	private needsInitialViewportLayout = false;
 	/** @internal */
 	resizeObserver: ResizeObserver = new ResizeObserver(((entries) => {
 		let shouldRelayout = false;
 		let shouldRebuildPlayerStyle = false;
 		for (const entry of entries) {
 			if (entry.target === this.element) {
-				const rect = entry.contentRect;
-				this.size[0] = rect.width;
-				this.size[1] = rect.height;
-				shouldRebuildPlayerStyle = true;
+				const [width, height] = getObservedBorderBoxSize(entry);
+				if (this.size[0] !== width || this.size[1] !== height) {
+					this.size[0] = width;
+					this.size[1] = height;
+					shouldRebuildPlayerStyle = true;
+					shouldRelayout = true;
+				}
 			} else if (entry.target === this.interludeDots.getElement()) {
-				this.layoutState.interludeDotsSize[0] = entry.target.clientWidth;
-				this.layoutState.interludeDotsSize[1] = entry.target.clientHeight;
-				shouldRelayout = true;
+				const [width, height] = getObservedBorderBoxSize(entry);
+				if (
+					this.layoutState.interludeDotsSize[0] !== width ||
+					this.layoutState.interludeDotsSize[1] !== height
+				) {
+					this.layoutState.interludeDotsSize[0] = width;
+					this.layoutState.interludeDotsSize[1] = height;
+					shouldRelayout = true;
+				}
 			} else if (entry.target === this.bottomLine.getElement()) {
-				const newSize: [number, number] = [
-					entry.target.clientWidth,
-					entry.target.clientHeight,
-				];
+				const newSize = getObservedBorderBoxSize(entry);
 				const oldSize: [number, number] = this.bottomLine.lineSize;
 
 				if (newSize[0] !== oldSize[0] || newSize[1] !== oldSize[1]) {
@@ -158,10 +175,7 @@ export abstract class LyricPlayerBase
 			} else {
 				const groupObj = this.lyricGroupElementMap.get(entry.target);
 				if (groupObj) {
-					const newSize: [number, number] = [
-						entry.target.clientWidth,
-						entry.target.clientHeight,
-					];
+					const newSize = getObservedBorderBoxSize(entry);
 
 					const oldSize: [number, number] = this.lyricGroupSize.get(
 						groupObj,
@@ -175,20 +189,58 @@ export abstract class LyricPlayerBase
 				}
 			}
 		}
-		if (shouldRelayout) {
-			// Force + paint: container size often arrives after setLyricLines while
-			// paused. Springs alone leave lines off-screen, and without update()
-			// LyricLineGroup.show() never runs (hide-by-default until in-sight).
-			this.calcLayout(true, true);
-			this.update(0);
-		}
-		if (shouldRebuildPlayerStyle) {
-			this.onResize();
-			// Size change also needs a paint pass while paused.
-			this.update(0);
+		this.resizeNeedsLayout ||= shouldRelayout;
+		this.resizeNeedsPlayerStyle ||= shouldRebuildPlayerStyle;
+		if (this.resizeNeedsLayout || this.resizeNeedsPlayerStyle) {
+			this.scheduleResizeCommit();
 		}
 	}) as ResizeObserverCallback);
 	protected wordFadeWidth = 0.5;
+
+	private scheduleResizeCommit(): void {
+		if (this.resizeCommitFrame !== 0) return;
+		this.resizeCommitFrame = requestAnimationFrame(() => {
+			this.resizeCommitFrame = 0;
+			const shouldRelayout = this.resizeNeedsLayout;
+			const shouldRebuildPlayerStyle = this.resizeNeedsPlayerStyle;
+			this.resizeNeedsLayout = false;
+			this.resizeNeedsPlayerStyle = false;
+
+			if (shouldRebuildPlayerStyle) this.onResize();
+			if (
+				!shouldRelayout ||
+				!this.hasUsableViewport() ||
+				!this.timelineState.initialLayoutFinished
+			) {
+				return;
+			}
+
+			// Initial/paused layout must paint immediately. During playback, keep
+			// the existing spring state so late line measurements never snap the
+			// scrolling position or restart the animation.
+			const force = this.needsInitialViewportLayout || !this.timelineState.isPlaying;
+			void this.calcLayout(true, force);
+			this.needsInitialViewportLayout = false;
+			if (force) this.update(0);
+		});
+	}
+
+	/** @internal */
+	hasUsableViewport(): boolean {
+		return this.size[0] > 0 && this.size[1] > 0;
+	}
+
+	/** Synchronize the viewport before the first lyric layout/virtualization pass. */
+	protected measureViewport(): boolean {
+		const rect = this.element.getBoundingClientRect();
+		this.size[0] = rect.width;
+		this.size[1] = rect.height;
+		return this.hasUsableViewport();
+	}
+
+	protected completeInitialViewportLayout(): void {
+		this.needsInitialViewportLayout = false;
+	}
 
 	constructor(element?: HTMLElement) {
 		super();
@@ -204,10 +256,14 @@ export abstract class LyricPlayerBase
 
 		window.addEventListener("pageshow", this.onPageShow);
 		window.addEventListener("pagehide", this.onPageHide);
-		attachPlayerScrollHandlers(this.element, this.scrollState, {
+		this.detachScrollHandlers = attachPlayerScrollHandlers(this.element, this.scrollState, {
 			onBeginScroll: () => this.beginScrollHandler(),
 			onEndScroll: () => this.endScrollHandler(),
-			onLayout: (sync, force) => this.calcLayout(sync, force),
+			onLayout: (sync, force) => {
+				const forceLayout = force || !this.timelineState.isPlaying;
+				void this.calcLayout(sync, forceLayout);
+				if (forceLayout) this.update(0);
+			},
 			containsTarget: (target) => this.element.contains(target),
 			clickTarget: (target) => target.click(),
 		});
@@ -456,6 +512,7 @@ export abstract class LyricPlayerBase
 		}
 
 		this.timelineState.initialLayoutFinished = true;
+		this.needsInitialViewportLayout = true;
 		this.timelineState.lastCurrentTime = initialTime;
 		this.timelineState.currentTime = initialTime;
 
@@ -607,7 +664,7 @@ export abstract class LyricPlayerBase
 			}
 		}
 		// 避免一开始就让所有歌词行挤在一起
-		const LINE_HEIGHT_FALLBACK = this.size[1] / 5;
+		const LINE_HEIGHT_FALLBACK = Math.max(this.size[1] / 5, fontSize * 1.6);
 		const scrollOffset = this.currentLyricGroups
 			.slice(0, targetAlignIndex)
 			.reduce(
@@ -875,6 +932,10 @@ export abstract class LyricPlayerBase
 		return this.element;
 	}
 	dispose(): void {
+		cancelAnimationFrame(this.resizeCommitFrame);
+		this.resizeCommitFrame = 0;
+		this.detachScrollHandlers();
+		this.resizeObserver.disconnect();
 		this.element.remove();
 		window.removeEventListener("pageshow", this.onPageShow);
 		window.removeEventListener("pagehide", this.onPageHide);

@@ -87,7 +87,9 @@ export function attachPlayerScrollHandlers(
 	element: HTMLElement,
 	scrollState: PlayerScrollState,
 	callbacks: AttachPlayerScrollHandlersCallbacks,
-): void {
+): () => void {
+	const abortController = new AbortController();
+	const { signal } = abortController;
 	let startScrollY = 0;
 
 	let startTouchPosY = 0;
@@ -98,6 +100,8 @@ export function attachPlayerScrollHandlers(
 	let startScrollTime = 0;
 	let scrollSpeed = 0;
 	let curScrollId = 0;
+	let wheelFrame = 0;
+	let pendingWheelDelta = 0;
 
 	element.addEventListener("touchstart", (evt) => {
 		if (callbacks.onBeginScroll()) {
@@ -117,7 +121,7 @@ export function attachPlayerScrollHandlers(
 
 			callbacks.onLayout(true, true);
 		}
-	});
+	}, { signal });
 
 	element.addEventListener("touchmove", (evt) => {
 		if (callbacks.onBeginScroll()) {
@@ -138,7 +142,7 @@ export function attachPlayerScrollHandlers(
 
 			callbacks.onLayout(true, true);
 		}
-	});
+	}, { signal });
 
 	element.addEventListener("touchend", (evt) => {
 		if (callbacks.onBeginScroll()) {
@@ -197,7 +201,17 @@ export function attachPlayerScrollHandlers(
 		} else {
 			scrollState.isUserScrolling = false;
 		}
-	});
+	}, { signal });
+
+	const flushWheel = () => {
+		wheelFrame = 0;
+		if (pendingWheelDelta === 0) return;
+
+		scrollState.scrollOffset += pendingWheelDelta;
+		pendingWheelDelta = 0;
+		clampPlayerScrollOffset(scrollState);
+		callbacks.onLayout(true, false);
+	};
 
 	element.addEventListener(
 		"wheel",
@@ -206,16 +220,23 @@ export function attachPlayerScrollHandlers(
 				evt.preventDefault();
 
 				if (evt.deltaMode === evt.DOM_DELTA_PIXEL) {
-					scrollState.scrollOffset += evt.deltaY;
-					clampPlayerScrollOffset(scrollState);
-					callbacks.onLayout(true, false);
+					pendingWheelDelta += evt.deltaY;
 				} else {
-					scrollState.scrollOffset += evt.deltaY * 50;
-					clampPlayerScrollOffset(scrollState);
-					callbacks.onLayout(false, false);
+					pendingWheelDelta += evt.deltaY * 50;
+				}
+				if (wheelFrame === 0) {
+					wheelFrame = requestAnimationFrame(flushWheel);
 				}
 			}
 		},
-		{ passive: false },
+		{ passive: false, signal },
 	);
+
+	return () => {
+		abortController.abort();
+		curScrollId++;
+		cancelAnimationFrame(wheelFrame);
+		wheelFrame = 0;
+		pendingWheelDelta = 0;
+	};
 }

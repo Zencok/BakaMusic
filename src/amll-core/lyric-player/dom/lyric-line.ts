@@ -58,6 +58,7 @@ export class LyricLineEl extends LyricLineBase {
 	private splittedWords: RealWord[] = [];
 	// 标记是否已经构建了行内的实际 DOM（单词与动画等）
 	private built = false;
+	private lastMaskLayoutSignature = "";
 
 	// 由 LyricPlayer 来设置
 	lineSize: number[] = [0, 0];
@@ -660,7 +661,17 @@ export class LyricLineEl extends LyricLineBase {
 	override onLineSizeChange(_size: [number, number]): void {
 		this.updateMaskImageSync();
 	}
-	updateMaskImageSync(): void {
+	private getMaskLayoutSignature(): string {
+		return `${this.element.clientWidth}:${this.element.clientHeight}:${
+			getComputedStyle(this.element).fontSize
+		}`;
+	}
+
+	updateMaskImageSync(force = false): void {
+		if (!this.built || this.splittedWords.length === 0) return;
+		const layoutSignature = this.getMaskLayoutSignature();
+		if (!force && layoutSignature === this.lastMaskLayoutSignature) return;
+
 		for (const word of this.splittedWords) {
 			const el = word.mainElement;
 			if (el) {
@@ -689,6 +700,7 @@ export class LyricLineEl extends LyricLineBase {
 			const isPlayerRunning = this.lyricPlayer.getIsPlaying?.() ?? true;
 			this.enable(this.lyricPlayer.getCurrentTime(), isPlayerRunning);
 		}
+		this.lastMaskLayoutSignature = this.getMaskLayoutSignature();
 	}
 
 	private generateCalcBasedMaskImage() {
@@ -1057,6 +1069,7 @@ export class LyricLineEl extends LyricLineBase {
 	}
 
 	private disposeElements() {
+		this.lastMaskLayoutSignature = "";
 		this.balancer?.reset();
 		for (const realWord of this.splittedWords) {
 			for (const a of realWord.elementAnimations) {

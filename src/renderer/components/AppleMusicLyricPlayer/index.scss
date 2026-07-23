@@ -7,6 +7,8 @@
   & .apple-music-lyric-player--stage {
     width: 100%;
     height: 100%;
+    contain: strict;
+    isolation: isolate;
   }
 
   & .amll-lyric-player {

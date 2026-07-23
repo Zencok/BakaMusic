@@ -5,6 +5,7 @@ const {
     shouldPersistPlaybackProgress,
 } = require("../src/renderer/core/track-player/progress-persistence");
 const {
+    getLyricFrameDelta,
     settlePausedLyricLayout,
     shouldRunLyricAnimation,
 } = require("../src/renderer/components/AppleMusicLyricPlayer/animation-state");
@@ -21,6 +22,10 @@ assert.equal(shouldRunLyricAnimation(true, true, true), true);
 assert.equal(shouldRunLyricAnimation(false, true, true), false);
 assert.equal(shouldRunLyricAnimation(true, false, true), false);
 assert.equal(shouldRunLyricAnimation(true, true, false), false);
+assert.equal(getLyricFrameDelta(1_016, 1_000), 16);
+assert.equal(getLyricFrameDelta(1_200, 1_000), 48);
+assert.equal(getLyricFrameDelta(900, 1_000), 0);
+assert.equal(getLyricFrameDelta(Number.NaN, 1_000), 0);
 
 assert.equal(getDragAutoScrollDelta(100, 100, 600), -24);
 assert.equal(getDragAutoScrollDelta(350, 100, 600), 0);
@@ -55,6 +60,32 @@ const amllDomPlayerSource = fs.readFileSync(path.join(
     "../src/amll-core/lyric-player/dom/index.ts",
 ), "utf8");
 assert.match(amllDomPlayerSource, /calcLayout\(true, true\)/);
+assert.match(amllDomPlayerSource, /const hasViewport = this\.measureViewport\(\)/);
+
+const amllBasePlayerSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/amll-core/lyric-player/base/index.ts",
+), "utf8");
+assert.match(amllBasePlayerSource, /scheduleResizeCommit\(\)/);
+assert.match(amllBasePlayerSource, /this\.needsInitialViewportLayout \|\| !this\.timelineState\.isPlaying/);
+assert.match(amllBasePlayerSource, /Math\.max\(this\.size\[1\] \/ 5, fontSize \* 1\.6\)/);
+
+const amllDomGroupSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/amll-core/lyric-player/dom/lyric-group.ts",
+), "utf8");
+assert.match(amllDomGroupSource, /hasUsableViewport\(\)/);
+assert.doesNotMatch(
+    amllDomGroupSource.slice(0, amllDomGroupSource.indexOf("get isInSight")),
+    /resizeObserver\.observe/,
+);
+
+const amllScrollSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/amll-core/lyric-player/base/scroll.ts",
+), "utf8");
+assert.match(amllScrollSource, /requestAnimationFrame\(flushWheel\)/);
+assert.match(amllScrollSource, /pendingWheelDelta \+= evt\.deltaY/);
 
 const watchLocalDirSource = fs.readFileSync(path.join(
     __dirname,

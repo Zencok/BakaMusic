@@ -4,7 +4,11 @@ import type { AmlLyricLineTiming, IBakaAmlLyricLine } from "@/common/amll-lyric"
 import { DomLyricPlayer } from "@amll-core/lyric-player/dom/index";
 import { MaskObsceneWordsMode } from "@amll-core/lyric-player/index";
 import type { LyricLine } from "@amll-core/interfaces";
-import { settlePausedLyricLayout, shouldRunLyricAnimation } from "./animation-state";
+import {
+    getLyricFrameDelta,
+    settlePausedLyricLayout,
+    shouldRunLyricAnimation,
+} from "./animation-state";
 
 interface IAppleMusicLyricPlayerProps {
     active?: boolean;
@@ -54,9 +58,9 @@ function syncLyricLinePlayState(
     player: DomLyricPlayer | null,
     currentTimeMs: number,
     enabled: boolean,
-) {
+): number {
     if (!enabled || !player) {
-        return;
+        return Number.POSITIVE_INFINITY;
     }
 
     const lineObjects = (player as unknown as IAmlLyricPlayerWithLineGroups)
@@ -65,9 +69,10 @@ function syncLyricLinePlayState(
             group.bgLine ? [group.mainLine, group.bgLine] : [group.mainLine]
         ));
     if (!lineObjects?.length) {
-        return;
+        return Number.POSITIVE_INFINITY;
     }
 
+    let nextTransitionTime = Number.POSITIVE_INFINITY;
     lineObjects.forEach((lineObject) => {
         const line = lineObject.getLine();
         let playState: LyricLinePlayState = "future";
@@ -76,6 +81,12 @@ function syncLyricLinePlayState(
             playState = "played";
         } else if (line.startTime <= currentTimeMs && line.endTime > currentTimeMs) {
             playState = "current";
+        }
+
+        if (playState === "future") {
+            nextTransitionTime = Math.min(nextTransitionTime, line.startTime);
+        } else if (playState === "current") {
+            nextTransitionTime = Math.min(nextTransitionTime, line.endTime);
         }
 
         const element = lineObject.getElement();
@@ -88,6 +99,8 @@ function syncLyricLinePlayState(
             element.dataset.lyricTiming = timing;
         }
     });
+
+    return nextTransitionTime;
 }
 
 export default function AppleMusicLyricPlayer({
@@ -121,6 +134,7 @@ export default function AppleMusicLyricPlayer({
     const anchorFrameTimeRef = useRef(0);
     const lastSyncedTimeRef = useRef(currentTimeMs);
     const lastPropTimeRef = useRef(currentTimeMs);
+    const nextPlayStateTransitionRef = useRef(Number.NEGATIVE_INFINITY);
     const currentTimePropRef = useRef(currentTimeMs);
     const lyricLinesRef = useRef(lyricLines);
     const playingRef = useRef(playing);
@@ -214,7 +228,7 @@ export default function AppleMusicLyricPlayer({
         }
 
         if (lastLyricSignatureRef.current === lyricSignature) {
-            syncLyricLinePlayState(
+            nextPlayStateTransitionRef.current = syncLyricLinePlayState(
                 player,
                 currentTimePropRef.current,
                 markLinePlayState,
@@ -228,7 +242,11 @@ export default function AppleMusicLyricPlayer({
 
         const nextCurrentTime = currentTimePropRef.current;
         player.setLyricLines(lyricLinesRef.current, nextCurrentTime);
-        syncLyricLinePlayState(player, nextCurrentTime, markLinePlayState);
+        nextPlayStateTransitionRef.current = syncLyricLinePlayState(
+            player,
+            nextCurrentTime,
+            markLinePlayState,
+        );
         lastSyncedTimeRef.current = nextCurrentTime;
         lastPropTimeRef.current = nextCurrentTime;
         anchorTimeRef.current = nextCurrentTime;
@@ -256,14 +274,22 @@ export default function AppleMusicLyricPlayer({
             // before resuming so the first frame cannot extrapolate by the pause duration.
             playingRef.current = false;
             player.setCurrentTime(transitionTime, true);
-            syncLyricLinePlayState(player, transitionTime, markLinePlayState);
+            nextPlayStateTransitionRef.current = syncLyricLinePlayState(
+                player,
+                transitionTime,
+                markLinePlayState,
+            );
             player.resume();
             playingRef.current = true;
         } else {
             playingRef.current = false;
             player.pause();
             player.setCurrentTime(transitionTime, true);
-            syncLyricLinePlayState(player, transitionTime, markLinePlayState);
+            nextPlayStateTransitionRef.current = syncLyricLinePlayState(
+                player,
+                transitionTime,
+                markLinePlayState,
+            );
             if (active && documentVisible) {
                 settlePausedLyricLayout((delta) => player.update(delta));
             }
@@ -283,7 +309,11 @@ export default function AppleMusicLyricPlayer({
         const prevPropTime = lastPropTimeRef.current;
         const isSeek = Math.abs(currentTimeMs - prevPropTime) > 1200;
         player.setCurrentTime(currentTimeMs, isSeek || !playingRef.current);
-        syncLyricLinePlayState(player, currentTimeMs, markLinePlayState);
+        nextPlayStateTransitionRef.current = syncLyricLinePlayState(
+            player,
+            currentTimeMs,
+            markLinePlayState,
+        );
         lastSyncedTimeRef.current = currentTimeMs;
         lastPropTimeRef.current = currentTimeMs;
         if (!playingRef.current) {
@@ -308,8 +338,10 @@ export default function AppleMusicLyricPlayer({
         const animate = (timestamp: number) => {
             const player = playerRef.current;
             if (player) {
-                const lastFrameTime = lastFrameTimeRef.current || timestamp;
-                const delta = Math.max(0, timestamp - lastFrameTime);
+                const delta = getLyricFrameDelta(
+                    timestamp,
+                    lastFrameTimeRef.current,
+                );
                 lastFrameTimeRef.current = timestamp;
 
                 const frameTime = playingRef.current
@@ -317,7 +349,19 @@ export default function AppleMusicLyricPlayer({
                     : anchorTimeRef.current;
 
                 player.setCurrentTime(frameTime);
-                syncLyricLinePlayState(player, frameTime, markLinePlayState);
+                if (
+                    markLinePlayState
+                    && (
+                        frameTime >= nextPlayStateTransitionRef.current
+                        || frameTime < lastSyncedTimeRef.current
+                    )
+                ) {
+                    nextPlayStateTransitionRef.current = syncLyricLinePlayState(
+                        player,
+                        frameTime,
+                        true,
+                    );
+                }
                 lastSyncedTimeRef.current = frameTime;
                 player.update(delta);
             }

@@ -12,7 +12,10 @@
   background: var(--musicDetailSurface);
   border: 1px solid var(--musicDetailBorder);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(30px) saturate(140%);
+  // The full-screen artwork is already blurred. Keeping this second live
+  // backdrop pass makes every moving lyric layer re-composite against it.
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .music-detail-lyric-toolbar {
