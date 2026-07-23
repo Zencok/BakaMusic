@@ -1,7 +1,10 @@
 import "./index.scss";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AmlLyricLineTiming, IBakaAmlLyricLine } from "@/common/amll-lyric";
-import { DomLyricPlayer } from "@amll-core/lyric-player/dom/index";
+import {
+    DomLyricPlayer,
+    type LyricLineMouseEvent,
+} from "@amll-core/lyric-player/dom/index";
 import { MaskObsceneWordsMode } from "@amll-core/lyric-player/index";
 import type { LyricLine } from "@amll-core/interfaces";
 import {
@@ -32,6 +35,7 @@ interface IAppleMusicLyricPlayerProps {
     wordFadeWidth?: number;
     inactiveBrightness?: number;
     markLinePlayState?: boolean;
+    onLineClick?: (line: LyricLine, lineIndex: number) => void;
 }
 
 type LyricLinePlayState = "played" | "current" | "future";
@@ -125,6 +129,7 @@ export default function AppleMusicLyricPlayer({
     wordFadeWidth = 0.68,
     inactiveBrightness = 0.2,
     markLinePlayState = false,
+    onLineClick,
 }: IAppleMusicLyricPlayerProps) {
     const stageRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<DomLyricPlayer | null>(null);
@@ -137,6 +142,7 @@ export default function AppleMusicLyricPlayer({
     const nextPlayStateTransitionRef = useRef(Number.NEGATIVE_INFINITY);
     const currentTimePropRef = useRef(currentTimeMs);
     const lyricLinesRef = useRef(lyricLines);
+    const onLineClickRef = useRef(onLineClick);
     const playingRef = useRef(playing);
     const speedRef = useRef(speed);
     const [documentVisible, setDocumentVisible] = useState(
@@ -145,6 +151,7 @@ export default function AppleMusicLyricPlayer({
 
     currentTimePropRef.current = currentTimeMs;
     lyricLinesRef.current = lyricLines;
+    onLineClickRef.current = onLineClick;
 
     const hasLyricLines = lyricLines.length > 0;
 
@@ -172,16 +179,29 @@ export default function AppleMusicLyricPlayer({
         }
 
         const player = new DomLyricPlayer();
+        const handleLineClick = (event: Event) => {
+            const lyricEvent = event as LyricLineMouseEvent;
+            onLineClickRef.current?.(
+                lyricEvent.line.getLine(),
+                lyricEvent.lineIndex,
+            );
+        };
         playerRef.current = player;
         player.setMaskObsceneWords(MaskObsceneWordsMode.Disabled);
+        player.addEventListener("line-click", handleLineClick);
         stage.appendChild(player.getElement());
 
         return () => {
             cancelAnimationFrame(rafRef.current);
+            player.removeEventListener("line-click", handleLineClick);
             player.dispose();
             playerRef.current = null;
         };
     }, []);
+
+    useEffect(() => {
+        playerRef.current?.setLineClickEnabled(Boolean(onLineClick));
+    }, [onLineClick]);
 
     useEffect(() => {
         const player = playerRef.current;

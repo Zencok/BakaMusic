@@ -59,6 +59,7 @@ export type LyricLineMouseEventListener = (evt: LyricLineMouseEvent) => void;
  */
 export class DomLyricPlayer extends LyricPlayerBase {
 	private abortController = new AbortController();
+	private lineClickEnabled = false;
 	override currentLyricGroups: LyricLineGroup[] = [];
 
 	override onResize(): void {
@@ -75,6 +76,8 @@ export class DomLyricPlayer extends LyricPlayerBase {
 	readonly innerSize: [number, number] = [0, 0];
 
 	private readonly onMouseEventHandler = (e: MouseEvent) => {
+		if (e.type === "click" && !this.lineClickEnabled) return;
+
 		const target = e.target;
 		if (!(target instanceof Element)) return;
 
@@ -99,6 +102,23 @@ export class DomLyricPlayer extends LyricPlayerBase {
 			e.stopPropagation();
 			e.stopImmediatePropagation();
 		}
+	};
+	private readonly onKeyDownHandler = (e: KeyboardEvent) => {
+		if (
+			!this.lineClickEnabled ||
+			e.defaultPrevented ||
+			(e.key !== "Enter" && e.key !== " ")
+		) {
+			return;
+		}
+
+		const target = e.target;
+		if (!(target instanceof Element)) return;
+		const groupEl = target.closest(`.${styles.lyricLineWrapper}`);
+		if (!(groupEl instanceof HTMLElement)) return;
+
+		e.preventDefault();
+		groupEl.click();
 	};
 
 	/**
@@ -128,6 +148,9 @@ export class DomLyricPlayer extends LyricPlayerBase {
 		this.element.addEventListener("contextmenu", this.onMouseEventHandler, {
 			signal: this.abortController.signal,
 		});
+		this.element.addEventListener("keydown", this.onKeyDownHandler, {
+			signal: this.abortController.signal,
+		});
 	}
 
 	private rebuildStyle() {
@@ -146,6 +169,25 @@ export class DomLyricPlayer extends LyricPlayerBase {
 			group.mainLine.updateMaskImageSync(true);
 			group.bgLine?.updateMaskImageSync(true);
 		}
+	}
+
+	private syncLineInteractivity(): void {
+		for (const group of this.currentLyricGroups) {
+			if (this.lineClickEnabled) {
+				group.element.dataset.clickable = "true";
+				group.element.setAttribute("role", "button");
+				group.element.tabIndex = 0;
+			} else {
+				delete group.element.dataset.clickable;
+				group.element.removeAttribute("role");
+				group.element.removeAttribute("tabindex");
+			}
+		}
+	}
+
+	setLineClickEnabled(enabled = true): void {
+		this.lineClickEnabled = enabled;
+		this.syncLineInteractivity();
 	}
 
 	/**
@@ -185,6 +227,7 @@ export class DomLyricPlayer extends LyricPlayerBase {
 				currentGroup.addBgLine(lineEl);
 			}
 		}
+		this.syncLineInteractivity();
 
 		this.setLinePosXSpringParams({});
 		this.setLinePosYSpringParams({});

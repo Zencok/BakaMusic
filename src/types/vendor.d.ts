@@ -57,9 +57,21 @@ declare module "@amll-core/lyric-player/index" {
 declare module "@amll-core/lyric-player/dom/index" {
   import type { LyricLine } from "@amll-core/interfaces";
 
-  export class DomLyricPlayer {
+  export interface LyricLineHandle {
+    getLine(): LyricLine;
+    getElement(): HTMLElement;
+  }
+
+  export class LyricLineMouseEvent extends MouseEvent {
+    readonly lineIndex: number;
+    readonly line: LyricLineHandle;
+    readonly bgLine?: LyricLineHandle;
+  }
+
+  export class DomLyricPlayer extends EventTarget {
     getElement(): HTMLElement;
     setMaskObsceneWords(mode: unknown): void;
+    setLineClickEnabled(enabled?: boolean): void;
     setAlignAnchor(alignAnchor: "top" | "bottom" | "center"): void;
     setAlignPosition(alignPosition: number): void;
     setCenterInterludeDots(center?: boolean): void;

@@ -25,6 +25,16 @@
 	&:active {
 		background-color: var(--amll-lp-hover-bg-color, #ffffff05);
 	}
+
+	&[data-clickable="true"] {
+		cursor: default;
+	}
+
+	&[data-clickable="true"]:focus-visible {
+		outline: 2px solid currentColor;
+		outline-offset: -2px;
+		background-color: var(--amll-lp-hover-bg-color, #fff1);
+	}
 }
 
 .lyricLine {
