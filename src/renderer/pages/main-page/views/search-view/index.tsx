@@ -3,7 +3,7 @@ import { Tab } from "@headlessui/react";
 import { supportedMediaType } from "@/common/constant";
 import NoPlugin from "@/renderer/components/NoPlugin";
 import { currentMediaTypeStore, resetStore } from "./store/search-result";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { useMatch, useNavigate } from "react-router-dom";
 import PluginManager, { useSortedSupportedPlugin } from "@shared/plugin-manager/renderer";
 import SearchResult from "./components/SearchResult";
@@ -51,8 +51,13 @@ export default function SearchView() {
     return (
         <div id="page-container" className="page-container search-view-container">
             <div className="search-header">
-                <span>{t("search_result_page.search_result_title")}</span>
-                <span className="highlight">{query}</span>
+                <Trans
+                    i18nKey="search_result_page.search_result_title"
+                    values={{ query }}
+                    components={{
+                        highlight: <span className="highlight" />,
+                    }}
+                />
             </div>
             {plugins.length ? (
                 <Tab.Group

@@ -242,7 +242,7 @@
         "open_album_failed": "无法打开专辑页"
     },
     "search_result_page": {
-        "search_result_title": "的搜索结果",
+        "search_result_title": "搜索结果：<highlight>{{query}}</highlight>",
         "refresh_current_platform": "刷新当前平台"
     },
     "side_bar": {

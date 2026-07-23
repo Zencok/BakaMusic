@@ -242,7 +242,7 @@
         "open_album_failed": "無法開啟專輯頁"
     },
     "search_result_page": {
-        "search_result_title": "搜尋結果",
+        "search_result_title": "搜尋結果：<highlight>{{query}}</highlight>",
         "refresh_current_platform": "重新整理目前平台"
     },
     "side_bar": {
