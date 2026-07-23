@@ -256,3 +256,12 @@
 - **Bug**: Closing MusicDetail left native drag hit slots over main-page controls because Electron ignores pointer-events/inert for app regions.
 - **Files**: 2 files
 - **Tests**: TypeScript; ESLint; full regression suite; diff check
+
+## 2026-07-23T22:41:20.8002681+08:00 — docs(readme): document AMLL lyric parsing
+pending
+- **Context-Id**: 3a4bdcca-b4b3-45b1-b814-d2f67929a676
+- **Decision**: Describe remote plugin/URL lyrics and local embedded/sidecar lyrics as inputs to one shared LyricParser pipeline.
+- **Decision**: Document AMLL format coverage, sidecar precedence, rich TTML metadata, and legacy compatibility.
+- **Decision**: Add README navigation and reorganize runtime, plugin, theme, and development guidance.
+- **Files**: 1 file
+- **Tests**: diff check
