@@ -334,8 +334,12 @@ class PluginManager {
         if (data.hash === localPluginHash || data.platform === localPluginName) {
             plugin = localPlugin;
         } else if (typeof data.hash === "string" && data.hash) {
+            // Only treat as plugin hash when it matches an installed plugin.
+            // Callers sometimes pass a full musicItem; its `hash` field is a
+            // song identifier (酷狗/汽水/…), not the plugin identity.
             plugin = this.plugins.find((item) => item.hash === data.hash);
-        } else if (typeof data.platform === "string" && data.platform) {
+        }
+        if (!plugin && typeof data.platform === "string" && data.platform) {
             plugin = this.plugins.find((item) => item.name === data.platform);
         }
         if (!plugin) {

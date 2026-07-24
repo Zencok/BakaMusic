@@ -186,6 +186,25 @@ async function run() {
         () => validateMediaFileSignature(Buffer.from("3c68746d6c3e", "hex"), "song.mp3"),
         /Media signature/,
     );
+    // FLAC body with wrong .mp3 path: detect + correct, do not only throw.
+    {
+        const {
+            detectMediaExtension,
+            resolveDownloadedFilePath,
+        } = require("../src/webworkers/download-integrity");
+        const flacBytes = Buffer.from("664c614300000000", "hex");
+        assert.equal(detectMediaExtension(flacBytes), ".flac");
+        const wrongPath = path.join("D:", "Downloads", "track.mp3");
+        const fixedPath = path.join("D:", "Downloads", "track.flac");
+        assert.deepEqual(
+            resolveDownloadedFilePath(wrongPath, flacBytes),
+            { filePath: fixedPath, detectedExt: ".flac" },
+        );
+        assert.throws(
+            () => validateMediaFileSignature(flacBytes, "song.mp3"),
+            /Media signature does not match \.mp3/,
+        );
+    }
 
     assert.throws(() => assertSafeTargetUrlSync("file:///tmp/music"), /HTTP/);
     assert.throws(() => assertSafeTargetUrlSync("http://127.0.0.1/music"), /Private/);

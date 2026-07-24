@@ -1,11 +1,15 @@
 import {
     app,
     ipcMain,
+    net,
     utilityProcess,
     UtilityProcess,
 } from "electron";
 import path from "path";
-import type { IDownloadPostprocessPayload } from "@/common/download-postprocess";
+import type {
+    IDownloadCoverImage,
+    IDownloadPostprocessPayload,
+} from "@/common/download-postprocess";
 import { supportLocalMediaType } from "@/common/constant";
 import type { IWindowManager } from "@/types/window-manager";
 import {
@@ -17,9 +21,16 @@ import {
     assertString,
     assertUrl,
 } from "@shared/ipc-security/main";
+import { toError } from "@/common/error-util";
 import logger from "@shared/logger/main";
 
+/** Default RPC timeout for short operations (postprocess, watcher, abort). */
 const RUNTIME_TIMEOUT_MS = 60_000;
+/**
+ * Full media downloads stream through a single RPC. 60s kills multi-minute
+ * flac/m4a transfers and leaves the UI stuck after a dead runtime.
+ */
+const DOWNLOAD_FILE_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 const MAX_PENDING_REQUESTS = 256;
 const MAX_RPC_BYTES = 128 * 1024 * 1024;
 const MAX_RUNTIME_WORKING_SET_KB = 512 * 1024;
@@ -101,25 +112,76 @@ function validateMediaSource(value: unknown): IMusic.IMusicSource {
     return { url: sourceUrl, headers, userAgent };
 }
 
+const MAX_COVER_BYTES = 8 * 1024 * 1024;
+
 function validatePostprocessPayload(value: unknown) {
     if (value == null) {
         return;
     }
     assertPlainObject(value, "download postprocess payload");
-    assertIpcPayload(value, 8 * 1024 * 1024);
-    if (value.coverUrl === undefined) {
-        return;
+    assertIpcPayload(value, 16 * 1024 * 1024);
+    if (value.coverUrl !== undefined && value.coverUrl !== null) {
+        assertString(value.coverUrl, "cover URL", 8192);
+        if (!/^data:image\//i.test(value.coverUrl)) {
+            assertUrl(
+                value.coverUrl,
+                ["https:", "http:"],
+                8192,
+                { allowCredentials: true },
+            );
+        }
     }
-    assertString(value.coverUrl, "cover URL", 8 * 1024 * 1024);
-    if (/^data:image\/(?:bmp|gif|jpeg|jpg|png|webp);base64,/i.test(value.coverUrl)) {
-        return;
+    if (value.coverImage !== undefined && value.coverImage !== null) {
+        assertPlainObject(value.coverImage, "cover image");
+        assertString(value.coverImage.dataBase64, "cover image data", MAX_COVER_BYTES * 2);
+        assertString(value.coverImage.mimeType, "cover image mime", 128);
     }
-    assertUrl(
-        value.coverUrl,
-        ["https:", "http:"],
-        8192,
-        { allowCredentials: true },
-    );
+    if (value.lyricContent !== undefined && value.lyricContent !== null) {
+        assertString(value.lyricContent, "lyric content", 8 * 1024 * 1024);
+    }
+}
+
+function sniffImageMime(bytes: Buffer): string | null {
+    if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+        return "image/jpeg";
+    }
+    if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+        return "image/png";
+    }
+    if (
+        bytes.length >= 12
+        && bytes.subarray(0, 4).toString("ascii") === "RIFF"
+        && bytes.subarray(8, 12).toString("ascii") === "WEBP"
+    ) {
+        return "image/webp";
+    }
+    return null;
+}
+
+/** Plain Chromium fetch — no custom host/UA/Referer patching. */
+async function fetchCoverImageInMain(coverUrl: string): Promise<IDownloadCoverImage> {
+    assertUrl(coverUrl, ["https:", "http:"], 8192, { allowCredentials: true });
+    const response = await net.fetch(coverUrl, { redirect: "follow" });
+    if (!response.ok) {
+        throw new Error(`cover HTTP ${response.status}`);
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (!buffer.length) {
+        throw new Error("cover body empty");
+    }
+    if (buffer.length > MAX_COVER_BYTES) {
+        throw new Error(`cover too large: ${buffer.length}`);
+    }
+    const mimeType = sniffImageMime(buffer)
+        ?? response.headers.get("content-type")?.split(";")[0]?.trim()
+        ?? "application/octet-stream";
+    if (!mimeType.startsWith("image/")) {
+        throw new Error(`cover is not an image (${mimeType})`);
+    }
+    return {
+        dataBase64: buffer.toString("base64"),
+        mimeType,
+    };
 }
 
 class NodeRuntimeManager {
@@ -136,9 +198,25 @@ class NodeRuntimeManager {
         this.windowManager = windowManager;
         this.setupIpcHandlers();
         app.on("before-quit", () => this.dispose());
+        // Cold-start the utility process so the first download is not blocked
+        // on spawn + module load.
+        void this.ensureStarted().catch((error) => {
+            logger.logError("Node runtime warm-up failed", toError(error));
+        });
     }
 
     private setupIpcHandlers() {
+        ipcMain.handle("@shared/node-runtime/warm-up", async (event) => {
+            assertIpcSender(event, ["main"]);
+            await this.ensureStarted();
+            return true;
+        });
+        // Cover fetch runs in main (Chromium net), not utility undici.
+        ipcMain.handle("@shared/node-runtime/fetch-cover-image", async (event, coverUrl) => {
+            assertIpcSender(event, ["main"]);
+            assertString(coverUrl, "cover URL", 8192);
+            return fetchCoverImageInMain(coverUrl);
+        });
         ipcMain.handle("@shared/node-runtime/download-file", async (event, taskId, mediaSource, filePath) => {
             assertIpcSender(event, ["main"]);
             assertString(taskId, "download task id", 512);
@@ -148,7 +226,7 @@ class NodeRuntimeManager {
                 taskId,
                 mediaSource: validatedMediaSource,
                 filePath: targetPath,
-            });
+            }, DOWNLOAD_FILE_TIMEOUT_MS);
         });
         ipcMain.handle("@shared/node-runtime/abort-download", async (event, taskId, removePartial) => {
             assertIpcSender(event, ["main"]);
@@ -384,7 +462,12 @@ class NodeRuntimeManager {
         this.pending.clear();
     }
 
-    private requestRaw(child: UtilityProcess, operation: string, payload: unknown) {
+    private requestRaw(
+        child: UtilityProcess,
+        operation: string,
+        payload: unknown,
+        timeoutMs: number = RUNTIME_TIMEOUT_MS,
+    ) {
         if (this.pending.size >= MAX_PENDING_REQUESTS) {
             throw new Error("Node runtime concurrency limit reached");
         }
@@ -404,18 +487,22 @@ class NodeRuntimeManager {
                 if (this.child === child) {
                     child.kill();
                 }
-            }, RUNTIME_TIMEOUT_MS);
+            }, timeoutMs);
             this.pending.set(requestId, { resolve, reject, timer });
             child.postMessage(message);
         });
     }
 
-    private async request(operation: string, payload: unknown) {
+    private async request(
+        operation: string,
+        payload: unknown,
+        timeoutMs: number = RUNTIME_TIMEOUT_MS,
+    ) {
         await this.ensureStarted();
         if (!this.child) {
             throw new Error("Node runtime did not start");
         }
-        return this.requestRaw(this.child, operation, payload);
+        return this.requestRaw(this.child, operation, payload, timeoutMs);
     }
 
     private dispose() {

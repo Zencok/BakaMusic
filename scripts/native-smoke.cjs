@@ -33,7 +33,7 @@ const expectedArch = readOption("--arch", process.arch);
 const expectedPlatform = readOption("--platform", process.platform);
 const modules = readOption(
     "--modules",
-    process.env.REQUIRED_NATIVE_MODULES || "qmc2,ence",
+    process.env.REQUIRED_NATIVE_MODULES || "qmc2,ence,taglib",
 ).split(",").map((name) => name.trim()).filter(Boolean);
 
 assert.equal(process.arch, expectedArch, `runtime arch mismatch: ${process.arch}`);
@@ -44,8 +44,10 @@ assert.ok(modules.length > 0, "at least one native module is required");
 const requiredExports = {
     qmc2: ["decryptEKey", "createDecoder", "decrypt", "destroyDecoder"],
     ence: ["createDecoder", "getInfo", "getHeader", "decrypt", "destroyDecoder"],
+    taglib: ["readTags", "writeTags"],
 };
 
+let taglibVersion = null;
 for (const moduleName of modules) {
     const modulePath = path.join(nativeDir, `${moduleName}.node`);
     assert.ok(fs.existsSync(modulePath), `native module is missing: ${modulePath}`);
@@ -58,10 +60,15 @@ for (const moduleName of modules) {
             `${moduleName}.${exportName} is missing`,
         );
     }
+    if (moduleName === "taglib" && typeof nativeModule.taglibVersion === "string") {
+        taglibVersion = nativeModule.taglibVersion;
+        assert.match(taglibVersion, /^\d+\.\d+(\.\d+)?$/, "taglibVersion format");
+    }
 }
 
 console.log(
     `native-smoke: ${modules.join(", ")} loaded on ${process.platform}/${process.arch} `
     + `(Node ABI ${process.versions.modules}, N-API ${process.versions.napi}`
-    + `${process.versions.electron ? `, Electron ${process.versions.electron}` : ""})`,
+    + `${process.versions.electron ? `, Electron ${process.versions.electron}` : ""}`
+    + `${taglibVersion ? `, TagLib ${taglibVersion}` : ""})`,
 );

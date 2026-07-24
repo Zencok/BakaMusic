@@ -5,7 +5,6 @@ permissions: {}
 env:
   NODE_VERSION: "24.15.0"
   NODE_GYP_VERSION: "13.0.1"
-  NATIVE_SOURCE_REF: "9fde96fa09badecb8ae82d80cde258491a6b07fd"
 
 on:
   push:
@@ -94,19 +93,13 @@ jobs:
           node -v
           npm -v
           node -e "const pkg=require('./package.json'); const lock=require('./package-lock.json'); console.log('electron='+pkg.devDependencies.electron); console.log('@electron/rebuild='+(lock.packages['node_modules/@electron/rebuild']?.version || 'missing')); console.log('node-gyp='+(lock.packages['node_modules/node-gyp']?.version || 'missing'));"
-      - name: Checkout pinned native sources
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
-        with:
-          repository: Zencok/baka-native
-          ref: ${{ env.NATIVE_SOURCE_REF }}
-          ssh-key: ${{ secrets.NATIVE_REPO_DEPLOY_KEY }}
-          path: native
-          persist-credentials: false
-      - name: Verify native source revision
-        shell: bash
-        run: test "$(git -C native rev-parse HEAD)" = "$NATIVE_SOURCE_REF"
-      - name: Build and load native modules
-        run: npm run build:native
+      - name: Install prebuilt native modules
+        env:
+          # Private baka-native release assets. Prefer a fine-grained PAT with
+          # Contents: Read on Zencok/baka-native; fall back to deploy-key-less token.
+          NATIVE_REPO_TOKEN: ${{ secrets.NATIVE_REPO_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run native:install
       - name: Verify native modules in Electron ABI
         run: npm run smoke:native
 

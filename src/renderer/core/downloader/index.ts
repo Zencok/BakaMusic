@@ -1,4 +1,5 @@
 import { DownloadState, localPluginName } from "@/common/constant";
+import { resolveDownloadExtension } from "@/common/download-extension";
 import { IDownloadPostprocessPayload } from "@/common/download-postprocess";
 import { toError } from "@/common/error-util";
 import {
@@ -9,7 +10,6 @@ import {
     setInternalData,
 } from "@/common/media-util";
 import Store from "@/common/store";
-import getUrlExt from "@/renderer/utils/get-url-ext";
 import AppConfig from "@shared/app-config/renderer";
 import { getGlobalContext } from "@shared/global-context/renderer";
 import logger from "@shared/logger/renderer";
@@ -34,6 +34,7 @@ import {
     type FileNamingType,
 } from "@/common/file-naming-formatter";
 import nodeRuntime from "@shared/node-runtime/renderer";
+import { getMediaPluginDelegate } from "@/renderer/core/track-player/plugin-media";
 
 interface IDownloadStatus {
     state: DownloadState;
@@ -42,6 +43,8 @@ interface IDownloadStatus {
     msg?: string;
     speed?: number;
     updatedAt?: number;
+    /** Final path when download completes (may be extension-corrected). */
+    filePath?: string;
 }
 
 export interface IDownloadTaskSnapshot {
@@ -70,6 +73,8 @@ interface IDownloaderWorker {
         filePath: string,
         payload?: IDownloadPostprocessPayload | null,
     ) => Promise<void>;
+    /** Optional warm-up so the first real download does not pay process spawn cost. */
+    warmUp?: () => Promise<void>;
 }
 
 const downloadingMusicStore = new Store<IMusic.IMusicItem[]>([]);
@@ -91,6 +96,10 @@ function getNextDownloadCompletedAt() {
 async function setupDownloader() {
     setupDownloaderWorker();
     await setupDownloadedMusicList();
+    // Spawn node runtime early so the first download is not blocked on cold start.
+    void (downloaderWorker as IDownloaderWorker | undefined)?.warmUp?.().catch((error) => {
+        logger.logError("下载运行时预热失败", toError(error));
+    });
 }
 
 function setupDownloaderWorker() {
@@ -399,22 +408,44 @@ async function downloadMusicImpl(
     let mediaSource: IPlugin.IMediaSourceResult | null = null;
     let realQuality: IMusic.IQualityKey = qualityOrder[0] ?? defaultQuality;
 
+    // Surface progress immediately — getMediaSource can take several seconds
+    // before the first network byte arrives.
+    onStateChange({
+        state: DownloadState.DOWNLOADING,
+        downloaded: 0,
+        total: 0,
+        msg: "获取音源…",
+    });
+
+    // Same entry as track-player: plugin delegate + getMediaSource only.
+    // Plugin/main (mflac/luna proxy) own the real stream URL — no client re-fetch.
+    const pluginDelegate = getMediaPluginDelegate(musicItem);
+
     for (const quality of qualityOrder) {
         if (isCancelled()) {
             return;
         }
         try {
             mediaSource = await PluginManager.callPluginDelegateMethod(
-                musicItem,
+                pluginDelegate,
                 "getMediaSource",
                 musicItem,
                 quality,
             );
             if (mediaSource?.url) {
                 realQuality = quality;
+                // Prefer plugin-reported quality when present.
+                if (mediaSource.quality) {
+                    realQuality = mediaSource.quality;
+                }
                 break;
             }
-        } catch {
+        } catch (error) {
+            logger.logError("下载获取音源失败", toError(error), {
+                platform: musicItem.platform,
+                quality,
+                title: musicItem.title,
+            });
             continue;
         }
     }
@@ -428,7 +459,14 @@ async function downloadMusicImpl(
         if (!mediaSource?.url) {
             throw new Error("Invalid Source");
         }
-        const ext = getUrlExt(mediaSource.url)?.slice(1) ?? "mp3";
+        // Extension rules mirror MusicFree prepareDownloadSource:
+        // luna/cek → m4a; mflac/mgg/mmp4 → decrypted ext; else URL ext; else quality.
+        const ext = resolveDownloadExtension(mediaSource.url, realQuality, {
+            hasCencCek: Boolean(
+                (mediaSource as IPlugin.IMediaSourceResult).cek
+                || /\/l\/[a-f0-9]+(\.m4a)?$/i.test(mediaSource.url.split(/[?#]/)[0]),
+            ),
+        });
         const downloadBasePath = AppConfig.getConfig("download.path")
             ?? getGlobalContext().appPath.downloads;
         const fileNamingType = AppConfig.getConfig("download.fileNamingType")
@@ -453,6 +491,7 @@ async function downloadMusicImpl(
         if (!worker) {
             throw new Error("Downloader worker is unavailable");
         }
+        let finalizeStarted = false;
         await worker.downloadFile(
             taskId,
             mediaSource,
@@ -465,12 +504,29 @@ async function downloadMusicImpl(
                     onStateChange(dataState);
                     return;
                 }
-                void finalizeDownloadedMusic(musicItem, downloadPath, realQuality)
-                    .then(() => onStateChange(dataState))
-                    .catch((error) => onStateChange({
-                        state: DownloadState.ERROR,
-                        msg: toError(error).message,
-                    }));
+                // DONE may arrive both from progress events and from the RPC
+                // result fallback — only finalize once.
+                if (finalizeStarted) {
+                    return;
+                }
+                finalizeStarted = true;
+                const finalPath = dataState.filePath || downloadPath;
+                void finalizeDownloadedMusic(musicItem, finalPath, realQuality)
+                    .then(() => onStateChange({ ...dataState, filePath: finalPath }))
+                    .catch((error) => {
+                        logger.logError("下载收尾失败", toError(error), {
+                            musicItem: {
+                                id: musicItem.id,
+                                platform: musicItem.platform,
+                                title: musicItem.title,
+                            },
+                            downloadPath: finalPath,
+                        });
+                        onStateChange({
+                            state: DownloadState.ERROR,
+                            msg: toError(error).message,
+                        });
+                    });
             },
         );
     } catch (error) {
@@ -478,9 +534,18 @@ async function downloadMusicImpl(
             recoverDownloaderWorker(toError(error));
         }
         if (!isCancelled()) {
+            const err = toError(error);
+            logger.logError("下载失败", err, {
+                musicItem: {
+                    id: musicItem.id,
+                    platform: musicItem.platform,
+                    title: musicItem.title,
+                    artist: musicItem.artist,
+                },
+            });
             onStateChange({
                 state: DownloadState.ERROR,
-                msg: toError(error).message,
+                msg: err.message,
             });
         }
     }
@@ -502,25 +567,29 @@ async function finalizeDownloadedMusic(
         true,
     ) as IMusic.IMusicItem;
 
-    try {
-        const payload = await buildDownloadPostprocessPayload(musicItem);
-        if (payload) {
-            const worker = downloaderWorker;
-            if (!worker) {
-                throw new Error("Downloader worker is unavailable");
-            }
-            await worker.postprocessDownloadedFile(downloadPath, payload);
+    const payload = await buildDownloadPostprocessPayload(musicItem);
+    if (payload) {
+        const worker = downloaderWorker;
+        if (!worker) {
+            throw new Error("Downloader worker is unavailable");
         }
-    } catch (error) {
-        logger.logError("下载后写入标签失败", error as Error, {
-            musicItem: {
-                id: musicItem.id,
-                platform: musicItem.platform,
-                title: musicItem.title,
-                artist: musicItem.artist,
-            },
-            downloadPath,
-        });
+        try {
+            await worker.postprocessDownloadedFile(downloadPath, payload);
+        } catch (error) {
+            logger.logError("下载后写入标签失败", error as Error, {
+                musicItem: {
+                    id: musicItem.id,
+                    platform: musicItem.platform,
+                    title: musicItem.title,
+                    artist: musicItem.artist,
+                },
+                downloadPath,
+            });
+            // Metadata write is part of a successful download when enabled.
+            if (payload.options.writeMetadata) {
+                throw error;
+            }
+        }
     }
 
     await addDownloadedMusicToList(downloadedMusic);

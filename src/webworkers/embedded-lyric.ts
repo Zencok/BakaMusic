@@ -1,54 +1,21 @@
 import { randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
+import { readTags, writeTags } from "@/common/taglib-native";
 
 async function readEmbeddedLyric(filePath: string) {
-    const { File: TagLibFile } = await import("node-taglib-sharp");
-    const songFile = TagLibFile.createFromPath(filePath);
-
-    try {
-        return songFile.tag.lyrics ?? "";
-    } finally {
-        songFile.dispose();
-    }
+    const tags = readTags(filePath, {
+        duration: false,
+        skipCovers: true,
+    });
+    return tags.lyrics ?? "";
 }
 
 async function writeEmbeddedLyricTag(filePath: string, lyricContent: string) {
-    const {
-        File: TagLibFile,
-        Id3v2FrameIdentifiers,
-        Id3v2Settings,
-        TagTypes,
-    } = await import("node-taglib-sharp");
-
-    if (path.extname(filePath).toLowerCase() === ".mp3") {
-        Id3v2Settings.forceDefaultVersion = true;
-        Id3v2Settings.defaultVersion = 3;
-    } else {
-        Id3v2Settings.forceDefaultVersion = false;
-    }
-
-    const songFile = TagLibFile.createFromPath(filePath);
-    try {
-        const id3v2Tag = songFile.getTag(TagTypes.Id3v2, false) as unknown as
-            | {
-                removeFrames: (
-                    identifier: (typeof Id3v2FrameIdentifiers)["SYLT"],
-                ) => void;
-            }
-            | undefined;
-        if (id3v2Tag) {
-            // `tag.lyrics` writes USLT but leaves old synchronized SYLT
-            // frames behind. music-metadata exposes both, and the old SYLT
-            // can otherwise win as hundreds of one-word lyric lines.
-            id3v2Tag.removeFrames(Id3v2FrameIdentifiers.SYLT);
-            id3v2Tag.removeFrames(Id3v2FrameIdentifiers.USLT);
-        }
-        songFile.tag.lyrics = lyricContent;
-        songFile.save();
-    } finally {
-        songFile.dispose();
-    }
+    // TagLib write path clears residual SYLT on MPEG and replaces USLT/LYRICS.
+    writeTags(filePath, {
+        lyrics: lyricContent,
+    });
 }
 
 /**

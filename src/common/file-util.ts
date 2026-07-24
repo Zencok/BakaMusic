@@ -1,8 +1,3 @@
-import {
-    ICommonTagsResult,
-    ILyricsTag,
-    parseFile,
-} from "music-metadata";
 import path from "path";
 import { localPluginName, supportLocalMediaType } from "./constant";
 import CryptoJS from "crypto-js";
@@ -16,6 +11,10 @@ import {
     LOCAL_MEDIA_PROTOCOL,
 } from "../shared/local-media/common";
 import { createLocalArtworkDataUrl } from "./local-artwork";
+import {
+    readTags,
+    type ITaglibReadResult,
+} from "./taglib-native";
 
 const LOCAL_METADATA_CONCURRENCY = 4;
 
@@ -37,18 +36,6 @@ export function getLocalPathComparisonKey(filePath: string) {
 
 const specialEncoding = ["GB2312"];
 
-const MILLISECOND_TIMESTAMP_FORMAT = 2;
-const LRC_TIMELINE_REG = /\[\d{1,3}:\d{2}(?:\.\d{1,3})?\]/g;
-const QRC_TIMELINE_REG = /\[\d+,\d+\]/g;
-const TTML_LYRIC_REG = /<(?:[a-zA-Z][\w.-]*:)?tt(?:\s|>)/i;
-
-interface ILocalLyricCandidate {
-    text: string;
-    priority: number;
-    averageLineLength: number;
-    timelineCount: number;
-}
-
 function normalizeLyricNewlines(lyric: string) {
     return lyric
         .trim()
@@ -56,113 +43,22 @@ function normalizeLyricNewlines(lyric: string) {
         .replace(/\\r\\n|\\n|\\r/g, "\n");
 }
 
-function countTimelineTags(lyric: string) {
-    return (lyric.match(LRC_TIMELINE_REG)?.length ?? 0)
-        + (lyric.match(QRC_TIMELINE_REG)?.length ?? 0);
-}
-
-function createLyricCandidate(text: string, priority: number) {
-    const normalizedText = normalizeLyricNewlines(text);
-    if (!normalizedText) {
-        return null;
+/** Normalize embedded lyric text from TagLib (USLT / LYRICS property). */
+export function normalizeLocalLyricText(lyrics?: string | null) {
+    if (!lyrics) {
+        return undefined;
     }
-
-    const lines = normalizedText.split("\n").filter(Boolean);
-    return {
-        text: normalizedText,
-        priority,
-        averageLineLength: normalizedText.length / Math.max(lines.length, 1),
-        timelineCount: countTimelineTags(normalizedText),
-    } satisfies ILocalLyricCandidate;
-}
-
-function prioritizeCompleteLyric(candidate: ILocalLyricCandidate) {
-    if (TTML_LYRIC_REG.test(candidate.text)) {
-        // A newly embedded AMLL TTML document is the complete source. Some
-        // MP3 files also retain an older SYLT frame whose entries are words,
-        // and selecting that frame would render every word as a separate line.
-        candidate.priority = 500;
-    } else if (candidate.timelineCount) {
-        candidate.priority = 400;
-    }
-    return candidate;
-}
-
-function formatLrcTimestamp(timestamp: number) {
-    const totalMilliseconds = Math.max(0, Math.round(timestamp));
-    const minutes = Math.floor(totalMilliseconds / 60_000);
-    const seconds = Math.floor((totalMilliseconds % 60_000) / 1_000);
-    const milliseconds = totalMilliseconds % 1_000;
-
-    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(milliseconds).padStart(3, "0")}`;
-}
-
-function createSynchronizedLyricCandidate(lyric: ILyricsTag) {
-    const synchronizedLines = lyric.syncText
-        ?.map((line) => {
-            const text = line.text.trim();
-            if (
-                lyric.timeStampFormat === MILLISECOND_TIMESTAMP_FORMAT
-                && typeof line.timestamp === "number"
-                && Number.isFinite(line.timestamp)
-            ) {
-                return `[${formatLrcTimestamp(line.timestamp)}]${text}`;
-            }
-            return text;
-        })
-        .filter(Boolean);
-
-    if (!synchronizedLines?.length) {
-        return null;
-    }
-
-    const hasMillisecondTimeline =
-        lyric.timeStampFormat === MILLISECOND_TIMESTAMP_FORMAT;
-    const isLyricContent = lyric.contentType === 1;
-    return createLyricCandidate(
-        synchronizedLines.join("\n"),
-        hasMillisecondTimeline ? (isLyricContent ? 300 : 200) : 100,
-    );
-}
-
-export function normalizeLocalLyricText(
-    lyrics?: Array<string | ILyricsTag> | null,
-) {
-    const candidates = lyrics
-        ?.flatMap((lyric) => {
-            if (typeof lyric === "string") {
-                const candidate = createLyricCandidate(lyric, 100);
-                return candidate ? [prioritizeCompleteLyric(candidate)] : [];
-            }
-
-            if (lyric.syncText?.length) {
-                // music-metadata mirrors synchronized lyrics into `text` for
-                // several containers. Using both duplicates every line, while
-                // using `text` alone drops the outer line timestamp.
-                const candidate = createSynchronizedLyricCandidate(lyric);
-                return candidate ? [candidate] : [];
-            }
-
-            const candidate = createLyricCandidate(lyric.text ?? "", 100);
-            // A complete USLT/Vorbis lyric is preferable to syllable-level
-            // SYLT entries when a file contains both representations.
-            return candidate ? [prioritizeCompleteLyric(candidate)] : [];
-        }) ?? [];
-
-    return candidates.sort((left, right) =>
-        right.priority - left.priority
-        || right.averageLineLength - left.averageLineLength
-        || right.timelineCount - left.timelineCount
-        || right.text.length - left.text.length)[0]?.text;
+    const normalized = normalizeLyricNewlines(lyrics);
+    return normalized || undefined;
 }
 
 export async function parseLocalMusicLyric(filePath: string) {
     try {
-        const { common } = await parseFile(normalizeLocalFilePath(filePath), {
+        const tags = readTags(normalizeLocalFilePath(filePath), {
             duration: false,
             skipCovers: true,
         });
-        return normalizeLocalLyricText(common.lyrics);
+        return normalizeLocalLyricText(tags.lyrics);
     } catch {
         return undefined;
     }
@@ -238,21 +134,23 @@ export async function parseLocalMusicItem(
     const hash = CryptoJS.MD5(getLocalPathComparisonKey(normalizedFilePath)).toString();
     const size = await getLocalFileSize(normalizedFilePath);
     try {
-        const {
-            common = {} as ICommonTagsResult,
-            format,
-        } = await parseFile(normalizedFilePath);
+        const tags: ITaglibReadResult = readTags(normalizedFilePath);
         const duration =
-            typeof format?.duration === "number" && isFinite(format.duration)
-                ? format.duration
+            typeof tags.duration === "number" && isFinite(tags.duration)
+                ? tags.duration
                 : undefined;
+
+        let title = tags.title;
+        let artist = tags.artist;
+        let album = tags.album;
+        let lyrics = tags.lyrics;
 
         const jschardet = await import("jschardet");
 
         // 检测编码
         let encoding: string | null = null;
         let conf = 0;
-        const testItems = [common.title, common.artist, common.album];
+        const testItems = [title, artist, album];
 
         for (const testItem of testItems) {
             if (!testItem) {
@@ -277,46 +175,41 @@ export async function parseLocalMusicItem(
             const decodeLegacyText = (value: string) =>
                 iconv.decode(Buffer.from(value, "binary"), encoding);
 
-            if (common.title) {
-                common.title = iconv.decode(
-                    Buffer.from(common.title, "binary"),
-                    encoding,
-                );
+            if (title) {
+                title = decodeLegacyText(title);
             }
-            if (common.artist) {
-                common.artist = decodeLegacyText(common.artist);
+            if (artist) {
+                artist = decodeLegacyText(artist);
             }
-            if (common.album) {
-                common.album = decodeLegacyText(common.album);
+            if (album) {
+                album = decodeLegacyText(album);
             }
-            if (common.lyrics) {
-                common.lyrics = common.lyrics.map((lyric) => ({
-                    ...lyric,
-                    ...(lyric.text
-                        ? { text: decodeLegacyText(lyric.text) }
-                        : {}),
-                    syncText: lyric.syncText?.map((line) => ({
-                        ...line,
-                        text: decodeLegacyText(line.text),
-                    })) ?? [],
-                }));
+            if (lyrics) {
+                lyrics = decodeLegacyText(lyrics);
             }
         }
 
-        const quality = getLocalAudioQuality(format);
+        const quality = getLocalAudioQuality({
+            bitrate: tags.bitrate,
+            bitsPerSample: tags.bitsPerSample,
+            sampleRate: tags.sampleRate,
+            lossless: tags.lossless,
+            codec: tags.codec,
+            container: tags.container,
+        });
         return applyLocalQualityInfo({
-            title: common.title ?? path.parse(normalizedFilePath).name,
+            title: title ?? path.parse(normalizedFilePath).name,
             duration,
-            artist: common.artist ?? "未知作者",
-            artwork: common.picture?.[0]
-                ? await createLocalArtworkDataUrl(common.picture[0])
+            artist: artist ?? "未知作者",
+            artwork: tags.pictures?.[0]
+                ? await createLocalArtworkDataUrl(tags.pictures[0])
                 : undefined,
-            album: common.album ?? "未知专辑",
+            album: album ?? "未知专辑",
             url: addFileScheme(normalizedFilePath),
             localPath: normalizedFilePath,
             platform: localPluginName,
             id: hash,
-            rawLrc: normalizeLocalLyricText(common.lyrics),
+            rawLrc: normalizeLocalLyricText(lyrics),
         }, normalizedFilePath, quality, size);
     } catch {
         return applyLocalQualityInfo({

@@ -185,52 +185,128 @@ function hasFlacSignature(bytes: Uint8Array) {
     return startsWith(bytes, flac, tagSize + 10);
 }
 
+/**
+ * Detect container extension from magic bytes.
+ * Order matters: ID3 can prefix FLAC, so FLAC is checked before MP3.
+ */
+export function detectMediaExtension(bytes: Uint8Array): string | null {
+    if (bytes.length < 4) {
+        return null;
+    }
+
+    const hasId3 = startsWith(bytes, [0x49, 0x44, 0x33]);
+    if (hasFlacSignature(bytes)) {
+        return ".flac";
+    }
+    if (
+        startsWith(bytes, [0x52, 0x49, 0x46, 0x46])
+        && startsWith(bytes, [0x57, 0x41, 0x56, 0x45], 8)
+    ) {
+        return ".wav";
+    }
+    if (startsWith(bytes, [0x4f, 0x67, 0x67, 0x53])) {
+        return ".ogg";
+    }
+    if (
+        hasIsoBox(bytes, "ftyp")
+        || hasIsoBox(bytes, "styp")
+        || hasIsoBox(bytes, "moof")
+    ) {
+        return ".m4a";
+    }
+    if (startsWith(bytes, [
+        0x30, 0x26, 0xb2, 0x75, 0x8e, 0x66, 0xcf, 0x11,
+        0xa6, 0xd9, 0x00, 0xaa, 0x00, 0x62, 0xce, 0x6c,
+    ])) {
+        return ".wma";
+    }
+    if (hasId3 || isMpegAudioFrame(bytes)) {
+        return ".mp3";
+    }
+    if (startsWith(bytes, [0x41, 0x44, 0x49, 0x46]) || isAdtsFrame(bytes)) {
+        return ".aac";
+    }
+    return null;
+}
+
+/** Whether two extensions refer to the same media family (e.g. .m4a ≈ .mp4). */
+export function mediaExtensionsCompatible(a: string, b: string) {
+    const normalize = (ext: string) => {
+        const value = ext.startsWith(".") ? ext.toLowerCase() : `.${ext.toLowerCase()}`;
+        if (value === ".mflac") {
+            return ".flac";
+        }
+        if (value === ".mgg") {
+            return ".ogg";
+        }
+        if (value === ".mmp4" || value === ".m4s" || value === ".mp4" || value === ".m4b" || value === ".m4r") {
+            return ".m4a";
+        }
+        if (value === ".opus") {
+            return ".ogg";
+        }
+        return value;
+    };
+    return normalize(a) === normalize(b);
+}
+
+/**
+ * Ensure bytes are a known media container. When `filePath` is provided and
+ * its extension disagrees with the payload, throws unless the caller prefers
+ * {@link detectMediaExtension} + rename (download path).
+ */
 export function validateMediaFileSignature(bytes: Uint8Array, filePath: string) {
     if (bytes.length < 4) {
         throw new DownloadIntegrityError("Downloaded media file is empty or truncated");
     }
 
-    const hasId3 = startsWith(bytes, [0x49, 0x44, 0x33]);
-    const isFlac = hasFlacSignature(bytes);
-    const isWave = startsWith(bytes, [0x52, 0x49, 0x46, 0x46])
-        && startsWith(bytes, [0x57, 0x41, 0x56, 0x45], 8);
-    const isOgg = startsWith(bytes, [0x4f, 0x67, 0x67, 0x53]);
-    const isIsoMedia = hasIsoBox(bytes, "ftyp")
-        || hasIsoBox(bytes, "styp")
-        || hasIsoBox(bytes, "moof");
-    const isAsf = startsWith(bytes, [
-        0x30, 0x26, 0xb2, 0x75, 0x8e, 0x66, 0xcf, 0x11,
-        0xa6, 0xd9, 0x00, 0xaa, 0x00, 0x62, 0xce, 0x6c,
-    ]);
-    const isAac = hasId3
-        || startsWith(bytes, [0x41, 0x44, 0x49, 0x46])
-        || isAdtsFrame(bytes);
-    const isMp3 = hasId3 || isMpegAudioFrame(bytes);
-    const extension = path.extname(filePath).toLowerCase();
-    const matchesExtension = (() => {
-        switch (extension) {
-            case ".mp3": return isMp3;
-            case ".flac":
-            case ".mflac": return isFlac;
-            case ".wav": return isWave;
-            case ".ogg":
-            case ".opus":
-            case ".mgg": return isOgg;
-            case ".aac": return isAac;
-            case ".m4a":
-            case ".mp4":
-            case ".m4s":
-            case ".mmp4": return isIsoMedia;
-            case ".wma": return isAsf;
-            default: return isMp3 || isFlac || isWave || isOgg || isIsoMedia || isAsf;
-        }
-    })();
+    const detected = detectMediaExtension(bytes);
+    if (!detected) {
+        throw new DownloadIntegrityError(
+            `Media signature does not match ${path.extname(filePath).toLowerCase() || "the target file"}`,
+        );
+    }
 
-    if (!matchesExtension) {
+    const extension = path.extname(filePath).toLowerCase();
+    if (extension && !mediaExtensionsCompatible(extension, detected)) {
         throw new DownloadIntegrityError(
             `Media signature does not match ${extension || "the target file"}`,
         );
     }
+}
+
+/**
+ * Resolve the final on-disk extension for a downloaded body.
+ * Prefers magic-byte detection so CDN URLs without (or with wrong) extensions
+ * still land as .flac / .m4a instead of the historical .mp3 default.
+ */
+export function resolveDownloadedFilePath(
+    requestedPath: string,
+    signatureBytes: Uint8Array,
+): { filePath: string; detectedExt: string } {
+    const detectedExt = detectMediaExtension(signatureBytes);
+    if (!detectedExt) {
+        throw new DownloadIntegrityError(
+            `Media signature does not match ${path.extname(requestedPath).toLowerCase() || "the target file"}`,
+        );
+    }
+
+    const requestedExt = path.extname(requestedPath).toLowerCase();
+    if (!requestedExt || mediaExtensionsCompatible(requestedExt, detectedExt)) {
+        return {
+            filePath: requestedPath,
+            detectedExt: requestedExt || detectedExt,
+        };
+    }
+
+    const correctedPath = path.join(
+        path.dirname(requestedPath),
+        `${path.basename(requestedPath, requestedExt)}${detectedExt}`,
+    );
+    return {
+        filePath: correctedPath,
+        detectedExt,
+    };
 }
 
 export function validateCompletedDownload(

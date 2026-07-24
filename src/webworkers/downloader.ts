@@ -1,7 +1,6 @@
 import fs from "fs";
 import fsPromises from "fs/promises";
 import path from "path";
-import { randomUUID } from "crypto";
 import { Readable, Transform } from "stream";
 import { pipeline } from "stream/promises";
 import throttle from "lodash.throttle";
@@ -15,8 +14,8 @@ import {
     createDownloadPartPath,
     createDownloadResponsePlan,
     DownloadIntegrityError,
+    resolveDownloadedFilePath,
     validateCompletedDownload,
-    validateMediaFileSignature,
 } from "./download-integrity";
 
 async function cleanFile(filePath: string) {
@@ -27,29 +26,6 @@ async function cleanFile(filePath: string) {
         return false;
     }
 }
-
-class Semaphore {
-    private active = 0;
-    private readonly waiters: Array<() => void> = [];
-
-    constructor(private readonly limit: number) {}
-
-    async run<T>(callback: () => Promise<T>): Promise<T> {
-        if (this.active >= this.limit) {
-            await new Promise<void>((resolve) => this.waiters.push(resolve));
-        }
-        this.active++;
-        try {
-            return await callback();
-        } finally {
-            this.active--;
-            this.waiters.shift()?.();
-        }
-    }
-}
-
-const coverDownloadSemaphore = new Semaphore(3);
-const coverDownloadTimeoutMs = 15_000;
 
 function isAudioFile(filePath: string) {
     return [
@@ -62,98 +38,32 @@ function isAudioFile(filePath: string) {
         ".wma",
         ".opus",
         ".mp4",
+        ".m4b",
+        ".m4r",
+        ".aiff",
+        ".aif",
+        ".ape",
+        ".wv",
+        ".dsf",
     ].includes(path.extname(filePath).toLowerCase());
 }
 
-async function downloadCoverTempFile(
-    filePath: string,
-    coverUrl: string,
-) {
-    return coverDownloadSemaphore.run(async () => {
-        const abortController = new AbortController();
-        const timeout = setTimeout(() => abortController.abort(), coverDownloadTimeoutMs);
-        const tempBasePath = path.join(
-            path.dirname(filePath),
-            `.${path.basename(filePath, path.extname(filePath))}.cover-${randomUUID()}`,
-        );
-        const partPath = `${tempBasePath}.part`;
-
-        try {
-            const response = await fetch(coverUrl, {
-                signal: abortController.signal,
-            });
-            if (!response.ok || !response.body) {
-                throw new Error(`download cover failed: ${response.status}`);
-            }
-
-            const contentType = response.headers.get("content-type");
-            if (contentType && !contentType.toLowerCase().startsWith("image/")) {
-                throw new Error(`unexpected cover type: ${contentType}`);
-            }
-
-            await pipeline(
-                Readable.fromWeb(response.body as any),
-                fs.createWriteStream(partPath, { flags: "wx" }),
-            );
-            const signature = Buffer.alloc(16);
-            const handle = await fsPromises.open(partPath, "r");
-            let bytesRead = 0;
-            try {
-                ({ bytesRead } = await handle.read(signature, 0, signature.length, 0));
-            } finally {
-                await handle.close();
-            }
-            const actualExt = detectCoverExt(signature.subarray(0, bytesRead));
-            if (!actualExt) {
-                throw new Error("invalid cover file signature");
-            }
-            const coverPath = `${tempBasePath}${actualExt}`;
-            await fsPromises.rename(partPath, coverPath);
-            return coverPath;
-        } finally {
-            clearTimeout(timeout);
-            await cleanFile(partPath);
-        }
-    });
-}
-
-function detectCoverExt(bytes: Uint8Array) {
-    if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-        return ".jpg";
+function resolveLyricContent(payload: IDownloadPostprocessPayload) {
+    if (typeof payload.lyricContent === "string") {
+        return payload.lyricContent;
     }
-    if (Buffer.from(bytes.subarray(0, 8)).equals(Buffer.from([
-        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-    ]))) {
-        return ".png";
-    }
-    if (
-        Buffer.from(bytes.subarray(0, 4)).toString("ascii") === "RIFF"
-        && Buffer.from(bytes.subarray(8, 12)).toString("ascii") === "WEBP"
-    ) {
-        return ".webp";
-    }
-    const prefix = Buffer.from(bytes.subarray(0, 6)).toString("ascii");
-    if (prefix === "GIF87a" || prefix === "GIF89a") {
-        return ".gif";
-    }
-    if (bytes[0] === 0x42 && bytes[1] === 0x4d) {
-        return ".bmp";
-    }
-    return null;
-}
-
-function buildLyricContent(payload: IDownloadPostprocessPayload) {
+    // Legacy fallback only.
     if (!payload.lyricSource?.rawLrc) {
         return "";
     }
-
     return formatLyricsByTimestamp(
         payload.lyricSource.rawLrc,
         payload.lyricSource.translation,
         payload.lyricSource.romanization,
         payload.options.lyricOrder,
         {
-            enableWordByWord: payload.options.enableWordByWordLyric,
+            enableWordByWord: payload.options.enableWordByWordLyric === true,
+            format: payload.lyricSource.format,
         },
     );
 }
@@ -171,66 +81,44 @@ async function writeLyricFile(
     await fsPromises.writeFile(lyricFilePath, lyricContent, "utf8");
 }
 
+/** Utility only embeds prepared cover/lyrics — no network. */
 async function writeMetadata(
     filePath: string,
     payload: IDownloadPostprocessPayload,
     lyricContent: string,
 ) {
-    const {
-        File: TagLibFile,
-        Id3v2Settings,
-        Picture,
-    } = await import("node-taglib-sharp");
+    const { writeTags } = await import("@/common/taglib-native");
     const ext = path.extname(filePath).toLowerCase();
-    let coverTempFilePath: string | undefined;
-    const artists = payload.musicItem.artist
-        ? [payload.musicItem.artist]
-        : [];
+    const artist = payload.musicItem.artist || "";
 
-    if (ext === ".mp3") {
-        try {
-            Id3v2Settings.forceDefaultVersion = true;
-            Id3v2Settings.defaultVersion = 3;
-        } catch {
-            // pass
+    let coverPicture: { data: Buffer; mimeType: string } | undefined;
+    if (payload.options.writeMetadataCover && payload.coverImage?.dataBase64) {
+        const data = Buffer.from(payload.coverImage.dataBase64, "base64");
+        if (data.length > 0) {
+            coverPicture = {
+                data,
+                mimeType: payload.coverImage.mimeType || "image/jpeg",
+            };
         }
-    } else {
-        Id3v2Settings.forceDefaultVersion = false;
     }
 
-    const songFile = TagLibFile.createFromPath(filePath);
-
-    try {
-        songFile.tag.title = payload.musicItem.title || path.basename(filePath, ext);
-        songFile.tag.album = payload.musicItem.album || "";
-        songFile.tag.performers = artists;
-        songFile.tag.albumArtists = artists;
-
-        if (payload.options.writeMetadataLyric && lyricContent.trim()) {
-            songFile.tag.lyrics = lyricContent;
-        }
-
-        if (payload.options.writeMetadataCover && payload.coverUrl) {
-            try {
-                coverTempFilePath = await downloadCoverTempFile(filePath, payload.coverUrl);
-                songFile.tag.pictures = [Picture.fromPath(coverTempFilePath)];
-            } catch {
-                coverTempFilePath = undefined;
+    writeTags(filePath, {
+        title: payload.musicItem.title || path.basename(filePath, ext),
+        album: payload.musicItem.album || "",
+        artist,
+        albumArtist: artist,
+        ...(payload.options.writeMetadataLyric && lyricContent.trim()
+            ? { lyrics: lyricContent }
+            : {}),
+        ...(coverPicture
+            ? {
+                pictures: [{
+                    data: coverPicture.data,
+                    mimeType: coverPicture.mimeType,
+                }],
             }
-        }
-
-        if (ext !== ".wav") {
-            songFile.save();
-        }
-    } finally {
-        songFile.dispose();
-
-        if (coverTempFilePath) {
-            await fsPromises.unlink(coverTempFilePath).catch(() => {
-                // pass
-            });
-        }
-    }
+            : {}),
+    });
 }
 
 export async function postprocessDownloadedFile(
@@ -241,7 +129,7 @@ export async function postprocessDownloadedFile(
         return;
     }
 
-    const lyricContent = buildLyricContent(payload);
+    const lyricContent = resolveLyricContent(payload);
 
     if (payload.options.downloadLyricFile) {
         await writeLyricFile(
@@ -263,6 +151,8 @@ type IOnStateChangeFunc = (data: {
     downloaded?: number;
     total?: number;
     msg?: string;
+    /** Final on-disk path when DONE (may differ from requested path after signature fix). */
+    filePath?: string;
 }) => void;
 
 interface IActiveDownload {
@@ -303,12 +193,39 @@ export async function abortDownload(taskId: string, removePartial = true) {
     }
 }
 
+export type IDownloadFileResult = {
+    state: DownloadState.DONE | DownloadState.ERROR | DownloadState.DOWNLOADING;
+    msg?: string;
+    /** Final path after optional extension correction from magic bytes. */
+    filePath?: string;
+};
+
+async function ensureUniqueFilePath(filePath: string) {
+    try {
+        await fsPromises.access(filePath);
+    } catch {
+        return filePath;
+    }
+    const dir = path.dirname(filePath);
+    const ext = path.extname(filePath);
+    const base = path.basename(filePath, ext);
+    for (let index = 1; index < 10_000; index++) {
+        const candidate = path.join(dir, `${base} (${index})${ext}`);
+        try {
+            await fsPromises.access(candidate);
+        } catch {
+            return candidate;
+        }
+    }
+    throw new DownloadIntegrityError("Unable to allocate a unique download path");
+}
+
 export async function downloadFile(
     taskId: string,
     mediaSource: IMusic.IMusicSource,
     filePath: string,
     onStateChange: IOnStateChangeFunc,
-) {
+): Promise<IDownloadFileResult> {
     await abortDownload(taskId, false);
     const partPath = createDownloadPartPath(filePath, taskId);
     const activeDownload: IActiveDownload = {
@@ -319,7 +236,7 @@ export async function downloadFile(
     };
     activeDownloads.set(taskId, activeDownload);
     downloadPaths.set(taskId, partPath);
-    let state = DownloadState.DOWNLOADING;
+    let state: IDownloadFileResult["state"] = DownloadState.DOWNLOADING;
     let existingSize = 0;
     try {
         await fsPromises.mkdir(path.dirname(filePath), { recursive: true });
@@ -411,7 +328,7 @@ export async function downloadFile(
             notifyProgress.cancel();
         }
         if (activeDownload.cancelled) {
-            return;
+            return { state: DownloadState.DOWNLOADING };
         }
 
         const completedStat = await fsPromises.stat(partPath);
@@ -424,14 +341,25 @@ export async function downloadFile(
         } finally {
             await handle.close();
         }
-        validateMediaFileSignature(signature.subarray(0, bytesRead), filePath);
-        await fsPromises.rename(partPath, filePath);
+        // Safety net: if path ext still disagrees with magic bytes (wrong
+        // platform guess), rename to the detected container before finalize.
+        const resolved = resolveDownloadedFilePath(
+            filePath,
+            signature.subarray(0, bytesRead),
+        );
+        const finalPath = resolved.filePath === filePath
+            ? filePath
+            : await ensureUniqueFilePath(resolved.filePath);
+        await fsPromises.rename(partPath, finalPath);
         downloadPaths.delete(taskId);
         state = DownloadState.DONE;
-        onStateChange({ state });
+        // Terminal state is also returned via RPC so the renderer still
+        // finalizes even if the progress event races past callback teardown.
+        onStateChange({ state, filePath: finalPath });
+        return { state, filePath: finalPath };
     } catch (e) {
         if (activeDownload.cancelled) {
-            return;
+            return { state: DownloadState.DOWNLOADING };
         }
         activeDownload.failed = true;
         if (e instanceof DownloadIntegrityError) {
@@ -439,10 +367,12 @@ export async function downloadFile(
             downloadPaths.delete(taskId);
         }
         state = DownloadState.ERROR;
+        const msg = toError(e).message;
         onStateChange({
             state,
-            msg: toError(e).message,
+            msg,
         });
+        return { state, msg };
     } finally {
         if (activeDownloads.get(taskId) === activeDownload) {
             activeDownloads.delete(taskId);

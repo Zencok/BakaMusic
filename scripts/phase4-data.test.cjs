@@ -211,58 +211,21 @@ function testWindowsPathNormalization() {
     assert.equal(comparisonKey, normalized);
 }
 
-function testLocalSynchronizedLyricsKeepTheirTimeline() {
+function testLocalEmbeddedLyricsNormalization() {
+    // TagLib exposes a single LYRICS/USLT string; normalization only cleans
+    // newlines and empty payloads (no music-metadata SYLT candidate ranking).
     assert.equal(
-        normalizeLocalLyricText([{
-            contentType: 1,
-            timeStampFormat: 2,
-            text: "First line\nSecond line",
-            syncText: [
-                { timestamp: 1_230, text: "First line" },
-                { timestamp: 65_004, text: "Second line" },
-            ],
-        }]),
+        normalizeLocalLyricText("[00:01.230]First line\n[01:05.004]Second line"),
         "[00:01.230]First line\n[01:05.004]Second line",
     );
-
     assert.equal(
-        normalizeLocalLyricText([{
-            contentType: 1,
-            timeStampFormat: 2,
-            syncText: [
-                { timestamp: 10_000, text: "逐" },
-                { timestamp: 10_200, text: "字" },
-            ],
-        }, {
-            contentType: 1,
-            timeStampFormat: 0,
-            text: "[00:10.000]完整歌词行\n[00:15.500]下一行",
-            syncText: [],
-        }]),
-        "[00:10.000]完整歌词行\n[00:15.500]下一行",
-    );
-
-    assert.equal(
-        normalizeLocalLyricText([{
-            contentType: 1,
-            timeStampFormat: 0,
-            text: "Line one\\nLine two",
-            syncText: [],
-        }]),
+        normalizeLocalLyricText("Line one\\nLine two"),
         "Line one\nLine two",
     );
+    assert.equal(normalizeLocalLyricText("   \n  "), undefined);
+    assert.equal(normalizeLocalLyricText(null), undefined);
 
-    const wordTimeline = normalizeLocalLyricText([{
-        contentType: 1,
-        timeStampFormat: 2,
-        text: "认[00:32.075]得[00:32.374]一[00:33.000]",
-        syncText: [{
-            timestamp: 31_824,
-            text: "认[00:32.075]得[00:32.374]一[00:33.000]",
-        }],
-    }]);
-    assert.equal(
-        wordTimeline,
+    const wordTimeline = normalizeLocalLyricText(
         "[00:31.824]认[00:32.075]得[00:32.374]一[00:33.000]",
     );
     const [parsedWordTimeline] = new LyricParser(wordTimeline).getLyricItems();
@@ -272,24 +235,7 @@ function testLocalSynchronizedLyricsKeepTheirTimeline() {
     const embeddedTtml = "<tt xmlns=\"http://www.w3.org/ns/ttml\"><body><div>"
         + "<p begin=\"00:01.000\" end=\"00:02.000\">完整歌词</p>"
         + "</div></body></tt>";
-    assert.equal(
-        normalizeLocalLyricText([{
-            contentType: 1,
-            timeStampFormat: 2,
-            syncText: [
-                { timestamp: 1_000, text: "完" },
-                { timestamp: 1_200, text: "整" },
-                { timestamp: 1_400, text: "歌" },
-                { timestamp: 1_600, text: "词" },
-            ],
-        }, {
-            contentType: 1,
-            timeStampFormat: 0,
-            text: embeddedTtml,
-            syncText: [],
-        }]),
-        embeddedTtml,
-    );
+    assert.equal(normalizeLocalLyricText(embeddedTtml), embeddedTtml);
 }
 
 function readSource(relativePath) {
@@ -349,7 +295,7 @@ async function main() {
     await testConcurrencyLimit();
     await testLocalArtworkIsBoundedBeforeRuntimeTransfer();
     testWindowsPathNormalization();
-    testLocalSynchronizedLyricsKeepTheirTimeline();
+    testLocalEmbeddedLyricsNormalization();
     testArchitectureGuards();
     console.log("Phase 4 data architecture tests passed.");
 }

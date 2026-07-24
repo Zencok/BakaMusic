@@ -105,6 +105,8 @@ function TaskProgress({ task }: { task: IDownloadTaskSnapshot }) {
             <div className="downloading-progress-detail">
                 {status.state === DownloadState.ERROR ? (
                     <span title={status.msg}>{status.msg || t("download_page.unknown_error")}</span>
+                ) : status.state === DownloadState.DOWNLOADING && status.msg && !status.total ? (
+                    <span title={status.msg}>{status.msg}</span>
                 ) : (
                     <>
                         <span>

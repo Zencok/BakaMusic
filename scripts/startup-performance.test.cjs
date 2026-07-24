@@ -76,8 +76,13 @@ assert.match(backupMainSource, /await import\("webdav"\)/);
 assert.doesNotMatch(backupMainSource, /from "webdav"/);
 
 const downloaderWorkerSource = read("src/webworkers/downloader.ts");
-assert.match(downloaderWorkerSource, /await import\("node-taglib-sharp"\)/);
-assert.doesNotMatch(downloaderWorkerSource, /from "node-taglib-sharp"/);
+assert.match(downloaderWorkerSource, /await import\("@\/common\/taglib-native"\)/);
+assert.doesNotMatch(downloaderWorkerSource, /node-taglib-sharp|music-metadata/);
+assert.doesNotMatch(downloaderWorkerSource, /from "@\/common\/taglib-native"/);
+
+const taglibNativeSource = read("src/common/taglib-native.ts");
+assert.match(taglibNativeSource, /taglib\.node/);
+assert.match(taglibNativeSource, /createRequire/);
 
 const commonPreloadSource = read("src/preload/common-preload.ts");
 assert.doesNotMatch(commonPreloadSource, /themepack|global-context|electron-log|window-drag/);

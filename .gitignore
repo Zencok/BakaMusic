@@ -34,6 +34,9 @@ build/Release
 native/
 !res/.service/native/
 !res/.service/native/*.node
+# Multi-platform developer prebuilts from baka-native releases (not for end users).
+!res/.service/native/prebuilt/
+!res/.service/native/prebuilt/**/*
 res/.runtime/
 
 # Dependency directories

@@ -1,0 +1,71 @@
+name: Update native modules
+
+on:
+  schedule:
+    - cron: "17 7 * * 1"
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Optional baka-native release tag (native-...)"
+        required: false
+        type: string
+      manifest_url:
+        description: "Optional immutable native-manifest-v1.json URL"
+        required: false
+        type: string
+
+permissions: {}
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24.15.0"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - run: npm ci
+
+      - name: Pin baka-native release manifest
+        env:
+          # Private repo release assets / API.
+          NATIVE_REPO_TOKEN: ${{ secrets.NATIVE_REPO_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE: ${{ inputs.release }}
+          MANIFEST_URL: ${{ inputs.manifest_url }}
+        run: |
+          set -euo pipefail
+          if [ -n "${MANIFEST_URL:-}" ]; then
+            node scripts/update-native-modules-manifest.cjs "--manifest-url=$MANIFEST_URL"
+          elif [ -n "${RELEASE:-}" ]; then
+            node scripts/update-native-modules-manifest.cjs "--release=$RELEASE"
+          else
+            node scripts/update-native-modules-manifest.cjs
+          fi
+
+      - name: Verify governance contracts
+        run: npm run test:phase6-governance
+
+      - name: Create native update pull request
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
+        with:
+          branch: automation/baka-native
+          delete-branch: true
+          commit-message: "build(native): update baka-native prebuild manifest"
+          title: "build(native): update baka-native prebuild manifest"
+          body: |
+            Pins the latest complete `baka-native` release.
+
+            Artifacts are immutable and SHA-256 verified per platform.
+            TagLib version is whatever that release resolved at build time
+            (native CI defaults to GitHub `releases/latest`).
+          labels: dependencies

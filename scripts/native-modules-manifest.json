@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "complete": true,
+  "phase": "complete",
+  "release": "native-electron-43.2.0-50193e7",
+  "repository": "Zencok/baka-native",
+  "electron": "43.2.0",
+  "taglib": "2.3.1",
+  "taglibPolicy": "latest-at-build",
+  "modules": [
+    "qmc2",
+    "ence",
+    "taglib"
+  ],
+  "sourceCommit": "50193e7634d27a74ae318575654c7009830235b4",
+  "license": "AGPL-3.0-only",
+  "platforms": {
+    "win32-x64": {
+      "url": "https://github.com/Zencok/baka-native/releases/download/native-electron-43.2.0-50193e7/baka-native-win32-x64.7z",
+      "sha256": "1a6d841a90786dffacecb69178bfae37282b698518523467ee52eaec20801720",
+      "size": 401433,
+      "status": "verified",
+      "nodeModuleVersion": "137",
+      "modules": {
+        "qmc2": {
+          "file": "qmc2.node",
+          "sha256": "3a7cd5a29d9e4c26407ba08ba6febe6ec802ef528bb69b1c174e85861cb49865",
+          "size": 148992
+        },
+        "ence": {
+          "file": "ence.node",
+          "sha256": "cc56bdc55f17594f505c6254e732b62442a08c51424bf4627ff464bf71b671c1",
+          "size": 147968
+        },
+        "taglib": {
+          "file": "taglib.node",
+          "sha256": "c82be1f713cb59eef206ee334572681f570e3a1f338d025356378cc111166471",
+          "size": 1022976
+        }
+      }
+    },
+    "darwin-x64": {
+      "url": "https://github.com/Zencok/baka-native/releases/download/native-electron-43.2.0-50193e7/baka-native-darwin-x64.tar.xz",
+      "sha256": "559bfefff02a6af1551bfa03bd02683a9c4980ba36f9ccf22eb81641a16ada4d",
+      "size": 358888,
+      "status": "verified",
+      "nodeModuleVersion": "137",
+      "modules": {
+        "qmc2": {
+          "file": "qmc2.node",
+          "sha256": "b7fc0245dff0fa70f5b74e9510b20a12ccdb734079085994e020df16c320aaac",
+          "size": 46272
+        },
+        "ence": {
+          "file": "ence.node",
+          "sha256": "02c67cff6ee1c089d55bc5231ef5b04463bc1b05f0c642136748ce43130e3931",
+          "size": 55784
+        },
+        "taglib": {
+          "file": "taglib.node",
+          "sha256": "a193fdc29a9338c6072bad8163bda6eafaf67100177861383b6949a526e5d3c6",
+          "size": 1301888
+        }
+      }
+    },
+    "darwin-arm64": {
+      "url": "https://github.com/Zencok/baka-native/releases/download/native-electron-43.2.0-50193e7/baka-native-darwin-arm64.tar.xz",
+      "sha256": "70b566477792aca86d3a9c7023349df180a49ccd45f739cc5665dbef8830493f",
+      "size": 324100,
+      "status": "verified",
+      "nodeModuleVersion": "137",
+      "modules": {
+        "qmc2": {
+          "file": "qmc2.node",
+          "sha256": "0105a1a76ad1020176e26471a3d053127f9b9ec0a87c3351326d2c259ec50923",
+          "size": 80344
+        },
+        "ence": {
+          "file": "ence.node",
+          "sha256": "3009022e91ffc3db211300181c45c87f8ac95162af32088651e8d70ec357ab42",
+          "size": 82216
+        },
+        "taglib": {
+          "file": "taglib.node",
+          "sha256": "e2bc2b007f3730ad4a8de69fdfa5498106bb9003295b9c5c3e0a206f3533847b",
+          "size": 1343400
+        }
+      }
+    },
+    "linux-x64": {
+      "url": "https://github.com/Zencok/baka-native/releases/download/native-electron-43.2.0-50193e7/baka-native-linux-x64.tar.xz",
+      "sha256": "afa2fb9d06d466ea20d8654918ade10a640a183dbd94359a48d71143ebb84157",
+      "size": 526560,
+      "status": "verified",
+      "nodeModuleVersion": "137",
+      "modules": {
+        "qmc2": {
+          "file": "qmc2.node",
+          "sha256": "a002753738a7edf2bef471102c7071c7680925e72a4af8bc0fa566412e5496b7",
+          "size": 122856
+        },
+        "ence": {
+          "file": "ence.node",
+          "sha256": "8320b5fc6abfcb7e8946c2d2a403a1c2c20b7696afc03ec45c5bc99544b24ac5",
+          "size": 127360
+        },
+        "taglib": {
+          "file": "taglib.node",
+          "sha256": "d2218727a83eedf49cc339cf1264238cb968a6d265ecdeea9a4aeaf84cff363f",
+          "size": 1858240
+        }
+      }
+    },
+    "linux-arm64": {
+      "url": "https://github.com/Zencok/baka-native/releases/download/native-electron-43.2.0-50193e7/baka-native-linux-arm64.tar.xz",
+      "sha256": "9b066d84439edeb230b57aedd409e97ada97228869700002fa837230bea33087",
+      "size": 453472,
+      "status": "verified",
+      "nodeModuleVersion": "137",
+      "modules": {
+        "qmc2": {
+          "file": "qmc2.node",
+          "sha256": "bf3d7fd60bc7d2e69990177e50a651ce93d9d21672cec0c4acbe188540627ad8",
+          "size": 144768
+        },
+        "ence": {
+          "file": "ence.node",
+          "sha256": "e3e8127faa31164e95574cac8dfeaa24d70d40b25c3d4f43c4021321c4fa7cfd",
+          "size": 145440
+        },
+        "taglib": {
+          "file": "taglib.node",
+          "sha256": "292355e3b17a1192f78555376a3ea2cb24217caa85fe3e2822b6ee8073eb12d6",
+          "size": 1749256
+        }
+      }
+    }
+  },
+  "generatedAt": "2026-07-24T17:10:21.905Z",
+  "devPrebuilt": "res/.service/native/prebuilt",
+  "notes": "Pinned from baka-native release. Developers: multi-platform .node files live under res/.service/native/prebuilt/<platform>/; npm run native:install copies the current platform into res/.service/native/. End users get modules via install packaging, not this prebuilt tree purpose."
+}

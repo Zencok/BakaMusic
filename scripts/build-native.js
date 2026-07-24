@@ -1,13 +1,16 @@
 /**
- * Cross-platform native module builder.
+ * Cross-platform native module builder (source fallback).
+ *
+ * Preferred path for app CI/dev is prebuilt install:
+ *   npm run native:install
+ * which downloads SHA-256 verified archives from Zencok/baka-native.
+ *
+ * This script remains for maintainers with a local native/ checkout
+ * (or `npm run native:install -- --from-source`).
  *
  * Compiles every module under native/<name>/ that has a binding.gyp via
  * node-gyp, and copies the resulting *.node into res/.service/native/.
- * Replaces the previous bash-only `cd ... && mkdir -p && cp` recipe so it
- * works on Windows (cmd), macOS and Linux alike.
- *
- * N-API (NAPI_VERSION) keeps the binaries ABI-stable, so a host-node build
- * loads fine inside the Electron child process at runtime.
+ * Runs prepare.cjs when present (e.g. taglib downloads TagLib latest).
  */
 const fs = require("fs");
 const path = require("path");
@@ -17,7 +20,7 @@ const root = path.resolve(__dirname, "..");
 const nativeDir = path.join(root, "native");
 const outDir = path.join(root, "res", ".service", "native");
 const isCi = process.env.CI === "true";
-const requiredModules = (process.env.REQUIRED_NATIVE_MODULES || "qmc2,ence")
+const requiredModules = (process.env.REQUIRED_NATIVE_MODULES || "qmc2,ence,taglib")
     .split(",")
     .map((name) => name.trim())
     .filter(Boolean);
@@ -63,8 +66,30 @@ const builtModules = new Set();
 
 for (const mod of modules) {
     const modDir = path.join(nativeDir, mod);
+    const prepareScript = path.join(modDir, "prepare.cjs");
+    if (fs.existsSync(prepareScript)) {
+        console.log(`[build-native] preparing ${mod} ...`);
+        execFileSync(process.execPath, [prepareScript], {
+            cwd: modDir,
+            stdio: "inherit",
+            env: process.env,
+        });
+    }
     console.log(`[build-native] building ${mod} ...`);
-    execSync("npm exec node-gyp -- rebuild", { cwd: modDir, stdio: "inherit" });
+    const electronVersion = process.env.ELECTRON_VERSION
+        || (() => {
+            try {
+                return JSON.parse(
+                    fs.readFileSync(path.join(root, "package.json"), "utf8"),
+                ).devDependencies.electron.replace(/^[^\d]*/, "");
+            } catch {
+                return "";
+            }
+        })();
+    const rebuildArgs = electronVersion
+        ? `npm exec node-gyp -- rebuild --target=${electronVersion} --arch=${process.arch} --dist-url=https://electronjs.org/headers`
+        : "npm exec node-gyp -- rebuild";
+    execSync(rebuildArgs, { cwd: modDir, stdio: "inherit" });
 
     const releaseDir = path.join(modDir, "build", "Release");
     if (!fs.existsSync(releaseDir)) {

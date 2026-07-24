@@ -24,7 +24,7 @@ const _defaultAppConfig: IAppConfig =  {
     "download.downloadLyricFile": false,
     "download.lyricFileFormat": "lrc",
     "download.lyricOrder": ["romanization", "original", "translation"],
-    "download.enableWordByWordLyric": false,
+    "download.enableWordByWordLyric": true,
     "download.fileNamingType": "preset",
     "download.fileNamingPreset": "title-artist",
     "download.fileNamingCustom": "{title}-{artist}",

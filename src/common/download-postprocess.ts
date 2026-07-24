@@ -20,9 +20,28 @@ export interface IDownloadPostprocessMusicItem {
     album?: string;
 }
 
+/** Cover bytes prepared in main (Chromium net), not re-fetched in utility. */
+export interface IDownloadCoverImage {
+    /** Standard base64 (no data: prefix). */
+    dataBase64: string;
+    mimeType: string;
+}
+
 export interface IDownloadPostprocessPayload {
     musicItem: IDownloadPostprocessMusicItem;
+    /** Original artwork URL from the music item / plugin (for logs only). */
     coverUrl?: string;
+    /**
+     * Cover already downloaded by main process (same network stack as play UI).
+     * Utility must NOT fetch the network for covers.
+     */
+    coverImage?: IDownloadCoverImage;
+    /**
+     * Lyrics already resolved via plugin getLyric + formatted in renderer.
+     * Utility only writes this string into tags / sidecar files.
+     */
+    lyricContent?: string;
+    /** @deprecated Prefer lyricContent; kept for older payloads. */
     lyricSource?: ILyric.ILyricSource | null;
     options: IDownloadTagWriteOptions;
 }
@@ -41,7 +60,7 @@ export function getDefaultDownloadTagWriteOptions(): IDownloadTagWriteOptions {
         downloadLyricFile: false,
         lyricFileFormat: "lrc",
         lyricOrder: [...defaultLyricOrder],
-        enableWordByWordLyric: false,
+        enableWordByWordLyric: true,
     };
 }
 
@@ -288,15 +307,21 @@ export function formatLyricsByTimestamp(
     options?: {
         enableWordByWord?: boolean;
         withTimestamp?: boolean;
+        /** Hint for yrc/qrc/ttml etc. so word timelines are not parsed as plain LRC. */
+        format?: ILyric.LyricFormat;
     },
 ) {
     const parser = new LyricParser(rawLrc, {
         translation,
         romanization,
+        format: options?.format,
     });
 
+    // Strictly honor enableWordByWord:
+    // - true  → export word timestamps when the source has them
+    // - false → line-level LRC only (no <mm:ss.xxx> word markers)
     return formatLyricsFromItems(parser.getLyricItems(), lyricOrder, {
-        enableWordByWord: options?.enableWordByWord,
+        enableWordByWord: options?.enableWordByWord === true,
         withTimestamp: options?.withTimestamp,
         meta: parser.getMeta(),
     });

@@ -8,6 +8,7 @@ type DownloadStateCallback = (state: {
     downloaded?: number;
     total?: number;
     msg?: string;
+    filePath?: string;
 }) => void;
 
 const downloadCallbacks = new Map<string, DownloadStateCallback>();
@@ -36,16 +37,58 @@ async function downloadFile(
     filePath: string,
     onStateChange: DownloadStateCallback,
 ) {
-    downloadCallbacks.set(taskId, onStateChange);
+    let lastState: {
+        state: DownloadState;
+        downloaded?: number;
+        total?: number;
+        msg?: string;
+        filePath?: string;
+    } | undefined;
+    const wrapped: DownloadStateCallback = (state) => {
+        lastState = state;
+        onStateChange(state);
+    };
+    downloadCallbacks.set(taskId, wrapped);
     try {
-        await ipcRenderer.invoke(
+        const result = await ipcRenderer.invoke(
             "@shared/node-runtime/download-file",
             taskId,
             mediaSource,
             filePath,
-        );
+        ) as {
+            state?: DownloadState;
+            msg?: string;
+            filePath?: string;
+        } | null | undefined;
+
+        // Progress events and invoke completion race. If DONE/ERROR never
+        // reached the callback before it was cleared, re-deliver from the
+        // RPC result so postprocess / UI state can finish.
+        if (
+            result
+            && (result.state === DownloadState.DONE || result.state === DownloadState.ERROR)
+            && lastState?.state !== result.state
+        ) {
+            onStateChange({
+                state: result.state,
+                msg: typeof result.msg === "string" ? result.msg : undefined,
+                filePath: typeof result.filePath === "string" ? result.filePath : undefined,
+            });
+        } else if (
+            result
+            && result.state === DownloadState.DONE
+            && typeof result.filePath === "string"
+            && lastState?.state === DownloadState.DONE
+            && lastState.filePath !== result.filePath
+        ) {
+            // DONE event arrived without the corrected path — patch it.
+            onStateChange({
+                state: DownloadState.DONE,
+                filePath: result.filePath,
+            });
+        }
     } finally {
-        if (downloadCallbacks.get(taskId) === onStateChange) {
+        if (downloadCallbacks.get(taskId) === wrapped) {
             downloadCallbacks.delete(taskId);
         }
     }
@@ -60,6 +103,14 @@ async function postprocessDownloadedFile(
     payload?: IDownloadPostprocessPayload | null,
 ) {
     await ipcRenderer.invoke("@shared/node-runtime/postprocess-download", filePath, payload);
+}
+
+/** Main-process Chromium net.fetch for cover bytes (not utility undici). */
+async function fetchCoverImage(coverUrl: string) {
+    return await ipcRenderer.invoke(
+        "@shared/node-runtime/fetch-cover-image",
+        coverUrl,
+    ) as { dataBase64: string; mimeType: string };
 }
 
 async function overwriteEmbeddedLyric(filePath: string, lyricContent: string) {
@@ -98,11 +149,17 @@ function onWatcherRemove(callback: (filePaths: string[]) => void) {
     watcherRemoveCallback = callback;
 }
 
+async function warmUp() {
+    await ipcRenderer.invoke("@shared/node-runtime/warm-up");
+}
+
 export const mod = {
     downloadFile,
     abortDownload,
     postprocessDownloadedFile,
+    fetchCoverImage,
     overwriteEmbeddedLyric,
+    warmUp,
     setupWatcher,
     closeWatcher,
     changeWatchPath,
