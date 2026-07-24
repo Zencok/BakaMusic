@@ -1,4 +1,4 @@
-# BakaMusic
+# BakaMusic_syc
 
 [![Stars](https://badgen.net/github/stars/ShenYichenCN/BakaMusic_syc)](https://github.com/ShenYichenCN/BakaMusic_syc/stargazers)
 [![License](https://badgen.net/badge/license/AGPL-3.0-only/blue)](LICENSE)
