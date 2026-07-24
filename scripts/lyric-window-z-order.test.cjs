@@ -145,7 +145,17 @@ assert.match(
 );
 assert.match(
     musicDetailStyles,
-    /@keyframes music-detail-exit[\s\S]*?visibility:\s*hidden/,
+    /@keyframes music-detail-page-exit[\s\S]*?visibility:\s*hidden/,
+);
+assert.match(musicDetailStyles, /@keyframes music-detail-page-enter/);
+// Full bottom-sheet open/close (not a short fade/slide).
+assert.match(
+    musicDetailStyles,
+    /@keyframes music-detail-page-enter[\s\S]*?translate3d\(0,\s*100%/,
+);
+assert.match(
+    musicDetailStyles,
+    /@keyframes music-detail-page-exit[\s\S]*?translate3d\(0,\s*100%/,
 );
 
 // Top-level content rule (not nested under [data-fullscreen]) must stay in flow.
