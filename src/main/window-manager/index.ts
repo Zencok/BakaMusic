@@ -251,7 +251,7 @@ class WindowManager implements IWindowManager {
         mainWindow.on("leave-full-screen", notifyMainWindowFullScreen);
 
         // Capture F11 in the main process so Chromium cannot swallow it.
-        // Renderer only acts when the music detail page is open.
+        // Renderer toggles OS fullscreen globally; music detail only adapts chrome.
         mainWindow.webContents.on("before-input-event", (event, input) => {
             if (input.type !== "keyDown") {
                 return;

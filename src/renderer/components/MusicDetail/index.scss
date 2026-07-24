@@ -22,32 +22,36 @@
         pointer-events: none;
     }
 
-    // This overlay stays mounted after its exit animation. Electron's native
-    // drag hit testing ignores pointer-events/inert, so withdraw the topbar's
-    // drag region while hidden instead of leaving stale drag slots over pages.
-    &[aria-hidden="true"] .music-detail-topbar {
-        -webkit-app-region: no-drag;
+    // keepMounted leaves this overlay on top of the app. Electron drag hit-testing
+    // ignores pointer-events/inert, so every drag region must be withdrawn while
+    // hidden — and exit fill ends at visibility:hidden so the layer cannot steal
+    // title-bar drags after close.
+    &.music-detail--exit,
+    &[aria-hidden="true"] {
+        -webkit-app-region: no-drag !important;
+
+        &,
+        & * {
+            -webkit-app-region: no-drag !important;
+        }
     }
 
-    // True OS fullscreen (F11): collapse chrome with transitions (not display:none).
-    // Enter transitions are slightly snappier; rest-state rules below ease exit softer.
+    // True OS fullscreen (F11): fade/collapse chrome without taking it out of flow
+    // via absolute positioning (absolute topbar + content caused lyric overlap).
     &[data-fullscreen="true"] {
         .music-detail-topbar-slot {
             grid-template-rows: 0fr;
             opacity: 0;
-            margin-bottom: 0;
             // Collapse: fade first, then fold the row.
             transition:
                 grid-template-rows 280ms cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 180ms ease,
-                margin-bottom 280ms cubic-bezier(0.4, 0, 0.2, 1);
+                opacity 180ms ease;
         }
 
         .music-detail-topbar {
             opacity: 0;
             transform: translate3d(0, -10px, 0);
             pointer-events: none;
-            // Electron drag ignores pointer-events; withdraw while collapsed.
             -webkit-app-region: no-drag;
             transition:
                 opacity 160ms ease,
@@ -55,11 +59,10 @@
         }
 
         .music-detail-shell {
+            // Match pre-animation immersive padding; gap stays 22px against a 0fr slot
+            // so content does not jump under residual chrome during collapse.
             padding: 36px 40px 40px;
-            gap: 0;
-            transition:
-                padding 300ms cubic-bezier(0.4, 0, 0.2, 1),
-                gap 240ms cubic-bezier(0.4, 0, 0.2, 1);
+            transition: padding 300ms cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .music-detail-content {
@@ -144,11 +147,13 @@
 @keyframes music-detail-enter {
     from {
         opacity: 0;
+        visibility: visible;
         transform: translate3d(0, 28px, 0);
     }
 
     to {
         opacity: 1;
+        visibility: visible;
         transform: translate3d(0, 0, 0);
     }
 }
@@ -156,11 +161,14 @@
 @keyframes music-detail-exit {
     from {
         opacity: 1;
+        visibility: visible;
         transform: translate3d(0, 0, 0);
     }
 
     to {
         opacity: 0;
+        // Drop out of Electron app-region geometry after close (keepMounted).
+        visibility: hidden;
         transform: translate3d(0, 20px, 0);
     }
 }
@@ -192,23 +200,18 @@
     display: flex;
     flex-direction: column;
     gap: 22px;
-    // Soft exit (leaving immersive): longer ease-out.
-    transition:
-        padding 420ms cubic-bezier(0.16, 1, 0.3, 1),
-        gap 400ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition: padding 420ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-// Grid 0fr/1fr collapses height smoothly (max-height tends to feel stepped).
+// Grid 0fr/1fr collapses height smoothly while staying in document flow.
 .music-detail-topbar-slot {
     display: grid;
     grid-template-rows: 1fr;
     min-height: 0;
     opacity: 1;
-    margin-bottom: 0;
     transition:
         grid-template-rows 460ms cubic-bezier(0.16, 1, 0.3, 1),
-        opacity 320ms ease 40ms,
-        margin-bottom 460ms cubic-bezier(0.16, 1, 0.3, 1);
+        opacity 320ms ease 40ms;
 }
 
 .music-detail-topbar {

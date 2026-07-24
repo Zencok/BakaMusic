@@ -218,6 +218,18 @@ function setupCommandAndEvents() {
         appWindowUtil.toggleMainWindowVisible();
     });
 
+    // Global F11: toggle OS fullscreen on any page (not only music detail).
+    // MusicDetail listens to fullscreen-changed for immersive chrome when open.
+    let lastMainWindowF11At = 0;
+    appWindowUtil.onMainWindowF11?.(() => {
+        const now = Date.now();
+        if (now - lastMainWindowF11At < 280) {
+            return;
+        }
+        lastMainWindowF11At = now;
+        void appWindowUtil.toggleMainWindowFullScreen?.();
+    });
+
     messageBus.onCommand("PlayMusicById", (data) => {
         if (!data?.platform || !data?.id) {
             return;

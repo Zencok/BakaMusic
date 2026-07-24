@@ -144,13 +144,13 @@ function MusicDetail() {
         applyImmersiveFullScreen(!isFullscreenRef.current);
     };
 
-    // Keep UI chrome in sync if the OS leaves fullscreen externally.
+    // Keep immersive chrome in sync with OS fullscreen while detail is open.
     useEffect(() => {
         const unsubscribe = appWindowUtil.onMainWindowFullScreenChanged?.((next) => {
-            // Only track fullscreen while detail is open; never re-enter from other pages.
             if (!musicDetailShownStore.getValue()) {
                 pendingImmersiveRef.current = null;
                 setIsFullscreen(false);
+                isFullscreenRef.current = false;
                 return;
             }
             const enabled = Boolean(next);
@@ -163,40 +163,61 @@ function MusicDetail() {
             }
             pendingImmersiveRef.current = null;
             setIsFullscreen(enabled);
+            isFullscreenRef.current = enabled;
         });
         return () => {
             unsubscribe?.();
         };
     }, []);
 
-    // Main-process F11 capture (before-input-event). Only act on the detail page.
+    // F11 OS toggle is global (bootstrap). Here only lead immersive chrome when open.
     useEffect(() => {
         const unsubscribe = appWindowUtil.onMainWindowF11?.(() => {
             if (!musicDetailShownStore.getValue()) {
                 return;
             }
-            toggleImmersiveFullScreen();
+            const now = Date.now();
+            if (now - lastF11ToggleAtRef.current < 420) {
+                return;
+            }
+            lastF11ToggleAtRef.current = now;
+            const next = !isFullscreenRef.current;
+            pendingImmersiveRef.current = next;
+            setIsFullscreen(next);
+            isFullscreenRef.current = next;
         });
         return () => {
             unsubscribe?.();
         };
     }, []);
 
-    // Leave OS fullscreen whenever the detail page is closed.
+    // Opening: adopt current OS fullscreen as immersive chrome.
+    // Closing: clear chrome only — keep the main window fullscreen if it was.
     useEffect(() => {
         if (musicDetailShown) {
+            void appWindowUtil.isMainWindowFullScreen?.().then((enabled) => {
+                if (!musicDetailShownStore.getValue()) {
+                    return;
+                }
+                const next = Boolean(enabled);
+                pendingImmersiveRef.current = null;
+                setIsFullscreen(next);
+                isFullscreenRef.current = next;
+            });
             return;
         }
-        if (!isFullscreenRef.current) {
-            setIsFullscreen(false);
-            return;
+
+        if (immersiveOsTimerRef.current !== null) {
+            clearTimeout(immersiveOsTimerRef.current);
+            immersiveOsTimerRef.current = null;
         }
-        // Detail is closing — leave OS fullscreen immediately (no chrome exit lead).
-        applyImmersiveFullScreen(false, { osDelayMs: 0 });
+        pendingImmersiveRef.current = null;
+        setIsFullscreen(false);
+        isFullscreenRef.current = false;
     }, [musicDetailShown]);
 
     useEffect(() => {
-        // Escape only while detail is open. F11 is handled via main-process IPC above.
+        // Escape only while detail is open. F11 is owned globally + chrome lead above.
         if (!musicDetailShown) {
             return;
         }
@@ -204,10 +225,12 @@ function MusicDetail() {
         const keyHandler = (event: KeyboardEvent) => {
             const isF11 = event.code === "F11" || event.key === "F11";
             if (isF11) {
-                // Backup path if main-process capture is unavailable.
+                // Main process usually owns F11; keep a backup toggle if IPC is missing.
                 event.preventDefault();
                 event.stopPropagation();
-                toggleImmersiveFullScreen();
+                if (typeof appWindowUtil.onMainWindowF11 !== "function") {
+                    toggleImmersiveFullScreen();
+                }
                 return;
             }
 
@@ -227,7 +250,8 @@ function MusicDetail() {
 
             event.preventDefault();
 
-            // Exit fullscreen first; second Escape closes the detail page.
+            // Exit immersive chrome/OS first; second Escape closes the detail page.
+            // Closing detail itself does not leave OS fullscreen.
             if (isFullscreenRef.current) {
                 applyImmersiveFullScreen(false);
                 return;

@@ -364,20 +364,24 @@ class Utils {
 
             const wasMaximized = mainWindow.isMaximized();
             const bounds = mainWindow.getBounds();
-            // Native fullscreen from a maximized frameless window is unreliable on Windows.
-            if (wasMaximized) {
-                mainWindow.unmaximize();
-            }
 
-            // Prefer native fullscreen first (covers taskbar / exclusive mode).
+            // Keep the maximized state intact for the native attempt. Electron
+            // restores it on exit; unmaximizing first causes an avoidable
+            // restore-bounds frame before the fullscreen frame.
+            let nativeFullscreenRequested = false;
             try {
                 mainWindow.setFullScreenable(true);
                 mainWindow.setFullScreen(true);
+                nativeFullscreenRequested = true;
             } catch {
                 // fall through to bounds fallback
             }
 
-            if (mainWindow.isFullScreen()) {
+            // macOS reports the state asynchronously via enter-full-screen.
+            if (
+                nativeFullscreenRequested
+                && (process.platform === "darwin" || mainWindow.isFullScreen())
+            ) {
                 this.immersiveRestore = {
                     bounds,
                     wasMaximized,
@@ -399,21 +403,25 @@ class Utils {
                 // ignore
             }
             const display = screen.getDisplayMatching(bounds);
-            mainWindow.setBounds(display.bounds);
             this.immersiveRestore = {
                 bounds,
                 wasMaximized,
                 usedBoundsFallback: true,
             };
             this.markImmersiveSession(mainWindow, true);
+            if (wasMaximized) {
+                mainWindow.unmaximize();
+            }
+            mainWindow.setBounds(display.bounds);
             this.setImmersiveSessionEffects(true);
             this.notifyMainWindowFullScreen(true);
             return true;
         }
 
         this.markImmersiveSession(mainWindow, false);
+        const restore = this.immersiveRestore;
 
-        if (mainWindow.isFullScreen()) {
+        if (mainWindow.isFullScreen() || restore?.usedBoundsFallback === false) {
             try {
                 mainWindow.setFullScreen(false);
             } catch {
@@ -421,16 +429,15 @@ class Utils {
             }
         }
 
-        const restore = this.immersiveRestore;
         this.immersiveRestore = null;
 
-        if (restore) {
-            if (restore.usedBoundsFallback || !mainWindow.isFullScreen()) {
-                if (restore.wasMaximized) {
-                    mainWindow.maximize();
-                } else {
-                    mainWindow.setBounds(restore.bounds);
-                }
+        // Native fullscreen owns its restore geometry. Only the display-bounds
+        // fallback needs a manual restore; applying both produces a second resize.
+        if (restore?.usedBoundsFallback) {
+            if (restore.wasMaximized) {
+                mainWindow.maximize();
+            } else {
+                mainWindow.setBounds(restore.bounds);
             }
         }
 
