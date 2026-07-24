@@ -60,7 +60,7 @@
     }
 
     & .header-search {
-      -webkit-app-region: none;
+      -webkit-app-region: no-drag;
       position: relative;
       min-width: 260px;
       width: min(360px, 34vw);
@@ -147,7 +147,7 @@
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    -webkit-app-region: none;
+    -webkit-app-region: drag;
     gap: 6px;
     padding-left: 12px;
 
@@ -164,6 +164,7 @@
     }
 
     & .header-button {
+      -webkit-app-region: no-drag;
       display: flex;
       align-items: center;
       justify-content: center;
