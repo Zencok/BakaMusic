@@ -95,11 +95,12 @@ html[data-ui-style="glass"] .music-bar--slider-container {
   & .timeline-time {
     display: flex;
     align-items: center;
+    min-width: 5em;
     height: 20px;
-    font-size: 0.72rem;
+    font-size: 0.84rem;
     font-weight: 650;
     line-height: 1;
-    letter-spacing: 0.025em;
+    letter-spacing: 0.02em;
     font-variant-numeric: tabular-nums;
     color: color-mix(in srgb, var(--musicBarText) 50%, transparent);
   }

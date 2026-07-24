@@ -73,19 +73,19 @@
   gap: 0.04rem;
 
   & .side-bar--list-item-container {
-    height: 2.42rem;
+    height: 2.5rem;
     padding-left: 1.05rem;
-    font-size: 0.87rem;
+    font-size: 0.94rem;
   }
 
   & .side-bar--list-item-container svg {
-    width: 1.05rem;
-    height: 1.05rem;
+    width: 1.12rem;
+    height: 1.12rem;
   }
 }
 
 .side-bar-section-title {
-  height: 2.18rem;
+  height: 2.26rem;
   display: flex;
   align-items: center;
   padding: 0 0.5rem 0 0.44rem;
@@ -118,8 +118,8 @@
 }
 
 .side-bar-section-chevron {
-  width: 1.26rem;
-  height: 1.26rem;
+  width: 1.32rem;
+  height: 1.32rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -133,8 +133,8 @@
     background-color 160ms ease;
 
   & svg {
-    width: 0.78rem;
-    height: 0.78rem;
+    width: 0.84rem;
+    height: 0.84rem;
   }
 }
 
@@ -147,7 +147,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--sideBarTextSecondary, var(--appTextPrimary));
-  font-size: 0.84rem;
+  font-size: 0.9rem;
   font-weight: 620;
   letter-spacing: 0;
   line-height: 1;
@@ -167,12 +167,12 @@
 }
 
 .side-bar-navigation-action {
-  width: 1.55rem;
-  height: 1.55rem;
+  width: 1.64rem;
+  height: 1.64rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 1.55rem;
+  flex: 0 0 1.64rem;
   padding: 0;
   border: 0;
   border-radius: var(--iconButtonRadius, 50%);
@@ -185,8 +185,8 @@
     background-color 160ms ease;
 
   & svg {
-    width: 0.9rem;
-    height: 0.9rem;
+    width: 0.96rem;
+    height: 0.96rem;
   }
 
   &:hover,

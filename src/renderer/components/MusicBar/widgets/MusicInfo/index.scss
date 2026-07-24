@@ -142,7 +142,9 @@
   }
 
   & .progress {
-    font-size: 0.74rem;
+    min-width: 4.75em;
+    font-size: 0.84rem;
+    font-variant-numeric: tabular-nums;
     line-height: 1;
     color: var(--musicBarTextSecondary);
     letter-spacing: 0.01em;
