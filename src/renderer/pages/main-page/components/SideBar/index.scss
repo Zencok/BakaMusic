@@ -94,8 +94,8 @@
   color: var(--sideBarTextMuted, color-mix(in srgb, var(--textColor) 58%, transparent));
   user-select: none;
   cursor: pointer;
+  // No border-color transition: flat→glass would flash currentColor→transparent.
   transition:
-    border-color 160ms ease,
     background-color 160ms ease,
     color 160ms ease;
 
