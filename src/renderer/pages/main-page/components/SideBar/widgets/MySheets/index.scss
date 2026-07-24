@@ -1,7 +1,7 @@
 .side-bar-container--my-sheets {
   & .title {
     & .option-btn {
-      $size: 22px;
+      $size: 26px;
       width: $size;
       height: $size;
       border-radius: 6px;
@@ -23,8 +23,8 @@
       }
 
       & svg {
-        width: 13px;
-        height: 13px;
+        width: 15px;
+        height: 15px;
       }
     }
   }

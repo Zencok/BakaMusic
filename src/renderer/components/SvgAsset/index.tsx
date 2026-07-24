@@ -3,6 +3,8 @@ import { CSSProperties, memo } from "react";
 export type SvgAssetIconNames =
     | "album"
     | "app-mark"
+    | "arrows-pointing-in"
+    | "arrows-pointing-out"
     | "array-download-tray"
     | "arrow-left-end-on-rectangle"
     | "arrow-path"

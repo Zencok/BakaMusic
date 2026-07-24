@@ -1,7 +1,7 @@
 .side-bar--list-item-container {
-  $height: 2.68rem;
+  $height: 2.82rem;
   height: $height;
-  font-size: 0.92rem;
+  font-size: 1.02rem;
   width: 100%;
   position: relative;
   display: flex;
@@ -21,8 +21,8 @@
     transform 160ms ease;
 
   & svg {
-    width: 1.22rem;
-    height: 1.22rem;
+    width: 1.36rem;
+    height: 1.36rem;
     flex-shrink: 0;
     opacity: 0.76;
     transition: opacity 160ms ease;

@@ -29,6 +29,7 @@ import {
 const UPDATE_PROGRESS_INTERVAL_MS = 150;
 const UPDATE_DOWNLOAD_TIMEOUT_MS = 30_000;
 const MAX_RENDERER_FILE_BYTES = 64 * 1024 * 1024;
+const IMMERSIVE_MAXIMIZE_STAGING_MS = 900;
 type AppPathName = Parameters<typeof app.getPath>[0];
 type OpenDialogProperty = NonNullable<Electron.OpenDialogOptions["properties"]>[number];
 type SaveDialogProperty = NonNullable<Electron.SaveDialogOptions["properties"]>[number];
@@ -326,6 +327,54 @@ class Utils {
         }).__immersiveFullscreen = active;
     }
 
+    private waitForWindowAnimation(milliseconds: number): Promise<void> {
+        return new Promise((resolve) => {
+            setTimeout(resolve, milliseconds);
+        });
+    }
+
+    private waitForMainWindowMaximized(mainWindow: BrowserWindow): Promise<void> {
+        if (mainWindow.isMaximized()) {
+            return Promise.resolve();
+        }
+
+        return new Promise((resolve) => {
+            let settled = false;
+            const finish = () => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                clearTimeout(timeout);
+                mainWindow.off("maximize", finish);
+                resolve();
+            };
+            const timeout = setTimeout(finish, IMMERSIVE_MAXIMIZE_STAGING_MS);
+            mainWindow.once("maximize", finish);
+        });
+    }
+
+    private waitForMainWindowLeaveFullScreen(mainWindow: BrowserWindow): Promise<void> {
+        if (!mainWindow.isFullScreen()) {
+            return Promise.resolve();
+        }
+
+        return new Promise((resolve) => {
+            let settled = false;
+            const finish = () => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                clearTimeout(timeout);
+                mainWindow.off("leave-full-screen", finish);
+                resolve();
+            };
+            const timeout = setTimeout(finish, 700);
+            mainWindow.once("leave-full-screen", finish);
+        });
+    }
+
     private setImmersiveSessionEffects(active: boolean) {
         if (active) {
             this.windowManager.setAuxiliaryWindowsSuppressed(true);
@@ -347,7 +396,7 @@ class Utils {
         this.windowManager.setAuxiliaryWindowsSuppressed(false);
     }
 
-    private setImmersiveFullScreen(enabled: boolean): boolean {
+    private async setImmersiveFullScreen(enabled: boolean): Promise<boolean> {
         const mainWindow = this.getMainWindow();
         if (!mainWindow) {
             if (!enabled) {
@@ -364,12 +413,24 @@ class Utils {
 
             const wasMaximized = mainWindow.isMaximized();
             const bounds = mainWindow.getBounds();
-            // Native fullscreen from a maximized frameless window is unreliable on Windows.
-            if (wasMaximized) {
-                mainWindow.unmaximize();
+            // From a restored window, make the transition a true two-step sequence:
+            // 1) let the platform maximize animation complete;
+            // 2) only then switch the detail page into immersive fullscreen.
+            if (!wasMaximized) {
+                mainWindow.maximize();
+                await Promise.race([
+                    this.waitForMainWindowMaximized(mainWindow),
+                    this.waitForWindowAnimation(IMMERSIVE_MAXIMIZE_STAGING_MS),
+                ]);
+                if (mainWindow.isDestroyed()) {
+                    this.setImmersiveSessionEffects(false);
+                    return false;
+                }
             }
 
             // Prefer native fullscreen first (covers taskbar / exclusive mode).
+            // Do not unmaximize here: on Windows that visible restore step makes
+            // maximized -> immersive transitions twitch before fullscreen starts.
             try {
                 mainWindow.setFullScreenable(true);
                 mainWindow.setFullScreen(true);
@@ -413,22 +474,32 @@ class Utils {
 
         this.markImmersiveSession(mainWindow, false);
 
+        const restore = this.immersiveRestore;
+        this.immersiveRestore = null;
+
         if (mainWindow.isFullScreen()) {
             try {
                 mainWindow.setFullScreen(false);
+                await this.waitForMainWindowLeaveFullScreen(mainWindow);
             } catch {
                 // ignore
             }
         }
 
-        const restore = this.immersiveRestore;
-        this.immersiveRestore = null;
-
         if (restore) {
-            if (restore.usedBoundsFallback || !mainWindow.isFullScreen()) {
-                if (restore.wasMaximized) {
-                    mainWindow.maximize();
-                } else {
+            if (restore.wasMaximized) {
+                mainWindow.maximize();
+            } else {
+                // Same idea as pressing the maximize button while maximized: force
+                // the temporary staging maximize back to restored mode before applying
+                // the original small-window bounds. isMaximized() may already report
+                // false right after leaving native fullscreen, so do this unconditionally.
+                mainWindow.unmaximize();
+                await this.waitForWindowAnimation(120);
+                mainWindow.setBounds(restore.bounds);
+                await this.waitForWindowAnimation(180);
+                if (!mainWindow.isDestroyed()) {
+                    mainWindow.unmaximize();
                     mainWindow.setBounds(restore.bounds);
                 }
             }
@@ -439,7 +510,7 @@ class Utils {
         return false;
     }
 
-    private toggleImmersiveFullScreen(): boolean {
+    private async toggleImmersiveFullScreen(): Promise<boolean> {
         const mainWindow = this.getMainWindow();
         if (!mainWindow) {
             return false;

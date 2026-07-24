@@ -1,4 +1,4 @@
-﻿.music-detail--container {
+.music-detail--container {
     position: absolute;
     inset: 0;
     z-index: 3000;
@@ -29,24 +29,28 @@
         -webkit-app-region: no-drag;
     }
 
-    // True OS fullscreen (F11): hide chrome for a pure stage.
+    // True OS fullscreen (F11): fade chrome out for a pure stage.
     &[data-fullscreen="true"] {
         .music-detail-topbar {
-            display: none;
+            max-height: 0;
+            opacity: 0;
+            transform: translateY(-10px) scale(0.98);
+            pointer-events: none;
         }
 
         .music-detail-shell {
             padding: 36px 40px 40px;
-            gap: 28px;
+            gap: 0;
         }
 
         .music-detail-content {
             gap: clamp(28px, 3.4vw, 48px);
+            transform: scale(1);
         }
 
         .music-detail-primary-stage {
             width: min(100%, clamp(300px, 48vh, 500px));
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
 
             &[data-cover-style="vinyl"] {
                 width: min(100%, clamp(320px, 50vh, 520px));
@@ -143,6 +147,14 @@
     .music-detail--container.music-detail--exit {
         animation-duration: 1ms;
     }
+
+    .music-detail-shell,
+    .music-detail-topbar,
+    .music-detail-content,
+    .music-detail-primary-stage,
+    .music-detail-lyric-column {
+        transition-duration: 1ms;
+    }
 }
 
 .music-detail-shell {
@@ -155,14 +167,24 @@
     display: flex;
     flex-direction: column;
     gap: 22px;
+    transition: padding 360ms cubic-bezier(0.16, 1, 0.3, 1), gap 360ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .music-detail-topbar {
+    max-height: 72px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 18px;
+    opacity: 1;
+    overflow: hidden;
+    transform: translateY(0) scale(1);
+    transform-origin: top center;
     -webkit-app-region: drag;
+    transition:
+        max-height 320ms cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 220ms ease,
+        transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .music-detail-topbar-left,
@@ -175,15 +197,20 @@
 .music-detail-topbar-left {
     flex: 1;
     min-width: 0;
+    align-self: stretch;
+    -webkit-app-region: drag;
 }
 
 .music-detail-topbar-right {
+    align-self: stretch;
     flex-shrink: 0;
     -webkit-app-region: no-drag;
 }
 
 .music-detail-info-bar {
-    flex: 1;
+    flex: 0 1 auto;
+    -webkit-app-region: drag;
+    width: fit-content;
     min-width: 0;
     max-width: min(100%, 720px);
     display: flex;
@@ -191,9 +218,15 @@
     gap: 14px;
     padding: 10px 14px;
     border-radius: 22px;
+    overflow: hidden;
+    contain: paint;
     background: var(--musicDetailSurface);
-    border: 1px solid var(--musicDetailBorder);
-    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    background-clip: padding-box;
+    border: 1px solid transparent;
+    box-shadow:
+        0 18px 44px rgba(0, 0, 0, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    -webkit-backdrop-filter: blur(18px) saturate(126%);
     backdrop-filter: blur(18px) saturate(126%);
 }
 
@@ -209,12 +242,13 @@
 .music-detail-info-copy {
     min-width: 0;
     display: flex;
-    flex: 1;
+    flex: 0 1 auto;
     flex-direction: column;
     gap: 6px;
 }
 
 .music-detail-info-title {
+    max-width: min(42vw, 540px);
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -298,6 +332,11 @@
     grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
     gap: clamp(24px, 3vw, 38px);
     align-items: stretch;
+    transform: scale(0.992);
+    transform-origin: center;
+    transition:
+        gap 360ms cubic-bezier(0.16, 1, 0.3, 1),
+        transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .music-detail-primary-column {
@@ -320,11 +359,15 @@
     align-items: center;
     justify-content: center;
     margin: 0 auto;
-    transform: translateY(-16px);
+    transform: translateY(-16px) scale(0.98);
+    transform-origin: center;
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
+    transition:
+        width 420ms cubic-bezier(0.16, 1, 0.3, 1),
+        transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
 
     &[data-cover-style="vinyl"] {
         width: min(100%, clamp(280px, 45vh, 450px));
@@ -711,6 +754,7 @@
     display: flex;
     box-sizing: border-box;
     padding-bottom: 38px;
+    transition: padding-bottom 360ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @media screen and (max-width: 980px) {
@@ -755,7 +799,7 @@
     }
 
     .music-detail-primary-stage {
-        transform: translateY(-10px);
+        transform: translateY(-10px) scale(0.98);
     }
 
     .music-detail-info-bar {

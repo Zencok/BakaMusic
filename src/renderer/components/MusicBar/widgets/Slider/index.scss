@@ -95,8 +95,9 @@ html[data-ui-style="glass"] .music-bar--slider-container {
   & .timeline-time {
     display: flex;
     align-items: center;
-    height: 20px;
-    font-size: 0.72rem;
+    min-width: 88px;
+    height: 22px;
+    font-size: 0.95rem;
     font-weight: 650;
     line-height: 1;
     letter-spacing: 0.025em;

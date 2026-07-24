@@ -1,4 +1,4 @@
-﻿import AnimatedDiv from "../AnimatedDiv";
+import AnimatedDiv from "../AnimatedDiv";
 import "./index.scss";
 import albumImg from "@/assets/imgs/album-cover.jpg";
 import { PlayerState, qualityText } from "@/common/constant";
@@ -273,6 +273,11 @@ function MusicDetail() {
 
                     <div className="music-detail-topbar-right">
                         <RoundButton
+                            iconName="arrows-pointing-out"
+                            title="开启全屏沉浸模式"
+                            onClick={toggleImmersiveFullScreen}
+                        ></RoundButton>
+                        <RoundButton
                             iconName="minus"
                             title={t("app_header.minimize")}
                             onClick={() => {
@@ -347,6 +352,8 @@ function MusicDetail() {
                         <Lyric
                             active={musicDetailShown}
                             playerReady={lyricPlayerReady}
+                            isFullscreen={isFullscreen}
+                            onRequestFullscreen={toggleImmersiveFullScreen}
                         ></Lyric>
                     </div>
                 </div>

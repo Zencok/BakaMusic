@@ -54,9 +54,16 @@ type MusicDetailVinylTonearmReach = "outer" | "inner";
 interface ILyricProps {
     active: boolean;
     playerReady: boolean;
+    isFullscreen: boolean;
+    onRequestFullscreen: () => void;
 }
 
-export default function Lyric({ active, playerReady }: ILyricProps) {
+export default function Lyric({
+    active,
+    playerReady,
+    isFullscreen,
+    onRequestFullscreen,
+}: ILyricProps) {
     const currentMusic = useCurrentMusic();
     const lyricContext = useLyric();
     const lyricParser = lyricContext?.parser;
@@ -155,6 +162,16 @@ export default function Lyric({ active, playerReady }: ILyricProps) {
                     >
                         <SvgAsset iconName="magnifying-glass"></SvgAsset>
                     </div>
+                    {isFullscreen ? (
+                        <div
+                            className="music-detail-lyric-toolbar-button"
+                            role="button"
+                            title="关闭全屏沉浸模式"
+                            onClick={onRequestFullscreen}
+                        >
+                            <SvgAsset iconName="arrows-pointing-in"></SvgAsset>
+                        </div>
+                    ) : null}
                     <CoverStyleSelector></CoverStyleSelector>
                 </div>
             </div>

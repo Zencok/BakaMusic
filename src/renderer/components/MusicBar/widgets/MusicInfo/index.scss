@@ -142,7 +142,8 @@
   }
 
   & .progress {
-    font-size: 0.74rem;
+    min-width: 82px;
+    font-size: 0.95rem;
     line-height: 1;
     color: var(--musicBarTextSecondary);
     letter-spacing: 0.01em;
