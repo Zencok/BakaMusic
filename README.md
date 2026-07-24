@@ -1,15 +1,13 @@
 # BakaMusic
 
-[![Stars](https://badgen.net/github/stars/Zencok/BakaMusic)](https://github.com/Zencok/BakaMusic/stargazers)
-[![Latest Release](https://badgen.net/github/release/Zencok/BakaMusic)](https://github.com/Zencok/BakaMusic/releases/latest)
-[![Downloads](https://badgen.net/github/assets-dl/Zencok/BakaMusic)](https://github.com/Zencok/BakaMusic/releases)
-[![Issues](https://badgen.net/github/issues/Zencok/BakaMusic)](https://github.com/Zencok/BakaMusic/issues)
+[![Stars](https://badgen.net/github/stars/Zencok/BakaMusic)](https://github.com/ShenYichenCN/BakaMusic_syc/stargazers)
 [![License](https://badgen.net/badge/license/AGPL-3.0-only/blue)](LICENSE)
 
 **无广告、无内置在线音源、由插件扩展。**
 
-BakaMusic 是基于 Electron、React 和 TypeScript 的跨平台桌面音乐播放器，提供播放、歌词、歌单、本地音乐、下载与主题框架；在线搜索与媒体来源由用户安装的插件提供。
-
+BakaMusic_syc 是基于 BakaMusic 修改，由Electron、React 和 TypeScript 的跨平台桌面音乐播放器，提供播放、歌词、歌单、本地音乐、下载与主题框架；在线搜索与媒体来源由用户安装的插件提供。
+原项目地址：[https://github.com/zencok/
+](https://github.com/Zencok/BakaMusic)
 ## 目录
 
 - [功能](#功能)
