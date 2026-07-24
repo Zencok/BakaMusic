@@ -1,4 +1,14 @@
 ﻿.music-detail--container {
+    // Immersive motion: compositor-only for cover; chrome fades without reflow.
+    --md-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --md-ease-in: cubic-bezier(0.32, 0, 0.67, 0);
+    --md-ease-cover: cubic-bezier(0.22, 1, 0.36, 1);
+    --md-dur-chrome: 280ms;
+    --md-dur-cover: 560ms;
+    // Visual windowed size relative to fixed immersive box (~430/500).
+    --md-cover-rest-scale: 0.88;
+    --md-cover-rest-y: -14px;
+
     position: absolute;
     inset: 0;
     z-index: 3000;
@@ -14,7 +24,7 @@
     -webkit-app-region: no-drag;
 
     &.music-detail--enter {
-        animation: music-detail-enter 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: music-detail-enter 220ms var(--md-ease-out) both;
     }
 
     &.music-detail--exit {
@@ -36,55 +46,50 @@
         }
     }
 
-    // True OS fullscreen (F11): fade/collapse chrome without taking it out of flow
-    // via absolute positioning (absolute topbar + content caused lyric overlap).
+    // Promote compositing only while the immersive transition is in flight.
+    &[data-immersive-busy="true"] {
+        .music-detail-topbar,
+        .music-detail-primary-stage,
+        .music-detail-background::before {
+            will-change: transform, opacity;
+        }
+    }
+
+    // True OS fullscreen (F11): chrome fades in place (no layout collapse).
+    // Collapsing topbar height reflows the stage and makes the cover look like it jumps.
+    // Cover motion is pure transform on a fixed-size box.
     &[data-fullscreen="true"] {
         .music-detail-topbar-slot {
-            grid-template-rows: 0fr;
-            opacity: 0;
-            // Collapse: fade first, then fold the row.
-            transition:
-                grid-template-rows 280ms cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 180ms ease;
+            opacity: 1;
+            // Keep grid row open so the cover's layout box never shifts.
+            grid-template-rows: 1fr;
         }
 
         .music-detail-topbar {
             opacity: 0;
-            transform: translate3d(0, -10px, 0);
+            transform: translate3d(0, -10px, 0) scale(0.98);
             pointer-events: none;
             -webkit-app-region: no-drag;
             transition:
-                opacity 160ms ease,
-                transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .music-detail-shell {
-            // Match pre-animation immersive padding; gap stays 22px against a 0fr slot
-            // so content does not jump under residual chrome during collapse.
-            padding: 36px 40px 40px;
-            transition: padding 300ms cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .music-detail-content {
-            gap: clamp(28px, 3.4vw, 48px);
-            transition: gap 300ms cubic-bezier(0.4, 0, 0.2, 1);
+                opacity 180ms ease,
+                transform var(--md-dur-chrome) var(--md-ease-in);
         }
 
         .music-detail-primary-stage {
-            width: min(100%, clamp(300px, 48vh, 500px));
-            transform: translate3d(0, 0, 0);
-            transition:
-                width 340ms cubic-bezier(0.4, 0, 0.2, 1),
-                transform 340ms cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translate3d(0, 0, 0) scale(1);
+            transition: transform var(--md-dur-cover) var(--md-ease-cover);
 
             &[data-cover-style="vinyl"] {
-                width: min(100%, clamp(320px, 50vh, 520px));
+                transform: translate3d(0, 0, 0) scale(1);
             }
         }
 
-        .music-detail-lyric-column {
-            padding-bottom: 48px;
-            transition: padding-bottom 300ms cubic-bezier(0.4, 0, 0.2, 1);
+        .music-detail-background::before {
+            opacity: 0.88;
+            transform: scale(1.2);
+            transition:
+                opacity 480ms var(--md-ease-cover),
+                transform 600ms var(--md-ease-cover);
         }
     }
 
@@ -127,6 +132,9 @@
             transform: scale(1.16);
             opacity: 0.8;
             pointer-events: none;
+            transition:
+                opacity 480ms var(--md-ease-out),
+                transform 520ms var(--md-ease-out);
         }
     }
 
@@ -179,14 +187,16 @@
         animation-duration: 1ms;
     }
 
-    .music-detail-shell,
-    .music-detail-topbar-slot,
     .music-detail-topbar,
-    .music-detail-content,
     .music-detail-primary-stage,
-    .music-detail-lyric-column {
+    .music-detail-background::before {
         transition-duration: 1ms !important;
         transition-delay: 0ms !important;
+    }
+
+    .music-detail--container {
+        --md-cover-rest-scale: 1;
+        --md-cover-rest-y: 0px;
     }
 }
 
@@ -196,39 +206,34 @@
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-    padding: 26px 28px 28px;
+    // Fixed chrome metrics — no padding/gap tween (those reflow the cover).
+    padding: 28px 32px 32px;
     display: flex;
     flex-direction: column;
-    gap: 22px;
-    transition: padding 420ms cubic-bezier(0.16, 1, 0.3, 1);
+    gap: 20px;
 }
 
-// Grid 0fr/1fr collapses height smoothly while staying in document flow.
+// Slot stays open in both modes so cover layout origin never jumps.
 .music-detail-topbar-slot {
     display: grid;
     grid-template-rows: 1fr;
     min-height: 0;
-    opacity: 1;
-    transition:
-        grid-template-rows 460ms cubic-bezier(0.16, 1, 0.3, 1),
-        opacity 320ms ease 40ms;
+    flex-shrink: 0;
 }
 
 .music-detail-topbar {
     min-height: 0;
-    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 18px;
     opacity: 1;
-    transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0) scale(1);
     transform-origin: top center;
     -webkit-app-region: drag;
-    // Exit: content eases in slightly after the slot starts opening.
     transition:
-        opacity 300ms ease 70ms,
-        transform 440ms cubic-bezier(0.16, 1, 0.3, 1) 40ms;
+        opacity 220ms ease 40ms,
+        transform 320ms var(--md-ease-out) 20ms;
 }
 
 .music-detail-topbar-left,
@@ -362,9 +367,8 @@
     min-height: 0;
     display: grid;
     grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
-    gap: clamp(24px, 3vw, 38px);
+    gap: clamp(26px, 3.2vw, 44px);
     align-items: stretch;
-    transition: gap 400ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .music-detail-primary-column {
@@ -373,7 +377,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px 0;
+    padding: 8px 0;
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
@@ -381,24 +385,25 @@
 }
 
 .music-detail-primary-stage {
-    width: min(100%, clamp(270px, 43vh, 430px));
+    // Fixed immersive box. Windowed look = transform only (no width / layout tween).
+    width: min(100%, clamp(300px, 48vh, 500px));
     aspect-ratio: 1 / 1;
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0 auto;
-    transform: translate3d(0, -16px, 0);
+    transform: translate3d(0, var(--md-cover-rest-y), 0) scale(var(--md-cover-rest-scale));
+    transform-origin: center center;
+    backface-visibility: hidden;
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
-    // Exit: settle back with a longer decelerate curve.
-    transition:
-        width 480ms cubic-bezier(0.16, 1, 0.3, 1),
-        transform 480ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform var(--md-dur-cover) var(--md-ease-cover);
 
     &[data-cover-style="vinyl"] {
-        width: min(100%, clamp(280px, 45vh, 450px));
+        width: min(100%, clamp(320px, 50vh, 520px));
+        transform: translate3d(0, var(--md-cover-rest-y), 0) scale(var(--md-cover-rest-scale));
     }
 }
 
@@ -412,6 +417,12 @@
     border: none !important;
     box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
     backdrop-filter: none !important;
+    // Shadow rides with the stage transform — no separate size tween.
+    transition: box-shadow var(--md-dur-cover) var(--md-ease-cover);
+
+    .music-detail--container[data-fullscreen="true"] & {
+        box-shadow: 0 28px 64px rgba(0, 0, 0, 0.34);
+    }
 }
 
 .music-detail-vinyl-player {
@@ -781,8 +792,7 @@
     min-height: 0;
     display: flex;
     box-sizing: border-box;
-    padding-bottom: 38px;
-    transition: padding-bottom 400ms cubic-bezier(0.16, 1, 0.3, 1);
+    padding-bottom: 40px;
 }
 
 @media screen and (max-width: 980px) {
@@ -826,8 +836,9 @@
         justify-content: center;
     }
 
-    .music-detail-primary-stage {
-        transform: translate3d(0, -10px, 0);
+    .music-detail--container {
+        --md-cover-rest-scale: 0.92;
+        --md-cover-rest-y: -10px;
     }
 
     .music-detail-info-bar {

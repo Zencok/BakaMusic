@@ -24,6 +24,11 @@ import { getCurrentPanel } from "@/renderer/components/Panel";
 export const isMusicDetailShown = musicDetailShownStore.getValue;
 export const useMusicDetailShown = musicDetailShownStore.useValue;
 const FULLSCREEN_CURSOR_IDLE_MS = 1600;
+// Cover transform leads native bounds so the stage never jumps with window resize.
+const IMMERSIVE_OS_ENTER_DELAY_MS = 120;
+const IMMERSIVE_OS_EXIT_DELAY_MS = 200;
+const IMMERSIVE_BUSY_MS = 600;
+const IMMERSIVE_TOGGLE_DEBOUNCE_MS = 360;
 
 function MusicDetail() {
     const musicItem = useCurrentMusic();
@@ -31,6 +36,7 @@ function MusicDetail() {
     const quality = useQuality();
     const musicDetailShown = musicDetailShownStore.useValue();
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isImmersiveBusy, setIsImmersiveBusy] = useState(false);
     const [isFullscreenCursorHidden, setIsFullscreenCursorHidden] = useState(false);
     const [storedCoverStyle] = useUserPreference("musicDetailCoverStyle");
     const [storedVinylTonearm] = useUserPreference("musicDetailVinylTonearm");
@@ -40,6 +46,8 @@ function MusicDetail() {
     const isFullscreenRef = useRef(false);
     const lastF11ToggleAtRef = useRef(0);
     const immersiveOsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const immersiveBusyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const immersiveOsFrameRef = useRef<number | null>(null);
     const pendingImmersiveRef = useRef<boolean | null>(null);
     const cursorHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -47,12 +55,24 @@ function MusicDetail() {
         isFullscreenRef.current = isFullscreen;
     }, [isFullscreen]);
 
+    const clearImmersiveSchedulers = () => {
+        if (immersiveOsTimerRef.current !== null) {
+            clearTimeout(immersiveOsTimerRef.current);
+            immersiveOsTimerRef.current = null;
+        }
+        if (immersiveBusyTimerRef.current !== null) {
+            clearTimeout(immersiveBusyTimerRef.current);
+            immersiveBusyTimerRef.current = null;
+        }
+        if (immersiveOsFrameRef.current !== null) {
+            cancelAnimationFrame(immersiveOsFrameRef.current);
+            immersiveOsFrameRef.current = null;
+        }
+    };
+
     useEffect(() => {
         return () => {
-            if (immersiveOsTimerRef.current !== null) {
-                clearTimeout(immersiveOsTimerRef.current);
-                immersiveOsTimerRef.current = null;
-            }
+            clearImmersiveSchedulers();
             pendingImmersiveRef.current = null;
         };
     }, []);
@@ -90,21 +110,32 @@ function MusicDetail() {
         };
     }, [isFullscreen]);
 
+    const markImmersiveBusy = () => {
+        setIsImmersiveBusy(true);
+        if (immersiveBusyTimerRef.current !== null) {
+            clearTimeout(immersiveBusyTimerRef.current);
+        }
+        immersiveBusyTimerRef.current = setTimeout(() => {
+            immersiveBusyTimerRef.current = null;
+            setIsImmersiveBusy(false);
+        }, IMMERSIVE_BUSY_MS);
+    };
+
     const applyImmersiveFullScreen = (next: boolean, options?: { osDelayMs?: number }) => {
         // Drive chrome CSS first; delay OS fullscreen so enter/exit motion can lead.
-        if (immersiveOsTimerRef.current !== null) {
-            clearTimeout(immersiveOsTimerRef.current);
-            immersiveOsTimerRef.current = null;
-        }
+        clearImmersiveSchedulers();
 
         pendingImmersiveRef.current = next;
         setIsFullscreen(next);
         isFullscreenRef.current = next;
+        markImmersiveBusy();
 
-        // Exit leads chrome longer so the topbar can ease back before the window shrinks.
-        const delayMs = options?.osDelayMs ?? (next ? 48 : 240);
+        // Exit leads chrome longer so the topbar/stage can settle before the window shrinks.
+        const delayMs = options?.osDelayMs
+            ?? (next ? IMMERSIVE_OS_ENTER_DELAY_MS : IMMERSIVE_OS_EXIT_DELAY_MS);
         const applyOs = () => {
             immersiveOsTimerRef.current = null;
+            immersiveOsFrameRef.current = null;
             const setFs = appWindowUtil.setMainWindowFullScreen;
             if (typeof setFs === "function") {
                 setFs(next);
@@ -120,10 +151,12 @@ function MusicDetail() {
                 .then((actual) => {
                     pendingImmersiveRef.current = null;
                     setIsFullscreen(Boolean(actual));
+                    isFullscreenRef.current = Boolean(actual);
                 })
                 .catch(() => {
                     pendingImmersiveRef.current = null;
                     setIsFullscreen(!next);
+                    isFullscreenRef.current = !next;
                 });
         };
 
@@ -131,13 +164,24 @@ function MusicDetail() {
             applyOs();
             return;
         }
+
+        // Enter: wait one paint so data-fullscreen styles apply before native bounds change.
+        if (next && options?.osDelayMs === undefined) {
+            immersiveOsFrameRef.current = requestAnimationFrame(() => {
+                immersiveOsFrameRef.current = requestAnimationFrame(() => {
+                    immersiveOsTimerRef.current = setTimeout(applyOs, Math.max(0, delayMs - 32));
+                });
+            });
+            return;
+        }
+
         immersiveOsTimerRef.current = setTimeout(applyOs, delayMs);
     };
 
     const toggleImmersiveFullScreen = () => {
         // Main-process F11 + renderer backup can both fire; debounce to avoid no-op double toggle.
         const now = Date.now();
-        if (now - lastF11ToggleAtRef.current < 420) {
+        if (now - lastF11ToggleAtRef.current < IMMERSIVE_TOGGLE_DEBOUNCE_MS) {
             return;
         }
         lastF11ToggleAtRef.current = now;
@@ -177,7 +221,7 @@ function MusicDetail() {
                 return;
             }
             const now = Date.now();
-            if (now - lastF11ToggleAtRef.current < 420) {
+            if (now - lastF11ToggleAtRef.current < IMMERSIVE_TOGGLE_DEBOUNCE_MS) {
                 return;
             }
             lastF11ToggleAtRef.current = now;
@@ -185,6 +229,7 @@ function MusicDetail() {
             pendingImmersiveRef.current = next;
             setIsFullscreen(next);
             isFullscreenRef.current = next;
+            markImmersiveBusy();
         });
         return () => {
             unsubscribe?.();
@@ -203,17 +248,18 @@ function MusicDetail() {
                 pendingImmersiveRef.current = null;
                 setIsFullscreen(next);
                 isFullscreenRef.current = next;
+                if (next) {
+                    markImmersiveBusy();
+                }
             });
             return;
         }
 
-        if (immersiveOsTimerRef.current !== null) {
-            clearTimeout(immersiveOsTimerRef.current);
-            immersiveOsTimerRef.current = null;
-        }
+        clearImmersiveSchedulers();
         pendingImmersiveRef.current = null;
         setIsFullscreen(false);
         isFullscreenRef.current = false;
+        setIsImmersiveBusy(false);
     }, [musicDetailShown]);
 
     useEffect(() => {
@@ -288,6 +334,7 @@ function MusicDetail() {
             aria-hidden={!musicDetailShown}
             inert={!musicDetailShown}
             data-fullscreen={isFullscreen ? "true" : "false"}
+            data-immersive-busy={isImmersiveBusy ? "true" : "false"}
             data-cursor-hidden={isFullscreenCursorHidden ? "true" : "false"}
             mountClassName="music-detail--enter"
             unmountClassName="music-detail--exit"

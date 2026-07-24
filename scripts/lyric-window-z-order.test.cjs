@@ -109,6 +109,8 @@ assert.match(bootstrapSource, /Global F11/);
 assert.match(musicDetailSource, /FULLSCREEN_CURSOR_IDLE_MS = 1600/);
 assert.match(musicDetailSource, /data-cursor-hidden=\{isFullscreenCursorHidden/);
 assert.match(musicDetailSource, /data-fullscreen=\{isFullscreen/);
+assert.match(musicDetailSource, /data-immersive-busy=\{isImmersiveBusy/);
+assert.match(musicDetailSource, /IMMERSIVE_OS_EXIT_DELAY_MS/);
 // Detail adopts OS fullscreen on open and must not exit OS FS merely on close.
 assert.match(musicDetailSource, /isMainWindowFullScreen/);
 assert.match(
@@ -128,9 +130,15 @@ assert.match(
     musicDetailStyles,
     /\[data-fullscreen="true"\]\[data-cursor-hidden="true"\][\s\S]*?cursor: none !important;/,
 );
-// Document-flow chrome collapse (not absolute topbar/content stacking).
-assert.match(musicDetailStyles, /grid-template-rows:\s*0fr/);
+// Topbar fades without layout collapse; cover is transform-only.
 assert.match(musicDetailStyles, /\.music-detail-topbar-slot/);
+assert.match(musicDetailStyles, /--md-cover-rest-scale/);
+assert.match(musicDetailStyles, /--md-dur-cover/);
+assert.doesNotMatch(
+    musicDetailStyles,
+    /grid-template-rows:\s*0fr/,
+    "topbar must not collapse layout (causes cover position jumps)",
+);
 assert.match(
     musicDetailStyles,
     /&\[aria-hidden="true"\][\s\S]*?-webkit-app-region:\s*no-drag/,
@@ -151,5 +159,14 @@ assert.doesNotMatch(
     /position:\s*absolute/,
     "detail content must stay in document flow to avoid topbar/lyric overlap",
 );
+assert.match(musicDetailStyles, /data-immersive-busy="true"/);
+// Cover size is transform-only (no width tween) to avoid reflow jumps.
+const stageRuleMatch = musicDetailStyles.match(
+    /(?:^|\n)\.music-detail-primary-stage\s*\{([^}]*)\}/,
+);
+assert.ok(stageRuleMatch, "expected top-level .music-detail-primary-stage rule");
+assert.match(stageRuleMatch[1], /transition:\s*transform/);
+assert.doesNotMatch(stageRuleMatch[1], /transition:[^;]*width/);
+assert.match(musicDetailStyles, /--md-cover-rest-scale:\s*0\.88/);
 
 console.log("lyric window z-order tests passed");
