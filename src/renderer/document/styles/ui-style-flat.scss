@@ -299,8 +299,8 @@
 // ---------------------------------------------------------------------------
 [data-ui-style="flat"] {
     .side-bar-container {
-        width: 220px;
-        flex-basis: 220px;
+        width: var(--appSideBarWidth, 234px);
+        flex-basis: var(--appSideBarWidth, 234px);
         padding: 0;
         background: var(--sideBarBg);
         border-right: 1px solid var(--sideBarBorder);
