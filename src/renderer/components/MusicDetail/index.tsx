@@ -39,11 +39,23 @@ function MusicDetail() {
     const { t } = useTranslation();
     const isFullscreenRef = useRef(false);
     const lastF11ToggleAtRef = useRef(0);
+    const immersiveOsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pendingImmersiveRef = useRef<boolean | null>(null);
     const cursorHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         isFullscreenRef.current = isFullscreen;
     }, [isFullscreen]);
+
+    useEffect(() => {
+        return () => {
+            if (immersiveOsTimerRef.current !== null) {
+                clearTimeout(immersiveOsTimerRef.current);
+                immersiveOsTimerRef.current = null;
+            }
+            pendingImmersiveRef.current = null;
+        };
+    }, []);
 
     useEffect(() => {
         const clearCursorHideTimer = () => {
@@ -78,25 +90,58 @@ function MusicDetail() {
         };
     }, [isFullscreen]);
 
+    const applyImmersiveFullScreen = (next: boolean, options?: { osDelayMs?: number }) => {
+        // Drive chrome CSS first; delay OS fullscreen so enter/exit motion can lead.
+        if (immersiveOsTimerRef.current !== null) {
+            clearTimeout(immersiveOsTimerRef.current);
+            immersiveOsTimerRef.current = null;
+        }
+
+        pendingImmersiveRef.current = next;
+        setIsFullscreen(next);
+        isFullscreenRef.current = next;
+
+        // Exit leads chrome longer so the topbar can ease back before the window shrinks.
+        const delayMs = options?.osDelayMs ?? (next ? 48 : 240);
+        const applyOs = () => {
+            immersiveOsTimerRef.current = null;
+            const setFs = appWindowUtil.setMainWindowFullScreen;
+            if (typeof setFs === "function") {
+                setFs(next);
+                return;
+            }
+            // Fallback: toggle path returns the resulting state.
+            const toggle = appWindowUtil.toggleMainWindowFullScreen;
+            if (typeof toggle !== "function") {
+                pendingImmersiveRef.current = null;
+                return;
+            }
+            void toggle()
+                .then((actual) => {
+                    pendingImmersiveRef.current = null;
+                    setIsFullscreen(Boolean(actual));
+                })
+                .catch(() => {
+                    pendingImmersiveRef.current = null;
+                    setIsFullscreen(!next);
+                });
+        };
+
+        if (delayMs <= 0) {
+            applyOs();
+            return;
+        }
+        immersiveOsTimerRef.current = setTimeout(applyOs, delayMs);
+    };
+
     const toggleImmersiveFullScreen = () => {
         // Main-process F11 + renderer backup can both fire; debounce to avoid no-op double toggle.
         const now = Date.now();
-        if (now - lastF11ToggleAtRef.current < 350) {
+        if (now - lastF11ToggleAtRef.current < 420) {
             return;
         }
         lastF11ToggleAtRef.current = now;
-
-        const toggle = appWindowUtil.toggleMainWindowFullScreen;
-        if (typeof toggle !== "function") {
-            return;
-        }
-        void toggle()
-            .then((next) => {
-                setIsFullscreen(Boolean(next));
-            })
-            .catch(() => {
-                // keep previous state on IPC failure
-            });
+        applyImmersiveFullScreen(!isFullscreenRef.current);
     };
 
     // Keep UI chrome in sync if the OS leaves fullscreen externally.
@@ -104,10 +149,20 @@ function MusicDetail() {
         const unsubscribe = appWindowUtil.onMainWindowFullScreenChanged?.((next) => {
             // Only track fullscreen while detail is open; never re-enter from other pages.
             if (!musicDetailShownStore.getValue()) {
+                pendingImmersiveRef.current = null;
                 setIsFullscreen(false);
                 return;
             }
-            setIsFullscreen(Boolean(next));
+            const enabled = Boolean(next);
+            // While chrome is intentionally leading OS, ignore opposite stale events.
+            if (
+                pendingImmersiveRef.current !== null
+                && pendingImmersiveRef.current !== enabled
+            ) {
+                return;
+            }
+            pendingImmersiveRef.current = null;
+            setIsFullscreen(enabled);
         });
         return () => {
             unsubscribe?.();
@@ -136,8 +191,8 @@ function MusicDetail() {
             setIsFullscreen(false);
             return;
         }
-        appWindowUtil.setMainWindowFullScreen?.(false);
-        setIsFullscreen(false);
+        // Detail is closing — leave OS fullscreen immediately (no chrome exit lead).
+        applyImmersiveFullScreen(false, { osDelayMs: 0 });
     }, [musicDetailShown]);
 
     useEffect(() => {
@@ -174,8 +229,7 @@ function MusicDetail() {
 
             // Exit fullscreen first; second Escape closes the detail page.
             if (isFullscreenRef.current) {
-                appWindowUtil.setMainWindowFullScreen?.(false);
-                setIsFullscreen(false);
+                applyImmersiveFullScreen(false);
                 return;
             }
 
@@ -231,73 +285,75 @@ function MusicDetail() {
             <div className="music-detail-overlay"></div>
 
             <div className="music-detail-shell">
-                <div className="music-detail-topbar">
-                    <div className="music-detail-topbar-left">
-                        <RoundButton
-                            iconName="chevron-double-down"
-                            title={t("music_bar.close_music_detail_page")}
-                            onClick={() => {
-                                musicDetailShownStore.setValue(false);
-                            }}
-                        ></RoundButton>
+                <div className="music-detail-topbar-slot">
+                    <div className="music-detail-topbar">
+                        <div className="music-detail-topbar-left">
+                            <RoundButton
+                                iconName="chevron-double-down"
+                                title={t("music_bar.close_music_detail_page")}
+                                onClick={() => {
+                                    musicDetailShownStore.setValue(false);
+                                }}
+                            ></RoundButton>
 
-                        <div className="music-detail-info-bar">
-                            <img
-                                alt={title}
-                                className="music-detail-info-artwork"
-                                onError={setFallbackAlbum}
-                                src={artwork}
-                            ></img>
-                            <div className="music-detail-info-copy">
-                                <div className="music-detail-info-title" title={title}>
-                                    {title}
-                                </div>
-                                <div className="music-detail-info-meta-row">
-                                    <div className="music-detail-info-subtitle" title={subtitle}>
-                                        {subtitle}
+                            <div className="music-detail-info-bar">
+                                <img
+                                    alt={title}
+                                    className="music-detail-info-artwork"
+                                    onError={setFallbackAlbum}
+                                    src={artwork}
+                                ></img>
+                                <div className="music-detail-info-copy">
+                                    <div className="music-detail-info-title" title={title}>
+                                        {title}
                                     </div>
-                                    {musicItem?.platform ? (
-                                        <div className="music-detail-info-badge">
-                                            {musicItem.platform}
+                                    <div className="music-detail-info-meta-row">
+                                        <div className="music-detail-info-subtitle" title={subtitle}>
+                                            {subtitle}
                                         </div>
-                                    ) : null}
-                                    {qualityLabel ? (
-                                        <div className="music-detail-info-badge music-detail-info-badge--strong">
-                                            {qualityLabel}
-                                        </div>
-                                    ) : null}
+                                        {musicItem?.platform ? (
+                                            <div className="music-detail-info-badge">
+                                                {musicItem.platform}
+                                            </div>
+                                        ) : null}
+                                        {qualityLabel ? (
+                                            <div className="music-detail-info-badge music-detail-info-badge--strong">
+                                                {qualityLabel}
+                                            </div>
+                                        ) : null}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="music-detail-topbar-right">
-                        <RoundButton
-                            iconName="minus"
-                            title={t("app_header.minimize")}
-                            onClick={() => {
-                                appWindowUtil.minMainWindow();
-                            }}
-                        ></RoundButton>
-                        <RoundButton
-                            iconName="square"
-                            title=""
-                            onClick={() => {
-                                appWindowUtil.toggleMainWindowMaximize();
-                            }}
-                        ></RoundButton>
-                        <RoundButton
-                            iconName="x-mark"
-                            title={t("app_header.exit")}
-                            onClick={() => {
-                                const closeBehavior = AppConfig.getConfig("normal.closeBehavior");
-                                if (closeBehavior === "minimize") {
-                                    appWindowUtil.minMainWindow(true);
-                                } else {
-                                    appUtil.exitApp();
-                                }
-                            }}
-                        ></RoundButton>
+                        <div className="music-detail-topbar-right">
+                            <RoundButton
+                                iconName="minus"
+                                title={t("app_header.minimize")}
+                                onClick={() => {
+                                    appWindowUtil.minMainWindow();
+                                }}
+                            ></RoundButton>
+                            <RoundButton
+                                iconName="square"
+                                title=""
+                                onClick={() => {
+                                    appWindowUtil.toggleMainWindowMaximize();
+                                }}
+                            ></RoundButton>
+                            <RoundButton
+                                iconName="x-mark"
+                                title={t("app_header.exit")}
+                                onClick={() => {
+                                    const closeBehavior = AppConfig.getConfig("normal.closeBehavior");
+                                    if (closeBehavior === "minimize") {
+                                        appWindowUtil.minMainWindow(true);
+                                    } else {
+                                        appUtil.exitApp();
+                                    }
+                                }}
+                            ></RoundButton>
+                        </div>
                     </div>
                 </div>
 
