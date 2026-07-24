@@ -58,6 +58,10 @@ const utilsMainSource = fs.readFileSync(path.join(
     projectRoot,
     "src/shared/utils/main.ts",
 ), "utf8");
+const bootstrapSource = fs.readFileSync(path.join(
+    projectRoot,
+    "src/renderer/document/bootstrap.ts",
+), "utf8");
 const musicDetailSource = fs.readFileSync(path.join(
     projectRoot,
     "src/renderer/components/MusicDetail/index.tsx",
@@ -70,15 +74,82 @@ const musicDetailStyles = fs.readFileSync(path.join(
 assert.match(windowManagerSource, /setAuxiliaryWindowsSuppressed\(suppressed: boolean\)/);
 assert.match(windowManagerSource, /lyricWindow\.hide\(\)/);
 assert.match(windowManagerSource, /miniModeWindow\.hide\(\)/);
+assert.match(windowManagerSource, /@shared\/utils\/main-window-f11/);
+assert.match(
+    windowManagerSource,
+    /Renderer toggles OS fullscreen globally|music detail only adapts chrome/,
+);
+
 assert.match(utilsMainSource, /powerSaveBlocker\.start\("prevent-display-sleep"\)/);
 assert.match(utilsMainSource, /powerSaveBlocker\.stop\(this\.displaySleepBlockerId\)/);
 assert.match(utilsMainSource, /setAuxiliaryWindowsSuppressed\(true\)/);
 assert.match(utilsMainSource, /setAuxiliaryWindowsSuppressed\(false\)/);
+
+const immersiveMainSource = utilsMainSource.slice(
+    utilsMainSource.indexOf("private setImmersiveFullScreen"),
+    utilsMainSource.indexOf("private toggleImmersiveFullScreen"),
+);
+assert.notEqual(immersiveMainSource.indexOf("private setImmersiveFullScreen"), -1);
+assert.ok(
+    immersiveMainSource.indexOf("mainWindow.setFullScreen(true)")
+        < immersiveMainSource.indexOf("mainWindow.unmaximize()"),
+    "native fullscreen should run before the bounds-fallback unmaximize",
+);
+assert.match(immersiveMainSource, /if \(restore\?\.usedBoundsFallback\)/);
+assert.match(
+    immersiveMainSource,
+    /process\.platform === "darwin" \|\| mainWindow\.isFullScreen\(\)/,
+);
+
+// Global F11: any page can toggle OS fullscreen.
+assert.match(bootstrapSource, /onMainWindowF11/);
+assert.match(bootstrapSource, /toggleMainWindowFullScreen/);
+assert.match(bootstrapSource, /Global F11/);
+
 assert.match(musicDetailSource, /FULLSCREEN_CURSOR_IDLE_MS = 1600/);
 assert.match(musicDetailSource, /data-cursor-hidden=\{isFullscreenCursorHidden/);
+assert.match(musicDetailSource, /data-fullscreen=\{isFullscreen/);
+// Detail adopts OS fullscreen on open and must not exit OS FS merely on close.
+assert.match(musicDetailSource, /isMainWindowFullScreen/);
+assert.match(
+    musicDetailSource,
+    /keep the main window fullscreen|clear chrome only/i,
+);
+assert.doesNotMatch(
+    musicDetailSource,
+    /osDelayMs:\s*0/,
+    "closing detail must not force an immediate OS fullscreen exit",
+);
+// F11 OS toggle is owned globally; detail only leads immersive chrome when open.
+assert.match(musicDetailSource, /onMainWindowF11/);
+assert.match(musicDetailSource, /lead immersive chrome|F11 OS toggle is global/i);
+
 assert.match(
     musicDetailStyles,
     /\[data-fullscreen="true"\]\[data-cursor-hidden="true"\][\s\S]*?cursor: none !important;/,
+);
+// Document-flow chrome collapse (not absolute topbar/content stacking).
+assert.match(musicDetailStyles, /grid-template-rows:\s*0fr/);
+assert.match(musicDetailStyles, /\.music-detail-topbar-slot/);
+assert.match(
+    musicDetailStyles,
+    /&\[aria-hidden="true"\][\s\S]*?-webkit-app-region:\s*no-drag/,
+);
+assert.match(
+    musicDetailStyles,
+    /@keyframes music-detail-exit[\s\S]*?visibility:\s*hidden/,
+);
+
+// Top-level content rule (not nested under [data-fullscreen]) must stay in flow.
+const contentRuleMatch = musicDetailStyles.match(
+    /(?:^|\n)\.music-detail-content\s*\{([^}]*)\}/,
+);
+assert.ok(contentRuleMatch, "expected top-level .music-detail-content rule");
+assert.match(contentRuleMatch[1], /flex:\s*1/);
+assert.doesNotMatch(
+    contentRuleMatch[1],
+    /position:\s*absolute/,
+    "detail content must stay in document flow to avoid topbar/lyric overlap",
 );
 
 console.log("lyric window z-order tests passed");
