@@ -1,20 +1,33 @@
 import { RequestStateCode } from "@/common/constant";
-import { isSameMedia } from "@/common/media-util";
 import { useCallback, useEffect, useRef, useState } from "react";
 import PluginManager from "@shared/plugin-manager/renderer";
+
+function sheetKeyOf(platform: string, id: string) {
+    return `${platform}\0${id}`;
+}
+
+function isPendingState(state: RequestStateCode) {
+    return (
+        state === RequestStateCode.PENDING_FIRST_PAGE ||
+        state === RequestStateCode.PENDING_REST_PAGE
+    );
+}
 
 export default function usePluginSheetMusicList(
     platform: string,
     id: string,
     originalSheetItem?: IMusic.IMusicSheetItem | null, // 额外的输入
 ) {
+    // URL / API 混用 number|string 时，必须统一成 string，否则会误判为「换了歌单」整表重载
+    const sheetId = id != null && id !== "" ? String(id) : "";
+
     const [requestState, setRequestState] = useState<RequestStateCode>(
         RequestStateCode.IDLE,
     );
     const [sheetItem, setSheetItem] = useState<IMusic.IMusicSheetItem>({
         ...(originalSheetItem ?? {}),
         platform,
-        id,
+        id: sheetId,
         title: originalSheetItem?.title ?? "",
     });
     const [musicList, setMusicList] = useState<IMusic.IMusicItem[]>(
@@ -29,97 +42,115 @@ export default function usePluginSheetMusicList(
         setRequestState(nextState);
     }, []);
 
-    // 当前正在搜索的信息
+    // 当前正在请求的歌单（以 URL platform+id 为准，不要用 isSameMedia 和 original 比对）
     const currentSheetItemRef = useRef<IMusic.IMusicSheetItem | null>(null);
+    const currentSheetKeyRef = useRef<string>("");
     // 页码
     const currentPageRef = useRef(1);
 
     const getSheetDetail = useCallback(async () => {
-        if (!platform || !id) {
+        if (!platform || !sheetId) {
             return;
         }
+
+        const sheetKey = sheetKeyOf(platform, sheetId);
         const sourceSheetItem = originalSheetItemRef.current;
 
-        if (!isSameMedia(currentSheetItemRef.current, sourceSheetItem)) {
-            // 1.1 如果是切换了新的歌单
-            // 恢复初始状态 并设置当前的歌曲项
+        if (currentSheetKeyRef.current !== sheetKey) {
+            // 切换了新歌单：恢复初始状态
+            currentSheetKeyRef.current = sheetKey;
             currentSheetItemRef.current = {
                 ...(sourceSheetItem ?? {}),
                 platform,
-                id,
+                id: sheetId,
                 title: sourceSheetItem?.title ?? "",
             };
             setSheetItem(currentSheetItemRef.current);
             setMusicList(sourceSheetItem?.musicList ?? []);
             currentPageRef.current = 1;
-        } else if (requestStateRef.current & RequestStateCode.PENDING_FIRST_PAGE) {
-            // 1.2 如果是原有歌单，并且在loading中，返回
+        } else if (isPendingState(requestStateRef.current)) {
+            // 同歌单请求进行中，忽略重复触发
             return;
         }
 
+        const page = currentPageRef.current;
+        const requestSheetKey = sheetKey;
+
         try {
-            // 2. 设置初始状态
             updateRequestState(
-                currentPageRef.current === 1
+                page === 1
                     ? RequestStateCode.PENDING_FIRST_PAGE
                     : RequestStateCode.PENDING_REST_PAGE,
             );
-            // 3. 调用获取音乐详情接口
-            const sheetItem = currentSheetItemRef.current;
-            if (!sheetItem) {
+
+            const sheetArg = currentSheetItemRef.current;
+            if (!sheetArg) {
+                updateRequestState(RequestStateCode.FINISHED);
                 return;
             }
+
             const result = await PluginManager.callPluginDelegateMethod(
-                sheetItem,
+                sheetArg,
                 "getMusicSheetInfo",
-                sheetItem,
-                currentPageRef.current,
+                sheetArg,
+                page,
             );
 
-            if (!isSameMedia(currentSheetItemRef.current, sheetItem)) {
-                // 出现竞态 结果直接舍弃
+            // 竞态：期间已切到别的歌单
+            if (currentSheetKeyRef.current !== requestSheetKey) {
                 return;
             }
             if (result === null || result === undefined) {
                 throw new Error();
             }
-            // 3. 如果在页码为1的时候返回了sheetItem，重新设置下sheetItem
-            if (result?.sheetItem && currentPageRef.current <= 1) {
-                setSheetItem((prev) => ({
-                    ...(prev ?? {}),
+
+            // 合并插件回传的 sheetItem（如 _trackIds），并写回 ref 供下一页使用
+            if (result.sheetItem) {
+                currentSheetItemRef.current = {
+                    ...(currentSheetItemRef.current ?? {}),
                     ...(result.sheetItem as IMusic.IMusicSheetItem),
                     platform,
-                    id,
-                }));
+                    id: sheetId,
+                };
+                if (page <= 1) {
+                    setSheetItem(currentSheetItemRef.current);
+                }
             }
-            // 4. 如果返回了音乐列表
-            if (result?.musicList) {
+
+            if (result.musicList) {
                 setMusicList((prev) => {
-                    if (currentPageRef.current === 1) {
-                        return result?.musicList ?? prev;
-                    } else {
-                        return [...prev, ...(result.musicList ?? [])];
+                    if (page === 1) {
+                        return result.musicList ?? prev;
                     }
+                    return [...prev, ...(result.musicList ?? [])];
                 });
             }
+
             updateRequestState(
-                result.isEnd ? RequestStateCode.FINISHED : RequestStateCode.PARTLY_DONE,
-            );
-            currentPageRef.current += 1;
-        } catch {
-            updateRequestState(
-                currentPageRef.current === 1
+                result.isEnd
                     ? RequestStateCode.FINISHED
                     : RequestStateCode.PARTLY_DONE,
             );
+            currentPageRef.current = page + 1;
+        } catch {
+            if (currentSheetKeyRef.current !== requestSheetKey) {
+                return;
+            }
+            // 首页失败结束；分页失败保持 PARTLY_DONE 允许手动重试，但不自动空转
+            // （BottomLoadingState 在 footer 仍可见时会立刻再触发，失败时应避免死循环）
+            updateRequestState(
+                page === 1
+                    ? RequestStateCode.FINISHED
+                    : RequestStateCode.ERROR,
+            );
         }
-    }, [id, platform, updateRequestState]);
+    }, [sheetId, platform, updateRequestState]);
 
     useEffect(() => {
-        if (platform && id) {
+        if (platform && sheetId) {
             void getSheetDetail();
         }
-    }, [getSheetDetail, id, platform]);
+    }, [getSheetDetail, sheetId, platform]);
 
     return [requestState, sheetItem, musicList, getSheetDetail] as const;
 }

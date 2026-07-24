@@ -63,7 +63,8 @@ export function isSameMedia(
     b?: IMedia.IMediaBase | null,
 ) {
     if (a && b) {
-        return a.id === b.id && a.platform === b.platform;
+        // 插件 API 常返回 number id，路由/params 是 string；严格相等会导致误判「换了媒体」
+        return String(a.id) === String(b.id) && a.platform === b.platform;
     }
     return false;
 }
