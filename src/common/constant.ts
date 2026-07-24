@@ -264,14 +264,14 @@ export const themePackStoreBaseUrl = [
 ];
 
 const appLatestReleaseApiUrl =
-    "https://api.github.com/repos/Zencok/BakaMusic/releases/latest";
+    "https://api.github.com/repos/ShenYichenCN/BakaMusic_syc/releases/latest";
 const appLatestReleasePageUrl =
-    "https://github.com/Zencok/BakaMusic/releases/latest";
+    "https://github.com/ShenYichenCN/BakaMusic_syc/releases/latest";
 
 // GitHub API 端点：与主题商店一致，优先并行尝试加速前缀。
 export const appUpdateApiSources = [
     ...githubAcceleratorPrefixes.map((prefix) => `${prefix}${appLatestReleaseApiUrl}`),
-    "https://api.gitmirror.com/repos/Zencok/BakaMusic/releases/latest",
+    "https://api.gitmirror.com/repos/ShenYichenCN/BakaMusic_syc/releases/latest",
     appLatestReleaseApiUrl,
 ];
 

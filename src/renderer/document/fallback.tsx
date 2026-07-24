@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import trackPlayer from "../core/track-player";
 import "./styles/fallback.scss";
 
-const GITHUB_ISSUES_URL = "https://github.com/Zencok/BakaMusic/issues";
+const GITHUB_ISSUES_URL = "https://github.com/ShenYichenCN/BakaMusic_syc/issues";
 
 function formatDiagnosticValue(value: unknown, emptyLabel: string) {
     if (value === null || value === undefined) {

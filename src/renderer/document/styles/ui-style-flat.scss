@@ -306,16 +306,16 @@
         border-right: 1px solid var(--sideBarBorder);
         box-shadow: none;
         backdrop-filter: none;
-        --sideBarTextPrimary: var(--appTextPrimary);
-        --sideBarTextSecondary: color-mix(in srgb, var(--textColor) 70%, transparent);
-        --sideBarTextMuted: color-mix(in srgb, var(--textColor) 48%, transparent);
+        --sideBarTextPrimary: var(--theme-sidebar-text);
+        --sideBarTextSecondary: var(--theme-sidebar-text-secondary);
+        --sideBarTextMuted: var(--theme-sidebar-text-muted);
         --sideBarItemHover: var(--sideBarItemHover);
         --sideBarItemSelected: var(--sideBarItemSelected);
         --sideBarAccentBar: var(--primaryColor);
         --sideBarAccentBarOpacity: 1;
 
         .side-bar-section-title {
-            height: 2.15rem;
+            height: 2.32rem;
             padding: 0 0.56rem 0 0.68rem;
             border: 0;
             border-radius: 0;
@@ -331,14 +331,14 @@
         }
 
         .side-bar-section-chevron {
-            width: 1rem;
-            height: 1rem;
+            width: 1.4rem;
+            height: 1.4rem;
             background: transparent;
             color: var(--sideBarTextMuted);
 
             svg {
-                width: 0.66rem;
-                height: 0.66rem;
+                width: 0.9rem;
+                height: 0.9rem;
             }
         }
 
@@ -349,7 +349,7 @@
 
         .side-bar-section-text {
             color: currentColor;
-            font-size: 0.72rem;
+            font-size: 0.94rem;
             font-weight: 720;
             letter-spacing: 0.05em;
             text-transform: uppercase;
@@ -362,13 +362,19 @@
     }
 
     .side-bar--list-item-container {
-        height: 2.68rem;
-        font-size: 0.92rem;
+        $height: 2.82rem;
+        height: $height;
+        font-size: 1.02rem;
         border-radius: 6px;
         border: 0;
         gap: 0.62rem;
         padding: 0 0.72rem 0 0.82rem;
         font-weight: 600;
+
+        & svg {
+            width: 1.36rem;
+            height: 1.36rem;
+        }
 
         & span {
             font-weight: 600;
@@ -391,9 +397,14 @@
     }
 
     .side-bar-sheet-list .side-bar--list-item-container {
-        height: 2.42rem;
+        height: 2.58rem;
         padding-left: 1.05rem;
-        font-size: 0.87rem;
+        font-size: 0.98rem;
+
+        & svg {
+            width: 1.18rem;
+            height: 1.18rem;
+        }
     }
 }
 

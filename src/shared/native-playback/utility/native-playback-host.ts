@@ -506,10 +506,15 @@ function handleCommand(command: NativePlaybackRuntimeCommand) {
         case "seek":
             applySeek(command.seconds);
             break;
-        case "volume":
-            setProperty("volume", String(command.volume * 100));
+        case "volume": {
+            const ratio = Math.max(0, Math.min(1, command.volume));
+            // mpv 内核默认使用 3次方 物理衰减，会导致低百分比 (0~20%) 物理能量被严重压缩。
+            // 用开方函数补偿送到 mpv 的数值，使 UI 的 0%~100% 对应人耳听到的均匀音量。
+            const mpvVolume = ratio <= 0 ? 0 : Math.sqrt(ratio) * 100;
+            setProperty("volume", String(mpvVolume));
             volume = command.volume;
             break;
+        }
         case "speed":
             setProperty("speed", String(command.speed));
             playbackSpeed = command.speed;

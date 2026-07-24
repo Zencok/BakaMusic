@@ -45,7 +45,7 @@ export default function Update(props: IUpdateProps) {
 
     async function handleDownload() {
         if (!update?.download?.length) {
-            shellUtil.openExternal("https://github.com/Zencok/BakaMusic/releases/latest");
+            shellUtil.openExternal("https://github.com/ShenYichenCN/BakaMusic_syc/releases/latest");
             return;
         }
 
@@ -230,7 +230,7 @@ export default function Update(props: IUpdateProps) {
                                 data-type="normalButton"
                                 onClick={() => {
                                     shellUtil.openExternal(
-                                        "https://github.com/Zencok/BakaMusic/releases/latest",
+                                        "https://github.com/ShenYichenCN/BakaMusic_syc/releases/latest",
                                     );
                                 }}
                             >

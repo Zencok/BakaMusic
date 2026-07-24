@@ -1253,7 +1253,7 @@ function createCanonicalReleaseAsset(tag: string, name: string): IGitHubReleaseA
         // URL from the validated tag and asset file name.
         browser_download_url: new URL(
             `${encodeURIComponent(tag)}/${encodeURIComponent(name)}`,
-            "https://github.com/Zencok/BakaMusic/releases/download/",
+            "https://github.com/ShenYichenCN/BakaMusic_syc/releases/download/",
         ).toString(),
     };
 }
@@ -1267,7 +1267,7 @@ function createReleaseFromLatestRedirect(location: unknown): IGitHubRelease {
         throw new Error("Latest release redirect is invalid");
     }
     const tagMatch = decodedLocation.match(
-        /\/Zencok\/BakaMusic\/releases\/tag\/(v?\d+\.\d+\.\d+(?:[.-][0-9A-Za-z.-]+)?)(?:[/?#]|$)/,
+        /\/ShenYichenCN\/BakaMusic_syc\/releases\/tag\/(v?\d+\.\d+\.\d+(?:[.-][0-9A-Za-z.-]+)?)(?:[/?#]|$)/,
     );
     if (!tagMatch) {
         throw new Error("Latest release redirect is invalid");

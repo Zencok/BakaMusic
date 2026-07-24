@@ -89,13 +89,19 @@ export default function About() {
                 <AboutInfoRow label={t("settings.about.current_project")}>
                     <AboutLink
                         iconName="logo"
-                        href="https://github.com/Zencok/BakaMusic"
+                        href="https://github.com/ShenYichenCN/BakaMusic_syc"
                     >
-                        BakaMusic@Zencok
+                        BakaMusic_syc@ShenYichenCN
                     </AboutLink>
                 </AboutInfoRow>
 
                 <AboutInfoRow label={t("settings.about.reference_project")}>
+                    <AboutLink
+                        iconName="logo"
+                        href="https://github.com/Zencok/BakaMusic"
+                    >
+                        BakaMusic@Zencok
+                    </AboutLink>
                     <AboutLink
                         iconName="code-bracket-square"
                         href="https://github.com/maotoumao/MusicFreeDesktop"

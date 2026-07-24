@@ -77,7 +77,7 @@ const config: ForgeConfig = {
             certificateFile: process.env.WINDOWS_CERTIFICATE_FILE,
             certificatePassword: process.env.WINDOWS_CERTIFICATE_PASSWORD,
             description: "BakaMusic",
-            website: "https://github.com/Zencok/BakaMusic",
+            website: "https://github.com/ShenYichenCN/BakaMusic_syc",
         } : undefined,
         osxSign: macSigningConfigured ? {
             identity: process.env.MACOS_SIGN_IDENTITY,
@@ -95,7 +95,7 @@ const config: ForgeConfig = {
             appId: "com.zencok.bakamusic",
             compression: "maximum",
             targets: ["nsis", "nsis-web"],
-            webPackageBaseUrl: "https://github.com/Zencok/BakaMusic/releases/download",
+            webPackageBaseUrl: "https://github.com/ShenYichenCN/BakaMusic_syc/releases/download",
             webPackageName: "bakamusic",
             webPackageUrlPrefix: nsisWebGithubAccelerator,
             win: {
