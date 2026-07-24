@@ -1,6 +1,6 @@
 # BakaMusic
 
-[![Stars](https://badgen.net/github/stars/Zencok/BakaMusic)](https://github.com/ShenYichenCN/BakaMusic_syc/stargazers)
+[![Stars](https://badgen.net/github/stars/ShenYichenCN/BakaMusic_syc)](https://github.com/ShenYichenCN/BakaMusic_syc/stargazers)
 [![License](https://badgen.net/badge/license/AGPL-3.0-only/blue)](LICENSE)
 
 **无广告、无内置在线音源、由插件扩展。**
