@@ -14,6 +14,7 @@ export default function CollapsiblePanel(props: ICollapsiblePanelProps) {
             aria-hidden={!open}
             className="side-bar-collapsible-panel"
             data-expanded={open}
+            inert={!open}
             static
         >
             <div
