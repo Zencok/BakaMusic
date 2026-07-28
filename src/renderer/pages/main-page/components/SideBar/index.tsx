@@ -4,6 +4,7 @@ import "./index.scss";
 import MySheets from "./widgets/MySheets";
 import { useMatch, useNavigate } from "react-router-dom";
 import StarredSheets from "./widgets/StarredSheets";
+import CollapsiblePanel from "./widgets/CollapsiblePanel";
 import { useTranslation } from "react-i18next";
 import { Disclosure } from "@headlessui/react";
 import SvgAsset from "@/renderer/components/SvgAsset";
@@ -49,34 +50,38 @@ function NavigationGroup(props: INavigationGroupProps) {
     return (
         <section className="side-bar-navigation-group">
             <Disclosure defaultOpen>
-                <Disclosure.Button
-                    className="side-bar-section-title side-bar-navigation-disclosure-title"
-                    as="div"
-                    role="button"
-                >
-                    <div className="side-bar-section-title-main">
-                        <div className="side-bar-section-chevron">
-                            <SvgAsset iconName="chevron-right"></SvgAsset>
-                        </div>
-                        <div className="side-bar-section-text">{title}</div>
-                    </div>
-                    {action ? (
-                        <button
-                            aria-label={action.title}
-                            className="side-bar-navigation-action"
-                            data-selected={action.selected}
-                            title={action.title}
-                            type="button"
-                            onClick={(event) => {
-                                event.stopPropagation();
-                                action.onClick();
-                            }}
+                {({ open }) => (
+                    <>
+                        <Disclosure.Button
+                            className="side-bar-section-title side-bar-navigation-disclosure-title"
+                            as="div"
+                            role="button"
                         >
-                            <SvgAsset iconName={action.iconName}></SvgAsset>
-                        </button>
-                    ) : null}
-                </Disclosure.Button>
-                <Disclosure.Panel>{navigationList}</Disclosure.Panel>
+                            <div className="side-bar-section-title-main">
+                                <div className="side-bar-section-chevron">
+                                    <SvgAsset iconName="chevron-right"></SvgAsset>
+                                </div>
+                                <div className="side-bar-section-text">{title}</div>
+                            </div>
+                            {action ? (
+                                <button
+                                    aria-label={action.title}
+                                    className="side-bar-navigation-action"
+                                    data-selected={action.selected}
+                                    title={action.title}
+                                    type="button"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        action.onClick();
+                                    }}
+                                >
+                                    <SvgAsset iconName={action.iconName}></SvgAsset>
+                                </button>
+                            ) : null}
+                        </Disclosure.Button>
+                        <CollapsiblePanel open={open}>{navigationList}</CollapsiblePanel>
+                    </>
+                )}
             </Disclosure>
         </section>
     );

@@ -1,5 +1,6 @@
 import "./index.scss";
 import ListItem from "../ListItem";
+import CollapsiblePanel from "../CollapsiblePanel";
 import { useMatch, useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import MusicSheet, { defaultSheet } from "@/renderer/core/music-sheet";
@@ -22,68 +23,72 @@ export default function StarredSheets() {
     return (
         <div className="side-bar-container--starred-sheets">
             <Disclosure defaultOpen>
-                <Disclosure.Button className="title side-bar-section-title" as="div" role="button">
-                    <div className="side-bar-section-title-main">
-                        <div className="side-bar-section-chevron">
-                            <SvgAsset iconName="chevron-right"></SvgAsset>
-                        </div>
-                        <div className="side-bar-section-text">{t("side_bar.starred_sheets")}</div>
-                    </div>
-                </Disclosure.Button>
-                <Disclosure.Panel className="side-bar-sheet-list">
-                    {starredSheets.map((item) => (
-                        <ListItem
-                            key={item.id}
-                            iconName={"musical-note"}
-                            onClick={() => {
-                                if (
-                                    !(
-                                        currentSheetId === item.id &&
-                    currentPlatform === item.platform
-                                    )
-                                ) {
-                                    // 如果不是相同歌单
-                                    navigate(`/main/musicsheet/${item.platform}/${item.id}`, {
-                                        state: {
-                                            sheetItem: item,
-                                        },
-                                    });
-                                }
-                            }}
-                            onContextMenu={(e) => {
-                                showContextMenu({
-                                    x: e.clientX,
-                                    y: e.clientY,
-                                    menuItems: [
-                                        {
-                                            title: t("side_bar.unstar_sheet"),
-                                            icon: "trash",
-                                            onClick() {
-                                                MusicSheet.frontend.unstarMusicSheet(item).then(() => {
-                                                    if (
-                                                        currentSheetId === item.id &&
+                {({ open }) => (
+                    <>
+                        <Disclosure.Button className="title side-bar-section-title" as="div" role="button">
+                            <div className="side-bar-section-title-main">
+                                <div className="side-bar-section-chevron">
+                                    <SvgAsset iconName="chevron-right"></SvgAsset>
+                                </div>
+                                <div className="side-bar-section-text">{t("side_bar.starred_sheets")}</div>
+                            </div>
+                        </Disclosure.Button>
+                        <CollapsiblePanel className="side-bar-sheet-list" open={open}>
+                            {starredSheets.map((item) => (
+                                <ListItem
+                                    key={item.id}
+                                    iconName={"musical-note"}
+                                    onClick={() => {
+                                        if (
+                                            !(
+                                                currentSheetId === item.id &&
                             currentPlatform === item.platform
-                                                    ) {
-                                                        navigate(
-                                                            `/main/musicsheet/${localPluginName}/${defaultSheet.id}`,
-                                                            {
-                                                                replace: true,
-                                                            },
-                                                        );
-                                                    }
-                                                });
-                                            },
-                                        },
-                                    ],
-                                });
-                            }}
-                            selected={
-                                currentSheetId === item.id && currentPlatform === item.platform
-                            }
-                            title={item.title}
-                        ></ListItem>
-                    ))}
-                </Disclosure.Panel>
+                                            )
+                                        ) {
+                                            // 如果不是相同歌单
+                                            navigate(`/main/musicsheet/${item.platform}/${item.id}`, {
+                                                state: {
+                                                    sheetItem: item,
+                                                },
+                                            });
+                                        }
+                                    }}
+                                    onContextMenu={(e) => {
+                                        showContextMenu({
+                                            x: e.clientX,
+                                            y: e.clientY,
+                                            menuItems: [
+                                                {
+                                                    title: t("side_bar.unstar_sheet"),
+                                                    icon: "trash",
+                                                    onClick() {
+                                                        MusicSheet.frontend.unstarMusicSheet(item).then(() => {
+                                                            if (
+                                                                currentSheetId === item.id &&
+                            currentPlatform === item.platform
+                                                            ) {
+                                                                navigate(
+                                                                    `/main/musicsheet/${localPluginName}/${defaultSheet.id}`,
+                                                                    {
+                                                                        replace: true,
+                                                                    },
+                                                                );
+                                                            }
+                                                        });
+                                                    },
+                                                },
+                                            ],
+                                        });
+                                    }}
+                                    selected={
+                                        currentSheetId === item.id && currentPlatform === item.platform
+                                    }
+                                    title={item.title}
+                                ></ListItem>
+                            ))}
+                        </CollapsiblePanel>
+                    </>
+                )}
             </Disclosure>
         </div>
     );

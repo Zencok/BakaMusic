@@ -61,6 +61,34 @@
   gap: 0.08rem;
 }
 
+.side-bar-collapsible-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: translateY(-0.18rem);
+  transition:
+    grid-template-rows 260ms cubic-bezier(0.33, 1, 0.68, 1),
+    opacity 180ms ease,
+    transform 260ms cubic-bezier(0.33, 1, 0.68, 1);
+
+  &[data-expanded="true"] {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.side-bar-collapsible-panel-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .side-bar-collapsible-panel {
+    transition: none;
+  }
+}
+
 .side-bar-playlists {
   margin-top: 1rem;
   padding-top: 0.72rem;

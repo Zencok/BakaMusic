@@ -1,5 +1,6 @@
 import "./index.scss";
 import ListItem from "../ListItem";
+import CollapsiblePanel from "../CollapsiblePanel";
 import { useMatch, useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import MusicSheet, { defaultSheet } from "@/renderer/core/music-sheet";
@@ -26,110 +27,114 @@ export default function MySheets() {
     return (
         <div className="side-bar-container--my-sheets">
             <Disclosure defaultOpen>
-                <Disclosure.Button className="title side-bar-section-title" as="div" role="button">
-                    <div className="side-bar-section-title-main">
-                        <div className="side-bar-section-chevron">
-                            <SvgAsset iconName="chevron-right"></SvgAsset>
-                        </div>
-                        <div className="side-bar-section-text">{t("side_bar.my_sheets")}</div>
-                    </div>
-                    <div className="side-bar-section-actions">
-                        <div
-                            role="button"
-                            className="option-btn"
-                            title={t("plugin.method_import_music_sheet")}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                showModal("ImportMusicSheet", {
-                                    plugins: importablePlugins,
-                                });
-                            }}
-                        >
-                            <SvgAsset iconName="arrow-left-end-on-rectangle"></SvgAsset>
-                        </div>
-                        <div
-                            role="button"
-                            className="option-btn"
-                            title={t("side_bar.create_local_sheet")}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                showModal("AddNewSheet");
-                            }}
-                        >
-                            <SvgAsset iconName="plus"></SvgAsset>
-                        </div>
-                    </div>
-                </Disclosure.Button>
-                <Disclosure.Panel className="side-bar-sheet-list">
-                    {musicSheets.map((item) => (
-                        <ListItem
-                            key={item.id}
-                            iconName={
-                                item.id === defaultSheet.id ? "heart-outline" : "musical-note"
-                            }
-                            onClick={() => {
-                                if (currentSheetId !== item.id) {
-                                    navigate(`/main/musicsheet/${encodeURIComponent(localPluginName)}/${encodeURIComponent(item.id)}`);
-                                }
-                            }}
-                            onContextMenu={(e) => {
-                                if (item.id === defaultSheet.id) {
-                                    return;
-                                }
-                                showContextMenu({
-                                    x: e.clientX,
-                                    y: e.clientY,
-                                    menuItems: [
-                                        {
-                                            title: t("side_bar.rename_sheet"),
-                                            icon: "pencil-square",
-                                            show: item.id !== defaultSheet.id,
-                                            onClick() {
-                                                showModal("SimpleInputWithState", {
-                                                    placeholder: t(
-                                                        "modal.create_local_sheet_placeholder",
-                                                    ),
-                                                    maxLength: 30,
+                {({ open }) => (
+                    <>
+                        <Disclosure.Button className="title side-bar-section-title" as="div" role="button">
+                            <div className="side-bar-section-title-main">
+                                <div className="side-bar-section-chevron">
+                                    <SvgAsset iconName="chevron-right"></SvgAsset>
+                                </div>
+                                <div className="side-bar-section-text">{t("side_bar.my_sheets")}</div>
+                            </div>
+                            <div className="side-bar-section-actions">
+                                <div
+                                    role="button"
+                                    className="option-btn"
+                                    title={t("plugin.method_import_music_sheet")}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        showModal("ImportMusicSheet", {
+                                            plugins: importablePlugins,
+                                        });
+                                    }}
+                                >
+                                    <SvgAsset iconName="arrow-left-end-on-rectangle"></SvgAsset>
+                                </div>
+                                <div
+                                    role="button"
+                                    className="option-btn"
+                                    title={t("side_bar.create_local_sheet")}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        showModal("AddNewSheet");
+                                    }}
+                                >
+                                    <SvgAsset iconName="plus"></SvgAsset>
+                                </div>
+                            </div>
+                        </Disclosure.Button>
+                        <CollapsiblePanel className="side-bar-sheet-list" open={open}>
+                            {musicSheets.map((item) => (
+                                <ListItem
+                                    key={item.id}
+                                    iconName={
+                                        item.id === defaultSheet.id ? "heart-outline" : "musical-note"
+                                    }
+                                    onClick={() => {
+                                        if (currentSheetId !== item.id) {
+                                            navigate(`/main/musicsheet/${encodeURIComponent(localPluginName)}/${encodeURIComponent(item.id)}`);
+                                        }
+                                    }}
+                                    onContextMenu={(e) => {
+                                        if (item.id === defaultSheet.id) {
+                                            return;
+                                        }
+                                        showContextMenu({
+                                            x: e.clientX,
+                                            y: e.clientY,
+                                            menuItems: [
+                                                {
                                                     title: t("side_bar.rename_sheet"),
-                                                    defaultValue: item.title,
-                                                    async onOk(text) {
-                                                        await MusicSheet.frontend.updateSheet(item.id, {
-                                                            title: text,
-                                                        });
-                                                        hideModal();
-                                                    },
-                                                });
-                                            },
-                                        },
-                                        {
-                                            title: t("side_bar.delete_sheet"),
-                                            icon: "trash",
-                                            show: item.id !== defaultSheet.id,
-                                            onClick() {
-                                                MusicSheet.frontend.removeSheet(item.id).then(() => {
-                                                    if (currentSheetId === item.id) {
-                                                        navigate(
-                                                            `/main/musicsheet/${encodeURIComponent(localPluginName)}/${defaultSheet.id}`,
-                                                            {
-                                                                replace: true,
+                                                    icon: "pencil-square",
+                                                    show: item.id !== defaultSheet.id,
+                                                    onClick() {
+                                                        showModal("SimpleInputWithState", {
+                                                            placeholder: t(
+                                                                "modal.create_local_sheet_placeholder",
+                                                            ),
+                                                            maxLength: 30,
+                                                            title: t("side_bar.rename_sheet"),
+                                                            defaultValue: item.title,
+                                                            async onOk(text) {
+                                                                await MusicSheet.frontend.updateSheet(item.id, {
+                                                                    title: text,
+                                                                });
+                                                                hideModal();
                                                             },
-                                                        );
-                                                    }
-                                                });
-                                            },
-                                        },
-                                    ],
-                                });
-                            }}
-                            selected={currentSheetId === item.id}
-                            title={
-                                item.id === defaultSheet.id
-                                    ? t("media.default_favorite_sheet_name")
-                                    : item.title
-                            }
-                        ></ListItem>
-                    ))}
-                </Disclosure.Panel>
+                                                        });
+                                                    },
+                                                },
+                                                {
+                                                    title: t("side_bar.delete_sheet"),
+                                                    icon: "trash",
+                                                    show: item.id !== defaultSheet.id,
+                                                    onClick() {
+                                                        MusicSheet.frontend.removeSheet(item.id).then(() => {
+                                                            if (currentSheetId === item.id) {
+                                                                navigate(
+                                                                    `/main/musicsheet/${encodeURIComponent(localPluginName)}/${defaultSheet.id}`,
+                                                                    {
+                                                                        replace: true,
+                                                                    },
+                                                                );
+                                                            }
+                                                        });
+                                                    },
+                                                },
+                                            ],
+                                        });
+                                    }}
+                                    selected={currentSheetId === item.id}
+                                    title={
+                                        item.id === defaultSheet.id
+                                            ? t("media.default_favorite_sheet_name")
+                                            : item.title
+                                    }
+                                ></ListItem>
+                            ))}
+                        </CollapsiblePanel>
+                    </>
+                )}
             </Disclosure>
         </div>
     );
