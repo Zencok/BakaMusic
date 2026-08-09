@@ -51,10 +51,6 @@ function testBackupFormat() {
     assert.equal(envelope.version, BACKUP_VERSION);
     assert.equal(envelope.createdAt, 1234);
     assert.deepEqual(parseBackupPayload(serialized), [fixtureSheet()]);
-    assert.deepEqual(
-        parseBackupPayload(JSON.stringify({ musicSheets: [fixtureSheet()] })),
-        [fixtureSheet()],
-    );
     const untitledSheet = { ...fixtureSheet(), title: "" };
     assert.deepEqual(
         parseBackupPayload(createBackupPayload([untitledSheet], 1234)),
@@ -115,8 +111,14 @@ function testBackupFormat() {
     );
     assert.deepEqual(parseBackupPayload(numericPayload), [numericIdSheet]);
 
-    // Backup v2 stringified numeric ids. Restore canonical safe-integer text
-    // to its original number while retaining identifiers with leading zeros.
+    // Restore accepts the v3 contract only. Earlier root-level and v2 payloads
+    // are rejected instead of guessing plugin-owned identifier types.
+    assert.throws(
+        () => parseBackupPayload(JSON.stringify({
+            musicSheets: [fixtureSheet()],
+        })),
+        /schema or version/,
+    );
     const version2Payload = JSON.stringify({
         schema: BACKUP_SCHEMA,
         version: 2,
@@ -132,9 +134,9 @@ function testBackupFormat() {
             }],
         },
     });
-    assert.deepEqual(
-        parseBackupPayload(version2Payload)[0].musicList.map(({ id }) => id),
-        [1234567890, "001234567890", "track-id"],
+    assert.throws(
+        () => parseBackupPayload(version2Payload),
+        /schema or version/,
     );
 
     // Version 3 preserves an intentionally string-valued numeric identifier.
