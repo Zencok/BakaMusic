@@ -1,8 +1,10 @@
 export const BACKUP_SCHEMA = "bakamusic.music-sheet-backup";
-export const BACKUP_VERSION = 2;
+export const BACKUP_VERSION = 3;
 export const MAX_BACKUP_BYTES = 128 * 1024 * 1024;
 export const MAX_BACKUP_SHEETS = 2_000;
 export const MAX_BACKUP_TRACKS = 200_000;
+
+const STRINGIFIED_TRACK_ID_BACKUP_VERSION = 2;
 
 interface IBackupEnvelope {
     schema: typeof BACKUP_SCHEMA;
@@ -78,13 +80,44 @@ function requireIdentityString(
     return text;
 }
 
+/**
+ * Track ids are plugin input, so their JSON scalar type is part of the
+ * contract. Some lyric APIs return word timing only when a numeric song id is
+ * sent as a JSON number. Backup v2 stringified every numeric id and therefore
+ * changed those requests after restore.
+ */
+function normalizeMusicItemId(
+    value: unknown,
+    restoreStringifiedNumber: boolean,
+): string | number | null {
+    if (typeof value === "number") {
+        return Number.isFinite(value) ? value : null;
+    }
+    if (typeof value === "bigint") {
+        return coerceIdentityString(value);
+    }
+    const text = coerceIdentityString(value);
+    if (text === null || !restoreStringifiedNumber) {
+        return text;
+    }
+
+    const numericId = Number(text);
+    return Number.isSafeInteger(numericId) && String(numericId) === text
+        ? numericId
+        : text;
+}
+
 function normalizeMusicItem(
     musicItem: unknown,
+    restoreStringifiedNumber: boolean,
 ): IMusic.IMusicItem | null {
     if (!isRecord(musicItem)) {
         return null;
     }
-    const id = coerceIdentityString(musicItem.id);
+    const id = normalizeMusicItemId(
+        musicItem.id,
+        restoreStringifiedNumber,
+    );
     const platform = coerceIdentityString(musicItem.platform);
     if (id === null || platform === null) {
         // Drop unusable tracks instead of failing the whole backup/restore.
@@ -100,7 +133,10 @@ function normalizeMusicItem(
     } as IMusic.IMusicItem;
 }
 
-function validateMusicSheetList(value: unknown) {
+function validateMusicSheetList(
+    value: unknown,
+    restoreStringifiedTrackIds = false,
+) {
     if (!Array.isArray(value) || value.length > MAX_BACKUP_SHEETS) {
         throw new Error("Invalid backup music sheet list");
     }
@@ -128,7 +164,10 @@ function validateMusicSheetList(value: unknown) {
             throw new Error(`Invalid music list at sheet ${sheetIndex}`);
         }
         const musicList = rawMusicList
-            .map((musicItem) => normalizeMusicItem(musicItem))
+            .map((musicItem) => normalizeMusicItem(
+                musicItem,
+                restoreStringifiedTrackIds,
+            ))
             .filter((musicItem): musicItem is IMusic.IMusicItem => Boolean(musicItem));
         totalTracks += musicList.length;
         if (totalTracks > MAX_BACKUP_TRACKS) {
@@ -198,13 +237,15 @@ export function parseBackupPayload(data: string | Record<string, unknown>) {
         return validateMusicSheetList(parsed.musicSheets);
     }
 
-    if (
-        parsed.schema !== BACKUP_SCHEMA
-        || parsed.version !== BACKUP_VERSION
-        || !isRecord(parsed.data)
-    ) {
+    if (parsed.schema !== BACKUP_SCHEMA || !isRecord(parsed.data)) {
         throw new Error("Unsupported backup schema or version");
     }
 
-    return validateMusicSheetList(parsed.data.musicSheets);
+    if (parsed.version === BACKUP_VERSION) {
+        return validateMusicSheetList(parsed.data.musicSheets);
+    }
+    if (parsed.version === STRINGIFIED_TRACK_ID_BACKUP_VERSION) {
+        return validateMusicSheetList(parsed.data.musicSheets, true);
+    }
+    throw new Error("Unsupported backup schema or version");
 }

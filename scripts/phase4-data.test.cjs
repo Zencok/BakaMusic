@@ -96,7 +96,8 @@ function testBackupFormat() {
         })),
         /schema or version/,
     );
-    // Plugin tracks often use numeric ids; coerce instead of failing backup.
+    // A numeric plugin id must keep its JSON scalar type. QQ and other lyric
+    // APIs use that type when selecting rich, word-timed lyric responses.
     const numericIdSheet = {
         id: "favorite",
         platform: "netease",
@@ -108,14 +109,43 @@ function testBackupFormat() {
         }],
     };
     const numericPayload = createBackupPayload([numericIdSheet], 1234);
-    assert.deepEqual(parseBackupPayload(numericPayload), [{
-        ...numericIdSheet,
-        musicList: [{
-            id: "1234567890",
-            platform: "netease",
-            title: "Numeric id track",
-        }],
-    }]);
+    assert.equal(
+        JSON.parse(numericPayload).data.musicSheets[0].musicList[0].id,
+        1234567890,
+    );
+    assert.deepEqual(parseBackupPayload(numericPayload), [numericIdSheet]);
+
+    // Backup v2 stringified numeric ids. Restore canonical safe-integer text
+    // to its original number while retaining identifiers with leading zeros.
+    const version2Payload = JSON.stringify({
+        schema: BACKUP_SCHEMA,
+        version: 2,
+        createdAt: 1234,
+        data: {
+            musicSheets: [{
+                ...fixtureSheet(),
+                musicList: [
+                    fixtureMusic("1234567890"),
+                    fixtureMusic("001234567890"),
+                    fixtureMusic("track-id"),
+                ],
+            }],
+        },
+    });
+    assert.deepEqual(
+        parseBackupPayload(version2Payload)[0].musicList.map(({ id }) => id),
+        [1234567890, "001234567890", "track-id"],
+    );
+
+    // Version 3 preserves an intentionally string-valued numeric identifier.
+    const stringNumericIdSheet = {
+        ...fixtureSheet(),
+        musicList: [fixtureMusic("1234567890")],
+    };
+    assert.deepEqual(
+        parseBackupPayload(createBackupPayload([stringNumericIdSheet], 1234)),
+        [stringNumericIdSheet],
+    );
 
     // Unusable tracks are dropped so one bad row cannot block the whole backup.
     const mixedSheet = {
