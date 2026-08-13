@@ -56,6 +56,51 @@ async function fetchJson(url) {
     };
 }
 
+function releaseAssetTarget(url) {
+    const match = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/releases\/download\/([^/]+)\/(.+)$/
+        .exec(url);
+    if (!match) {
+        return null;
+    }
+    const [, owner, repo, tag, fileName] = match;
+    return { owner, repo, tag, fileName: decodeURIComponent(fileName) };
+}
+
+/**
+ * baka-native is private, and private release assets are unreachable through the
+ * github.com/<owner>/<repo>/releases/download/... web path: that route ignores
+ * bearer tokens and always answers 404. Assets must be pulled from the REST API
+ * asset endpoint with an octet-stream accept header instead. Public repositories
+ * still work either way, so the canonical download URL stays the recorded one.
+ */
+async function fetchReleaseAssetJson(url) {
+    const target = releaseAssetTarget(url);
+    if (!target) {
+        return fetchJson(url);
+    }
+    const release = await fetchJson(
+        `https://api.github.com/repos/${target.owner}/${target.repo}`
+        + `/releases/tags/${encodeURIComponent(target.tag)}`,
+    );
+    const asset = (release.value.assets || []).find((item) => item.name === target.fileName);
+    assert(asset?.url, `Release asset not found: ${target.fileName} in ${target.tag}`);
+    const assetUrl = new URL(asset.url);
+    assert(assetUrl.protocol === "https:" && assetUrl.hostname === "api.github.com",
+        `Release asset URL is outside the GitHub API: ${asset.url}`);
+
+    const response = await fetch(asset.url, {
+        headers: { ...authHeaders(), accept: "application/octet-stream" },
+    });
+    if (!response.ok) {
+        throw new Error(`Request failed (${response.status}): ${url}`);
+    }
+    const text = await response.text();
+    return {
+        digest: crypto.createHash("sha256").update(text).digest("hex"),
+        value: JSON.parse(text),
+    };
+}
+
 function isNativeRelease(value) {
     return !value.draft
         && !value.prerelease
@@ -71,6 +116,23 @@ function appElectronVersion() {
         return String(pkg.devDependencies?.electron || "").replace(/^[^\d]*/, "");
     } catch {
         return "";
+    }
+}
+
+/**
+ * Fields that describe the developer prebuilt tree rather than the pinned
+ * release, so the upstream manifest never carries them. Carried over instead of
+ * being dropped on every automated update.
+ */
+function localAnnotations() {
+    try {
+        const current = JSON.parse(fs.readFileSync(destination, "utf8"));
+        return {
+            devPrebuilt: current.devPrebuilt,
+            notes: current.notes,
+        };
+    } catch {
+        return {};
     }
 }
 
@@ -94,12 +156,19 @@ async function resolveManifestUrl() {
         const manifestUrl = `https://github.com/${repository}/releases/download/`
             + `${release.tag_name}/native-manifest-v1.json`;
         try {
-            const manifest = await fetchJson(manifestUrl);
+            const manifest = await fetchReleaseAssetJson(manifestUrl);
             if (manifest.value.complete === true && manifest.value.phase === "complete") {
                 return manifestUrl;
             }
-        } catch {
-            // Staged release without manifest yet.
+            console.warn(
+                `[native-manifest] skipping ${release.tag_name}: `
+                + `complete=${manifest.value.complete} phase=${manifest.value.phase}`,
+            );
+        } catch (error) {
+            // Staged release, missing manifest asset, or a transient API failure.
+            console.warn(
+                `[native-manifest] skipping ${release.tag_name}: ${error.message}`,
+            );
         }
     }
     throw new Error("No complete baka-native release is available");
@@ -115,7 +184,7 @@ async function main() {
     assert(parsedUrl.pathname.endsWith("/native-manifest-v1.json"),
         "Unexpected manifest asset name");
 
-    const { digest, value } = await fetchJson(manifestUrl);
+    const { digest, value } = await fetchReleaseAssetJson(manifestUrl);
     assert(value.schemaVersion === 1, "Unsupported schemaVersion");
     assert(value.complete === true && value.phase === "complete", "Release is not complete");
     assert(value.repository === repository, "Unexpected repository field");
@@ -154,6 +223,7 @@ async function main() {
         }
     }
 
+    const annotations = localAnnotations();
     const pinned = {
         schemaVersion: 1,
         complete: true,
@@ -165,9 +235,13 @@ async function main() {
         taglibPolicy: value.taglibPolicy || "latest-at-build",
         modules: requiredModules,
         sourceCommit: value.sourceCommit || null,
+        license: value.license,
         platforms: Object.fromEntries(
             requiredTargets.map((target) => [target, value.platforms[target]]),
         ),
+        generatedAt: value.generatedAt,
+        devPrebuilt: annotations.devPrebuilt,
+        notes: annotations.notes,
         releaseManifest: {
             url: manifestUrl,
             sha256: digest,
