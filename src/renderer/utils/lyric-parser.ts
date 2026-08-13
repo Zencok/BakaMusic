@@ -99,6 +99,16 @@ const LQE_REG = /^\s*\[Lyricify Quick Export\]/i;
 const LYL_REG = /^\s*\[type:LyricifyLines\]/im;
 const LYS_REG = /^\s*\[[0-8]\].+?\(\d+,\d+\)/m;
 const YRC_WORD_REG = /\(\d+,\d+,0\)/;
+// 这些格式没有人声布局语法，AMLL 只能从"整行被括号包住"推断 isBG；
+// TTML、LYS、LQE 自带演唱者标记，不在此列。
+const PARENTHESIS_INFERRED_VOCAL_FORMATS = new Set<ILyric.LyricFormat>([
+    "eslrc",
+    "lrc",
+    "lrc-a2",
+    "lyl",
+    "qrc",
+    "yrc",
+]);
 const META_REG = /\[([a-zA-Z]+):([^\]]+)\]/g;
 const PARALLEL_LINE_EPSILON = 0.03;
 // 空行要被当成上一句的收尾，其后的静默至少得有一段间奏的长度
@@ -129,6 +139,8 @@ const GENERIC_LABEL_PREFIX_REG = /^\s*[^:：\r\n]{1,24}\s*[:：]/;
 const LEADING_CREDIT_WINDOW_SECONDS = 30;
 const LEADING_NAME_DURATION_SECONDS = 0.8;
 const DUET_TURN_GAP_SECONDS = 0.12;
+// 一段跨行的括号和声最多跨几行，避免括号不配对时吞掉后面整首歌
+const CROSS_LINE_VOCAL_MAX_LINES = 8;
 const ROMANIZATION_HINT_REG = /(?:shi|chi|tsu|kyo|kyu|kya|ryo|ryu|rya|sho|shu|sha|cho|chu|cha|jyo|jyu|jya|dzu|desu|boku|kimi|kono|sono|ano|yume|sora|kokoro|namida|hikari|kaze|hana|machi|sekai|mirai|hoshi|koe|uta|sarang|hae)/i;
 const CREDIT_ROMANIZATION_PREFIXES = new Set([
     "shi",
@@ -449,6 +461,7 @@ function convertAmlLyricLines(
 function parseWithAmlLibraries(
     raw: string,
     hint?: ILyric.LyricFormat,
+    artist?: string,
 ): IParsedLyricContent | null {
     const format = detectAmlLyricFormat(raw, hint);
     if (!format) {
@@ -523,13 +536,18 @@ function parseWithAmlLibraries(
             return null;
         }
         const hasNativeVocalLayout = lines.some((line) => line.isBG || line.isDuet);
-        if (format === "lrc" && hasNativeVocalLayout) {
-            // 行级 LRC 没有人声布局标记，AMLL 的 isBG 只能出自"整行被括号包住"
+        if (
+            PARENTHESIS_INFERRED_VOCAL_FORMATS.has(format)
+            && hasNativeVocalLayout
+            && getNormalizedArtists(artist).length >= 2
+        ) {
+            // 这些格式没有人声布局语法，AMLL 的 isBG 只能出自"整行被括号包住"
             // 这一条推断，而它直接裁掉首尾字符（`(a) main (b)` 会变成
             // `a) main (b`），既区分不了日语注音，也让这行被 isBG 挡在
             // canReceiveLyricField 之外，拿不到独立提供的翻译和罗马音。
-            // 交回自有 LRC 解析，由 expandParentheticalDuetVocals 用配对匹配、
-            // 假名保护和演唱者数量校验来判断这行是不是对唱。
+            // 合唱歌曲里这种整行括号是对唱和声，交回自有解析，由
+            // expandParentheticalDuetVocals 用配对匹配和假名保护来判定；
+            // 独唱歌曲的括号更可能是真背景人声，保留 AMLL 的判断。
             return null;
         }
         return {
@@ -1086,10 +1104,11 @@ function parsePlainTextLyric(raw: string): IParsedLrcItem[] {
 function parseLyricItemsByFormat(
     raw: string,
     hint?: ILyric.LyricFormat,
+    artist?: string,
 ): IParsedLyricContent {
     raw = sanitizeLyricRaw(normalizeRawLyricText(raw));
     const amlFormat = detectAmlLyricFormat(raw, hint);
-    const amlParsed = parseWithAmlLibraries(raw, hint);
+    const amlParsed = parseWithAmlLibraries(raw, hint, artist);
     if (amlParsed) {
         if (amlFormat === "eslrc") {
             const compatibleItems = parseMixedTimestampLyric(raw);
@@ -1574,6 +1593,178 @@ function applyDuetSpeakerLayout(
             || !!item.translation?.trim()
             || !!item.romanization?.trim();
     });
+}
+
+function removeTrailingTextFromWords(
+    words: ILyric.IWordData[] | undefined,
+    suffixLength: number,
+) {
+    if (!words?.length || suffixLength <= 0) {
+        return words;
+    }
+
+    let remaining = suffixLength;
+    const strippedWords: ILyric.IWordData[] = [];
+
+    for (let index = words.length - 1; index >= 0; index--) {
+        const word = words[index];
+        if (remaining <= 0) {
+            strippedWords.unshift(word);
+            continue;
+        }
+
+        if (remaining >= word.text.length) {
+            remaining -= word.text.length;
+            continue;
+        }
+
+        const text = word.text.slice(0, word.text.length - remaining);
+        remaining = 0;
+        if (text) {
+            strippedWords.unshift({
+                ...word,
+                space: !text.trim(),
+                text,
+            });
+        }
+    }
+
+    return strippedWords.map((word, index) => ({
+        ...word,
+        index,
+    }));
+}
+
+function stripSurroundingVocalParenthesis(
+    item: IParsedLrcItem,
+    edge: "leading" | "trailing",
+) {
+    const matcher = edge === "leading"
+        ? /^\s*[（(]\s*/
+        : /\s*[）)]\s*$/;
+    const cut = (text: string) => (
+        edge === "leading"
+            ? text.replace(matcher, "")
+            : text.replace(matcher, "")
+    );
+    const cutWords = (
+        words: ILyric.IWordData[] | undefined,
+        length: number,
+    ) => (
+        edge === "leading"
+            ? removeLeadingTextFromWords(words, length)
+            : removeTrailingTextFromWords(words, length)
+    );
+
+    const lyricMatch = item.lrc.match(matcher);
+    if (lyricMatch) {
+        item.lrc = cut(item.lrc);
+        item.words = cutWords(item.words, lyricMatch[0].length);
+    }
+
+    const translationMatch = item.translation?.match(matcher);
+    if (translationMatch && item.translation) {
+        item.translation = cut(item.translation);
+    }
+
+    const romanizationMatch = item.romanization?.match(matcher);
+    if (romanizationMatch && item.romanization) {
+        item.romanization = cut(item.romanization);
+        item.romanizationWords = cutWords(
+            item.romanizationWords,
+            romanizationMatch[0].length,
+        );
+    }
+}
+
+function countVocalParentheses(text: string) {
+    let open = 0;
+    let close = 0;
+
+    for (const char of text) {
+        if (char === "（" || char === "(") {
+            open++;
+        } else if (char === "）" || char === ")") {
+            close++;
+        }
+    }
+
+    return {
+        close,
+        open,
+    };
+}
+
+/**
+ * 逐字歌词按显示宽度断行，一段和声的开括号和闭括号会落到不同行上
+ * （`（目覚ましのスヌーズのスクショが` / `溜まっている）`），行内成对
+ * 匹配看不到它。这里把"以括号起头却没闭合、直到后面某行才闭合"的整段
+ * 认成对唱：去掉首尾括号并整体换边，翻译、罗马音同步处理。
+ */
+function applyCrossLineParentheticalVocals(
+    items: IParsedLrcItem[],
+    artist?: string,
+) {
+    if (getNormalizedArtists(artist).length < 2) {
+        return false;
+    }
+
+    let applied = false;
+
+    for (let index = 0; index < items.length; index++) {
+        const startText = items[index].lrc.trim();
+        if (!/^[（(]/.test(startText) || isCreditSideLine(startText)) {
+            continue;
+        }
+
+        const startCount = countVocalParentheses(startText);
+        // 行内已经闭合的交给 expandParentheticalDuetVocals 按成对括号处理
+        if (startCount.close >= startCount.open) {
+            continue;
+        }
+
+        let depth = startCount.open - startCount.close;
+        let endIndex = -1;
+        for (
+            let scan = index + 1;
+            scan < items.length
+                && scan - index < CROSS_LINE_VOCAL_MAX_LINES;
+            scan++
+        ) {
+            const text = items[scan].lrc.trim();
+            if (!text || isCreditSideLine(text)) {
+                break;
+            }
+
+            const count = countVocalParentheses(text);
+            depth += count.open - count.close;
+            if (depth <= 0) {
+                if (/[）)]$/.test(text)) {
+                    endIndex = scan;
+                }
+                break;
+            }
+        }
+        if (endIndex < 0) {
+            continue;
+        }
+
+        for (let cursor = index; cursor <= endIndex; cursor++) {
+            const item = items[cursor];
+            item.isBG = false;
+            item.isDuet = true;
+            if (cursor === index) {
+                stripSurroundingVocalParenthesis(item, "leading");
+            }
+            if (cursor === endIndex) {
+                stripSurroundingVocalParenthesis(item, "trailing");
+            }
+        }
+        applied = true;
+        index = endIndex;
+    }
+
+    return applied;
 }
 
 interface IParentheticalVocalParts {
@@ -2670,6 +2861,27 @@ function inheritRepeatedLineRomanization(items: IParsedLrcItem[]) {
     return inherited;
 }
 
+/**
+ * 括号和声段落在拆分时正文已经去掉了首尾括号，但翻译、罗马音是之后才按
+ * 时间合并进来的，仍带着原样的括号（跨行段落尤其明显：一半留着 `（`，
+ * 另一半留着 `）`）。合并完成后按正文再对齐一次。
+ */
+function alignDuetSecondaryParentheses(items: IParsedLrcItem[]) {
+    items.forEach((item) => {
+        if (!item.isDuet && !item.isBG && !item.isDuetPartner) {
+            return;
+        }
+
+        const text = item.lrc.trim();
+        if (!/^[（(]/.test(text)) {
+            stripSurroundingVocalParenthesis(item, "leading");
+        }
+        if (!/[）)]$/.test(text)) {
+            stripSurroundingVocalParenthesis(item, "trailing");
+        }
+    });
+}
+
 // ============ 伪逐字生成 ============
 
 function generateVirtualWords(
@@ -2782,6 +2994,8 @@ export default class LyricParser {
                 || this.hasRomanization;
         }
 
+        alignDuetSecondaryParentheses(this.lrcItems);
+
         this.hasRomanization = inheritRepeatedLineRomanization(this.lrcItems)
             || this.hasRomanization;
     }
@@ -2806,7 +3020,11 @@ export default class LyricParser {
         const metaPrefix = extractMetaPrefix(raw);
         const meta = parseMeta(metaPrefix);
 
-        const parsedContent = parseLyricItemsByFormat(raw, this.format);
+        const parsedContent = parseLyricItemsByFormat(
+            raw,
+            this.format,
+            this._musicItem?.artist,
+        );
         const parsedItems = parsedContent.items;
         Object.assign(meta, parsedContent.meta);
         const collapsed = parsedContent.preserveVocalLayout
@@ -2840,9 +3058,17 @@ export default class LyricParser {
         // 补全 endTime
         fillEndTimes(items);
 
+        // 逐字歌词里跨行的括号段落（首行开括号、末行闭括号）整段都是和声，
+        // 行内成对匹配看不到，先单独认出来再走后面的换边逻辑。
+        const hasCrossLineDuet = !preserveVocalLayout
+            && applyCrossLineParentheticalVocals(
+                items,
+                this._musicItem?.artist,
+            );
+
         // 双歌手且没有演唱者标签时，从前置信息结束后按演唱段落交替布局。
         // 制作信息和任意 A:BC 标签仅保留展示，不参与换边。
-        if (!hasStructuredDuetLayout) {
+        if (!hasStructuredDuetLayout && !hasCrossLineDuet) {
             applyUnlabeledDuetLayout(items, this._musicItem);
         }
 

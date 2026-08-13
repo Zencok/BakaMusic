@@ -540,4 +540,110 @@ function createMusicItem(artist) {
     );
 }
 
+// 逐字歌词按显示宽度断行，一段和声的开括号和闭括号会落到不同行上，
+// 行内成对匹配看不到，整段都要认成对唱并去掉首尾括号。
+{
+    const parser = new LyricParser([
+        "[00:13.123]<00:13.123>目<00:13.323>覚<00:13.507>まし<00:15.547>",
+        "[00:13.123]<00:13.123>me <00:13.322>za <00:13.506>mashi<00:15.547>",
+        "[00:13.123]闹钟延迟功能的截图",
+        "[00:16.355]<00:16.355>（<00:16.523>目<00:16.684>覚<00:16.859>まし<00:18.540>",
+        "[00:16.355]<00:16.355>（ <00:16.523>me <00:16.684>za <00:16.858>mashi<00:18.540>",
+        "[00:16.355]（闹钟延迟功能的截图",
+        "[00:18.540]<00:18.540>溜<00:18.724>ま<00:18.852>る<00:19.341>）<00:19.341>",
+        "[00:18.540]<00:18.540>ta <00:18.724>ma <00:18.852>ru <00:19.341>）<00:19.341>",
+        "[00:18.540]越截越多）",
+    ].join("\n"), {
+        musicItem: createMusicItem("真島ゆろ, 重音テト"),
+    });
+    const lines = parser.getLyricItems();
+
+    assert.deepEqual(
+        lines.map((line) => [line.lrc, line.isDuet]),
+        [
+            ["目覚まし", false],
+            ["目覚まし", true],
+            ["溜まる", true],
+        ],
+    );
+    // 首尾括号要从正文、翻译、罗马音和各自的逐字数据里一并去掉
+    assert.deepEqual(
+        lines.map((line) => line.translation),
+        ["闹钟延迟功能的截图", "闹钟延迟功能的截图", "越截越多"],
+    );
+    assert.equal(lines[1].romanization, "me za mashi");
+    assert.equal(lines[2].romanization, "ta ma ru");
+    lines.forEach((line) => {
+        assert.equal(line.words.map((word) => word.text).join(""), line.lrc);
+        assert.doesNotMatch(line.lrc, /[（()）]/);
+        assert.doesNotMatch(
+            line.romanizationWords.map((word) => word.text).join(""),
+            /[（()）]/,
+        );
+    });
+}
+
+// 括号一直不闭合时不能把后面整首歌吞成对唱
+{
+    const parser = new LyricParser([
+        "[00:01.000]（开头就没闭合",
+        "[00:04.000]第二句",
+        "[00:07.000]第三句",
+    ].join("\n"), {
+        musicItem: createMusicItem("甲, 乙"),
+    });
+
+    assert.deepEqual(
+        parser.getLyricItems().map((line) => [line.lrc, line.isDuet]),
+        [["（开头就没闭合", false], ["第二句", false], ["第三句", false]],
+    );
+}
+
+// 逐字 QRC 的整行括号和声：AMLL 会剥掉括号并标成 isBG，让这行既拿不到
+// 按时间合并的翻译、罗马音，也渲染成背景人声而不是对唱。合唱歌曲要交回
+// 自有解析；括号在正文、翻译、罗马音里都得去掉。
+{
+    const parser = new LyricParser([
+        "[19341,3126]流(19341,300)し(19641,300)台(19941,3126)",
+        "[22467,3134]（(22467,100)流(22567,300)し(22867,300)台(23167,2434)）(25601,0)",
+    ].join("\n"), {
+        musicItem: createMusicItem("真島ゆろ, 重音テト"),
+        translation: [
+            "[00:19.034]水槽里的碗筷",
+            "[00:22.046]（水槽里的碗筷）",
+        ].join("\n"),
+        romanization: [
+            "[19340,3125]na (19340,300)ga (19640,300)shi (19940,3125)",
+            "[22466,3134]（ (22466,100)na (22566,300)ga (22866,300)shi (23166,2434)）(25600,0)",
+        ].join("\n"),
+    });
+    const lines = parser.getLyricItems();
+
+    assert.deepEqual(
+        lines.map((line) => [line.lrc, line.isBG, line.isDuet]),
+        [["流し台", false, false], ["流し台", false, true]],
+    );
+    assert.deepEqual(
+        lines.map((line) => line.translation),
+        ["水槽里的碗筷", "水槽里的碗筷"],
+    );
+    lines.forEach((line) => {
+        assert.doesNotMatch(line.lrc, /[（()）]/);
+        assert.doesNotMatch(line.translation, /[（()）]/);
+        assert.doesNotMatch(line.romanization, /[（()）]/);
+        assert.equal(line.words.map((word) => word.text).join(""), line.lrc);
+    });
+}
+
+// 独唱歌曲的括号更像真背景人声，保留 AMLL 的 isBG 判断
+{
+    const [line] = new LyricParser(
+        "[1000,1000]（(1000,100)Back(1100,300)ground(1400,600)）(2000,0)",
+        { musicItem: createMusicItem("独唱歌手") },
+    ).getLyricItems();
+
+    assert.equal(line.lrc, "Background");
+    assert.equal(line.isBG, true);
+}
+
 console.log("lyric-duet: all assertions passed");
