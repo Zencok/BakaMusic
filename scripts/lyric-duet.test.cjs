@@ -465,4 +465,79 @@ function createMusicItem(artist) {
     }
 }
 
+// 行级 LRC 中整行被括号包住的和声段落：AMLL 的 parseLrc 会把它推断成
+// isBG 并裁掉首尾字符，导致这行既拿不到独立提供的翻译、罗马音，也不会
+// 被渲染成对唱。应交回自有解析，按对唱行处理。
+{
+    const parser = new LyricParser([
+        "[00:13.243]目覚ましのスヌーズのスクショが溜まっている",
+        "[00:16.388]（目覚ましのスヌーズのスクショが溜まっている）",
+        "[00:17.649]",
+        "[00:19.372]流し台 箸と器洗わずに乾いている",
+    ].join("\n"), {
+        musicItem: createMusicItem("真島ゆろ, 重音テト, 初音ミク"),
+        translation: [
+            "[00:13.243]闹钟贪睡提醒的截图",
+            "[00:16.388]（闹钟贪睡提醒的截图）",
+            "[00:17.649]",
+            "[00:19.372]洗碗池里的筷子和碗碟",
+        ].join("\n"),
+        romanization: [
+            "[00:13.243]me za ma shi no su nuu zu no su ku sho ga ta ma tte i ru",
+            "[00:16.388]",
+            "[00:17.649]",
+            "[00:19.372]na ga shi da i ha shi to u tsu wa a ra wa zu ni ka wa i te i ru",
+        ].join("\n"),
+    });
+    const lines = parser.getLyricItems();
+
+    assert.deepEqual(
+        lines.map((line) => [line.lrc, line.isBG, line.isDuet]),
+        [
+            ["目覚ましのスヌーズのスクショが溜まっている", false, false],
+            ["目覚ましのスヌーズのスクショが溜まっている", false, true],
+            ["流し台 箸と器洗わずに乾いている", false, false],
+        ],
+    );
+    // 括号行必须拿到自己的翻译，且译文不能只剩它单独带着括号
+    assert.equal(lines[1].translation, "闹钟贪睡提醒的截图");
+    // 音源只给主行标了罗马音，逐字相同的和声行继承主行文本
+    assert.equal(lines[1].romanization, lines[0].romanization);
+    assert.equal(parser.hasTranslation, true);
+    assert.equal(parser.hasRomanization, true);
+    // 紧跟歌词的空行只是逐行对齐占位，采信它会让这句唱到一半就淡出
+    assert.equal(lines[1].endTime, 19.372);
+}
+
+// 空行后确实接着一段间奏时，仍然按收尾标记采信
+{
+    const parser = new LyricParser([
+        "[00:10.000]第一句",
+        "[00:13.000]第二句",
+        "[00:16.000]",
+        "[00:30.000]间奏后的句子",
+    ].join("\n"), {
+        musicItem: createMusicItem("独唱歌手"),
+    });
+    const lines = parser.getLyricItems();
+
+    assert.deepEqual(lines.map((line) => line.lrc), ["第一句", "第二句", "间奏后的句子"]);
+    assert.equal(lines[1].endTime, 16);
+}
+
+// 行内假名括号是注音，不能拆成对唱
+{
+    const parser = new LyricParser([
+        "[00:01.000]漢字（かんじ）を読む",
+        "[00:04.000]次の行",
+    ].join("\n"), {
+        musicItem: createMusicItem("甲, 乙"),
+    });
+
+    assert.deepEqual(
+        parser.getLyricItems().map((line) => [line.lrc, line.isDuet]),
+        [["漢字（かんじ）を読む", false], ["次の行", false]],
+    );
+}
+
 console.log("lyric-duet: all assertions passed");

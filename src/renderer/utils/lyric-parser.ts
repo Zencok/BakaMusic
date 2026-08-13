@@ -101,6 +101,9 @@ const LYS_REG = /^\s*\[[0-8]\].+?\(\d+,\d+\)/m;
 const YRC_WORD_REG = /\(\d+,\d+,0\)/;
 const META_REG = /\[([a-zA-Z]+):([^\]]+)\]/g;
 const PARALLEL_LINE_EPSILON = 0.03;
+// 空行要被当成上一句的收尾，其后的静默至少得有一段间奏的长度
+// （120BPM 4/4 拍的两个小节约 4 秒），否则只是逐行对齐用的占位。
+const BLANK_LINE_INTERLUDE_SECONDS = 4;
 const LYRIC_FIELD_DIRECT_EPSILON = 0.3;
 const LYRIC_FIELD_ANCHOR_EPSILON = 1;
 const LYRIC_FIELD_ANCHOR_DURATION_RATIO = 0.4;
@@ -520,6 +523,15 @@ function parseWithAmlLibraries(
             return null;
         }
         const hasNativeVocalLayout = lines.some((line) => line.isBG || line.isDuet);
+        if (format === "lrc" && hasNativeVocalLayout) {
+            // 行级 LRC 没有人声布局标记，AMLL 的 isBG 只能出自"整行被括号包住"
+            // 这一条推断，而它直接裁掉首尾字符（`(a) main (b)` 会变成
+            // `a) main (b`），既区分不了日语注音，也让这行被 isBG 挡在
+            // canReceiveLyricField 之外，拿不到独立提供的翻译和罗马音。
+            // 交回自有 LRC 解析，由 expandParentheticalDuetVocals 用配对匹配、
+            // 假名保护和演唱者数量校验来判断这行是不是对唱。
+            return null;
+        }
         return {
             items: convertAmlLyricLines(
                 lines,
@@ -1004,7 +1016,55 @@ function parseLrcLyric(raw: string): IParsedLrcItem[] {
         }
     }
 
-    return items.sort((a, b) => a.time - b.time);
+    return finalizeLrcBlankLines(items.sort((a, b) => a.time - b.time));
+}
+
+/**
+ * LRC 里的空时间行可能是上一句的收尾标记，也可能只是音源用来和翻译、
+ * 罗马音逐行对齐的占位。只有后面确实接着一段静默时才当作收尾采信，
+ * 否则上一句会在还在演唱时就被截断淡出。空行本身不进入渲染。
+ * 整段都没有文本时按原样返回。
+ */
+function finalizeLrcBlankLines(items: IParsedLrcItem[]): IParsedLrcItem[] {
+    const meaningfulItems: IParsedLrcItem[] = [];
+
+    items.forEach((item, index) => {
+        if (item.lrc.trim()) {
+            meaningfulItems.push(item);
+            return;
+        }
+
+        const previous = meaningfulItems[meaningfulItems.length - 1];
+        if (
+            !previous
+            || previous.endTime !== undefined
+            || item.time <= previous.time
+        ) {
+            return;
+        }
+
+        const nextLyric = items.slice(index + 1).find((candidate) =>
+            candidate.lrc.trim(),
+        );
+        if (
+            nextLyric
+            && nextLyric.time - item.time < BLANK_LINE_INTERLUDE_SECONDS
+        ) {
+            return;
+        }
+
+        previous.endTime = item.time;
+        previous.duration = item.time - previous.time;
+    });
+
+    if (!meaningfulItems.length) {
+        return items;
+    }
+
+    meaningfulItems.forEach((item, index) => {
+        item.index = index;
+    });
+    return meaningfulItems;
 }
 
 // ============ 纯文本解析 ============
@@ -1532,14 +1592,27 @@ interface IParentheticalVocalMatch {
 function getParentheticalVocalMatches(text: string) {
     const matches: IParentheticalVocalMatch[] = [];
     const matcher = new RegExp(PARENTHETICAL_VOCAL_REG.source, "g");
+    const lineStart = text.length - text.trimStart().length;
+    const lineEnd = text.trimEnd().length;
     let match: RegExpExecArray | null;
 
     while ((match = matcher.exec(text)) !== null) {
         const normalizedContent = match[1].trim();
+        if (!normalizedContent) {
+            continue;
+        }
+
+        // 假名、谚文括号通常是注音，跟在被注的词后面，不会独占整行。
+        // 整行都被括号包住的是和声、对唱的独立段落，必须参与拆分，
+        // 否则会退化成普通行，还会连带丢掉成对的翻译与罗马音。
+        const wrapsWholeLine = match.index <= lineStart
+            && match.index + match[0].length >= lineEnd;
         if (
-            !normalizedContent
-            || KANA_REG.test(normalizedContent)
-            || HANGUL_REG.test(normalizedContent)
+            !wrapsWholeLine
+            && (
+                KANA_REG.test(normalizedContent)
+                || HANGUL_REG.test(normalizedContent)
+            )
         ) {
             continue;
         }
@@ -2328,6 +2401,34 @@ function getLyricFieldAnchorTolerance(item: IParsedLrcItem, epsilon: number) {
     );
 }
 
+function isWholeLineParenthesized(text?: string) {
+    const trimmed = text?.trim();
+    if (!trimmed) {
+        return false;
+    }
+
+    const [match, ...rest] = getParentheticalVocalMatches(trimmed);
+    return !!match
+        && !rest.length
+        && match.fullStart === 0
+        && match.fullEnd === trimmed.length;
+}
+
+/**
+ * 音源常给和声行的翻译、罗马音套上与主歌词相同的整行括号。主歌词的括号
+ * 已在对唱拆分时去掉，这里同步去掉，避免只剩译文孤零零带着括号。
+ */
+function alignSecondaryLineParentheses(baseItem: IParsedLrcItem, text: string) {
+    if (
+        isWholeLineParenthesized(baseItem.lrc)
+        || !isWholeLineParenthesized(text)
+    ) {
+        return text;
+    }
+
+    return getParentheticalVocalMatches(text.trim())[0].duetText;
+}
+
 function applyLyricField(
     baseItem: IParsedLrcItem,
     sourceItem: IParsedLrcItem,
@@ -2338,11 +2439,13 @@ function applyLyricField(
         return false;
     }
 
+    const text = alignSecondaryLineParentheses(baseItem, sourceItem.lrc);
+
     if (field === "translation") {
-        stripDuplicatedTranslationSuffix(baseItem, sourceItem.lrc);
+        stripDuplicatedTranslationSuffix(baseItem, text);
     }
 
-    baseItem[field] = sourceItem.lrc;
+    baseItem[field] = text;
     if (field === "romanization") {
         baseItem.romanizationWords = sourceItem.words;
         baseItem.hasRomanizationWordTimeline = sourceItem.hasWordTimeline;
@@ -2529,6 +2632,44 @@ function mergeLyricField(
     return directAssignedCount + sequentialAssignedCount > 0;
 }
 
+/**
+ * 和声、对唱重复行与主歌词逐字相同，但音源往往只给主行标注罗马音。
+ * 这类行自身没有罗马音时回填同词主行的文本；逐字时间轴属于主行，
+ * 搬过来会让高亮错位，因此只补整行文本。
+ */
+function inheritRepeatedLineRomanization(items: IParsedLrcItem[]) {
+    const romanizationByText = new Map<string, string>();
+
+    items.forEach((item) => {
+        const key = normalizeComparableText(item.lrc);
+        const romanization = item.romanization?.trim();
+        if (key && romanization && !romanizationByText.has(key)) {
+            romanizationByText.set(key, romanization);
+        }
+    });
+    if (!romanizationByText.size) {
+        return false;
+    }
+
+    let inherited = false;
+    items.forEach((item) => {
+        if (item.romanization?.trim()) {
+            return;
+        }
+
+        const key = normalizeComparableText(item.lrc);
+        const romanization = key ? romanizationByText.get(key) : undefined;
+        if (!romanization) {
+            return;
+        }
+
+        item.romanization = romanization;
+        inherited = true;
+    });
+
+    return inherited;
+}
+
 // ============ 伪逐字生成 ============
 
 function generateVirtualWords(
@@ -2640,6 +2781,9 @@ export default class LyricParser {
             )
                 || this.hasRomanization;
         }
+
+        this.hasRomanization = inheritRepeatedLineRomanization(this.lrcItems)
+            || this.hasRomanization;
     }
 
     /** 统一解析入口 */
