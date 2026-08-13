@@ -3,7 +3,7 @@
  *
  *   node scripts/update-native-modules-manifest.cjs
  *   node scripts/update-native-modules-manifest.cjs --manifest-url=https://github.com/.../native-manifest-v1.json
- *   node scripts/update-native-modules-manifest.cjs --release=native-electron-43.2.0-<sha>
+ *   node scripts/update-native-modules-manifest.cjs --release=native-electron-43.4.0-<sha>
  *
  * TagLib is whatever version that release built (native CI defaults to GitHub latest).
  */
