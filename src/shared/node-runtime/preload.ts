@@ -5,6 +5,10 @@ import type {
     IDownloadCoverImage,
     IDownloadPostprocessPayload,
 } from "@/common/download-postprocess";
+import type {
+    IDownloadTranscodeOptions,
+    IDownloadTranscodeResult,
+} from "@/common/audio-transcode";
 import { DownloadState } from "@/common/constant";
 
 type DownloadStateCallback = (state: {
@@ -109,6 +113,18 @@ async function postprocessDownloadedFile(
     await ipcRenderer.invoke("@shared/node-runtime/postprocess-download", filePath, payload);
 }
 
+/** Converts MP4/M4A downloads via the bundled libmpv encoders. */
+async function transcodeDownloadedFile(
+    filePath: string,
+    options: IDownloadTranscodeOptions,
+) {
+    return await ipcRenderer.invoke(
+        "@shared/node-runtime/transcode-download",
+        filePath,
+        options,
+    ) as IDownloadTranscodeResult;
+}
+
 /** Main-process Chromium net.fetch for cover bytes (not utility undici). */
 async function fetchCoverImage(
     coverUrl: string,
@@ -165,6 +181,7 @@ export const mod = {
     downloadFile,
     abortDownload,
     postprocessDownloadedFile,
+    transcodeDownloadedFile,
     fetchCoverImage,
     overwriteEmbeddedLyric,
     warmUp,

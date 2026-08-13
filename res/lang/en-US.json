@@ -164,7 +164,8 @@
         "delete_all_files": "Delete all downloaded files",
         "delete_all_files_confirm": "Permanently delete {{count}} local music files and clear their download records.",
         "clear_downloaded_success": "Download list cleared",
-        "clear_downloaded_failed": "Failed to clear download list"
+        "clear_downloaded_failed": "Failed to clear download list",
+        "transcoding": "Transcoding…"
     },
     "plugin_management_page": {
         "plugin_management": "Plugin Management",
@@ -527,7 +528,14 @@
             "preset_title": "Title",
             "preset_title-artist-album": "Title-Artist-Album",
             "preset_artist-album-title": "Artist-Album-Title",
-            "preset_title-artist-quality": "Title-Artist-Quality"
+            "preset_title-artist-quality": "Title-Artist-Quality",
+            "transcode_mode": "Auto transcode",
+            "transcode_mode_off": "Off",
+            "transcode_mode_auto": "Auto",
+            "transcode_rules": "Conversion rules",
+            "transcode_rules_tip": "Lossy codecs such as AAC → MP3\nLossless codecs such as FLAC and ALAC → FLAC (re-encoding stays bit-exact)\nSurround codecs such as Dolby AC-4, AC-3 and DTS → left untouched\nOnly .m4a / .mp4 style containers are converted. The original is deleted on success and kept on failure, so the download itself never fails.",
+            "transcode_mp3_bitrate": "MP3 bitrate",
+            "transcode_mp3_bitrate_v0": "V0 (variable bitrate, ~245k)"
         },
         "lyric": {
             "enable_status_bar_lyric": "Enable status bar lyric",
@@ -656,6 +664,8 @@
             "download_basic_desc": "Folder, concurrency and quality",
             "download_file_naming": "File naming",
             "download_file_naming_desc": "Customize variable order and format in download filenames",
+            "download_transcode": "Download Transcoding",
+            "download_transcode_desc": "Unwrap audio from MP4/M4A containers into plain MP3 or FLAC",
             "download_metadata": "Music tags",
             "download_metadata_desc": "Embed cover art and lyrics, with an option to optimize artwork for car stereos and hardware players",
             "download_lyric": "Lyric files",

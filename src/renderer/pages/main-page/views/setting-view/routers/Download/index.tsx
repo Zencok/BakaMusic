@@ -20,6 +20,7 @@ import {
     type FileNamingPreset,
     type FileNamingType,
 } from "@/common/file-naming-formatter";
+import { DOWNLOAD_MP3_BITRATES } from "@/common/audio-transcode";
 
 type DownloadLyricOrderItem = "original" | "translation" | "romanization";
 
@@ -312,6 +313,7 @@ export default function Download() {
     const writeMetadataLyric = useAppConfig("download.writeMetadataLyric") ?? true;
     const downloadLyricFile = useAppConfig("download.downloadLyricFile") ?? false;
     const showLyricSettings = (writeMetadata && writeMetadataLyric) || downloadLyricFile;
+    const transcodeMode = useAppConfig("download.transcodeMode") ?? "off";
 
     return (
         <div className="setting-view--download-container">
@@ -362,6 +364,42 @@ export default function Download() {
             </SettingGroup>
 
             <FileNamingSettingGroup />
+
+            <SettingGroup
+                title={t("settings.group.download_transcode")}
+                description={t("settings.group.download_transcode_desc")}
+            >
+                <RadioGroupSettingItem
+                    label={t("settings.download.transcode_mode")}
+                    keyPath="download.transcodeMode"
+                    options={["off", "auto"]}
+                    renderItem={(item) =>
+                        t(`settings.download.transcode_mode_${item}`)
+                    }
+                ></RadioGroupSettingItem>
+                {transcodeMode === "auto" ? (
+                    <>
+                        <div className="setting-row setting-view--download-transcode-rules">
+                            <div className="label-container">
+                                {t("settings.download.transcode_rules")}
+                            </div>
+                            <div className="transcode-rules-content">
+                                {t("settings.download.transcode_rules_tip")}
+                            </div>
+                        </div>
+                        <ListBoxSettingItem
+                            keyPath="download.transcodeMp3Bitrate"
+                            options={[...DOWNLOAD_MP3_BITRATES]}
+                            label={t("settings.download.transcode_mp3_bitrate")}
+                            renderItem={(item) =>
+                                item === "v0"
+                                    ? t("settings.download.transcode_mp3_bitrate_v0")
+                                    : item
+                            }
+                        ></ListBoxSettingItem>
+                    </>
+                ) : null}
+            </SettingGroup>
 
             <SettingGroup
                 title={t("settings.group.download_metadata")}

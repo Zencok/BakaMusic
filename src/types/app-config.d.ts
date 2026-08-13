@@ -119,6 +119,14 @@ interface _IAppConfig {
     "download.fileNamingCustom": string;
     /** 下载文件名最大长度（不含扩展名时的主体上限） */
     "download.fileNamingMaxLength": number;
+    /**
+     * 下载后自动转码 MP4/M4A 容器。
+     * `auto` 按容器内实际编码决定：无损转 FLAC、有损转 MP3；
+     * AC-4 等杜比/环绕编码一律保持原容器不动。
+     */
+    "download.transcodeMode": "off" | "auto";
+    /** 自动转码输出 MP3 时的 LAME 码率，`v0` 为 VBR */
+    "download.transcodeMp3Bitrate": "192k" | "256k" | "320k" | "v0";
 
     /** 是否自动升级插件 */
     "plugin.autoUpdatePlugin": boolean;

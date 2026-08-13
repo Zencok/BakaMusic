@@ -3,11 +3,23 @@
 
   .setting-view--download-lyric-order,
   .setting-view--download-file-naming-custom,
-  .setting-view--download-file-naming-preview {
+  .setting-view--download-file-naming-preview,
+  .setting-view--download-transcode-rules {
     align-items: start;
 
     & > .label-container {
       padding-top: 0.6rem;
+    }
+  }
+
+  .setting-view--download-transcode-rules {
+    .transcode-rules-content {
+      grid-column: 2;
+      min-width: 0;
+      color: var(--settingTextSecondary);
+      font-size: 0.88rem;
+      line-height: 1.6;
+      white-space: pre-line;
     }
   }
 
@@ -143,6 +155,12 @@
     .setting-view--download-file-naming-preview {
       .file-naming-custom-content,
       .file-naming-preview-content {
+        grid-column: auto;
+      }
+    }
+
+    .setting-view--download-transcode-rules {
+      .transcode-rules-content {
         grid-column: auto;
       }
     }

@@ -1,6 +1,15 @@
 import { DownloadState, localPluginName } from "@/common/constant";
 import { resolveDownloadExtension } from "@/common/download-extension";
 import { IDownloadPostprocessPayload } from "@/common/download-postprocess";
+import {
+    DownloadMp3Bitrate,
+    DownloadTranscodeMode,
+    IDownloadTranscodeOptions,
+    IDownloadTranscodeResult,
+    isDownloadMp3Bitrate,
+    isDownloadTranscodeMode,
+    isTranscodableContainer,
+} from "@/common/audio-transcode";
 import { toError } from "@/common/error-util";
 import {
     filterQualityOrderByDeclaredQualities,
@@ -34,6 +43,7 @@ import {
     type FileNamingType,
 } from "@/common/file-naming-formatter";
 import nodeRuntime from "@shared/node-runtime/renderer";
+import { i18n } from "@shared/i18n/renderer";
 import { getMediaPluginDelegate } from "@/renderer/core/track-player/plugin-media";
 
 interface IDownloadStatus {
@@ -75,6 +85,10 @@ interface IDownloaderWorker {
         filePath: string,
         payload?: IDownloadPostprocessPayload | null,
     ) => Promise<void>;
+    transcodeDownloadedFile: (
+        filePath: string,
+        options: IDownloadTranscodeOptions,
+    ) => Promise<IDownloadTranscodeResult>;
     /** Optional warm-up so the first real download does not pay process spawn cost. */
     warmUp?: () => Promise<void>;
 }
@@ -533,8 +547,16 @@ async function downloadMusicImpl(
                 }
                 finalizeStarted = true;
                 const finalPath = dataState.filePath || downloadPath;
-                void finalizeDownloadedMusic(musicItem, finalPath, realQuality)
-                    .then(() => onStateChange({ ...dataState, filePath: finalPath }))
+                void finalizeDownloadedMusic(
+                    musicItem,
+                    finalPath,
+                    realQuality,
+                    onStateChange,
+                )
+                    .then((completedPath) => onStateChange({
+                        ...dataState,
+                        filePath: completedPath,
+                    }))
                     .catch((error) => {
                         logger.logError("下载收尾失败", toError(error), {
                             musicItem: {
@@ -577,12 +599,18 @@ async function finalizeDownloadedMusic(
     musicItem: IMusic.IMusicItem,
     downloadPath: string,
     realQuality: IMusic.IQualityKey,
+    onStateChange: IOnStateChangeFunc,
 ) {
+    const finalPath = await transcodeDownloadedMusic(
+        musicItem,
+        downloadPath,
+        onStateChange,
+    );
     const downloadedMusic = setInternalData<IMusic.IMusicItemInternalData>(
         musicItem as any,
         "downloadData",
         {
-            path: downloadPath,
+            path: finalPath,
             quality: realQuality,
             completedAt: getNextDownloadCompletedAt(),
         },
@@ -596,7 +624,7 @@ async function finalizeDownloadedMusic(
             throw new Error("Downloader worker is unavailable");
         }
         try {
-            await worker.postprocessDownloadedFile(downloadPath, payload);
+            await worker.postprocessDownloadedFile(finalPath, payload);
         } catch (error) {
             logger.logError("下载后写入标签失败", error as Error, {
                 musicItem: {
@@ -605,7 +633,7 @@ async function finalizeDownloadedMusic(
                     title: musicItem.title,
                     artist: musicItem.artist,
                 },
-                downloadPath,
+                downloadPath: finalPath,
             });
             // Metadata write is part of a successful download when enabled.
             if (payload.options.writeMetadata) {
@@ -615,6 +643,83 @@ async function finalizeDownloadedMusic(
     }
 
     await addDownloadedMusicToList(downloadedMusic);
+    return finalPath;
+}
+
+function resolveTranscodeOptions(): IDownloadTranscodeOptions {
+    const mode = AppConfig.getConfig("download.transcodeMode");
+    const mp3Bitrate = AppConfig.getConfig("download.transcodeMp3Bitrate");
+    return {
+        mode: isDownloadTranscodeMode(mode) ? mode : "off",
+        mp3Bitrate: isDownloadMp3Bitrate(mp3Bitrate)
+            ? mp3Bitrate
+            : ("v0" satisfies DownloadMp3Bitrate),
+        // The converted file replaces the download; keeping both would double
+        // disk usage and make the local library scan see each track twice.
+        deleteSource: true,
+    };
+}
+
+/**
+ * Unwrap MP4/M4A containers into MP3 / FLAC when the user opted in.
+ *
+ * The downloaded media is already complete and valid at this point, so a
+ * failed conversion is logged and the original file is kept — it must never
+ * turn a finished download into a failed one.
+ */
+async function transcodeDownloadedMusic(
+    musicItem: IMusic.IMusicItem,
+    downloadPath: string,
+    onStateChange: IOnStateChangeFunc,
+) {
+    const options = resolveTranscodeOptions();
+    if (
+        (options.mode satisfies DownloadTranscodeMode) !== "auto"
+        || !isTranscodableContainer(downloadPath)
+    ) {
+        return downloadPath;
+    }
+
+    const worker = downloaderWorker;
+    if (!worker) {
+        return downloadPath;
+    }
+
+    // Probing + encoding takes seconds; the row would otherwise sit at 100%
+    // with no explanation. `total: 0` is what the download list renders as a
+    // status message instead of a progress bar.
+    onStateChange({
+        state: DownloadState.DOWNLOADING,
+        downloaded: 0,
+        total: 0,
+        msg: i18n.t("download_page.transcoding"),
+    });
+
+    try {
+        const result = await worker.transcodeDownloadedFile(downloadPath, options);
+        if (result.error) {
+            logger.logError("下载转码失败", new Error(result.error), {
+                musicItem: {
+                    id: musicItem.id,
+                    platform: musicItem.platform,
+                    title: musicItem.title,
+                },
+                downloadPath,
+                codecName: result.codecName,
+            });
+        }
+        return result.filePath || downloadPath;
+    } catch (error) {
+        logger.logError("下载转码调用失败", toError(error), {
+            musicItem: {
+                id: musicItem.id,
+                platform: musicItem.platform,
+                title: musicItem.title,
+            },
+            downloadPath,
+        });
+        return downloadPath;
+    }
 }
 
 function useDownloadStatus(musicItem: IMusic.IMusicItem) {

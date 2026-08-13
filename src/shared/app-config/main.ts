@@ -72,6 +72,8 @@ const rendererWritableConfigKeys = new Set<keyof IAppConfig>([
     "download.fileNamingPreset",
     "download.fileNamingCustom",
     "download.fileNamingMaxLength",
+    "download.transcodeMode",
+    "download.transcodeMp3Bitrate",
     "plugin.autoUpdatePlugin",
     "plugin.notCheckPluginVersion",
     "network.proxy.enabled",
@@ -137,6 +139,8 @@ const enumConfigValues = new Map<keyof IAppConfig, ReadonlySet<string>>([
     ["download.coverImageMode", new Set(["compatible-jpeg", "original"])],
     ["download.lyricFileFormat", new Set(["lrc", "txt"])],
     ["download.fileNamingType", new Set(["preset", "custom"])],
+    ["download.transcodeMode", new Set(["off", "auto"])],
+    ["download.transcodeMp3Bitrate", new Set(["192k", "256k", "320k", "v0"])],
     ["download.fileNamingPreset", new Set([
         "title-artist",
         "artist-title",

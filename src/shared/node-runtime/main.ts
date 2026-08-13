@@ -12,6 +12,12 @@ import type {
     IDownloadPostprocessPayload,
 } from "@/common/download-postprocess";
 import { prepareDownloadCoverImage } from "@/common/download-cover-image";
+import {
+    IDownloadTranscodeOptions,
+    isDownloadMp3Bitrate,
+    isDownloadTranscodeMode,
+} from "@/common/audio-transcode";
+import { getMpvRuntimeDirectory } from "@shared/native-playback/runtime-path";
 import { supportLocalMediaType } from "@/common/constant";
 import type { IWindowManager } from "@/types/window-manager";
 import {
@@ -39,6 +45,11 @@ const DOWNLOAD_FILE_TIMEOUT_MS = 2 * 60 * 60 * 1000;
  * 而且重试必然再次撞到同一道墙 —— 所以给扫描单独放宽。
  */
 const WATCHER_SCAN_TIMEOUT_MS = 30 * 60 * 1000;
+/**
+ * 转码要把整首歌解码后重新编码，长专辑单曲 + 慢盘远超 60s；
+ * utility 内部另有 15 分钟硬超时，这里留出余量避免先被 RPC 层 kill。
+ */
+const TRANSCODE_TIMEOUT_MS = 20 * 60 * 1000;
 const MAX_PENDING_REQUESTS = 256;
 const MAX_RPC_BYTES = 128 * 1024 * 1024;
 const MAX_RUNTIME_WORKING_SET_KB = 512 * 1024;
@@ -177,6 +188,23 @@ function validateDownloadCoverImageMode(value: unknown): DownloadCoverImageMode 
     throw new Error("cover image mode is outside its enum");
 }
 
+function validateTranscodeOptions(value: unknown): IDownloadTranscodeOptions {
+    assertPlainObject(value, "transcode options");
+    assertIpcPayload(value, 4 * 1024);
+    if (!isDownloadTranscodeMode(value.mode)) {
+        throw new Error("transcode mode is outside its enum");
+    }
+    if (!isDownloadMp3Bitrate(value.mp3Bitrate)) {
+        throw new Error("transcode mp3 bitrate is outside its enum");
+    }
+    assertBoolean(value.deleteSource, "transcode deleteSource");
+    return {
+        mode: value.mode,
+        mp3Bitrate: value.mp3Bitrate,
+        deleteSource: value.deleteSource,
+    };
+}
+
 /** Plain Chromium fetch — no custom host/UA/Referer patching. */
 async function fetchCoverImageInMain(
     coverUrl: string,
@@ -285,6 +313,18 @@ class NodeRuntimeManager {
                 payload: payload as IDownloadPostprocessPayload | null,
             });
         });
+        ipcMain.handle("@shared/node-runtime/transcode-download", async (event, filePath, options) => {
+            assertIpcSender(event, ["main"]);
+            const targetPath = assertPathAccess(filePath);
+            return this.request(
+                "transcode-download",
+                {
+                    filePath: targetPath,
+                    options: validateTranscodeOptions(options),
+                },
+                TRANSCODE_TIMEOUT_MS,
+            );
+        });
         ipcMain.handle("@shared/node-runtime/overwrite-embedded-lyric", async (
             event,
             filePath,
@@ -373,13 +413,20 @@ class NodeRuntimeManager {
         if (this.shuttingDown) {
             throw new Error("Node runtime is shutting down");
         }
+        // The bundled libmpv doubles as the download transcoder. Exporting its
+        // directory here keeps the utility from having to resolve app paths.
+        const mpvRuntimeDirectory = getMpvRuntimeDirectory();
         const child = utilityProcess.fork(
             path.resolve(__dirname, "node_runtime_host.js"),
             [],
             {
                 serviceName: "BakaMusic Node Runtime",
                 execArgv: ["--max-old-space-size=384"],
-                env: { ...process.env },
+                env: {
+                    ...process.env,
+                    BAKAMUSIC_MPV_DIR: mpvRuntimeDirectory,
+                    PATH: `${mpvRuntimeDirectory}${path.delimiter}${process.env.PATH ?? ""}`,
+                },
                 stdio: "pipe",
             },
         );

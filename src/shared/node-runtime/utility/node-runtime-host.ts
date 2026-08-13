@@ -12,6 +12,7 @@ import {
     setupWatcher,
 } from "@/webworkers/local-file-watcher";
 import { overwriteEmbeddedLyric } from "@/webworkers/embedded-lyric";
+import { transcodeDownloadedFile } from "@/webworkers/audio-transcode";
 
 interface RuntimeRequest {
     type: "request";
@@ -54,6 +55,8 @@ async function handleRequest(request: RuntimeRequest) {
             return abortDownload(payload.taskId, payload.removePartial);
         case "postprocess-download":
             return postprocessDownloadedFile(payload.filePath, payload.payload);
+        case "transcode-download":
+            return transcodeDownloadedFile(payload.filePath, payload.options);
         case "overwrite-embedded-lyric":
             return overwriteEmbeddedLyric(payload.filePath, payload.lyricContent);
         case "watcher-setup":

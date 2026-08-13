@@ -164,7 +164,8 @@
         "delete_all_files": "刪除全部已下載檔案",
         "delete_all_files_confirm": "將永久刪除 {{count}} 個本機音樂檔案，並清空下載記錄。",
         "clear_downloaded_success": "下載列表已清理",
-        "clear_downloaded_failed": "下載列表清理失敗"
+        "clear_downloaded_failed": "下載列表清理失敗",
+        "transcoding": "轉檔中…"
     },
     "plugin_management_page": {
         "plugin_management": "插件管理",
@@ -527,7 +528,14 @@
             "preset_title": "歌曲名",
             "preset_title-artist-album": "歌曲名-作者-專輯",
             "preset_artist-album-title": "作者-專輯-歌曲名",
-            "preset_title-artist-quality": "歌曲名-作者-音質"
+            "preset_title-artist-quality": "歌曲名-作者-音質",
+            "transcode_mode": "自動轉檔",
+            "transcode_mode_off": "關閉",
+            "transcode_mode_auto": "自動",
+            "transcode_rules": "轉換規則",
+            "transcode_rules_tip": "AAC 等失真編碼 → MP3\nFLAC、ALAC 等無損編碼 → FLAC（重新編碼後仍然無損）\n杜比 AC-4、AC-3、DTS 等環繞聲編碼 → 保持原檔案不變\n僅處理 .m4a / .mp4 等容器，轉換成功後刪除原檔案；失敗時保留原檔案，不影響下載結果。",
+            "transcode_mp3_bitrate": "MP3 位元率",
+            "transcode_mp3_bitrate_v0": "V0（動態位元率，約 245k）"
         },
         "lyric": {
             "enable_status_bar_lyric": "啟用狀態欄歌詞",
@@ -656,6 +664,8 @@
             "download_basic_desc": "目錄、並發與音質",
             "download_file_naming": "檔名命名",
             "download_file_naming_desc": "自訂下載檔名中變數的順序與格式",
+            "download_transcode": "下載轉檔",
+            "download_transcode_desc": "把 MP4/M4A 容器裡的音訊取出來，轉成通用的 MP3 或 FLAC",
             "download_metadata": "音樂標籤",
             "download_metadata_desc": "寫入封面與內嵌歌詞，可針對車機和硬體播放器最佳化封面相容性",
             "download_lyric": "歌詞檔案",

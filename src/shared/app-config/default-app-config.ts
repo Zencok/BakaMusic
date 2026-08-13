@@ -30,6 +30,8 @@ const _defaultAppConfig: IAppConfig =  {
     "download.fileNamingPreset": "title-artist",
     "download.fileNamingCustom": "{title}-{artist}",
     "download.fileNamingMaxLength": 200,
+    "download.transcodeMode": "off",
+    "download.transcodeMp3Bitrate": "v0",
     "lyric.enableDesktopLyric": false,
     "lyric.lockLyric": false,
     "lyric.desktopLyricCenter": false,
