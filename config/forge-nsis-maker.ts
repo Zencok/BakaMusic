@@ -64,28 +64,39 @@ export class MakerNsis extends MakerBase<MakerNsisConfig> {
                 this.config.webPackageUrlPrefix,
             );
 
-        return buildForge(
-            { dir: options.dir },
-            {
-                // Release assets are uploaded by GitHub Actions (gh release),
-                // not by electron-builder's implicit on-tag publisher.
-                publish: "never",
-                win: targets.map((target) => `${target}:${options.targetArch}`),
-                config: {
-                    appId: this.config.appId,
-                    compression: this.config.compression ?? "maximum",
-                    directories: {
-                        output: options.makeDir,
-                    },
-                    productName: options.packageJSON.productName ?? options.appName,
-                    win: this.config.win,
-                    nsis: this.config.nsis,
-                    nsisWeb: this.config.nsisWeb == null ? undefined : {
-                        ...this.config.nsisWeb,
-                        appPackageUrl: webPackageUrl,
+        // One target at a time. electron-builder compiles each installer twice:
+        // the first pass is executed to extract the uninstaller, the second
+        // overwrites that same .exe. Concurrent targets saturate the CPU and
+        // delay the first pass's exit, leaving Windows holding a lock on the
+        // running image — the second pass then aborts with
+        // "Can't open output file".
+        const artifacts: string[] = [];
+        for (const target of targets) {
+            const built = await buildForge(
+                { dir: options.dir },
+                {
+                    // Release assets are uploaded by GitHub Actions (gh release),
+                    // not by electron-builder's implicit on-tag publisher.
+                    publish: "never",
+                    win: [`${target}:${options.targetArch}`],
+                    config: {
+                        appId: this.config.appId,
+                        compression: this.config.compression ?? "maximum",
+                        directories: {
+                            output: options.makeDir,
+                        },
+                        productName: options.packageJSON.productName ?? options.appName,
+                        win: this.config.win,
+                        nsis: this.config.nsis,
+                        nsisWeb: this.config.nsisWeb == null ? undefined : {
+                            ...this.config.nsisWeb,
+                            appPackageUrl: webPackageUrl,
+                        },
                     },
                 },
-            },
-        );
+            );
+            artifacts.push(...built);
+        }
+        return artifacts;
     }
 }
