@@ -415,3 +415,11 @@ pending
 - **Bug**: history.state.usr threw when the discovery pages were opened on a fresh navigation entry.
 - **Files**: 15 files
 - **Tests**: npm exec tsc -- --noEmit; npm exec eslint -- ./src; npm test; npx sass (changed scss); manual UI verification not performed
+
+## 2026-08-14T22:30:57.161+08:00 — feat(recommend): randomize initial sheet tag
+
+- **Context-Id**: 01a000ae-e589-748d-9658-38d960d51567
+- **Decision**: Randomize the initial recommend-sheet tag per plugin
+- **Decision**: Keep the expanded-panel seed tag aligned with the selected tag
+- **Files**: 1 file
+- **Tests**: not run (commit-only request)

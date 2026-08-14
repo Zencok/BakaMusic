@@ -27,6 +27,32 @@ export function getDefaultTag(): IMedia.IUnique {
     };
 }
 
+const lastRandomTagByPlugin = new Map<string, string>();
+
+function pickRandomTag(
+    pluginHash: string,
+    tags: IPlugin.IGetRecommendSheetTagsResult,
+): IMedia.IUnique {
+    const candidates = [
+        ...(tags.pinned ?? []),
+        ...(tags.data ?? []).flatMap((group) => group.data),
+    ].filter((tag, index, all) =>
+        Boolean(tag?.id) && all.findIndex((item) => item.id === tag.id) === index,
+    );
+
+    if (!candidates.length) {
+        return getDefaultTag();
+    }
+
+    const previousId = lastRandomTagByPlugin.get(pluginHash);
+    const available = candidates.length > 1
+        ? candidates.filter((tag) => tag.id !== previousId)
+        : candidates;
+    const selected = available[Math.floor(Math.random() * available.length)] ?? candidates[0];
+    lastRandomTagByPlugin.set(pluginHash, selected.id);
+    return selected;
+}
+
 interface IBodyProps {
     plugin: IPlugin.IPluginDelegate;
 }
@@ -53,17 +79,11 @@ export default function Body(props: IBodyProps) {
 
     useEffect(() => {
         if (tags) {
-            const cachedTag = history.state?.usr?.tag;
-            if (cachedTag) {
-                if (tags.pinned?.findIndex?.((it) => it.id === cachedTag.id) === -1) {
-                    setFirstTag(cachedTag);
-                }
-                setSelectedTag(cachedTag);
-            } else {
-                setSelectedTag(getDefaultTag);
-            }
+            const randomTag = pickRandomTag(plugin.hash, tags);
+            setFirstTag(randomTag);
+            setSelectedTag(randomTag);
         }
-    }, [tags]);
+    }, [plugin.hash, tags]);
 
     useEffect(() => {
         if (!showPanel) {
