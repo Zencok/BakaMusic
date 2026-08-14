@@ -4,6 +4,10 @@
   display: flex;
   flex-direction: column;
 
+  & .components--modal-base-header {
+    border-bottom: 0;
+  }
+
   & .search-lyric-input-container {
     margin-right: 10px;
     flex: 1;

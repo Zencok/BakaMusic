@@ -26,11 +26,7 @@ export default function ImportMusicSheet(props: IProps) {
 
     return (
         <PluginInputPanel
-            availablePluginText={t("plugin.input_panel_available_plugins", {
-                count: plugins.length,
-            })}
             cancelText={t("common.cancel")}
-            description={t("plugin.import_music_sheet_description")}
             emptySupportMethod={t("plugin.method_import_music_sheet")}
             errorText={t("plugin_management_page.import_failed")}
             hintMethod="importMusicSheet"
@@ -49,7 +45,6 @@ export default function ImportMusicSheet(props: IProps) {
             )}
             plugins={plugins}
             selectLabel={t("plugin_management_page.choose_plugin")}
-            selectedPluginLabel={t("plugin.input_panel_selected_plugin")}
             submitText={t("plugin.import_music_sheet_submit")}
             title={t("plugin.method_import_music_sheet")}
             variant="import-music-sheet"

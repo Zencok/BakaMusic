@@ -26,11 +26,7 @@ export default function PlayMusicById(props: IProps) {
 
     return (
         <PluginInputPanel
-            availablePluginText={t("plugin.input_panel_available_plugins", {
-                count: plugins.length,
-            })}
             cancelText={t("common.cancel")}
-            description={t("plugin.play_by_id_description")}
             emptySupportMethod={t("plugin.method_play_by_id")}
             errorText={t("plugin.play_by_id_failed")}
             hintMethod="getMusicInfo"
@@ -49,7 +45,6 @@ export default function PlayMusicById(props: IProps) {
             placeholder={() => t("plugin.play_by_id_placeholder")}
             plugins={plugins}
             selectLabel={t("plugin_management_page.choose_plugin")}
-            selectedPluginLabel={t("plugin.input_panel_selected_plugin")}
             submitText={t("plugin.play_by_id_submit")}
             title={t("plugin.method_play_by_id")}
             variant="play-music-by-id"

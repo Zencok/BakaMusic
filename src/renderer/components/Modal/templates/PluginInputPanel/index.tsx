@@ -10,14 +10,11 @@ import "./index.scss";
 interface IPluginInputPanelProps {
     variant: "play-music-by-id" | "import-music-sheet";
     title: string;
-    description: string;
     iconName: SvgAssetIconNames;
     plugins: IPlugin.IPluginDelegate[];
     /** Preferred plugin hash when the panel opens; falls back to the first plugin. */
     initialPluginHash?: string | null;
     selectLabel: string;
-    availablePluginText: string;
-    selectedPluginLabel: string;
     inputLabel: string;
     placeholder: (plugin: IPlugin.IPluginDelegate) => string;
     hintTitle: string;
@@ -43,11 +40,6 @@ function resolveInitialPluginHash(
     return plugins[0]?.hash ?? "";
 }
 
-function platformInitial(platform: string) {
-    const text = platform?.trim() || "?";
-    return text.slice(0, 1).toLocaleUpperCase();
-}
-
 function resolveHints(
     plugin: IPlugin.IPluginDelegate,
     hintMethod: string,
@@ -65,13 +57,10 @@ export default function PluginInputPanel(props: IPluginInputPanelProps) {
     const {
         variant,
         title,
-        description,
         iconName,
         plugins,
         initialPluginHash,
         selectLabel,
-        availablePluginText,
-        selectedPluginLabel,
         inputLabel,
         placeholder,
         hintTitle,
@@ -145,21 +134,10 @@ export default function PluginInputPanel(props: IPluginInputPanelProps) {
                         }}
                     >
                         <div className="plugin-input-body">
-                            <div className="plugin-input-intro">
-                                <span className="plugin-input-intro-icon" aria-hidden="true">
-                                    <SvgAsset iconName={iconName}></SvgAsset>
-                                </span>
-                                <p>{description}</p>
-                            </div>
-
-                            <section className="plugin-input-section">
-                                <div className="plugin-input-section-heading">
-                                    <strong>{selectLabel}</strong>
-                                    <span>{availablePluginText}</span>
-                                </div>
+                            <section className="plugin-input-platform-section">
                                 <div
                                     aria-label={selectLabel}
-                                    className="plugin-input-plugin-grid"
+                                    className="plugin-input-plugin-rail"
                                     role="group"
                                 >
                                     {plugins.map((plugin) => {
@@ -176,18 +154,11 @@ export default function PluginInputPanel(props: IPluginInputPanelProps) {
                                                 }}
                                             >
                                                 <span
-                                                    className="plugin-input-plugin-badge"
-                                                    aria-hidden="true"
+                                                    className="plugin-input-plugin-name"
+                                                    data-text={plugin.platform}
                                                 >
-                                                    {platformInitial(plugin.platform)}
-                                                </span>
-                                                <span className="plugin-input-plugin-name">
                                                     {plugin.platform}
                                                 </span>
-                                                <SvgAsset
-                                                    iconName="check-circle"
-                                                    size={18}
-                                                ></SvgAsset>
                                             </button>
                                         );
                                     })}
@@ -195,12 +166,8 @@ export default function PluginInputPanel(props: IPluginInputPanelProps) {
                             </section>
 
                             <section className="plugin-input-section">
-                                <div className="plugin-input-section-heading plugin-input-field-heading">
+                                <div className="plugin-input-section-heading">
                                     <label htmlFor={`${variant}-input`}>{inputLabel}</label>
-                                    <span className="plugin-input-selected-plugin">
-                                        {selectedPluginLabel}
-                                        <strong>{selectedPlugin?.platform}</strong>
-                                    </span>
                                 </div>
                                 <div className="plugin-input-field">
                                     <SvgAsset iconName={iconName}></SvgAsset>
