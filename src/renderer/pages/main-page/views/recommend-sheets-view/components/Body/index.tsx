@@ -29,16 +29,55 @@ export function getDefaultTag(): IMedia.IUnique {
 
 const lastRandomTagByPlugin = new Map<string, string>();
 
-function pickRandomTag(
-    pluginHash: string,
-    tags: IPlugin.IGetRecommendSheetTagsResult,
-): IMedia.IUnique {
-    const candidates = [
+interface IRecommendTagSession {
+    firstTag: IMedia.IUnique;
+    selectedTag: IMedia.IUnique;
+}
+
+const tagSessionByPlugin = new Map<string, IRecommendTagSession>();
+
+function getCandidateTags(tags: IPlugin.IGetRecommendSheetTagsResult) {
+    return [
         ...(tags.pinned ?? []),
         ...(tags.data ?? []).flatMap((group) => group.data),
     ].filter((tag, index, all) =>
         Boolean(tag?.id) && all.findIndex((item) => item.id === tag.id) === index,
     );
+}
+
+function hasTag(tags: IPlugin.IGetRecommendSheetTagsResult, tag: IMedia.IUnique) {
+    return tag.id === "" || getCandidateTags(tags).some((item) => item.id === tag.id);
+}
+
+function normalizeRestoredTag(tag: IMedia.IUnique) {
+    return tag.id === "" ? getDefaultTag() : tag;
+}
+
+function getCachedTags(
+    pluginHash: string,
+    tags: IPlugin.IGetRecommendSheetTagsResult,
+) {
+    const cachedTags = tagSessionByPlugin.get(pluginHash);
+
+    if (!cachedTags || !hasTag(tags, cachedTags.selectedTag)) {
+        return null;
+    }
+
+    const firstTag = hasTag(tags, cachedTags.firstTag)
+        ? normalizeRestoredTag(cachedTags.firstTag)
+        : normalizeRestoredTag(cachedTags.selectedTag);
+
+    return {
+        firstTag,
+        selectedTag: normalizeRestoredTag(cachedTags.selectedTag),
+    };
+}
+
+function pickRandomTag(
+    pluginHash: string,
+    tags: IPlugin.IGetRecommendSheetTagsResult,
+): IMedia.IUnique {
+    const candidates = getCandidateTags(tags);
 
     if (!candidates.length) {
         return getDefaultTag();
@@ -51,6 +90,10 @@ function pickRandomTag(
     const selected = available[Math.floor(Math.random() * available.length)] ?? candidates[0];
     lastRandomTagByPlugin.set(pluginHash, selected.id);
     return selected;
+}
+
+function cacheTags(pluginHash: string, tags: IRecommendTagSession) {
+    tagSessionByPlugin.set(pluginHash, tags);
 }
 
 interface IBodyProps {
@@ -79,9 +122,21 @@ export default function Body(props: IBodyProps) {
 
     useEffect(() => {
         if (tags) {
+            const cachedTags = getCachedTags(plugin.hash, tags);
+
+            if (cachedTags) {
+                setFirstTag(cachedTags.firstTag);
+                setSelectedTag(cachedTags.selectedTag);
+                return;
+            }
+
             const randomTag = pickRandomTag(plugin.hash, tags);
             setFirstTag(randomTag);
             setSelectedTag(randomTag);
+            cacheTags(plugin.hash, {
+                firstTag: randomTag,
+                selectedTag: randomTag,
+            });
         }
     }, [plugin.hash, tags]);
 
@@ -134,14 +189,9 @@ export default function Body(props: IBodyProps) {
                     onTagClick={(tag) => {
                         setSelectedTag(tag);
                         setFirstTag(tag);
-                        const usr = history.state?.usr ?? {};
-
-                        navigate("", {
-                            replace: true,
-                            state: {
-                                ...usr,
-                                tag: tag,
-                            },
+                        cacheTags(plugin.hash, {
+                            firstTag: tag,
+                            selectedTag: tag,
                         });
                         setShowPanel(false);
                     }}
@@ -175,14 +225,9 @@ export default function Body(props: IBodyProps) {
                         title={tag.title}
                         onClick={() => {
                             setSelectedTag(tag);
-                            const usr = history.state?.usr ?? {};
-
-                            navigate("", {
-                                replace: true,
-                                state: {
-                                    ...usr,
-                                    tag: tag,
-                                },
+                            cacheTags(plugin.hash, {
+                                firstTag,
+                                selectedTag: tag,
                             });
                         }}
                     >

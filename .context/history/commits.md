@@ -423,3 +423,11 @@ pending
 - **Decision**: Keep the expanded-panel seed tag aligned with the selected tag
 - **Files**: 1 file
 - **Tests**: not run (commit-only request)
+
+## 2026-08-14T22:52:32.550+08:00 — fix(recommend): keep random tag stable on return
+
+- **Context-Id**: 01a000c2-a9a6-7847-8f1b-9709b48862a2
+- **Decision**: Cache recommendation tags per plugin for the renderer session
+- **Bug**: Returning from a recommended sheet picked a new random tag and refreshed the list.
+- **Files**: 1 file
+- **Tests**: npm exec eslint -- Body/index.tsx; npm exec tsc -- --noEmit --pretty false; npm test
