@@ -263,6 +263,18 @@
         "unstar_sheet": "Unstar",
         "statistics": "Listening Stats"
     },
+    "discovery_pages": {
+        "recommend_eyebrow": "CURATED FOR YOU",
+        "recommend_title": "Recommended Playlists",
+        "recommend_subtitle": "Pick a playlist for this moment, shaped by mood, setting, and what is moving now.",
+        "toplist_eyebrow": "LIVE CHARTS",
+        "toplist_title": "Top Charts",
+        "toplist_subtitle": "Track the sounds climbing right now and start listening from number one.",
+        "source": "Music source",
+        "mood_filter": "Filter mood",
+        "featured": "Featured pick",
+        "open_playlist": "Open playlist: {{title}}"
+    },
     "statistics_page": {
         "eyebrow": "Listening insights",
         "title": "Listening Statistics",

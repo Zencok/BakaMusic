@@ -1,48 +1,130 @@
 .tag-panel--container {
   position: absolute;
-  z-index: 20;
-  width: 560px;
-  max-height: 360px;
-  padding: 14px;
-  box-sizing: border-box;
-  overflow-y: auto;
-  top: calc(1rem + 25px);
+  top: calc(100% + 0.45rem);
   left: 0;
-  transition: transform 100ms ease-out;
-  transform-origin: center top;
-
-  &[data-show="false"] {
-    transform: scaleY(0);
-    pointer-events: none;
-    user-select: none;
-  }
-
-  &[data-show="true"] {
-    transform: scaleY(1);
-    pointer-events: all;
-  }
-
-
-  & .tag-group--tag {
-    font-size: 1rem !important;
-    color: var(--theme-text-secondary);
-    white-space: nowrap;
-    
-    cursor: pointer;
-  }
+  z-index: 20;
+  box-sizing: border-box;
+  width: min(620px, 100%);
+  max-height: 380px;
+  padding: 1.15rem;
+  overflow-y: auto;
+  border: 1px solid var(--appSurfaceBorderStrong);
+  border-radius: 6px;
+  color: var(--appTextPrimary);
+  background: var(--appSurfaceStrong);
+  box-shadow: 0 20px 55px color-mix(in srgb, black 22%, transparent);
+  backdrop-filter: var(--appGlassFilter);
+  animation: tag-panel-in 140ms ease-out both;
 
   & .tag-group--container {
-    margin-bottom: 16px;
-    
-    & .tag-group--title {
-        margin-bottom: 12px;
-        opacity: 0.8;
+    margin-bottom: 1.15rem;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  & .tag-group--title {
+    margin-bottom: 0.65rem;
+    color: var(--appTextTertiary);
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  & .tag-group--tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  & .tag-group--tag {
+    min-height: 2.2rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--appSurfaceBorder);
+    border-radius: var(--controlRadius, 5px);
+    color: var(--appTextSecondary);
+    background: transparent;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
+
+    &:hover {
+      color: var(--appTextPrimary);
+      border-color: color-mix(in srgb, var(--appTextPrimary) 38%, transparent);
+      background: var(--appInteractiveSurface);
     }
 
-    & .tag-group--tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px 14px;
+    &:focus-visible {
+      color: var(--appTextPrimary);
+      outline: 2px solid var(--discovery-cool);
+      outline-offset: 2px;
+    }
+
+    // 与触发按钮共用同一套选中语义，展开面板时能直接看出当前风格
+    &.highlight {
+      color: var(--backgroundColor);
+      border-color: var(--appTextPrimary);
+      background: var(--appTextPrimary);
+    }
+  }
+}
+
+@keyframes tag-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tag-panel--container {
+    animation: none;
+  }
+}
+
+[data-ui-style="glass"] {
+  & .tag-panel--container {
+    border-color: var(--appSurfaceBorderStrong);
+    border-radius: var(--panelRadius, 22px);
+    background: var(--appSurface);
+    box-shadow: var(--panelShadow), var(--appSurfaceInset);
+    -webkit-backdrop-filter: var(--appGlassFilter);
+    backdrop-filter: var(--appGlassFilter);
+  }
+
+  & .tag-panel--container .tag-group--tag {
+    border-color: var(--appSurfaceBorder);
+
+    &:hover {
+      border-color: var(--appSurfaceBorderStrong);
+    }
+  }
+}
+
+[data-ui-style="flat"] {
+  & .tag-panel--container {
+    border-color: var(--appSurfaceBorderStrong);
+    border-radius: var(--controlRadius, 4px);
+    background: var(--appSurfaceStrong);
+    box-shadow: 0 8px 22px color-mix(in srgb, black 10%, transparent);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  & .tag-panel--container .tag-group--tag {
+    border-color: var(--appSurfaceBorderStrong);
+
+    &:hover {
+      border-color: var(--appTextPrimary);
     }
   }
 }

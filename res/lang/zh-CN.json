@@ -263,6 +263,18 @@
         "unstar_sheet": "取消收藏",
         "statistics": "听歌统计"
     },
+    "discovery_pages": {
+        "recommend_eyebrow": "CURATED FOR YOU",
+        "recommend_title": "推荐歌单",
+        "recommend_subtitle": "从情绪、场景与正在流行的声音中，挑一张适合此刻的歌单。",
+        "toplist_eyebrow": "LIVE CHARTS",
+        "toplist_title": "热门榜单",
+        "toplist_subtitle": "实时捕捉正在上升的声音，从第一名开始听见当下。",
+        "source": "音乐来源",
+        "mood_filter": "筛选风格",
+        "featured": "本期主推",
+        "open_playlist": "打开歌单：{{title}}"
+    },
     "statistics_page": {
         "eyebrow": "Listening insights",
         "title": "听歌统计",

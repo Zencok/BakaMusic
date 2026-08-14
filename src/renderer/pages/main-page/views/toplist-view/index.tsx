@@ -13,6 +13,9 @@ import useGetTopList from "./hooks/useGetTopList";
 import NoPlugin from "@/renderer/components/NoPlugin";
 import Empty from "@/renderer/components/Empty";
 import { useTranslation } from "react-i18next";
+import SvgAsset from "@/renderer/components/SvgAsset";
+import { getDiscoveryMetaText } from "../discovery-pages";
+import DiscoverySourceSwitcher from "../DiscoverySourceSwitcher";
 
 import "./index.scss";
 import PluginManager from "@shared/plugin-manager/renderer";
@@ -36,7 +39,7 @@ export default function ToplistView() {
                 <Tab.Group
                     defaultIndex={history.state?.usr?.pluginIndex}
                     onChange={(index) => {
-                        const usr = history.state.usr ?? {};
+                        const usr = history.state?.usr ?? {};
 
                         navigate("", {
                             replace: true,
@@ -47,13 +50,19 @@ export default function ToplistView() {
                         });
                     }}
                 >
-                    <Tab.List className="tab-list-container">
-                        {availablePlugins.map((plugin) => (
-                            <Tab key={plugin.hash} as="div" className="tab-list-item">
-                                {plugin.platform}
-                            </Tab>
-                        ))}
-                    </Tab.List>
+                    <header className="discovery-page-header">
+                        <div className="discovery-page-heading">
+                            <span className="discovery-page-eyebrow">
+                                {t("discovery_pages.toplist_eyebrow")}
+                            </span>
+                            <h1>{t("discovery_pages.toplist_title")}</h1>
+                            <p>{t("discovery_pages.toplist_subtitle")}</p>
+                        </div>
+                        <DiscoverySourceSwitcher
+                            label={t("discovery_pages.source")}
+                            plugins={availablePlugins}
+                        ></DiscoverySourceSwitcher>
+                    </header>
                     <Tab.Panels className={"tab-panels-container"}>
                         {availablePlugins.map((plugin) => (
                             <Tab.Panel className="tab-panel-container" key={plugin.hash}>
@@ -109,34 +118,55 @@ interface IToplistGroupItemProps {
 }
 function ToplistGroupItem(props: IToplistGroupItemProps) {
     const { groupItem, platform } = props;
+    const items = groupItem.data ?? [];
 
     return (
-        <div className="toplist-group-item--container">
-            <Condition condition={groupItem.title}>
-                <div className="header">{groupItem.title}</div>
-            </Condition>
-            <div className="body">
-                {(groupItem.data ?? []).map((item) => (
+        <section className="toplist-group-item--container">
+            <header className="toplist-group-header">
+                <span className="toplist-group-rule" aria-hidden="true"></span>
+                <h2>{groupItem.title ?? platform}</h2>
+                <span className="toplist-group-total">
+                    {String(items.length).padStart(2, "0")}
+                </span>
+            </header>
+            <div className="toplist-group-stage" data-single={items.length === 1}>
+                {items[0] ? (
                     <ToplistCoverItem
-                        key={item.id}
-                        item={item}
+                        key={items[0].id}
+                        item={items[0]}
                         platform={platform}
+                        rank={1}
+                        featured
                     ></ToplistCoverItem>
-                ))}
+                ) : null}
+                {items.length > 1 ? (
+                    <div className="toplist-ranked-list">
+                        {items.slice(1).map((item, index) => (
+                            <ToplistCoverItem
+                                key={item.id}
+                                item={item}
+                                platform={platform}
+                                rank={index + 2}
+                            ></ToplistCoverItem>
+                        ))}
+                    </div>
+                ) : null}
             </div>
-        </div>
+        </section>
     );
 }
 
 interface IToplistCoverItemProps {
     item: IMusic.IMusicSheetItem;
     platform: string;
+    rank: number;
+    featured?: boolean;
 }
 
 function ToplistCoverItem(props: IToplistCoverItemProps) {
-    const { item, platform } = props;
+    const { item, platform, rank, featured = false } = props;
     const navigate = useNavigate();
-    const metaText = item.artist ?? item.description;
+    const metaText = getDiscoveryMetaText(item);
 
     const openToplist = () => {
         navigate(`/main/toplist-detail/${platform}`, {
@@ -150,34 +180,34 @@ function ToplistCoverItem(props: IToplistCoverItemProps) {
     };
 
     return (
-        <div
+        <button
+            type="button"
             className="toplist-cover-item"
-            role="button"
-            tabIndex={0}
+            data-featured={featured}
             title={item.title}
             onClick={openToplist}
-            onKeyDown={(event) => {
-                if (event.key !== "Enter" && event.key !== " ") {
-                    return;
-                }
-
-                event.preventDefault();
-                openToplist();
-            }}
         >
-            <LazyImage
-                src={getCompactArtworkSrc(item, 420) ?? albumImg}
-                fallbackSrc={albumImg}
-                releaseWhenHidden={false}
-                onError={setFallbackAlbum}
-                alt={item.title}
-            ></LazyImage>
+            <span className="toplist-rank-number">
+                {String(rank).padStart(2, "0")}
+            </span>
+            <span className="toplist-cover-artwork">
+                <LazyImage
+                    src={getCompactArtworkSrc(item, featured ? 720 : 240) ?? albumImg}
+                    fallbackSrc={albumImg}
+                    releaseWhenHidden={false}
+                    onError={setFallbackAlbum}
+                    alt=""
+                ></LazyImage>
+            </span>
             <div className="toplist-cover-item--overlay">
                 <div className="toplist-cover-item--title">{item.title}</div>
                 <Condition condition={metaText}>
                     <div className="toplist-cover-item--meta">{metaText}</div>
                 </Condition>
             </div>
-        </div>
+            <span className="toplist-open-indicator" aria-hidden="true">
+                <SvgAsset iconName="chevron-right" size={16}></SvgAsset>
+            </span>
+        </button>
     );
 }

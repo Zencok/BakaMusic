@@ -1,0 +1,53 @@
+.discovery-page-header {
+  padding-bottom: 0.3rem;
+}
+
+.recommend-sheets-view--container,
+.toplist-view--container {
+  container-type: inline-size;
+}
+
+.discovery-page-heading {
+  min-width: 0;
+
+  & .discovery-page-eyebrow {
+    display: block;
+    margin-bottom: 0.55rem;
+    color: var(--discovery-warm);
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  & h1 {
+    margin: 0;
+    color: var(--appTextPrimary);
+    font-size: 2.8rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: 0;
+    text-wrap: balance;
+  }
+
+  & p {
+    max-width: 46rem;
+    margin: 0.85rem 0 0;
+    color: var(--appTextSecondary);
+    font-size: 0.94rem;
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+}
+
+@media (max-width: 760px) {
+  .discovery-page-heading h1 {
+    font-size: 2.4rem;
+  }
+}
+
+@container (max-width: 900px) {
+  .discovery-page-heading h1 {
+    font-size: 2.4rem;
+  }
+}

@@ -1,0 +1,170 @@
+// 音源切换：编辑式下划线导航
+// 与歌单/榜单页的大标题、细分割线语言对齐，取消胶囊与实色填充，
+// 选中态只由「文字色 + 滑动强调线」表达。
+
+.discovery-source-switcher {
+  --discovery-source-accent: var(--discovery-cool, var(--primaryColor));
+  --discovery-source-hairline: var(
+    --discovery-line,
+    color-mix(in srgb, var(--textColor) 14%, transparent)
+  );
+
+  position: relative;
+  margin-top: 1.9rem;
+
+  // 基线独立于滚动容器，溢出时也保持通栏
+  &::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 1px;
+    pointer-events: none;
+    background: var(--discovery-source-hairline);
+  }
+}
+
+.discovery-source-rail {
+  --discovery-source-fade: 2.6rem;
+  --discovery-source-fade-start: 0px;
+  --discovery-source-fade-end: 0px;
+
+  position: relative;
+  display: flex;
+  gap: 1.86rem;
+  align-items: flex-end;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--discovery-source-fade-start),
+    #000 calc(100% - var(--discovery-source-fade-end)),
+    transparent 100%
+  );
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  &[data-fade-start="true"] {
+    --discovery-source-fade-start: var(--discovery-source-fade);
+  }
+
+  &[data-fade-end="true"] {
+    --discovery-source-fade-end: var(--discovery-source-fade);
+  }
+}
+
+.discovery-source-tab {
+  flex: 0 0 auto;
+  padding: 0.56rem 0 0.9rem;
+  border: 0;
+  border-radius: 3px;
+  color: var(--appTextTertiary);
+  background: transparent;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  // 占位副本比常态文字宽，左对齐才能与大标题保持同一条竖直基准
+  text-align: left;
+  cursor: pointer;
+  transition: color 180ms ease;
+
+  &:hover {
+    color: var(--appTextSecondary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--discovery-source-accent);
+    outline-offset: 2px;
+  }
+
+  &[data-selected] {
+    color: var(--appTextPrimary);
+    font-weight: 800;
+  }
+}
+
+.discovery-source-tab-name {
+  display: block;
+
+  // 用不可见的粗体副本占位，切换字重时整条导航不发生回流
+  &::after {
+    content: attr(data-text);
+    display: block;
+    height: 0;
+    overflow: hidden;
+    font-weight: 800;
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+.discovery-source-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: var(--source-indicator-w, 0);
+  height: 2px;
+  pointer-events: none;
+  border-radius: 2px 2px 0 0;
+  background: var(--discovery-source-accent);
+  transform: translateX(var(--source-indicator-x, 0));
+  transition: transform 340ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    width 340ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (max-width: 760px) {
+  .discovery-source-switcher {
+    margin-top: 1.45rem;
+  }
+
+  .discovery-source-rail {
+    gap: 1.15rem;
+  }
+}
+
+@container (max-width: 640px) {
+  .discovery-source-rail {
+    gap: 1.15rem;
+  }
+
+  .discovery-source-tab {
+    font-size: 0.88rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discovery-source-tab,
+  .discovery-source-indicator {
+    transition: none;
+  }
+}
+
+[data-ui-style="glass"] {
+  & .discovery-source-switcher::after {
+    background: var(--appSurfaceBorder);
+  }
+
+  & .discovery-source-indicator {
+    box-shadow: 0 0 12px
+      color-mix(in srgb, var(--discovery-source-accent) 55%, transparent);
+  }
+}
+
+[data-ui-style="flat"] {
+  & .discovery-source-switcher::after {
+    background: var(--appSurfaceBorderStrong);
+  }
+
+  & .discovery-source-indicator {
+    border-radius: 0;
+    box-shadow: none;
+  }
+}

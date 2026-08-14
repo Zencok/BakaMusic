@@ -402,3 +402,16 @@ pending
 - **Bug**: Switching the output device back to Default left playback on the previously selected device after the next track loaded.
 - **Files**: 9 files
 - **Tests**: npm exec tsc -- --noEmit; npm exec eslint -- ./src; npm test; npm run smoke:native; node scratchpad/mpv-device-list.cjs (libmpv audio-device-list probe)
+## 2026-08-14T19:54:43.105+08:00 — feat(discovery): rebuild recommend and toplist pages around an editorial layout
+
+- **Context-Id**: ab3f1df4-342e-4c9b-9eda-40a6df4f0bf1
+- **Decision**: Replace the pill source tabs with an underline rail driven by a measured sliding indicator
+- **Decision**: Pass the Tab.List node through state rather than a shared ref object
+- **Decision**: Make the flat editorial chip the base style for the tag row and let glass only remap borders
+- **Decision**: Inset the toplist row dividers and drop the list top border
+- **Decision**: Reserve the selected tab bold metrics with a hidden ghost copy
+- **Decision**: Surface the active tag inside the expanded tag panel
+- **Bug**: Selected-state styling on the source tabs would silently drop while the pointer was over the active tab.
+- **Bug**: history.state.usr threw when the discovery pages were opened on a fresh navigation entry.
+- **Files**: 15 files
+- **Tests**: npm exec tsc -- --noEmit; npm exec eslint -- ./src; npm test; npx sass (changed scss); manual UI verification not performed

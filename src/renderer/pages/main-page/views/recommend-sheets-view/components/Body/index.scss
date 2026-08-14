@@ -1,50 +1,318 @@
 .recommend-sheet-view--body-container {
+  padding-top: 1.15rem;
+
   & .tags-container {
-    margin-top: 16px;
     position: relative;
     display: flex;
     flex-wrap: wrap;
-    gap: 10px 14px;
+    gap: 0.5rem;
     align-items: center;
-    $tag-size: 4px;
+    min-height: 3rem;
+  }
 
-    & .first-tag {
-      flex-shrink: 0;
-      font-size: 1rem;
-      display: flex;
-      align-items: center;
+  & .tags-label {
+    flex: 0 0 auto;
+    margin-right: 0.35rem;
+    color: var(--appTextTertiary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
 
-      &::after {
-        content: "";
-        display: block;
-        width: 0;
-        height: 0;
-        margin-left: 0.5rem;
-        border: $tag-size solid transparent;
-        border-left-color: currentColor;
-        transform-origin: left center;
-        transition: transform linear 100ms;
-      }
+  & .first-tag,
+  & .pinned-tag {
+    display: inline-flex;
+    gap: 0.45rem;
+    align-items: center;
+    min-height: 2.3rem;
+    padding: 0 0.85rem;
+    border: 1px solid var(--discovery-line);
+    border-radius: var(--controlRadius, 5px);
+    color: var(--appTextSecondary);
+    background: transparent;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
 
-      &[data-panel-open="true"] {
-        &::after {
-          transform: rotate(90deg);
-        }
-      }
+    &:hover {
+      color: var(--appTextPrimary);
+      border-color: color-mix(in srgb, var(--appTextPrimary) 38%, transparent);
+      background: var(--appInteractiveSurface);
     }
 
-    & .pinned-tag {
-      font-size: 1rem;
-      opacity: 0.8;
-      white-space: nowrap;
-      
-      cursor: pointer;
+    &:focus-visible {
+      color: var(--appTextPrimary);
+      outline: 2px solid var(--discovery-cool);
+      outline-offset: 2px;
+    }
+
+    // 选中态统一为实心墨色：任意主题与 UI 风格下都是一眼可辨的对比
+    &.highlight {
+      color: var(--backgroundColor);
+      border-color: var(--appTextPrimary);
+      background: var(--appTextPrimary);
     }
   }
 
-  & .list-container{
-    margin-top: 16px;
+  & .first-tag {
+    & svg {
+      opacity: 0.72;
+      transition: transform 150ms ease;
+    }
+
+    &[data-panel-open="true"] svg {
+      transform: rotate(180deg) !important;
+    }
+  }
+
+  & .list-container {
     min-height: 300px;
-    height: 300px;
+    margin-top: 1.15rem;
+  }
+}
+
+.recommend-editorial-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 1.35rem 1rem;
+  align-items: start;
+}
+
+.recommend-editorial-card {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &[data-featured="true"] {
+    grid-column: span 2;
+
+    & .recommend-card-artwork {
+      aspect-ratio: 2 / 1;
+    }
+
+    & .recommend-card-title {
+      font-size: 1.35rem;
+    }
+  }
+
+  &:hover .recommend-card-artwork img,
+  &:focus-visible .recommend-card-artwork img {
+    transform: scale(1.045);
+  }
+
+  &:hover .recommend-card-title,
+  &:focus-visible .recommend-card-title {
+    color: var(--discovery-cool);
+  }
+
+  &:focus-visible {
+    outline: none;
+
+    & .recommend-card-artwork {
+      outline: 2px solid var(--discovery-cool);
+      outline-offset: 3px;
+    }
+  }
+}
+
+.recommend-card-artwork {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  background: var(--appImageFallback);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border: 1px solid color-mix(in srgb, white 18%, transparent);
+    border-radius: inherit;
+    box-shadow: inset 0 -4rem 5rem rgba(0, 0, 0, 0.22);
+  }
+
+  & img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+.recommend-card-index,
+.recommend-featured-mark {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  color: #fff;
+  background: rgba(10, 12, 14, 0.78);
+  backdrop-filter: blur(10px);
+}
+
+.recommend-card-index {
+  right: 0.65rem;
+  bottom: 0.65rem;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 850;
+}
+
+.recommend-featured-mark {
+  top: 0.75rem;
+  left: 0.75rem;
+  gap: 0.4rem;
+  min-height: 2rem;
+  padding: 0 0.7rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.recommend-card-copy {
+  display: block;
+  padding-top: 0.75rem;
+}
+
+.recommend-card-title {
+  overflow: hidden;
+  display: -webkit-box;
+  min-height: 2.5em;
+  color: var(--appTextPrimary);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.25;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  transition: color 150ms ease;
+}
+
+.recommend-card-meta {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  margin-top: 0.38rem;
+  color: var(--appTextTertiary);
+  font-size: 0.75rem;
+
+  & > span:first-child {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
+.recommend-card-count {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+@media (max-width: 620px) {
+  .recommend-editorial-grid {
+    grid-template-columns: repeat(auto-fill, minmax(142px, 1fr));
+  }
+
+  .recommend-editorial-card[data-featured="true"] {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recommend-editorial-card img,
+  .recommend-sheet-view--body-container button,
+  .recommend-sheet-view--body-container svg {
+    transition: none !important;
+  }
+}
+
+[data-ui-style="glass"] {
+  & .recommend-sheet-view--body-container .first-tag,
+  & .recommend-sheet-view--body-container .pinned-tag {
+    border-color: var(--appSurfaceBorder);
+
+    &:hover {
+      border-color: var(--appSurfaceBorderStrong);
+    }
+  }
+
+  & .recommend-card-artwork {
+    border-radius: var(--coverRadius, 12px);
+    box-shadow: 0 14px 30px color-mix(in srgb, black 14%, transparent),
+      inset 0 1px 0 color-mix(in srgb, white 18%, transparent);
+    transition: box-shadow 180ms ease, transform 180ms ease;
+  }
+
+  & .recommend-editorial-card:hover .recommend-card-artwork,
+  & .recommend-editorial-card:focus-visible .recommend-card-artwork {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 42px color-mix(in srgb, black 20%, transparent),
+      inset 0 1px 0 color-mix(in srgb, white 22%, transparent);
+  }
+
+  & .recommend-card-index,
+  & .recommend-featured-mark {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(10, 12, 14, 0.58);
+    -webkit-backdrop-filter: blur(14px) saturate(145%);
+    backdrop-filter: blur(14px) saturate(145%);
+  }
+
+  & .recommend-featured-mark {
+    border-radius: var(--tagRadius, 999px);
+  }
+}
+
+[data-ui-style="flat"] {
+  & .recommend-sheet-view--body-container .first-tag,
+  & .recommend-sheet-view--body-container .pinned-tag {
+    border-color: var(--appSurfaceBorderStrong);
+
+    &:hover {
+      border-color: var(--appTextPrimary);
+    }
+  }
+
+  & .recommend-card-artwork {
+    border-radius: var(--coverRadius, 4px);
+    box-shadow: none;
+  }
+
+  & .recommend-editorial-card:hover .recommend-card-artwork,
+  & .recommend-editorial-card:focus-visible .recommend-card-artwork {
+    transform: none;
+    box-shadow: none;
+  }
+
+  & .recommend-card-index,
+  & .recommend-featured-mark {
+    border: 0;
+    background: #111214;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  & .recommend-featured-mark {
+    border-radius: var(--controlRadius, 4px);
   }
 }

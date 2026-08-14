@@ -1,31 +1,40 @@
 import Condition from "@/renderer/components/Condition";
+import classNames from "@/renderer/utils/classnames";
 import { getDefaultTag } from ".";
 import "./tag-panel.scss";
 
 interface ITagPanelProps {
+    id: string;
     show: boolean;
     tagsGroups: IMusic.IMusicSheetGroupItem[];
+    selectedId?: string | null;
     onTagClick?: (tag: IMedia.IUnique) => void;
 }
 
 export default function TagPanel(props: ITagPanelProps) {
-    const { show, onTagClick, tagsGroups } = props;
+    const { id, show, onTagClick, tagsGroups, selectedId } = props;
     const defaultTag = getDefaultTag();
 
+    if (!show) {
+        return null;
+    }
+
     return (
-        <div className="tag-panel--container shadow backdrop-color" data-show={show}>
+        <div id={id} className="tag-panel--container" data-show={show}>
             <div className="tag-group--container">
-                <div
-                    role="button"
-                    className="tag-group--tag"
-                    data-type="normalButton"
+                <button
+                    type="button"
+                    className={classNames({
+                        "tag-group--tag": true,
+                        highlight: selectedId === defaultTag.id,
+                    })}
                     title={defaultTag.title}
                     onClick={() => {
                         onTagClick?.(defaultTag);
                     }}
                 >
                     {defaultTag.title}
-                </div>
+                </button>
             </div>
             {tagsGroups?.map?.((tagGroup, index) => (
                 <div key={index} className="tag-group--container">
@@ -34,18 +43,20 @@ export default function TagPanel(props: ITagPanelProps) {
                     </Condition>
                     <div className="tag-group--tags">
                         {tagGroup.data.map((tag) => (
-                            <div
+                            <button
+                                type="button"
                                 key={tag.id}
-                                role="button"
-                                data-type="normalButton"
-                                className="tag-group--tag"
+                                className={classNames({
+                                    "tag-group--tag": true,
+                                    highlight: selectedId === tag.id,
+                                })}
                                 title={tag.title}
                                 onClick={() => {
                                     onTagClick?.(tag);
                                 }}
                             >
                                 {tag.title}
-                            </div>
+                            </button>
                         ))}
                     </div>
                 </div>
