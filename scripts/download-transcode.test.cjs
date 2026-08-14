@@ -110,6 +110,24 @@ assert.match(host, /case "transcode-download":/);
 const preload = read("src/shared/node-runtime/preload.ts");
 assert.match(preload, /transcodeDownloadedFile/);
 
+// Download slots cover network IO only. Verified files enter the bounded
+// postprocess queue without holding back the next queued network download.
+const downloader = read("src/renderer/core/downloader/index.ts");
+assert.match(downloader, /downloadFinalizeQueue = new PQueue\(\{ concurrency: 2 \}\)/);
+assert.match(
+    downloader,
+    /finalizeStarted = true;[\s\S]*?onDownloadComplete\(\);[\s\S]*?downloadFinalizeQueue\.add/,
+);
+
+const transcodeWorker = read("src/webworkers/audio-transcode.ts");
+assert.match(transcodeWorker, /availableParallelism\(\)/);
+assert.match(
+    transcodeWorker,
+    /Math\.min\(2, Math\.floor\(availableParallelism\(\) \/ 2\)\)/,
+);
+assert.match(transcodeWorker, /pendingTranscodes: Array<\(\) => void>/);
+assert.doesNotMatch(transcodeWorker, /let transcodeChain/);
+
 // Three locales must stay in sync or the settings page renders raw keys.
 for (const lang of ["zh-CN", "zh-TW", "en-US"]) {
     const messages = JSON.parse(read(`res/lang/${lang}.json`));

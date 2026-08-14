@@ -1,4 +1,5 @@
 import fsPromises from "fs/promises";
+import { availableParallelism } from "os";
 import path from "path";
 import koffi from "koffi";
 import {
@@ -333,15 +334,39 @@ async function encodeToTarget(inputPath: string, target: ITranscodeTarget) {
 }
 
 /**
- * Transcodes run one at a time. Encoding is CPU-bound, and a batch download
- * finishing together would otherwise start a dozen encoders at once.
+ * LAME and FLAC encode one track mostly on one core. Use a second worker on
+ * machines with enough CPU capacity, while keeping the queue bounded so a
+ * large batch cannot start an encoder per configured download slot.
  */
-let transcodeChain: Promise<unknown> = Promise.resolve();
+const transcodeConcurrency = Math.max(
+    1,
+    Math.min(2, Math.floor(availableParallelism() / 2)),
+);
+const pendingTranscodes: Array<() => void> = [];
+let activeTranscodes = 0;
 
 function enqueue<T>(task: () => Promise<T>): Promise<T> {
-    const result = transcodeChain.then(task, task);
-    transcodeChain = result.catch(() => undefined);
-    return result;
+    return new Promise<T>((resolve, reject) => {
+        const run = () => {
+            activeTranscodes++;
+            void (async () => {
+                try {
+                    resolve(await task());
+                } catch (error) {
+                    reject(error);
+                } finally {
+                    activeTranscodes--;
+                    pendingTranscodes.shift()?.();
+                }
+            })();
+        };
+
+        if (activeTranscodes < transcodeConcurrency) {
+            run();
+        } else {
+            pendingTranscodes.push(run);
+        }
+    });
 }
 
 /**

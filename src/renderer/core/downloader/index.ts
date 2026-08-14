@@ -98,6 +98,7 @@ const downloadingTaskStore = new Store<IDownloadTaskSnapshot[]>([]);
 const downloadingProgress = new Map<string, IDownloadStatus>();
 const taskControls = new Map<string, IDownloadTaskControl>();
 const downloadingQueue = new PQueue({ concurrency: 5 });
+const downloadFinalizeQueue = new PQueue({ concurrency: 2 });
 const concurrencyLimit = 20;
 const maxAutoRecoveryPerTask = 3;
 let downloaderWorker: IDownloaderWorker | undefined;
@@ -288,6 +289,7 @@ async function runTask(taskControl: IDownloadTaskControl, runId: number) {
             taskControl.musicItem,
             taskControl.preferredQuality,
             () => taskControls.get(taskId)?.runId !== runId,
+            () => taskControl.release?.(),
             (stateData) => handleTaskState(taskControl, runId, stateData),
         );
     });
@@ -431,6 +433,7 @@ async function downloadMusicImpl(
     musicItem: IMusic.IMusicItem,
     preferredQuality: IMusic.IQualityKey | undefined,
     isCancelled: () => boolean,
+    onDownloadComplete: () => void,
     onStateChange: IOnStateChangeFunc,
 ) {
     const [defaultQuality, whenQualityMissing] = [
@@ -546,13 +549,17 @@ async function downloadMusicImpl(
                     return;
                 }
                 finalizeStarted = true;
+                // The media file is fully verified and atomically finalized.
+                // Release the network slot before CPU/disk postprocessing so a
+                // batch of M4A conversions cannot stall subsequent downloads.
+                onDownloadComplete();
                 const finalPath = dataState.filePath || downloadPath;
-                void finalizeDownloadedMusic(
+                void downloadFinalizeQueue.add(() => finalizeDownloadedMusic(
                     musicItem,
                     finalPath,
                     realQuality,
                     onStateChange,
-                )
+                ))
                     .then((completedPath) => onStateChange({
                         ...dataState,
                         filePath: completedPath,
