@@ -40,6 +40,196 @@
   }
 }
 
+.discovery-workspace-toolbar {
+  --discoveryToolbarHeight: 2.5rem;
+
+  display: grid;
+  grid-template-areas: "segments search actions";
+  grid-template-columns: auto minmax(12rem, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+}
+
+.discovery-toolbar-segments {
+  grid-area: segments;
+  min-width: 0;
+  min-height: var(--discoveryToolbarHeight);
+  display: inline-flex;
+  align-items: stretch;
+  padding: 0.18rem;
+  border: 1px solid var(--discovery-line, var(--appInteractiveBorder));
+  border-radius: var(--controlRadius, 5px);
+  background: color-mix(in srgb, var(--appTextPrimary) 3%, transparent);
+}
+
+.discovery-toolbar-segment {
+  min-width: 0;
+  min-height: calc(var(--discoveryToolbarHeight) - 0.36rem);
+  padding: 0 0.68rem;
+  border: 0;
+  border-radius: max(2px, calc(var(--controlRadius, 5px) - 2px));
+  background: transparent;
+  color: var(--appTextTertiary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 680;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 150ms ease, background-color 150ms ease, opacity 150ms ease;
+
+  & svg {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+
+  &:hover:not(:disabled) {
+    color: var(--appTextPrimary);
+    background: var(--appInteractiveSurface);
+  }
+
+  &:focus-visible {
+    position: relative;
+    outline: 2px solid var(--discovery-cool, var(--primaryColor));
+    outline-offset: 1px;
+  }
+
+  &[data-active="true"] {
+    background: var(--appTextPrimary);
+    color: var(--backgroundColor);
+  }
+}
+
+.discovery-toolbar-search {
+  grid-area: search;
+  min-width: 0;
+  height: var(--discoveryToolbarHeight);
+  padding: 0 0.68rem;
+  box-sizing: border-box;
+  border: 1px solid var(--discovery-line, var(--appInteractiveBorder));
+  border-radius: var(--controlRadius, 5px);
+  background: transparent;
+  color: var(--appTextTertiary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
+
+  &:focus-within {
+    border-color: var(--discovery-cool, var(--primaryColor));
+    background: color-mix(in srgb, var(--discovery-cool, var(--primaryColor)) 5%, transparent);
+    color: var(--discovery-cool, var(--primaryColor));
+  }
+
+  & > svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  & input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--appTextPrimary);
+    font: inherit;
+    font-size: 0.8rem;
+
+    &::placeholder {
+      color: var(--appTextTertiary);
+    }
+  }
+}
+
+.discovery-search-clear {
+  width: 1.7rem;
+  height: 1.7rem;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: max(2px, calc(var(--controlRadius, 5px) - 2px));
+  background: transparent;
+  color: currentColor;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--appInteractiveSurface);
+    color: var(--appTextPrimary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--discovery-cool, var(--primaryColor));
+    outline-offset: 1px;
+  }
+}
+
+.discovery-toolbar-actions {
+  grid-area: actions;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.42rem;
+}
+
+.discovery-toolbar-button {
+  min-height: var(--discoveryToolbarHeight, 2.5rem);
+  padding: 0 0.78rem;
+  border: 1px solid var(--discovery-line, var(--appInteractiveBorder));
+  border-radius: var(--controlRadius, 5px);
+  background: transparent;
+  color: var(--appTextSecondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 680;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease, opacity 150ms ease;
+
+  & svg {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--appTextPrimary) 38%, transparent);
+    background: var(--appInteractiveSurface);
+    color: var(--appTextPrimary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--discovery-cool, var(--primaryColor));
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.4;
+  }
+
+  &[data-variant="danger"] {
+    border-color: color-mix(in srgb, var(--dangerColor) 24%, transparent);
+    color: color-mix(in srgb, var(--dangerColor) 84%, var(--appTextPrimary));
+
+    &:hover:not(:disabled) {
+      border-color: color-mix(in srgb, var(--dangerColor) 42%, transparent);
+      background: color-mix(in srgb, var(--dangerColor) 8%, transparent);
+      color: var(--dangerColor);
+    }
+  }
+}
+
 @media (max-width: 760px) {
   .discovery-page-heading h1 {
     font-size: 2.4rem;
@@ -49,5 +239,54 @@
 @container (max-width: 900px) {
   .discovery-page-heading h1 {
     font-size: 2.4rem;
+  }
+}
+
+@container (max-width: 980px) {
+  .discovery-workspace-toolbar {
+    grid-template-areas:
+      "segments actions"
+      "search search";
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@container (max-width: 680px) {
+  .discovery-workspace-toolbar {
+    --discoveryToolbarHeight: 2.75rem;
+
+    grid-template-areas:
+      "search"
+      "segments"
+      "actions";
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .discovery-toolbar-segments {
+    width: 100%;
+    overflow-x: auto;
+    box-sizing: border-box;
+  }
+
+  .discovery-toolbar-segment {
+    min-height: var(--discoveryToolbarHeight);
+    flex: 1 0 auto;
+  }
+
+  .discovery-toolbar-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .discovery-toolbar-button {
+    min-height: var(--discoveryToolbarHeight, 2.75rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discovery-toolbar-segment,
+  .discovery-toolbar-search,
+  .discovery-toolbar-button {
+    transition: none;
   }
 }

@@ -126,6 +126,7 @@
     },
     "download_page": {
         "title": "Download Manager",
+        "eyebrow": "TRANSFER QUEUE",
         "description": "Manage your download queue, failed tasks, and local music files in one place.",
         "overview": "Download overview",
         "tasks": "Tasks",
@@ -213,6 +214,8 @@
     },
     "local_music_page": {
         "local_music": "Local Music",
+        "eyebrow": "LOCAL ARCHIVE",
+        "subtitle": "Scan, filter, and organize on-device music by tracks, artists, albums, or folders.",
         "auto_scan": "Scan",
         "scan_config": "Configure",
         "search_local_music": "Search Local Music",
@@ -244,7 +247,10 @@
         "open_album_failed": "Unable to open album page"
     },
     "search_result_page": {
+        "eyebrow": "SEARCH RESULTS",
         "search_result_title": "Search Results <highlight>{{query}}</highlight>",
+        "subtitle": "Browse matches by content type and music source.",
+        "search_type": "Search type",
         "refresh_current_platform": "Refresh current platform"
     },
     "side_bar": {
@@ -276,7 +282,7 @@
         "open_playlist": "Open playlist: {{title}}"
     },
     "statistics_page": {
-        "eyebrow": "Listening insights",
+        "eyebrow": "LISTENING INSIGHTS",
         "title": "Listening Statistics",
         "subtitle": "Look back on your listening history and rediscover the tracks you return to most.",
         "total_plays": "Total plays",

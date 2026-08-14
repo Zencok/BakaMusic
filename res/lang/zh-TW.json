@@ -126,6 +126,7 @@
     },
     "download_page": {
         "title": "下載管理",
+        "eyebrow": "TRANSFER QUEUE",
         "description": "集中管理下載佇列、異常任務與本機音樂檔案。",
         "overview": "下載概覽",
         "tasks": "下載任務",
@@ -213,6 +214,8 @@
     },
     "local_music_page": {
         "local_music": "本地音樂",
+        "eyebrow": "LOCAL ARCHIVE",
+        "subtitle": "掃描、篩選並依歌曲、藝術家、專輯或資料夾整理裝置上的本機音樂。",
         "auto_scan": "掃描",
         "scan_config": "配置",
         "search_local_music": "搜尋本地音樂",
@@ -244,7 +247,10 @@
         "open_album_failed": "無法開啟專輯頁"
     },
     "search_result_page": {
+        "eyebrow": "SEARCH RESULTS",
         "search_result_title": "搜尋結果 <highlight>{{query}}</highlight>",
+        "subtitle": "依內容類型與音樂來源瀏覽相符結果。",
+        "search_type": "搜尋類型",
         "refresh_current_platform": "重新整理目前平台"
     },
     "side_bar": {
@@ -276,7 +282,7 @@
         "open_playlist": "開啟歌單：{{title}}"
     },
     "statistics_page": {
-        "eyebrow": "Listening insights",
+        "eyebrow": "LISTENING INSIGHTS",
         "title": "聽歌統計",
         "subtitle": "回顧你的聽歌足跡，找出最近循環和最常播放的聲音。",
         "total_plays": "總播放",

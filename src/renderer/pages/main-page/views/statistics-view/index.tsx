@@ -259,8 +259,14 @@ export default function StatisticsView() {
             className="page-container statistics-page"
             ref={pageRef}
         >
-            <header className="statistics-header">
-                <h1>{t("statistics_page.title")}</h1>
+            <header className="discovery-page-header statistics-header">
+                <div className="discovery-page-heading">
+                    <span className="discovery-page-eyebrow">
+                        {t("statistics_page.eyebrow")}
+                    </span>
+                    <h1>{t("statistics_page.title")}</h1>
+                    <p>{t("statistics_page.subtitle")}</p>
+                </div>
                 <button
                     className="statistics-clear-button"
                     type="button"

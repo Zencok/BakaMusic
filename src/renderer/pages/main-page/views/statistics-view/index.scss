@@ -1,36 +1,33 @@
+@use "../discovery-pages";
+
 .statistics-page {
+  --discovery-cool: color-mix(in srgb, var(--primaryColor) 76%, #42e8c6);
+  --discovery-warm: color-mix(in srgb, var(--warningColor) 72%, #ff5b35);
+  --discovery-line: color-mix(in srgb, var(--textColor) 15%, transparent);
   --statisticsSmallTextSize: 0.76rem;
 
   display: block;
+  padding-top: 1.45rem;
   color: var(--appTextPrimary);
+  container-type: inline-size;
 
   & > * + * {
-    margin-top: 1rem;
+    margin-top: 1.15rem;
+  }
+
+  & .discovery-page-eyebrow {
+    color: var(--discovery-cool);
   }
 }
 
 .statistics-header {
-  margin-top: 0.45rem;
-  padding: 1.15rem 1.3rem;
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
   justify-content: space-between;
-  gap: 1rem;
-  border: 1px solid var(--appSurfaceBorder);
-  border-radius: var(--cardRadius, 24px);
-  background: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 78%, transparent));
-  box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
-  backdrop-filter: var(--appGlassFilter);
+  gap: 1.5rem;
+  padding-bottom: 0.35rem;
   user-select: none;
-
-  & h1 {
-    margin: 0;
-    color: var(--appTextPrimary);
-    font-size: 1.35rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    line-height: 1.35;
-  }
 }
 
 .statistics-clear-button {
@@ -39,17 +36,17 @@
   justify-content: center;
   gap: 7px;
   flex-shrink: 0;
-  min-height: 2.25rem;
-  padding: 0 0.78rem;
-  border: 1px solid color-mix(in srgb, var(--dangerColor) 22%, transparent);
-  border-radius: var(--appRadiusPill, 999px);
-  background: color-mix(in srgb, var(--dangerColor) 9%, var(--backgroundColor));
+  min-height: 2.35rem;
+  padding: 0 0.9rem;
+  border: 1px solid var(--discovery-line);
+  border-radius: var(--controlRadius, 5px);
+  background: transparent;
   color: color-mix(in srgb, var(--dangerColor) 84%, var(--appTextPrimary));
   cursor: pointer;
   font: inherit;
   font-size: 0.78rem;
   font-weight: 650;
-  transition: transform 160ms ease, color 160ms ease, background-color 160ms ease, opacity 160ms ease;
+  transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease, opacity 150ms ease;
 
   & svg {
     width: 15px;
@@ -57,8 +54,13 @@
   }
 
   &:hover:not(:disabled) {
-    transform: translateY(-1px);
-    background: color-mix(in srgb, var(--dangerColor) 12%, var(--backgroundColor));
+    border-color: color-mix(in srgb, var(--dangerColor) 34%, transparent);
+    background: color-mix(in srgb, var(--dangerColor) 8%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--discovery-cool);
+    outline-offset: 2px;
   }
 
   &:disabled {
@@ -70,11 +72,11 @@
 .statistics-summary-bar {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  padding: 0.7rem 0.8rem;
-  border: 1px solid var(--appSurfaceBorder);
-  border-radius: var(--cardRadius, 22px);
-  background: var(--appSurfaceMuted);
-  box-shadow: var(--appSurfaceInset);
+  gap: 0.8rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .statistics-summary-card {
@@ -82,11 +84,19 @@
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  padding: 0.35rem 0.8rem;
-  border-left: 1px solid color-mix(in srgb, var(--textColor) 7%, transparent);
+  padding: 0.8rem 0 0;
+  border-top: 3px solid var(--discovery-cool);
 
-  &:first-child {
-    border-left: 0;
+  &:nth-child(2) {
+    border-color: var(--discovery-warm);
+  }
+
+  &:nth-child(3) {
+    border-color: color-mix(in srgb, var(--discovery-cool) 58%, var(--discovery-warm));
+  }
+
+  &:nth-child(4) {
+    border-color: var(--appTextPrimary);
   }
 }
 
@@ -98,8 +108,8 @@
   justify-content: center;
   flex-shrink: 0;
   border-radius: 9px;
-  background: color-mix(in srgb, var(--primaryColor) 9%, transparent);
-  color: color-mix(in srgb, var(--primaryColor) 74%, var(--appTextSecondary));
+  background: var(--appTextPrimary);
+  color: var(--backgroundColor);
 
   & svg {
     width: 0.95rem;
@@ -160,12 +170,11 @@
 .statistics-library {
   height: auto;
   min-height: 360px;
-  padding: 1rem;
-  border: 1px solid var(--appSurfaceBorder);
-  border-radius: var(--cardRadius, 24px);
-  background: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 84%, transparent));
-  box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
-  backdrop-filter: var(--appGlassFilter);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .statistics-library-toolbar,
@@ -177,18 +186,17 @@
 }
 
 .statistics-library-toolbar {
-  padding-bottom: 1rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
+  padding: 0.95rem 0 0.35rem;
 }
 
 .statistics-tabs {
   display: inline-flex;
   gap: 0.2rem;
-  padding: 0.22rem;
-  border: 1px solid var(--appInteractiveBorder);
-  border-radius: var(--appRadiusPill, 999px);
-  background: var(--appSurfaceMuted);
-  box-shadow: var(--appSurfaceInset);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 
   & button {
     display: flex;
@@ -196,8 +204,8 @@
     gap: 0.4rem;
     min-height: 2.15rem;
     padding: 0 0.9rem;
-    border: 0;
-    border-radius: var(--appRadiusPill, 999px);
+    border: 1px solid var(--discovery-line);
+    border-radius: var(--controlRadius, 5px);
     background: transparent;
     color: var(--appTextSecondary);
     cursor: pointer;
@@ -210,9 +218,9 @@
     }
 
     &[data-active="true"] {
-      background: var(--appInteractiveSurface);
-      box-shadow: 0 5px 16px color-mix(in srgb, black 8%, transparent), var(--appSurfaceInset);
-      color: color-mix(in srgb, var(--primaryColor) 80%, var(--appTextPrimary));
+      background: var(--appTextPrimary);
+      box-shadow: none;
+      color: var(--backgroundColor);
     }
   }
 }
@@ -224,15 +232,15 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0 0.85rem;
-  border: 1px solid var(--appInteractiveBorder);
-  border-radius: var(--appRadiusPill, 999px);
-  background: color-mix(in srgb, var(--backgroundColor) 80%, transparent);
-  box-shadow: var(--appSurfaceInset);
+  border: 1px solid var(--discovery-line);
+  border-radius: var(--controlRadius, 5px);
+  background: transparent;
+  box-shadow: none;
   color: var(--appTextTertiary);
 
   &:focus-within {
-    border-color: color-mix(in srgb, var(--primaryColor) 42%, var(--appInteractiveBorder));
-    color: var(--primaryColor);
+    border-color: var(--discovery-cool);
+    color: var(--discovery-cool);
   }
 
   & svg {
@@ -310,20 +318,19 @@
   align-items: center;
   gap: 0.75rem;
   height: 68px;
-  margin-bottom: 4px;
+  margin-bottom: 0;
   padding: 0.42rem 0.62rem;
   box-sizing: border-box;
   border: 1px solid transparent;
-  border-radius: 16px;
+  border-radius: var(--controlRadiusLg, 14px);
   cursor: pointer;
   outline: none;
   transition: transform 150ms ease, background-color 150ms ease, border-color 150ms ease;
 
   &:hover,
   &:focus-visible {
-    transform: translateX(2px);
-    border-color: var(--appInteractiveBorder);
-    background: var(--appInteractiveSurface);
+    border-color: transparent;
+    background: color-mix(in srgb, var(--discovery-cool) 7%, transparent);
   }
 
   &[data-current="true"] {
@@ -518,21 +525,31 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .statistics-summary-card:nth-child(3) {
-    border-left: 0;
-  }
-
-  .statistics-summary-card:nth-child(n + 3) {
-    margin-top: 0.35rem;
-    padding-top: 0.7rem;
-    border-top: 1px solid color-mix(in srgb, var(--textColor) 7%, transparent);
-  }
-
   .statistics-track-row {
     grid-template-columns: 32px 48px minmax(0, 1fr) 72px 30px;
   }
 
   .statistics-track-last-played {
     display: none;
+  }
+}
+
+@container (max-width: 760px) {
+  .statistics-header {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .statistics-clear-button {
+    justify-self: start;
+  }
+
+  .statistics-library-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .statistics-search {
+    width: 100%;
   }
 }

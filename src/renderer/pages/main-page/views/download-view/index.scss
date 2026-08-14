@@ -1,23 +1,85 @@
+@use "../discovery-pages";
+
 .download-view--container {
-  min-height: 100%;
+  --discovery-cool: color-mix(in srgb, var(--primaryColor) 76%, #42e8c6);
+  --discovery-warm: color-mix(in srgb, var(--warningColor) 72%, #ff5b35);
+  --discovery-line: color-mix(in srgb, var(--textColor) 15%, transparent);
+
   display: flex;
   flex-direction: column;
+  min-height: 100%;
+  padding-top: 1.45rem;
+  container-type: inline-size;
 
-  & > .header {
-    flex: 0 0 auto;
-    margin-top: 0.45rem;
-    margin-bottom: 1rem;
-    padding: 1.15rem 1.3rem;
-    border: 1px solid var(--appSurfaceBorder);
-    border-radius: var(--cardRadius, 24px);
-    background: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 78%, transparent));
-    box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
-    backdrop-filter: var(--appGlassFilter);
-    color: var(--appTextPrimary);
-    font-size: 1.35rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    line-height: 1.35;
-    user-select: none;
+  & .download-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.44fr);
+    gap: 1.5rem;
+    align-items: end;
+    padding-bottom: 0.35rem;
+  }
+
+  & .download-hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  & .download-hero-stat {
+    min-width: 0;
+    padding-top: 0.7rem;
+    border-top: 3px solid var(--discovery-cool);
+    text-align: right;
+
+    &:nth-child(2) {
+      border-color: var(--discovery-warm);
+    }
+
+    &:nth-child(3) {
+      border-color: color-mix(in srgb, var(--dangerColor) 70%, var(--discovery-warm));
+    }
+
+    & span {
+      display: block;
+      overflow: hidden;
+      color: var(--appTextTertiary);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    & strong {
+      display: block;
+      margin-top: 0.28rem;
+      color: var(--appTextPrimary);
+      font-size: 1.55rem;
+      font-weight: 920;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+}
+
+@container (max-width: 860px) {
+  .download-view--container {
+    & .download-hero {
+      grid-template-columns: 1fr;
+      align-items: start;
+    }
+
+    & .download-hero-stat {
+      text-align: left;
+    }
+  }
+}
+
+@container (max-width: 560px) {
+  .download-view--container {
+    & .download-hero-stats {
+      grid-template-columns: 1fr;
+    }
   }
 }

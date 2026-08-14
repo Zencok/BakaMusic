@@ -21,6 +21,13 @@ enum DisplayView {
     FOLDER,
 }
 
+const displayViewLabelMap = {
+    [DisplayView.LIST]: "local_music_page.list_view",
+    [DisplayView.ARTIST]: "local_music_page.artist_view",
+    [DisplayView.ALBUM]: "local_music_page.album_view",
+    [DisplayView.FOLDER]: "local_music_page.folder_view",
+} satisfies Record<DisplayView, string>;
+
 export default function LocalMusicView() {
     const { t } = useTranslation();
     const [displayView, setDisplayView] = useState(DisplayView.LIST);
@@ -74,14 +81,106 @@ export default function LocalMusicView() {
             className="page-container local-music-view--container"
             data-full-page={displayView !== DisplayView.LIST}
         >
-            <div className="header">{t("local_music_page.local_music")}</div>
-            <div className="operations">
-                <div className="local-music-scan-actions">
-                    <div
-                        className="manual-scan-button"
-                        data-type="normalButton"
+            <header className="discovery-page-header local-music-hero">
+                <div className="discovery-page-heading">
+                    <span className="discovery-page-eyebrow">
+                        {t("local_music_page.eyebrow")}
+                    </span>
+                    <h1>{t("local_music_page.local_music")}</h1>
+                    <p>{t("local_music_page.subtitle")}</p>
+                </div>
+            </header>
+            <div
+                className="discovery-workspace-toolbar local-music-toolbar"
+                aria-label={t("local_music_page.local_music")}
+            >
+                <div
+                    className="discovery-toolbar-segments local-music-view-actions"
+                    role="group"
+                    aria-label={t(displayViewLabelMap[displayView])}
+                >
+                    <button
+                        className="discovery-toolbar-segment list-view-action"
+                        data-active={displayView === DisplayView.LIST}
+                        aria-pressed={displayView === DisplayView.LIST}
+                        title={t("local_music_page.list_view")}
+                        type="button"
+                        onClick={() => {
+                            setDisplayView(DisplayView.LIST);
+                        }}
+                    >
+                        <SvgAsset iconName="musical-note"></SvgAsset>
+                        <span>{t("local_music_page.list_view")}</span>
+                    </button>
+                    <button
+                        className="discovery-toolbar-segment list-view-action"
+                        data-active={displayView === DisplayView.ARTIST}
+                        aria-pressed={displayView === DisplayView.ARTIST}
+                        title={t("local_music_page.artist_view")}
+                        type="button"
+                        onClick={() => {
+                            setDisplayView(DisplayView.ARTIST);
+                        }}
+                    >
+                        <SvgAsset iconName="user"></SvgAsset>
+                        <span>{t("local_music_page.artist_view")}</span>
+                    </button>
+                    <button
+                        className="discovery-toolbar-segment list-view-action"
+                        data-active={displayView === DisplayView.ALBUM}
+                        aria-pressed={displayView === DisplayView.ALBUM}
+                        title={t("local_music_page.album_view")}
+                        type="button"
+                        onClick={() => {
+                            setDisplayView(DisplayView.ALBUM);
+                        }}
+                    >
+                        <SvgAsset iconName="cd"></SvgAsset>
+                        <span>{t("local_music_page.album_view")}</span>
+                    </button>
+                    <button
+                        className="discovery-toolbar-segment list-view-action"
+                        data-active={displayView === DisplayView.FOLDER}
+                        aria-pressed={displayView === DisplayView.FOLDER}
+                        title={t("local_music_page.folder_view")}
+                        type="button"
+                        onClick={() => {
+                            setDisplayView(DisplayView.FOLDER);
+                        }}
+                    >
+                        <SvgAsset iconName="folder-open"></SvgAsset>
+                        <span>{t("local_music_page.folder_view")}</span>
+                    </button>
+                </div>
+                <label className="discovery-toolbar-search local-music-search-field">
+                    <SvgAsset iconName="magnifying-glass"></SvgAsset>
+                    <input
+                        className="search-local-music"
+                        spellCheck={false}
+                        value={inputSearch}
+                        aria-label={t("local_music_page.search_local_music")}
+                        onChange={(evt) => {
+                            setInputSearch(evt.target.value);
+                        }}
+                        placeholder={t("local_music_page.search_local_music")}
+                    ></input>
+                    {inputSearch ? (
+                        <button
+                            type="button"
+                            className="discovery-search-clear"
+                            title={t("common.clear")}
+                            aria-label={t("common.clear")}
+                            onClick={() => setInputSearch("")}
+                        >
+                            <SvgAsset iconName="x-mark" size={13}></SvgAsset>
+                        </button>
+                    ) : null}
+                </label>
+                <div className="discovery-toolbar-actions local-music-scan-actions">
+                    <button
+                        className="discovery-toolbar-button manual-scan-button"
                         data-scanning={isScanning}
-                        role="button"
+                        type="button"
                         title={t("local_music_page.auto_scan")}
                         onClick={async () => {
                             if (isScanning) {
@@ -98,11 +197,10 @@ export default function LocalMusicView() {
                     >
                         <SvgAsset iconName="arrow-path"></SvgAsset>
                         <span>{isScanning ? t("common.loading") : t("local_music_page.auto_scan")}</span>
-                    </div>
-                    <div
-                        className="scan-config-button"
-                        data-type="normalButton"
-                        role="button"
+                    </button>
+                    <button
+                        className="discovery-toolbar-button scan-config-button"
+                        type="button"
                         title={t("local_music_page.scan_config")}
                         onClick={() => {
                             showModal("WatchLocalDir");
@@ -110,57 +208,7 @@ export default function LocalMusicView() {
                     >
                         <SvgAsset iconName="cog-8-tooth"></SvgAsset>
                         <span>{t("local_music_page.scan_config")}</span>
-                    </div>
-                </div>
-                <div className="operations-layout">
-                    <input
-                        className="search-local-music"
-                        spellCheck={false}
-                        onChange={(evt) => {
-                            setInputSearch(evt.target.value);
-                        }}
-                        placeholder={t("local_music_page.search_local_music")}
-                    ></input>
-                    <div
-                        className="list-view-action"
-                        data-selected={displayView === DisplayView.LIST}
-                        title={t("local_music_page.list_view")}
-                        onClick={() => {
-                            setDisplayView(DisplayView.LIST);
-                        }}
-                    >
-                        <SvgAsset iconName="musical-note"></SvgAsset>
-                    </div>
-                    <div
-                        className="list-view-action"
-                        data-selected={displayView === DisplayView.ARTIST}
-                        title={t("local_music_page.artist_view")}
-                        onClick={() => {
-                            setDisplayView(DisplayView.ARTIST);
-                        }}
-                    >
-                        <SvgAsset iconName="user"></SvgAsset>
-                    </div>
-                    <div
-                        className="list-view-action"
-                        data-selected={displayView === DisplayView.ALBUM}
-                        title={t("local_music_page.album_view")}
-                        onClick={() => {
-                            setDisplayView(DisplayView.ALBUM);
-                        }}
-                    >
-                        <SvgAsset iconName="cd"></SvgAsset>
-                    </div>
-                    <div
-                        className="list-view-action"
-                        data-selected={displayView === DisplayView.FOLDER}
-                        title={t("local_music_page.folder_view")}
-                        onClick={() => {
-                            setDisplayView(DisplayView.FOLDER);
-                        }}
-                    >
-                        <SvgAsset iconName="folder-open"></SvgAsset>
-                    </div>
+                    </button>
                 </div>
             </div>
             <SwitchCase.Switch switch={displayView}>

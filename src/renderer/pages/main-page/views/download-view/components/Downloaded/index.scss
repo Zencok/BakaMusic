@@ -1,19 +1,18 @@
 .downloaded-container {
   width: 100%;
   min-height: 360px;
-  padding: 14px;
+  padding: 1rem 0 0;
   box-sizing: border-box;
-  border: 1px solid var(--appSurfaceBorder);
-  border-radius: var(--listCardRadius, 28px);
-  background: linear-gradient(180deg, var(--appSurfaceStrong), color-mix(in srgb, var(--backgroundColor) 82%, transparent));
-  box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
-  backdrop-filter: var(--appGlassFilter);
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 
   &[data-embedded="true"] {
     min-height: 0;
-    padding: 14px 0 0;
+    margin-top: 0.85rem;
+    padding: 1.1rem 0 0;
     border: 0;
-    border-top: 1px solid color-mix(in srgb, var(--textColor) 7%, transparent);
+    border-top: 1px solid var(--discovery-line, var(--appSurfaceBorder));
     border-radius: 0;
     background: transparent;
     box-shadow: none;
@@ -28,9 +27,9 @@
   }
 
   & .downloaded-toolbar {
-    padding: 2px 2px 14px;
+    padding: 0 0 14px;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 16px;
   }
@@ -59,51 +58,15 @@
     gap: 8px;
   }
 
-  & .downloaded-toolbar-actions button {
-    min-height: 2.25rem;
-    padding: 0 0.78rem;
-    border: 1px solid var(--appInteractiveBorder);
-    border-radius: var(--appRadiusPill, 999px);
-    background: var(--appSurfaceMuted);
-    color: var(--appTextSecondary);
-    box-shadow: var(--appSurfaceInset);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    font: inherit;
-    font-size: 0.78rem;
-    font-weight: 650;
-    cursor: pointer;
-    transition: transform 160ms ease, color 160ms ease, background-color 160ms ease;
-  }
-
-  & .downloaded-toolbar-actions button:hover:not(:disabled) {
-    transform: translateY(-1px);
-    color: var(--appTextPrimary);
-    background: var(--appInteractiveSurface);
-  }
-
-  & .downloaded-toolbar-actions button[data-variant="danger"] {
-    color: color-mix(in srgb, var(--dangerColor) 84%, var(--appTextPrimary));
-    border-color: color-mix(in srgb, var(--dangerColor) 22%, transparent);
-    background: color-mix(in srgb, var(--dangerColor) 9%, var(--backgroundColor));
-  }
-
-  & .downloaded-toolbar-actions button:disabled {
-    opacity: 0.42;
-    cursor: default;
-  }
-
   & .downloaded-list {
     overflow: hidden;
-    border: 1px solid color-mix(in srgb, var(--textColor) 7%, transparent);
-    border-radius: var(--cardRadius, 22px);
-    background: color-mix(in srgb, var(--backgroundColor) 62%, transparent);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
   }
 }
 
-@media (max-width: 900px) {
+@container (max-width: 760px) {
   .downloaded-container {
     & .downloaded-toolbar {
       flex-direction: column;

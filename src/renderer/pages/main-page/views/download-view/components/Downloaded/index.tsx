@@ -60,12 +60,17 @@ export default function Downloaded(props: IDownloadedProps) {
                     })}</span>
                 </div>
                 <div className="downloaded-toolbar-actions">
-                    <button type="button" onClick={openDownloadDirectory}>
+                    <button
+                        type="button"
+                        className="discovery-toolbar-button"
+                        onClick={openDownloadDirectory}
+                    >
                         <SvgAsset iconName="folder-open" size={15}></SvgAsset>
                         {t("download_page.open_folder")}
                     </button>
                     <button
                         type="button"
+                        className="discovery-toolbar-button"
                         disabled={!downloadedList.length}
                         onClick={() => confirmClear(false)}
                     >
@@ -74,6 +79,7 @@ export default function Downloaded(props: IDownloadedProps) {
                     </button>
                     <button
                         type="button"
+                        className="discovery-toolbar-button"
                         data-variant="danger"
                         disabled={!downloadedList.length}
                         onClick={() => confirmClear(true)}

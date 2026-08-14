@@ -126,6 +126,7 @@
     },
     "download_page": {
         "title": "下载管理",
+        "eyebrow": "TRANSFER QUEUE",
         "description": "集中管理下载队列、异常任务与本地音乐文件。",
         "overview": "下载概览",
         "tasks": "下载任务",
@@ -213,6 +214,8 @@
     },
     "local_music_page": {
         "local_music": "本地音乐",
+        "eyebrow": "LOCAL ARCHIVE",
+        "subtitle": "扫描、筛选并按歌曲、作者、专辑或文件夹整理设备上的本地音乐。",
         "auto_scan": "扫描",
         "scan_config": "配置",
         "search_local_music": "搜索本地音乐",
@@ -244,7 +247,10 @@
         "open_album_failed": "无法打开专辑页"
     },
     "search_result_page": {
+        "eyebrow": "SEARCH RESULTS",
         "search_result_title": "搜索结果 <highlight>{{query}}</highlight>",
+        "subtitle": "按内容类型与音乐来源浏览匹配结果。",
+        "search_type": "搜索类型",
         "refresh_current_platform": "刷新当前平台"
     },
     "side_bar": {
@@ -276,7 +282,7 @@
         "open_playlist": "打开歌单：{{title}}"
     },
     "statistics_page": {
-        "eyebrow": "Listening insights",
+        "eyebrow": "LISTENING INSIGHTS",
         "title": "听歌统计",
         "subtitle": "回顾你的听歌足迹，找到最近循环和最常播放的声音。",
         "total_plays": "总播放",

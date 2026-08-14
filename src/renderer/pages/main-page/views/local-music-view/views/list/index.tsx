@@ -23,7 +23,6 @@ export default function ListView(props: IProps) {
 
     return (
         <MusicList
-            headerOnlySurface
             containerStyle={containerStyle}
             sortStorageKey="local-music"
             musicList={localMusicList}

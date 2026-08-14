@@ -198,11 +198,54 @@ export default function Downloading() {
     return (
         <section className="downloading-container">
             <div className="downloading-controls">
-                <div className="downloading-toolbar">
-                    <div className="downloading-toolbar-actions">
+                <div className="discovery-workspace-toolbar downloading-toolbar">
+                    <div
+                        className="discovery-toolbar-segments downloading-filters"
+                        role="group"
+                        aria-label={t("download_page.tasks")}
+                    >
+                        {filters.map((item) => (
+                            <button
+                                type="button"
+                                className="discovery-toolbar-segment downloading-filter"
+                                data-active={filter === item.key}
+                                aria-pressed={filter === item.key}
+                                key={item.key}
+                                onClick={() => setFilter(item.key)}
+                            >
+                                {item.label}
+                                <span>{item.count}</span>
+                            </button>
+                        ))}
+                    </div>
+                    <label className="discovery-toolbar-search downloading-search">
+                        <SvgAsset iconName="magnifying-glass"></SvgAsset>
+                        <input
+                            value={query}
+                            spellCheck={false}
+                            aria-label={t("download_page.search_tasks")}
+                            placeholder={t("download_page.search_tasks")}
+                            onChange={(event) => setQuery(event.target.value)}
+                        ></input>
+                        {query ? (
+                            <button
+                                type="button"
+                                className="discovery-search-clear"
+                                title={t("common.clear")}
+                                aria-label={t("common.clear")}
+                                onClick={() => setQuery("")}
+                            >
+                                <SvgAsset iconName="x-mark" size={13}></SvgAsset>
+                            </button>
+                        ) : null}
+                    </label>
+                    <div
+                        className="discovery-toolbar-actions downloading-toolbar-actions"
+                        aria-label={t("download_page.tasks")}
+                    >
                         <button
                             type="button"
-                            className="downloading-toolbar-button"
+                            className="discovery-toolbar-button downloading-toolbar-button"
                             disabled={!counts.pausable}
                             onClick={() => void Downloader.pauseAllTasks()}
                         >
@@ -211,7 +254,7 @@ export default function Downloading() {
                         </button>
                         <button
                             type="button"
-                            className="downloading-toolbar-button"
+                            className="discovery-toolbar-button downloading-toolbar-button"
                             disabled={!counts.paused}
                             onClick={() => Downloader.resumeAllTasks()}
                         >
@@ -220,7 +263,7 @@ export default function Downloading() {
                         </button>
                         <button
                             type="button"
-                            className="downloading-toolbar-button"
+                            className="discovery-toolbar-button downloading-toolbar-button"
                             disabled={!counts.failed}
                             onClick={() => void Downloader.clearFailedTasks()}
                         >
@@ -229,7 +272,7 @@ export default function Downloading() {
                         </button>
                         <button
                             type="button"
-                            className="downloading-toolbar-button"
+                            className="discovery-toolbar-button downloading-toolbar-button"
                             data-variant="danger"
                             disabled={!tasks.length}
                             onClick={confirmClearAllTasks}
@@ -237,35 +280,6 @@ export default function Downloading() {
                             <SvgAsset iconName="trash" size={15}></SvgAsset>
                             {t("common.clear")}
                         </button>
-                    </div>
-                    <label className="downloading-search">
-                        <SvgAsset iconName="magnifying-glass" size={15}></SvgAsset>
-                        <input
-                            value={query}
-                            placeholder={t("download_page.search_tasks")}
-                            onChange={(event) => setQuery(event.target.value)}
-                        ></input>
-                        {query ? (
-                            <button type="button" onClick={() => setQuery("")}>
-                                <SvgAsset iconName="x-mark" size={13}></SvgAsset>
-                            </button>
-                        ) : null}
-                    </label>
-                </div>
-                <div className="downloading-filterbar">
-                    <div className="downloading-filters">
-                        {filters.map((item) => (
-                            <button
-                                type="button"
-                                className="downloading-filter"
-                                data-active={filter === item.key}
-                                key={item.key}
-                                onClick={() => setFilter(item.key)}
-                            >
-                                {item.label}
-                                <span>{item.count}</span>
-                            </button>
-                        ))}
                     </div>
                 </div>
             </div>

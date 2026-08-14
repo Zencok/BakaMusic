@@ -2,97 +2,18 @@
   width: 100%;
   min-height: 360px;
   box-sizing: border-box;
+  margin-top: 1.15rem;
 
   & .downloading-controls {
     margin-bottom: 12px;
-    padding: 0.9rem 1rem 0.55rem;
-    border: 1px solid var(--appSurfaceBorder);
-    border-radius: var(--cardRadius, 22px);
-    background: var(--appSurfaceMuted);
-    box-shadow: var(--appSurfaceInset);
-  }
-
-  & .downloading-toolbar {
-    padding: 2px 2px 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
   }
 
   & .downloading-toolbar-actions {
-    display: flex;
     flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: 8px;
-  }
-
-  & .downloading-toolbar-button {
-    min-height: 2.25rem;
-    padding: 0 0.78rem;
-    border: 1px solid var(--appInteractiveBorder);
-    border-radius: var(--appRadiusPill, 999px);
-    background: var(--appSurfaceMuted);
-    color: var(--appTextSecondary);
-    box-shadow: var(--appSurfaceInset);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    font: inherit;
-    font-size: 0.78rem;
-    font-weight: 650;
-    cursor: pointer;
-    transition: transform 160ms ease, color 160ms ease, background-color 160ms ease, border-color 160ms ease;
-  }
-
-  & .downloading-toolbar-button:hover:not(:disabled) {
-    transform: translateY(-1px);
-    color: var(--appTextPrimary);
-    background: var(--appInteractiveSurface);
-  }
-
-  & .downloading-toolbar-button[data-variant="danger"] {
-    color: color-mix(in srgb, var(--dangerColor) 84%, var(--appTextPrimary));
-    border-color: color-mix(in srgb, var(--dangerColor) 22%, transparent);
-    background: color-mix(in srgb, var(--dangerColor) 9%, var(--backgroundColor));
-  }
-
-  & button:disabled {
-    opacity: 0.42;
-    cursor: default;
-  }
-
-  & .downloading-filterbar {
-    padding: 7px 4px;
-    border-top: 1px solid color-mix(in srgb, var(--textColor) 7%, transparent);
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 12px;
   }
 
   & .downloading-filters {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 5px;
-  }
-
-  & .downloading-filter {
-    min-height: 2rem;
-    padding: 0 0.72rem;
-    border: 0;
-    border-radius: var(--appRadiusPill, 999px);
-    background: transparent;
-    color: var(--appTextTertiary);
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font: inherit;
-    font-size: 0.76rem;
-    font-weight: 650;
-    cursor: pointer;
+    justify-self: start;
   }
 
   & .downloading-filter span {
@@ -107,51 +28,9 @@
     font-variant-numeric: tabular-nums;
   }
 
-  & .downloading-filter[data-active="true"] {
-    background: color-mix(in srgb, var(--primaryColor) 13%, var(--backgroundColor));
-    color: color-mix(in srgb, var(--primaryColor) 78%, var(--appTextPrimary));
-  }
-
   & .downloading-search {
-    width: min(230px, 28vw);
-    height: 2.15rem;
-    padding: 0 0.7rem;
-    box-sizing: border-box;
-    border: 1px solid var(--appInteractiveBorder);
-    border-radius: var(--appRadiusPill, 999px);
-    background: var(--appSurfaceMuted);
-    color: var(--appTextTertiary);
-    display: flex;
-    align-items: center;
-    gap: 7px;
-  }
-
-  & .downloading-search:focus-within {
-    border-color: color-mix(in srgb, var(--primaryColor) 34%, transparent);
-    color: var(--primaryColor);
-  }
-
-  & .downloading-search input {
-    width: 100%;
-    min-width: 0;
-    border: 0;
-    outline: 0;
-    background: transparent;
-    color: var(--appTextPrimary);
-    font: inherit;
-    font-size: 0.78rem;
-  }
-
-  & .downloading-search input::placeholder {
-    color: var(--appTextTertiary);
-  }
-
-  & .downloading-search button {
-    padding: 2px;
-    border: 0;
-    background: transparent;
-    color: currentColor;
-    cursor: pointer;
+    max-width: 32rem;
+    justify-self: stretch;
   }
 
   & .downloading-virtual-spacer {
@@ -173,9 +52,9 @@
     height: 100%;
     padding: 13px 14px;
     box-sizing: border-box;
-    border: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
-    border-radius: var(--cardRadius, 22px);
-    background: color-mix(in srgb, var(--backgroundColor) 68%, transparent);
+    border: 0;
+    border-radius: var(--controlRadiusLg, 14px);
+    background: color-mix(in srgb, var(--appTextPrimary) 3%, transparent);
     display: grid;
     grid-template-columns: auto minmax(160px, 1fr) minmax(210px, 0.75fr) auto;
     align-items: center;
@@ -184,10 +63,8 @@
   }
 
   & .downloading-item-card:hover {
-    transform: translateY(-1px);
-    border-color: color-mix(in srgb, var(--primaryColor) 16%, transparent);
-    background: color-mix(in srgb, var(--primaryColor) 7%, var(--backgroundColor));
-    box-shadow: 0 13px 30px rgba(15, 23, 42, 0.08);
+    background: color-mix(in srgb, var(--discovery-cool, var(--primaryColor)) 7%, transparent);
+    box-shadow: none;
   }
 
   & .downloading-item-cover {
@@ -195,7 +72,7 @@
     width: 66px;
     height: 66px;
     overflow: hidden;
-    border-radius: var(--controlRadiusLg, 17px);
+    border-radius: 6px;
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.15);
   }
 
@@ -354,9 +231,9 @@
     width: 2rem;
     height: 2rem;
     padding: 0;
-    border: 1px solid var(--appInteractiveBorder);
+    border: 1px solid var(--discovery-line, var(--appInteractiveBorder));
     border-radius: 50%;
-    background: var(--appSurfaceMuted);
+    background: transparent;
     color: var(--appTextSecondary);
     display: grid;
     place-items: center;
@@ -410,30 +287,10 @@
   }
 }
 
-@media (max-width: 1100px) {
-  .downloading-container {
-    & .downloading-toolbar,
-    & .downloading-filterbar {
-      align-items: stretch;
-      flex-direction: column;
-    }
-
-    & .downloading-toolbar-actions {
-      justify-content: flex-start;
-    }
-
-    & .downloading-search {
-      width: 100%;
-    }
-
-  }
-}
-
-@media (max-width: 720px) {
+@container (max-width: 680px) {
   .downloading-container {
     & .downloading-toolbar-button {
       flex: 1 1 calc(50% - 8px);
     }
-
   }
 }
