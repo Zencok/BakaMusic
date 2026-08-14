@@ -12,7 +12,10 @@ const {
 } = require("../src/renderer/pages/main-page/views/theme-view/theme-search");
 const {
     buildMusicBarPalette,
+    compositeRgb,
     getContrastRatio,
+    getRelativeLuminance,
+    MUSIC_BAR_GLASS_TINT_ALPHA,
 } = require("../src/renderer/components/MusicBar/palette");
 const {
     bindMediaToPlugin,
@@ -275,6 +278,15 @@ assert.match(windowManagerSource, /getInitialWindowSurfaceOptions/);
 assert.match(musicBarComponentSource, /data-liquid-glass-svg/);
 assert.match(musicBarComponentSource, /LiquidGlassFilter/);
 assert.match(
+    musicBarComponentSource,
+    /attributeFilter:\s*\["data-ui-style",\s*"data-theme-scheme"\]/,
+);
+assert.match(
+    musicBarComponentSource,
+    /const tone = musicDetailShown \? "dark" : getActiveThemeScheme\(\);/,
+    "music detail must use the dark artwork palette while the dock follows the theme",
+);
+assert.match(
     musicBarStyleSource,
     /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+max-content\s+minmax\(0,\s*1fr\)/,
 );
@@ -315,28 +327,79 @@ assert.match(
 );
 
 const stableBluePixels = createSolidImageData(45, 105, 165, 1024);
-const stableBluePalette = buildMusicBarPalette(stableBluePixels, 32, 32);
+const stableBluePalettes = buildMusicBarPalette(stableBluePixels, 32, 32);
 const outlierPixels = stableBluePixels.slice();
 outlierPixels.set([255, 0, 180, 255], 0);
 assert.deepEqual(
     buildMusicBarPalette(outlierPixels, 32, 32),
-    stableBluePalette,
+    stableBluePalettes,
     "a single saturated pixel must not destabilize the artwork palette",
 );
 
-for (const palette of [
-    stableBluePalette,
+const paletteBackdrops = {
+    light: { r: 247, g: 249, b: 252 },
+    dark: { r: 13, g: 16, b: 23 },
+};
+for (const palettes of [
+    stableBluePalettes,
     buildMusicBarPalette(createSolidImageData(225, 215, 185), 8, 8),
 ]) {
-    assert.ok(palette);
-    const surface = parseRgbColor(palette["--musicBarSurface"]);
-    const accent = parseRgbColor(palette["--musicBarAccent"]);
-    const text = parseRgbColor(palette["--musicBarText"]);
-    const primaryText = parseRgbColor(palette["--musicBarPrimaryText"]);
-    assert.ok(getContrastRatio(text, surface) >= 4.5);
-    assert.ok(getContrastRatio(accent, surface) >= 3);
-    assert.ok(getContrastRatio(primaryText, accent) >= 4.5);
+    assert.ok(palettes);
+    for (const tone of ["light", "dark"]) {
+        const palette = palettes[tone];
+        const surface = parseRgbColor(palette["--musicBarSurface"]);
+        const surfaceAlt = parseRgbColor(palette["--musicBarSurfaceAlt"]);
+        const accent = parseRgbColor(palette["--musicBarAccent"]);
+        const text = parseRgbColor(palette["--musicBarText"]);
+        const primaryText = parseRgbColor(palette["--musicBarPrimaryText"]);
+        const effectiveSurfaces = [surface, surfaceAlt].map((color) => compositeRgb(
+            color,
+            paletteBackdrops[tone],
+            MUSIC_BAR_GLASS_TINT_ALPHA,
+        ));
+
+        for (const effectiveSurface of effectiveSurfaces) {
+            assert.ok(getContrastRatio(text, effectiveSurface) >= 4.5);
+            assert.ok(getContrastRatio(accent, effectiveSurface) >= 3);
+        }
+        assert.ok(getContrastRatio(primaryText, accent) >= 4.5);
+    }
 }
+
+const grayBelowOldThreshold = buildMusicBarPalette(
+    createSolidImageData(184, 184, 184),
+    8,
+    8,
+);
+const grayAboveOldThreshold = buildMusicBarPalette(
+    createSolidImageData(185, 185, 185),
+    8,
+    8,
+);
+assert.ok(grayBelowOldThreshold && grayAboveOldThreshold);
+for (const tone of ["light", "dark"]) {
+    const belowSurface = parseRgbColor(
+        grayBelowOldThreshold[tone]["--musicBarSurface"],
+    );
+    const aboveSurface = parseRgbColor(
+        grayAboveOldThreshold[tone]["--musicBarSurface"],
+    );
+    assert.ok(
+        Math.abs(
+            getRelativeLuminance(belowSurface)
+            - getRelativeLuminance(aboveSurface),
+        ) < 0.02,
+        "adjacent artwork tones must not flip the music bar surface polarity",
+    );
+}
+assert.ok(
+    getRelativeLuminance(parseRgbColor(
+        grayBelowOldThreshold.light["--musicBarSurface"],
+    )) > getRelativeLuminance(parseRgbColor(
+        grayBelowOldThreshold.dark["--musicBarSurface"],
+    )),
+    "artwork extraction must always provide distinct light and dark surfaces",
+);
 
 const transparentPixels = createSolidImageData(20, 20, 20, 16);
 for (let index = 3; index < transparentPixels.length; index += 4) {

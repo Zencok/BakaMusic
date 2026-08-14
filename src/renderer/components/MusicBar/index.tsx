@@ -12,23 +12,24 @@ import { getCurrentPanel } from "@/renderer/components/Panel";
 import { isQualitySelectPopoverOpen } from "@/renderer/components/QualitySelectPopover";
 import useAppConfig from "@/hooks/useAppConfig";
 import LiquidGlassFilter, { useMusicBarLiquidGlass } from "./LiquidGlassFilter";
-import { buildMusicBarPalette } from "./palette";
+import {
+    buildMusicBarPalette,
+    DEFAULT_MUSIC_BAR_PALETTES,
+    type MusicBarPaletteTone,
+} from "./palette";
 
 import "./index.scss";
 
 type MusicBarPaletteStyle = CSSProperties & Record<string, string>;
+type MusicBarPaletteVariantStyles = Record<
+    MusicBarPaletteTone,
+    MusicBarPaletteStyle
+>;
 
-const DEFAULT_MUSIC_BAR_STYLE: MusicBarPaletteStyle = {
-    "--musicBarSurface": "color-mix(in srgb, var(--backgroundColor) 92%, var(--textColor) 8%)",
-    "--musicBarSurfaceAlt": "color-mix(in srgb, var(--backgroundColor) 84%, var(--primaryColor) 16%)",
-    "--musicBarText": "color-mix(in srgb, var(--textColor) 94%, black)",
-    "--musicBarTextSecondary": "color-mix(in srgb, var(--textColor) 68%, transparent)",
-    "--musicBarAccent": "color-mix(in srgb, var(--primaryColor) 82%, white)",
-    "--musicBarPrimaryText": "#0b0b0f",
-    "--musicBarBackdropOpacity": "0.38",
-};
+const DEFAULT_MUSIC_BAR_STYLES: MusicBarPaletteVariantStyles =
+    DEFAULT_MUSIC_BAR_PALETTES;
 const MAX_MUSIC_BAR_PALETTE_CACHE_SIZE = 40;
-const musicBarPaletteCache = new Map<string, MusicBarPaletteStyle>();
+const musicBarPaletteCache = new Map<string, MusicBarPaletteVariantStyles>();
 
 function getCachedMusicBarPalette(artwork: string) {
     const cacheKey = getArtworkCacheKey(artwork);
@@ -42,12 +43,15 @@ function getCachedMusicBarPalette(artwork: string) {
     return cached;
 }
 
-function setCachedMusicBarPalette(artwork: string, style: MusicBarPaletteStyle) {
+function setCachedMusicBarPalette(
+    artwork: string,
+    styles: MusicBarPaletteVariantStyles,
+) {
     const cacheKey = getArtworkCacheKey(artwork);
     if (musicBarPaletteCache.has(cacheKey)) {
         musicBarPaletteCache.delete(cacheKey);
     }
-    musicBarPaletteCache.set(cacheKey, style);
+    musicBarPaletteCache.set(cacheKey, styles);
 
     if (musicBarPaletteCache.size <= MAX_MUSIC_BAR_PALETTE_CACHE_SIZE) {
         return;
@@ -61,7 +65,7 @@ function setCachedMusicBarPalette(artwork: string, style: MusicBarPaletteStyle) 
 
 async function extractMusicBarStyle(artwork?: string | null) {
     if (!artwork) {
-        return DEFAULT_MUSIC_BAR_STYLE;
+        return DEFAULT_MUSIC_BAR_STYLES;
     }
 
     const cachedStyle = getCachedMusicBarPalette(artwork);
@@ -89,17 +93,17 @@ async function extractMusicBarStyle(artwork?: string | null) {
 
         const context = canvas.getContext("2d", { willReadFrequently: true });
         if (!context) {
-            return DEFAULT_MUSIC_BAR_STYLE;
+            return DEFAULT_MUSIC_BAR_STYLES;
         }
 
         context.drawImage(image, 0, 0, width, height);
         const { data } = context.getImageData(0, 0, width, height);
         const nextStyle = buildMusicBarPalette(data, width, height)
-            ?? DEFAULT_MUSIC_BAR_STYLE;
+            ?? DEFAULT_MUSIC_BAR_STYLES;
         setCachedMusicBarPalette(artwork, nextStyle);
         return nextStyle;
     } catch {
-        return DEFAULT_MUSIC_BAR_STYLE;
+        return DEFAULT_MUSIC_BAR_STYLES;
     }
 }
 
@@ -119,8 +123,15 @@ function isFlatUiStyleActive() {
         && document.documentElement.getAttribute("data-ui-style") === "flat";
 }
 
+function getActiveThemeScheme(): MusicBarPaletteTone {
+    return document.documentElement.getAttribute("data-theme-scheme") === "dark"
+        ? "dark"
+        : "light";
+}
+
 function toFlatDetailStyle(palette: MusicBarPaletteStyle): MusicBarPaletteStyle {
     const accent = palette["--musicBarAccent"];
+    const primaryText = palette["--musicBarPrimaryText"];
     return {
         "--musicBarSurface": "transparent",
         "--musicBarSurfaceAlt": "transparent",
@@ -129,7 +140,9 @@ function toFlatDetailStyle(palette: MusicBarPaletteStyle): MusicBarPaletteStyle 
         "--musicBarAccent": typeof accent === "string" && accent
             ? accent
             : "var(--primaryColor)",
-        "--musicBarPrimaryText": "#0b0b0f",
+        "--musicBarPrimaryText": typeof primaryText === "string" && primaryText
+            ? primaryText
+            : "#0b0b0f",
         "--musicBarBackdropOpacity": "0",
     };
 }
@@ -153,8 +166,10 @@ export default function MusicBar() {
     const musicDetailShown = musicDetailShownStore.useValue();
     // Default true: pure detail stage; settings can keep bar always visible (glass + flat)
     const detailAutoHideMusicBar = useAppConfig("normal.detailAutoHideMusicBar") !== false;
-    const [musicBarStyle, setMusicBarStyle] = useState<MusicBarPaletteStyle>(DEFAULT_MUSIC_BAR_STYLE);
-    const [uiStyleTick, setUiStyleTick] = useState(0);
+    const [musicBarStyle, setMusicBarStyle] = useState<MusicBarPaletteStyle>(
+        DEFAULT_MUSIC_BAR_STYLES.light,
+    );
+    const [appearanceTick, setAppearanceTick] = useState(0);
     // Detail open: dock auto-hides; hover / pinned overlays reveal it
     const [autoHideRevealed, setAutoHideRevealed] = useState(false);
     const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -164,13 +179,13 @@ export default function MusicBar() {
     useEffect(() => {
         const root = document.documentElement;
         const sync = () => {
-            setUiStyleTick((value) => value + 1);
+            setAppearanceTick((value) => value + 1);
         };
         sync();
         const observer = new MutationObserver(sync);
         observer.observe(root, {
             attributes: true,
-            attributeFilter: ["data-ui-style"],
+            attributeFilter: ["data-ui-style", "data-theme-scheme"],
         });
         return () => observer.disconnect();
     }, []);
@@ -233,18 +248,19 @@ export default function MusicBar() {
             }
 
             const resolvedArtwork = nextArtwork ?? artwork;
-            const nextStyle = await extractMusicBarStyle(resolvedArtwork);
+            const nextStyles = await extractMusicBarStyle(resolvedArtwork);
             if (aborted) {
                 return;
             }
 
             // Flat + detail: light-on-dark immersive, keep artwork accent
             if (flat && musicDetailShown) {
-                setMusicBarStyle(toFlatDetailStyle(nextStyle));
+                setMusicBarStyle(toFlatDetailStyle(nextStyles.dark));
                 return;
             }
 
-            setMusicBarStyle(nextStyle);
+            const tone = musicDetailShown ? "dark" : getActiveThemeScheme();
+            setMusicBarStyle(nextStyles[tone]);
         };
 
         void syncMusicBarArtwork();
@@ -252,7 +268,7 @@ export default function MusicBar() {
         return () => {
             aborted = true;
         };
-    }, [artwork, musicDetailShown, uiStyleTick]);
+    }, [appearanceTick, artwork, musicDetailShown]);
 
     const clearHideTimer = () => {
         if (hideTimerRef.current !== null) {
