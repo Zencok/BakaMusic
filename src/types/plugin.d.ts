@@ -53,6 +53,11 @@ declare namespace IPlugin {
     musicList?: IMusic.IMusicItem[];
   }
 
+  /**
+   * 导入歌单结果。新插件应返回完整歌单；歌曲数组仅用于兼容旧插件。
+   */
+  type IImportMusicSheetResult = IMusic.IMusicSheetItem | IMusic.IMusicItem[];
+
   interface ITopListInfoResult {
     isEnd?: boolean;
     topListItem?: IMusic.IMusicSheetItem;
@@ -129,8 +134,9 @@ declare namespace IPlugin {
       artistItem: IArtist.IArtistItem,
     ) => Promise<Partial<IArtist.IArtistItem> | null>;
     /** 导入歌单 */
-    // todo: 数据结构应该是IMusicSheetItem
-    importMusicSheet?: (urlLike: string) => Promise<IMusic.IMusicItem[] | null>;
+    importMusicSheet?: (
+      urlLike: string,
+    ) => Promise<IImportMusicSheetResult | null>;
     /** 导入单曲 */
     importMusicItem?: (urlLike: string) => Promise<IMusic.IMusicItem | null>;
     /** 获取榜单 */

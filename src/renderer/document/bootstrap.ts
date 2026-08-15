@@ -95,9 +95,12 @@ function dropHandler() {
                     "importMusicSheet",
                     filePath,
                 );
-                if (importedMusicList) {
+                const importedItems = Array.isArray(importedMusicList)
+                    ? importedMusicList
+                    : importedMusicList?.musicList ?? [];
+                if (importedItems.length) {
                     validMusicList.push(
-                        ...importedMusicList,
+                        ...importedItems,
                     );
                 }
             } else if (
@@ -359,4 +362,3 @@ function setupCommandAndEvents() {
         });
     });
 }
-

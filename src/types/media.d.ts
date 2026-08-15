@@ -86,6 +86,8 @@ declare namespace IMusic {
     playCount?: number;
     /** 播放列表 */
     musicList?: IMusicItem[];
+    /** 是否为导入接口返回的完整歌单快照 */
+    isImported?: boolean;
     /** 歌单创建日期 */
     createAt?: number;
     /** 歌单内歌曲排序方式 */

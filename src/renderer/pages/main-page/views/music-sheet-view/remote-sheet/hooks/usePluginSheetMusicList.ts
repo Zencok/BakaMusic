@@ -22,7 +22,9 @@ export default function usePluginSheetMusicList(
     const sheetId = id != null && id !== "" ? String(id) : "";
 
     const [requestState, setRequestState] = useState<RequestStateCode>(
-        RequestStateCode.IDLE,
+        originalSheetItem?.isImported
+            ? RequestStateCode.FINISHED
+            : RequestStateCode.IDLE,
     );
     const [sheetItem, setSheetItem] = useState<IMusic.IMusicSheetItem>({
         ...(originalSheetItem ?? {}),
@@ -34,7 +36,11 @@ export default function usePluginSheetMusicList(
         originalSheetItem?.musicList ?? [],
     );
     const originalSheetItemRef = useRef(originalSheetItem);
-    const requestStateRef = useRef(RequestStateCode.IDLE);
+    const requestStateRef = useRef(
+        originalSheetItem?.isImported
+            ? RequestStateCode.FINISHED
+            : RequestStateCode.IDLE,
+    );
     originalSheetItemRef.current = originalSheetItem;
 
     const updateRequestState = useCallback((nextState: RequestStateCode) => {
@@ -147,10 +153,27 @@ export default function usePluginSheetMusicList(
     }, [sheetId, platform, updateRequestState]);
 
     useEffect(() => {
-        if (platform && sheetId) {
-            void getSheetDetail();
+        if (!platform || !sheetId) {
+            return;
         }
-    }, [getSheetDetail, sheetId, platform]);
+
+        if (originalSheetItem?.isImported) {
+            const importedSheet = {
+                ...originalSheetItem,
+                platform,
+                id: sheetId,
+            };
+            currentSheetKeyRef.current = sheetKeyOf(platform, sheetId);
+            currentSheetItemRef.current = importedSheet;
+            currentPageRef.current = 1;
+            setSheetItem(importedSheet);
+            setMusicList(importedSheet.musicList ?? []);
+            updateRequestState(RequestStateCode.FINISHED);
+            return;
+        }
+
+        void getSheetDetail();
+    }, [getSheetDetail, originalSheetItem, sheetId, platform, updateRequestState]);
 
     return [requestState, sheetItem, musicList, getSheetDetail] as const;
 }

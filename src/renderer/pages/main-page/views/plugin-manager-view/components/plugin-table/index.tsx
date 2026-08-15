@@ -150,29 +150,8 @@ function renderActions(row: IPlugin.IPluginDelegate) {
 
             <Condition condition={row.supportedMethod.includes("importMusicSheet")}>
                 <ActionButton action="importMusicSheet" iconName="playlist" variant="info" onClick={() => {
-                    showModal("SimpleInputWithState", {
-                        title: t("plugin.method_import_music_sheet"),
-                        withLoading: true,
-                        loadingText: t("plugin_management_page.importing_media"),
-                        placeholder: String(t("plugin_management_page.placeholder_import_music_sheet", { plugin: row.platform })),
-                        maxLength: 1000,
-                        onOk(text) {
-                            return PluginManager.callPluginDelegateMethod(
-                                row,
-                                "importMusicSheet",
-                                text.trim(),
-                            );
-                        },
-                        onPromiseResolved(result) {
-                            hideModal();
-                            showModal("AddMusicToSheet", {
-                                musicItems: result as IMusic.IMusicItem[],
-                            });
-                        },
-                        onPromiseRejected() {
-                            toast.error(t("plugin_management_page.import_failed"));
-                        },
-                        hints: row.hints?.importMusicSheet,
+                    showModal("ImportMusicSheet", {
+                        plugins: [row],
                     });
                 }}>
                     {t("plugin.method_import_music_sheet")}

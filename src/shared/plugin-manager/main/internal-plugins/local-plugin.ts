@@ -6,6 +6,7 @@ import {
     parseLocalMusicItemFolder,
     parseLocalMusicLyric,
 } from "@/common/file-util";
+import path from "path";
 import url from "url";
 import {
     LOCAL_MEDIA_PROTOCOL,
@@ -88,7 +89,16 @@ function localPluginDefine(): IPlugin.IPluginInstance {
             return parseLocalMusicItem(filePath);
         },
         async importMusicSheet(folderPath) {
-            return parseLocalMusicItemFolder(folderPath);
+            const musicList = await parseLocalMusicItemFolder(folderPath);
+            return {
+                id: folderPath,
+                platform: localPluginName,
+                title: path.basename(path.resolve(folderPath)) || localPluginName,
+                artist: localPluginName,
+                artwork: musicList.find((item) => item.artwork)?.artwork,
+                worksNum: musicList.length,
+                musicList,
+            };
         },
     };
 }

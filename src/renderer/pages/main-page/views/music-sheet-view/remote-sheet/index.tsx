@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import usePluginSheetMusicList from "./hooks/usePluginSheetMusicList";
 import MusicSheetlikeView from "@/renderer/components/MusicSheetlikeView";
 import { isSameMedia } from "@/common/media-util";
@@ -9,11 +9,15 @@ import SvgAsset from "@/renderer/components/SvgAsset";
 
 export default function RemoteSheet() {
     const { platform, id } = useParams() ?? {};
+    const location = useLocation();
+    const routeState = location.state as {
+        sheetItem?: IMusic.IMusicSheetItem;
+    } | null;
 
     const [state, sheetItem, musicList, getSheetDetail] = usePluginSheetMusicList(
         platform ?? "",
         id ?? "",
-        history.state?.usr?.sheetItem,
+        routeState?.sheetItem,
     );
     return (
         <MusicSheetlikeView

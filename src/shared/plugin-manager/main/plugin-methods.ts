@@ -629,16 +629,29 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
     }
 
     /** 导入歌单 */
-    async importMusicSheet(urlLike: string): Promise<IMusic.IMusicItem[]> {
+    async importMusicSheet(
+        urlLike: string,
+    ): Promise<IPlugin.IImportMusicSheetResult | null> {
         try {
-            const result =
-                (await this.plugin.instance?.importMusicSheet?.(urlLike)) ?? [];
-            result.forEach((_) => resetMediaItem(_, this.plugin.name));
+            const result = await this.plugin.instance?.importMusicSheet?.(urlLike);
+            if (!result) {
+                return null;
+            }
+            if (Array.isArray(result)) {
+                result.forEach((_) => resetMediaItem(_, this.plugin.name));
+                return result;
+            }
+            if (typeof result !== "object") {
+                return null;
+            }
+
+            resetMediaItem(result, this.plugin.name);
+            result.musicList?.forEach((_) => resetMediaItem(_, this.plugin.name));
             return result;
         } catch {
             // devLog('error', '导入歌单失败', e, e?.message);
 
-            return [];
+            return null;
         }
     }
     /** 导入单曲 */

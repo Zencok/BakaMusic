@@ -637,7 +637,15 @@ assert.match(importMusicSheetSource, /importMusicSheetPluginHash/);
 assert.match(importMusicSheetSource, /initialPluginHash=\{rememberedPluginHash\}/);
 assert.match(importMusicSheetSource, /onSelectedPluginChange=\{rememberImportMusicSheetPlugin\}/);
 assert.doesNotMatch(importMusicSheetSource, /SimpleInputWithState/);
-assert.match(importMusicSheetSource, /!Array\.isArray\(result\) \|\| !result\.length/);
+assert.match(importMusicSheetSource, /normalizeImportedMusicSheet/);
+assert.match(importMusicSheetSource, /className="import-music-sheet-result-card"/);
+assert.match(
+    importMusicSheetSource,
+    /className="import-music-sheet-result-artwork"[\s\S]*?root=\{null\}/,
+    "import result artwork must observe the viewport outside #page-container",
+);
+assert.match(importMusicSheetSource, /navigate\(\s*`\/main\/musicsheet\//);
+assert.doesNotMatch(importMusicSheetSource, /showModal\("AddMusicToSheet"/);
 assert.equal(fs.existsSync(path.join(
     __dirname,
     "../src/renderer/components/Modal/templates/plugin-picker.scss",
