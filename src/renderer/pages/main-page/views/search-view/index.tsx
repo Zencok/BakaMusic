@@ -12,6 +12,7 @@ import PluginManager, { useSortedSupportedPlugin } from "@shared/plugin-manager/
 import SearchResult from "./components/SearchResult";
 import SvgAsset, { SvgAssetIconNames } from "@/renderer/components/SvgAsset";
 import useSearch from "./hooks/useSearch";
+import usePageScrollPosition from "../../hooks/usePageScrollPosition";
 import "./index.scss";
 
 const mediaTypeIconMap = {
@@ -29,6 +30,7 @@ export default function SearchView() {
     const navigate = useNavigate();
     const search = useSearch();
     const searchResults = searchResultsStore.useValue();
+    const pageScrollRef = usePageScrollPosition<HTMLDivElement>();
     const initialIndex = useMemo(() => {
         const mediaIndex = Number(history.state?.usr?.mediaIndex ?? 0);
         if (!Number.isFinite(mediaIndex)) {
@@ -88,7 +90,11 @@ export default function SearchView() {
     }, [query]);
 
     return (
-        <div id="page-container" className="page-container search-view-container">
+        <div
+            ref={pageScrollRef}
+            id="page-container"
+            className="page-container search-view-container"
+        >
             <header className="discovery-page-header search-page-header">
                 <div className="discovery-page-heading">
                     <span className="discovery-page-eyebrow">

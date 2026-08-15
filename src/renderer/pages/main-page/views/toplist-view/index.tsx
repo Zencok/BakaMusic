@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import SvgAsset from "@/renderer/components/SvgAsset";
 import { getDiscoveryMetaText } from "../discovery-pages";
 import DiscoverySourceSwitcher from "../DiscoverySourceSwitcher";
+import usePageScrollPosition from "../../hooks/usePageScrollPosition";
 
 import "./index.scss";
 import PluginManager from "@shared/plugin-manager/renderer";
@@ -24,9 +25,14 @@ export default function ToplistView() {
     const availablePlugins = PluginManager.getSortedSupportedPlugin("getTopLists");
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const pageScrollRef = usePageScrollPosition<HTMLDivElement>();
 
     return (
-        <div id="page-container" className="page-container toplist-view--container">
+        <div
+            ref={pageScrollRef}
+            id="page-container"
+            className="page-container toplist-view--container"
+        >
             <Condition
                 condition={availablePlugins.length}
                 falsy={

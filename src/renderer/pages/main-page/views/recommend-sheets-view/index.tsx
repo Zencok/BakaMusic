@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import Body from "./components/Body";
 import PluginManager from "@shared/plugin-manager/renderer";
 import DiscoverySourceSwitcher from "../DiscoverySourceSwitcher";
+import usePageScrollPosition from "../../hooks/usePageScrollPosition";
 
 import "./index.scss";
 
@@ -13,9 +14,11 @@ export default function RecommendSheetsView() {
     const availablePlugins = PluginManager.getSortedSupportedPlugin("getRecommendSheetsByTag");
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const pageScrollRef = usePageScrollPosition<HTMLDivElement>();
 
     return (
         <div
+            ref={pageScrollRef}
             id="page-container"
             className="page-container recommend-sheets-view--container"
         >
