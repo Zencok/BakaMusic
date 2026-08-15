@@ -4,7 +4,6 @@ import { RequestStateCode, supportedMediaType } from "@/common/constant";
 import NoPlugin from "@/renderer/components/NoPlugin";
 import {
     currentMediaTypeStore,
-    resetStore,
     searchResultsStore,
 } from "./store/search-result";
 import { Trans, useTranslation } from "react-i18next";
@@ -87,12 +86,6 @@ export default function SearchView() {
             Math.min(Math.max(mediaIndex, 0), supportedMediaType.length - 1),
         );
     }, [query]);
-
-    useEffect(() => {
-        return () => {
-            resetStore();
-        };
-    }, []);
 
     return (
         <div id="page-container" className="page-container search-view-container">

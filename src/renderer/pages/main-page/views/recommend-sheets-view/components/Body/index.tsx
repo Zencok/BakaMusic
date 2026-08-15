@@ -102,11 +102,16 @@ interface IBodyProps {
 
 export default function Body(props: IBodyProps) {
     const { plugin } = props;
+    const cachedSession = tagSessionByPlugin.get(plugin.hash);
     // 选中的tag
-    const [selectedTag, setSelectedTag] = useState<IMedia.IUnique | null>(null);
+    const [selectedTag, setSelectedTag] = useState<IMedia.IUnique | null>(
+        () => cachedSession?.selectedTag ?? null,
+    );
 
     // 第一个tag
-    const [firstTag, setFirstTag] = useState<IMedia.IUnique>(getDefaultTag);
+    const [firstTag, setFirstTag] = useState<IMedia.IUnique>(
+        () => cachedSession?.firstTag ?? getDefaultTag(),
+    );
 
     const tags = useRecommendListTags(plugin);
     //   const tags: any[] = [];

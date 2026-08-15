@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { lazy, Suspense, type CSSProperties } from "react";
 import SideBar from "./components/SideBar";
 import Empty from "@/renderer/components/Empty";
+import PageScrollRestoration from "./components/PageScrollRestoration";
 
 import "./index.scss";
 
@@ -99,6 +100,7 @@ export default function MainPage() {
                         <Route path="*" element={<Empty></Empty>}></Route>
                     </Routes>
                 </Suspense>
+                <PageScrollRestoration></PageScrollRestoration>
             </div>
         </div>
     );

@@ -35,8 +35,3 @@ const searchResultsStore = new Store(initSearchResults);
 const currentMediaTypeStore = new Store<IMedia.SupportMediaType>("music");
 
 export { searchResultsStore, currentMediaTypeStore };
-
-export function resetStore(){
-    currentMediaTypeStore.setValue("music");
-    searchResultsStore.setValue(initSearchResults);
-}
