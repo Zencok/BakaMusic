@@ -416,9 +416,31 @@ export default class LxPluginManager {
 
     getQualityOverride(platform: string) {
         const source = getLxSourceForPlatform(platform);
-        const plugin = this.plugins.find((item) => item.hash === this.activeHash);
+        const plugin = source ? this.getPluginForSource(source) : undefined;
         const qualities = source ? plugin?.sources[source]?.qualities : undefined;
         return qualities ? [...qualities] : null;
+    }
+
+    /**
+     * Resolve the LX source selected for a platform.
+     *
+     * The active LX script remains the first choice.  The `kg` source is also
+     * a built-in base source, so keep a deterministic Kugou provider available
+     * when the active selection is empty (for example after a fresh install or
+     * when the user cleared the global LX selection).  Other sources continue
+     * to honour the explicit active selection only.
+     */
+    private getPluginForSource(source: ReturnType<typeof getLxSourceForPlatform>) {
+        if (!source) {
+            return undefined;
+        }
+        const active = this.plugins.find((item) =>
+            item.hash === this.activeHash && item.sources[source],
+        );
+        if (active || source !== "kg") {
+            return active;
+        }
+        return this.plugins.find((item) => item.sources.kg);
     }
 
     async resolveMediaSource(
@@ -427,7 +449,7 @@ export default class LxPluginManager {
         quality: IMusic.IQualityKey,
     ): Promise<IPlugin.IMediaSourceResult | null> {
         const source = getLxSourceForPlatform(platform);
-        const plugin = this.plugins.find((item) => item.hash === this.activeHash);
+        const plugin = source ? this.getPluginForSource(source) : undefined;
         const sourceDescriptor = source ? plugin?.sources[source] : undefined;
         if (!source || !plugin || !sourceDescriptor) {
             return null;

@@ -119,6 +119,17 @@ export default function AppHeader() {
                 <button
                     type="button"
                     className="header-button"
+                    title={t("app_header.song_recognition")}
+                    aria-label={t("app_header.song_recognition")}
+                    onClick={() => {
+                        showModal("SongRecognition");
+                    }}
+                >
+                    <SvgAsset iconName="song-recognition"></SvgAsset>
+                </button>
+                <button
+                    type="button"
+                    className="header-button"
                     title={t("app_header.theme")}
                     aria-label={t("app_header.theme")}
                     onClick={() => {

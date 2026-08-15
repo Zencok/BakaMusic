@@ -252,7 +252,12 @@ function getLxQualityOverride(platform: string) {
     if (!source || !delegatePluginsStore.getValue().some((plugin) => plugin.platform === platform)) {
         return null;
     }
-    const plugin = lxPluginsStore.getValue().find((item) => item.active);
+    const lxPlugins = lxPluginsStore.getValue();
+    const plugin = lxPlugins.find((item) => item.active && item.sources[source])
+        // `kg` is a built-in base source. Keep it available when no global LX
+        // script is selected so Kugou recognition/playback uses one provider
+        // instead of falling through to a second platform plugin.
+        ?? (source === "kg" ? lxPlugins.find((item) => item.sources.kg) : undefined);
     const qualities = plugin?.sources[source]?.qualities;
     return qualities ? [...qualities] : null;
 }

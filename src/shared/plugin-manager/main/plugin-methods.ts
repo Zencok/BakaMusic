@@ -7,6 +7,7 @@ import type { Plugin } from "./plugin";
 import fs from "fs/promises";
 import { delay } from "@/common/time-util";
 import axios from "axios";
+import { createHash } from "crypto";
 import { safeStat } from "@/common/file-util";
 import path from "path";
 import { autoDecryptLyric } from "./lyric-decrypt";
@@ -61,6 +62,156 @@ const localLyricSidecarExtensions = [
     ".txt", ".TXT",
 ];
 const secondaryLyricSidecarExtensions = [".lrc", ".LRC", ".txt", ".TXT"];
+
+const KUGOU_RECOGNIZE_URL = "https://gateway.kugou.com/fingerprint.service/v1/music_trackid_mulit";
+const KUGOU_RECOGNIZE_SALT = "OIlwieks28dk2k092lksi2UIkp";
+const KUGOU_RECOGNIZE_MID = createHash("md5")
+    .update("bakamusic-recognize-device-v1")
+    .digest("hex");
+
+function isKugouPlatform(platform: string) {
+    return /酷狗|kugou/i.test(platform);
+}
+
+function normalizeRecognizeCover(...values: unknown[]) {
+    for (const value of values) {
+        if (typeof value !== "string" || !value.trim()) {
+            continue;
+        }
+        return value
+            .replace(/\{size\}/g, "400")
+            .replace(/^\/\//, "https://")
+            .replace(/^http:\/\//, "https://")
+            .replace("c1.kgimg.com", "imge.kugou.com");
+    }
+    return undefined;
+}
+
+function pickRecognizeString(...values: unknown[]) {
+    for (const value of values) {
+        if (value !== undefined && value !== null && String(value).trim()) {
+            return String(value).trim();
+        }
+    }
+    return "";
+}
+
+function mapKugouRecognizeItem(raw: Record<string, unknown>, platform: string): IPlugin.IRecognizeItem {
+    const authors = Array.isArray(raw.authors) ? raw.authors[0] as Record<string, unknown> : undefined;
+    const albums = Array.isArray(raw.album) ? raw.album[0] as Record<string, unknown> : undefined;
+    const title = pickRecognizeString(raw.songname, raw.filename, raw.name) || "未知歌曲";
+    const artist = pickRecognizeString(raw.singername, raw.author_name, raw.singer, authors?.author_name) || "未知歌手";
+    const album = pickRecognizeString(albums?.albumname, raw.album_name, raw.albumname);
+    const hash = pickRecognizeString(raw.hash, raw.hash_128, raw.FileHash, raw.hash_320, raw.hash_flac);
+    const hash320 = pickRecognizeString(raw.hash_320, raw["320hash"]);
+    const hashFlac = pickRecognizeString(raw.hash_flac, raw.sqhash);
+    const hashHires = pickRecognizeString(raw.hash_high, raw.ResFileHash);
+    const id = pickRecognizeString(
+        hash,
+        raw.album_audio_id,
+        raw.mixsongid,
+        raw.audio_id,
+        raw.songid,
+        raw.song_id,
+    );
+    const rawDuration = Number(raw.timelength ?? raw.timelength_128 ?? raw.duration ?? 0);
+    const duration = Number.isFinite(rawDuration) ? (rawDuration > 1000 ? rawDuration / 1000 : rawDuration) : undefined;
+    const dist = Number(raw.dist);
+    const confidence = Number.isFinite(dist) ? Math.max(0, Math.min(1, 1 - dist)) : undefined;
+    const artwork = normalizeRecognizeCover(
+        raw.union_cover,
+        albums?.sizable_cover,
+        raw.album_sizable_cover,
+        raw.cover,
+    );
+    const rawQualities = raw.qualities && typeof raw.qualities === "object"
+        ? raw.qualities as Record<string, Record<string, unknown>>
+        : {};
+    const qualities = {
+        ...rawQualities,
+        ...(hash ? { "128k": { ...rawQualities["128k"], hash } } : {}),
+        ...(hash320 ? { "320k": { ...rawQualities["320k"], hash: hash320 } } : {}),
+        ...(hashFlac ? { flac: { ...rawQualities.flac, hash: hashFlac } } : {}),
+        ...(hashHires ? { hires: { ...rawQualities.hires, hash: hashHires } } : {}),
+    };
+    return {
+        ...raw,
+        id: id || hash || `${title}-${artist}`,
+        platform,
+        title,
+        artist,
+        album: album || undefined,
+        artwork,
+        duration,
+        hash,
+        "320hash": hash320 || undefined,
+        sqhash: hashFlac || undefined,
+        ResFileHash: hashHires || undefined,
+        qualities,
+        album_audio_id: raw.album_audio_id,
+        album_id: albums?.album_id ?? albums?.albumid ?? raw.album_id ?? raw.albumid,
+        confidence,
+    };
+}
+
+async function recognizeKugou(audioBase64: string, platform: string) {
+    const pcm = Buffer.from(audioBase64, "base64");
+    if (!pcm.length || pcm.length > 16 * 1024 * 1024) {
+        throw new Error("识曲音频数据无效");
+    }
+    const now = Date.now();
+    const clienttime = Math.floor(now / 1000).toString();
+    const params: Record<string, string> = {
+        area_code: "1",
+        appid: "1005",
+        clienttime,
+        clientver: "20489",
+        dfid: "-",
+        fpid: String(now),
+        include_unpublish: "1",
+        mid: KUGOU_RECOGNIZE_MID,
+        multi_result: "1",
+        useid: "0",
+        uuid: "-",
+    };
+    const paramsString = Object.keys(params).sort().map((key) => `${key}=${params[key]}`).join("");
+    params.signature = createHash("md5")
+        .update(Buffer.concat([
+            Buffer.from(KUGOU_RECOGNIZE_SALT + paramsString, "utf8"),
+            pcm,
+            Buffer.from(KUGOU_RECOGNIZE_SALT, "utf8"),
+        ]))
+        .digest("hex");
+    const query = new URLSearchParams(params).toString();
+    const response = await axios.post(`${KUGOU_RECOGNIZE_URL}?${query}`, pcm, {
+        timeout: 30_000,
+        maxContentLength: 4 * 1024 * 1024,
+        maxBodyLength: 16 * 1024 * 1024,
+        responseType: "text",
+        headers: {
+            dfid: "-",
+            clienttime,
+            mid: KUGOU_RECOGNIZE_MID,
+            "kg-rc": "1",
+            "kg-thash": "5d816a0",
+            "kg-rec": "1",
+            "kg-rf": "B9EDA08A64250DEFFBCADDEE00F8F25F",
+            "User-Agent": "KuGou/11490 (Android)",
+            "Content-Type": "application/octet-stream",
+        },
+        transformResponse: [(value) => value],
+    });
+    const body = typeof response.data === "string" ? JSON.parse(response.data) : response.data;
+    const rows = Array.isArray(body?.data) ? body.data : [];
+    return {
+        isEnd: true,
+        data: rows
+            .filter((item: unknown): item is Record<string, unknown> => !!item && typeof item === "object")
+            .map((item: Record<string, unknown>) => mapKugouRecognizeItem(item, platform))
+            .sort((a: IPlugin.IRecognizeItem, b: IPlugin.IRecognizeItem) =>
+                Number(b.confidence ?? 0) - Number(a.confidence ?? 0)),
+    } satisfies IPlugin.IRecognizeResult;
+}
 
 function getLyricFormat(filePath: string): ILyric.LyricFormat {
     let normalizedPath = filePath;
@@ -213,6 +364,28 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
         };
     }
 
+    /** 听歌识曲。优先使用平台插件实现；酷狗插件缺少该方法时使用内置接口适配。 */
+    async recognize(
+        audioBase64: string,
+        _sampleRate = 8000,
+        _channels = 1,
+    ): Promise<IPlugin.IRecognizeResult | null> {
+        if (typeof audioBase64 !== "string" || !audioBase64.trim()) {
+            throw new Error("识曲音频数据为空");
+        }
+        if (typeof this.plugin.instance.recognize === "function") {
+            const result = await this.plugin.instance.recognize(audioBase64, _sampleRate, _channels);
+            if (!result || !Array.isArray(result.data)) {
+                return { isEnd: true, data: [] };
+            }
+            return result;
+        }
+        if (isKugouPlatform(this.plugin.name)) {
+            return recognizeKugou(audioBase64, this.plugin.name);
+        }
+        return null;
+    }
+
     /** 获取真实源 */
     async getMediaSource(
         musicItem: IMusic.IMusicItemPartial,
@@ -220,15 +393,18 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
         retryCount = 1,
         _notUpdateCache = false,
     ): Promise<IPlugin.IMediaSourceResult | null> {
-    // TODO 2. url 缓存策略，先略过
+        // TODO 2. url 缓存策略，先略过
 
         try {
             const lxQualityKeys = this.plugin.mediaQualityOverride?.();
-            const declaredQualityKeys = lxQualityKeys
+            // A non-null override means the platform has an LX base source.
+            // In that case the base source is authoritative (not a hint): do
+            // not call a second platform plugin when it returns no URL.
+            const hasLxSource = lxQualityKeys !== null && lxQualityKeys !== undefined;
+            const declaredQualityKeys = lxQualityKeys !== null && lxQualityKeys !== undefined
                 ? getLxMusicQualityKeys(musicItem, lxQualityKeys, true)
                 : getDeclaredQualityKeys(musicItem);
-            const hasLxQualityOverride = lxQualityKeys !== null
-                && lxQualityKeys !== undefined;
+            const hasLxQualityOverride = hasLxSource;
             if (
                 (hasLxQualityOverride || declaredQualityKeys.length)
                 && !declaredQualityKeys.includes(quality)
@@ -237,10 +413,10 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
             }
 
             // LX 兼容层仅覆盖播放解析；没有可用 LX 底座映射时继续调用原插件。
-            let result = lxQualityKeys
+            let result = hasLxSource
                 ? await this.plugin.mediaSourceOverride?.(musicItem, quality)
                 : null;
-            if (!result?.url && this.plugin.instance.getMediaSource) {
+            if (!result?.url && !hasLxSource && this.plugin.instance.getMediaSource) {
                 // 先用新音质键请求，如果插件不认识则回退到旧音质键
                 result = await this.plugin.instance.getMediaSource(
                     musicItem,
@@ -304,7 +480,13 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
             const mediaResult = {
                 url,
                 headers,
-                quality: result?.quality,
+                // Quality is an IQualityKey string.  Older plugins sometimes
+                // returned a numeric platform stream id (for example 30280),
+                // which later reached filename templates and crashed at
+                // `quality.trim()`.
+                quality: typeof result?.quality === "string" && result.quality.trim()
+                    ? result.quality.trim() as IMusic.IQualityKey
+                    : undefined,
                 userAgent: result?.userAgent ?? headers?.["user-agent"] ?? headers?.["User-Agent"],
             } as IPlugin.IMediaSourceResult;
 
@@ -329,6 +511,38 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
             // devLog('error', '获取真实源失败', e, e?.message);
             return null;
         }
+    }
+
+    private async resolveVideoSource(
+        musicItem: IMusic.IMusicItemPartial,
+        videoQuality = "1080p",
+    ): Promise<IPlugin.IVideoSourceResult | null> {
+        const method = this.plugin.instance.getMvSource;
+        if (!method) {
+            return null;
+        }
+        try {
+            const result = await method.call(
+                this.plugin.instance,
+                resetMediaItem(
+                    musicItem as IMedia.IMediaBase,
+                    undefined,
+                    true,
+                ) as IMusic.IMusicItemPartial,
+                videoQuality,
+            );
+            return normalizeVideoSourceResult(result);
+        } catch {
+            return null;
+        }
+    }
+
+    /** 获取 MV 播放源。 */
+    async getMvSource(
+        musicItem: IMusic.IMusicItemPartial,
+        videoQuality = "1080p",
+    ): Promise<IPlugin.IVideoSourceResult | null> {
+        return this.resolveVideoSource(musicItem, videoQuality);
     }
 
     /** 获取音乐详情 */

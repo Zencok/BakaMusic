@@ -99,6 +99,19 @@ assert.equal(kg._types["320k"].hash, "kg-320-hash");
 assert.equal(kg._types.flac.hash, "kg-flac-hash");
 assert.equal(kg._types.hires.hash, "kg-hires-hash");
 
+const kgWithFetchedQualityHashes = toLxMusicInfo("kg", {
+    ...baseMusic,
+    hash: "kg-base-hash",
+    qualities: {
+        "128k": { hash: "kg-fetched-128-hash" },
+        "320k": { hash: "kg-fetched-320-hash" },
+        flac: { hash: "kg-fetched-flac-hash" },
+    },
+});
+assert.equal(kgWithFetchedQualityHashes._types["128k"].hash, "kg-fetched-128-hash");
+assert.equal(kgWithFetchedQualityHashes._types["320k"].hash, "kg-fetched-320-hash");
+assert.equal(kgWithFetchedQualityHashes._types.flac.hash, "kg-fetched-flac-hash");
+
 const mg = toLxMusicInfo("mg", {
     ...baseMusic,
     copyrightId: "mg-copyright-id",
@@ -168,6 +181,8 @@ assert.match(
     /getLxMusicQualityKeys\(musicItem, sourceDescriptor\.qualities, true\)\.includes\(quality\)/,
 );
 assert.match(methodsSource, /getLxMusicQualityKeys\(musicItem, lxQualityKeys, true\)/);
+assert.match(managerSource, /source !== "kg"/);
+assert.match(methodsSource, /!result\?\.url && !hasLxSource/);
 
 const extensionlessUrl = new URL("https://source.example.com/api/script/lx?key=fixture");
 assert.equal(extensionlessUrl.protocol, "https:");

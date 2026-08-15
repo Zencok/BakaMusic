@@ -9,7 +9,40 @@ export interface IPluginMediaReference {
     [key: string]: unknown;
 }
 
+export interface IPrefetchedMediaSource {
+    mediaSource: {
+        url?: string;
+        headers?: Record<string, string>;
+        userAgent?: string;
+        quality?: string;
+        ekey?: string;
+        cek?: string;
+    };
+    quality: PrefetchedQualityKey;
+}
+
+type PrefetchedQualityKey =
+    | "mgg"
+    | "128k"
+    | "192k"
+    | "320k"
+    | "flac"
+    | "flac24bit"
+    | "hires"
+    | "vinyl"
+    | "dolby"
+    | "atmos"
+    | "atmos_plus"
+    | "master";
+
 const pluginDelegateHashKey = "$pluginDelegateHash";
+
+const PREFETCH_TTL_MS = 3 * 60 * 1000;
+const PREFETCH_MAX_ENTRIES = 64;
+const prefetchedMediaSources = new Map<string, {
+    value: IPrefetchedMediaSource;
+    expiresAt: number;
+}>();
 
 const IDENTIFIER_ALIAS_KEYS = [
     "songid",
@@ -27,6 +60,78 @@ function nonEmptyString(value: unknown): string | null {
     }
     const text = String(value).trim();
     return text.length ? text : null;
+}
+
+function getMediaIdentity(mediaItem: IPluginMediaReference) {
+    const aliases = [
+        mediaItem.hash,
+        mediaItem.id,
+        mediaItem.songmid,
+        mediaItem.songid,
+        mediaItem.mid,
+        mediaItem.copyrightId,
+    ];
+    return aliases
+        .map(nonEmptyString)
+        .find((value): value is string => !!value)
+        ?? "unknown";
+}
+
+function getPrefetchedMediaSourceKey(
+    mediaItem: IPluginMediaReference,
+    quality: PrefetchedQualityKey,
+) {
+    const delegate = getMediaPluginDelegate(mediaItem);
+    return `${delegate.hash ?? delegate.platform}\u0000${mediaItem.platform}\u0000${getMediaIdentity(mediaItem)}\u0000${quality}`;
+}
+
+function trimPrefetchedMediaSources(now = Date.now()) {
+    for (const [key, entry] of prefetchedMediaSources) {
+        if (entry.expiresAt <= now) {
+            prefetchedMediaSources.delete(key);
+        }
+    }
+    while (prefetchedMediaSources.size > PREFETCH_MAX_ENTRIES) {
+        const oldestKey = prefetchedMediaSources.keys().next().value;
+        if (oldestKey === undefined) {
+            break;
+        }
+        prefetchedMediaSources.delete(oldestKey);
+    }
+}
+
+/** Store a short-lived source resolved before the user presses play. */
+export function cachePrefetchedMediaSource(
+    mediaItem: IPluginMediaReference,
+    quality: PrefetchedQualityKey,
+    mediaSource: IPrefetchedMediaSource["mediaSource"],
+) {
+    if (!mediaSource?.url) {
+        return;
+    }
+    const now = Date.now();
+    trimPrefetchedMediaSources(now);
+    prefetchedMediaSources.set(getPrefetchedMediaSourceKey(mediaItem, quality), {
+        value: { mediaSource, quality },
+        expiresAt: now + PREFETCH_TTL_MS,
+    });
+    trimPrefetchedMediaSources(now);
+}
+
+/** Find a still-valid source for one of the player's quality fallbacks. */
+export function getPrefetchedMediaSource(
+    mediaItem: IPluginMediaReference,
+    qualityOrder: PrefetchedQualityKey[],
+): IPrefetchedMediaSource | null {
+    const now = Date.now();
+    trimPrefetchedMediaSources(now);
+    for (const quality of qualityOrder) {
+        const entry = prefetchedMediaSources.get(getPrefetchedMediaSourceKey(mediaItem, quality));
+        if (entry && entry.expiresAt > now) {
+            return entry.value;
+        }
+    }
+    return null;
 }
 
 /**

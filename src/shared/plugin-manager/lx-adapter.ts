@@ -61,6 +61,17 @@ function getQualityHash(
     if (source !== "kg") {
         return undefined;
     }
+    // The Kugou platform plugin returns the authoritative per-quality hash in
+    // `qualities[quality].hash`.  Use it before legacy top-level aliases so the
+    // LX `kg` base source receives the exact file identifier fetched by
+    // getMusicInfo instead of reusing the 128k hash for every quality.
+    const rawQualities = musicItem.qualities && typeof musicItem.qualities === "object"
+        ? musicItem.qualities as Partial<Record<IMusic.IQualityKey, { hash?: unknown }>>
+        : {};
+    const declaredHash = rawQualities[quality]?.hash;
+    if (declaredHash !== undefined && declaredHash !== null && String(declaredHash).trim()) {
+        return declaredHash;
+    }
     if (quality === "320k") {
         return musicItem["320hash"] ?? musicItem.hash ?? musicItem.id;
     }

@@ -425,7 +425,8 @@
         "theme": "主题",
         "search": "搜索",
         "maximize": "最大化或还原",
-        "developer_message": "开发者寄语"
+        "developer_message": "开发者寄语",
+        "song_recognition": "听歌识曲"
     },
     "music_bar": {
         "open_music_detail_page": "打开歌曲详情页",
@@ -518,6 +519,26 @@
         "sparkles_feedback": "欢迎在 GitHub 查看进展、反馈问题或提出想法。",
         "sparkles_repo": "GitHub 仓库",
         "sparkles_secret": "希望 BakaMusic 能逐渐成为一个值得长期使用、认真打磨的作品。"
+    },
+    "song_recognition": {
+        "title": "听歌识曲",
+        "start": "开始识别",
+        "stop": "停止识别",
+        "hint": "点击按钮开始识别",
+        "listening": "正在聆听… {{seconds}} / {{max}} 秒",
+        "recognizing": "识别中…",
+        "help": "自动捕获当前系统播放的音频。请先播放音乐，再开始识别。",
+        "failed": "识别失败",
+        "no_plugin": "没有可用的听歌识曲平台插件",
+        "no_result": "未识别到歌曲，请确认系统正在播放音乐",
+        "retry": "重新识别",
+        "result_count": "识别到 {{count}} 首匹配",
+        "match": "匹配度",
+        "play": "播放",
+        "favorite": "收藏",
+        "unfavorite": "取消收藏",
+        "add_to_sheet": "添加到歌单",
+        "unknown_artist": "未知歌手"
     },
     "panel": {
         "play_list_song_num": "播放列表 ({{number}}首)",

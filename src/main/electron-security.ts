@@ -1,7 +1,9 @@
 import {
     app,
     BrowserWindow,
+    desktopCapturer,
     session,
+    webContents,
 } from "electron";
 
 const productionCsp = [
@@ -35,6 +37,7 @@ const developmentCsp = [
 ].join("; ");
 
 let sessionSecurityConfigured = false;
+let displayMediaOwnerId: number | null = null;
 
 function setResponseHeader(
     headers: Record<string, string[]>,
@@ -100,8 +103,20 @@ export function setupSessionSecurity() {
 
     const appSession = session.defaultSession;
     appSession.setPermissionCheckHandler(() => false);
-    appSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
-        callback(false);
+    appSession.setPermissionRequestHandler((requester, permission, callback, details) => {
+        const mediaTypes = "mediaTypes" in details ? details.mediaTypes : undefined;
+        const allowDisplayCapture = (
+            permission === "display-capture"
+            || (
+                permission === "media"
+                && Array.isArray(mediaTypes)
+                && mediaTypes.length === 0
+            )
+        )
+            && displayMediaOwnerId === requester.id
+            && details.isMainFrame
+            && isSameApplicationDocument(details.requestingUrl, requester.getURL());
+        callback(allowDisplayCapture);
     });
     appSession.webRequest.onHeadersReceived((details, callback) => {
         const responseHeaders = { ...details.responseHeaders };
@@ -112,6 +127,48 @@ export function setupSessionSecurity() {
             ]);
         }
         callback({ responseHeaders });
+    });
+}
+
+/** 仅允许主窗口在用户点击后获取默认屏幕的系统回环音频。 */
+export function setupMainWindowDisplayMedia(mainWindow: BrowserWindow) {
+    const ownerId = mainWindow.webContents.id;
+    displayMediaOwnerId = ownerId;
+    mainWindow.webContents.once("destroyed", () => {
+        if (displayMediaOwnerId === ownerId) {
+            displayMediaOwnerId = null;
+        }
+    });
+    session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+        const frame = request.frame;
+        const requester = frame ? webContents.fromFrame(frame) : undefined;
+        if (
+            !frame
+            || frame.parent !== null
+            || requester?.id !== ownerId
+            || mainWindow.isDestroyed()
+            || !request.userGesture
+            || !request.videoRequested
+            || !request.audioRequested
+            || process.platform !== "win32"
+        ) {
+            callback({});
+            return;
+        }
+        void desktopCapturer.getSources({
+            types: ["screen"],
+            thumbnailSize: { width: 0, height: 0 },
+            fetchWindowIcons: false,
+        }).then((sources) => {
+            if (mainWindow.isDestroyed() || !sources[0]) {
+                callback({});
+                return;
+            }
+            callback({
+                video: sources[0],
+                audio: "loopback",
+            });
+        }).catch(() => callback({}));
     });
 }
 

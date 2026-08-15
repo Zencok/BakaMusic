@@ -12,7 +12,10 @@ import logger from "@shared/logger/main";
 import { toError } from "@/common/error-util";
 import { isFullscreenApplicationRunning } from "./fullscreen-notification-state";
 import { isFullscreenForegroundWindow } from "./foreground-fullscreen-state";
-import { hardenWindow } from "@main/electron-security";
+import {
+    hardenWindow,
+    setupMainWindowDisplayMedia,
+} from "@main/electron-security";
 import { getInitialWindowSurfaceOptions } from "@shared/themepack/window-material";
 import { fileURLToPath } from "url";
 
@@ -281,6 +284,7 @@ class WindowManager implements IWindowManager {
 
         // 2. 加载主界面
         WindowManager.mainWindow = mainWindow;
+        setupMainWindowDisplayMedia(mainWindow);
         hardenWindow(mainWindow, MAIN_WINDOW_WEBPACK_ENTRY);
         loadRendererEntry(
             mainWindow,

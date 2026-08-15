@@ -10,6 +10,7 @@ import Reconfirm from "./Reconfirm";
 import SearchLyric from "./SearchLyric";
 import SimpleInputWithState from "./SimpleInputWithState";
 import Sparkles from "./Sparkles";
+import SongRecognition from "./SongRecognition";
 import Update from "./Update";
 import WatchLocalDir from "./WatchLocalDir";
 
@@ -19,6 +20,7 @@ export default {
     AddNewSheet,
     AddMusicToSheet,
     Sparkles,
+    SongRecognition,
     SimpleInputWithState,
     Reconfirm,
     Update,

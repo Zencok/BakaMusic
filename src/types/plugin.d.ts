@@ -157,6 +157,22 @@ declare namespace IPlugin {
     ) => Promise<ICommon.PaginationResponse<IMusic.IMusicSheetItem>>;
     /** 歌曲评论 */
     getMusicComments?: (musicItem: IMusic.IMusicItem, page?: number) => Promise<IGetCommentResult>
+    /** 听歌识曲。audioBase64 为 8kHz/16bit/单声道 PCM 的 base64 字符串。 */
+    recognize?: (
+      audioBase64: string,
+      sampleRate?: number,
+      channels?: number,
+    ) => Promise<IRecognizeResult | null>;
+  }
+
+  interface IRecognizeResult {
+    isEnd?: boolean;
+    data: IRecognizeItem[];
+  }
+
+  /** 识曲结果。保留平台所需的原始字段，播放器可直接交给对应插件解析。 */
+  interface IRecognizeItem extends IMusic.IMusicItemPartial {
+    confidence?: number;
   }
 
   export interface IPluginInstance extends IPluginDefine {

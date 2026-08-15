@@ -198,6 +198,11 @@ class PluginManager {
                     (delegate as unknown as Record<string, unknown>)[key] = value;
                 }
             }
+            // 酷狗识曲接口由主进程平台适配器提供，即使旧版酷狗插件未声明
+            // recognize 方法，前端也能发现并调用该能力。
+            if (/酷狗|kugou/i.test(plugin.name) && !delegate.supportedMethod.includes("recognize")) {
+                delegate.supportedMethod.push("recognize");
+            }
             const lxQualities = plugin.mediaQualityOverride?.();
             if (lxQualities) {
                 delegate.supportedQualities = lxQualities;

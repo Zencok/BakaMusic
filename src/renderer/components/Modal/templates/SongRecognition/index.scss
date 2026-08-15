@@ -1,0 +1,217 @@
+.modal--song-recognition-container {
+  width: min(620px, calc(100vw - 32px));
+  max-height: min(720px, calc(100vh - 32px));
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: var(--textColor);
+
+  .song-recognition-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .song-recognition-main {
+    min-height: 360px;
+    padding: 38px 28px 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .song-recognition-mic {
+    position: relative;
+    width: 92px;
+    height: 92px;
+    border: 0;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    color: var(--primaryColor);
+    background: color-mix(in srgb, var(--primaryColor) 13%, transparent);
+    transition: transform 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-2px);
+      background: color-mix(in srgb, var(--primaryColor) 20%, transparent);
+    }
+
+    &:focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--primaryColor) 72%, #42e8c6);
+      outline-offset: 4px;
+    }
+
+    &:disabled {
+      cursor: wait;
+      opacity: .72;
+    }
+
+    &--recording {
+      color: #fff;
+      background: var(--primaryColor);
+      box-shadow: 0 0 0 12px color-mix(in srgb, var(--primaryColor) 16%, transparent), 0 12px 30px color-mix(in srgb, var(--primaryColor) 32%, transparent);
+      animation: song-recognition-pulse 1.5s ease-in-out infinite;
+    }
+
+    &--recognizing svg {
+      animation: song-recognition-spin 900ms linear infinite;
+    }
+  }
+
+  .song-recognition-status {
+    margin: 24px 0 0;
+    min-height: 24px;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .song-recognition-wave {
+    height: 34px;
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+
+    span {
+      width: 4px;
+      height: 7px;
+      border-radius: 99px;
+      background: var(--primaryColor);
+      opacity: .28;
+
+      &[data-active="true"] {
+        opacity: 1;
+        animation: song-recognition-wave 850ms ease-in-out infinite;
+
+        @for $i from 1 through 7 {
+          &:nth-child(#{$i}) { animation-delay: #{($i - 1) * 90}ms; }
+        }
+      }
+    }
+  }
+
+  .song-recognition-help {
+    margin: 20px 0 0;
+    max-width: 360px;
+    color: color-mix(in srgb, var(--textColor) 54%, transparent);
+    font-size: 12px;
+    line-height: 1.65;
+    text-align: center;
+  }
+
+  .song-recognition-retry {
+    margin-top: 24px;
+    min-height: 36px;
+    padding: 0 16px;
+    border: 1px solid color-mix(in srgb, var(--primaryColor) 32%, transparent);
+    border-radius: var(--controlRadiusMd, 10px);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    color: var(--primaryColor);
+    background: color-mix(in srgb, var(--primaryColor) 9%, transparent);
+    cursor: pointer;
+    font: inherit;
+
+    &:hover { background: color-mix(in srgb, var(--primaryColor) 15%, transparent); }
+    &:focus-visible { outline: 2px solid color-mix(in srgb, var(--primaryColor) 72%, #42e8c6); outline-offset: 2px; }
+  }
+
+  .song-recognition-results {
+    min-height: 0;
+    overflow: auto;
+    padding: 0 14px 16px;
+
+    .song-recognition-result-summary {
+      padding: 10px 4px;
+      color: color-mix(in srgb, var(--textColor) 56%, transparent);
+      font-size: 12px;
+      border-bottom: 1px solid color-mix(in srgb, var(--textColor) 10%, transparent);
+    }
+
+    ul { list-style: none; margin: 0; padding: 0; }
+
+    li {
+      min-height: 76px;
+      padding: 11px 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid color-mix(in srgb, var(--textColor) 8%, transparent);
+    }
+  }
+
+  .song-recognition-confidence {
+    width: 45px;
+    flex: 0 0 45px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--primaryColor);
+    font-size: 14px;
+    font-weight: 800;
+
+    small { color: color-mix(in srgb, var(--textColor) 50%, transparent); font-size: 9px; font-weight: 500; }
+  }
+
+  .song-recognition-cover {
+    width: 54px;
+    height: 54px;
+    flex: 0 0 54px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    color: color-mix(in srgb, var(--textColor) 35%, transparent);
+    background: color-mix(in srgb, var(--textColor) 9%, transparent);
+
+    img { width: 100%; height: 100%; object-fit: cover; }
+  }
+
+  .song-recognition-info {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    strong, span, small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    strong { font-size: 14px; }
+    span { color: color-mix(in srgb, var(--textColor) 62%, transparent); font-size: 12px; }
+    small { color: color-mix(in srgb, var(--textColor) 42%, transparent); font-size: 10px; }
+  }
+
+  .song-recognition-actions {
+    display: flex;
+    gap: 2px;
+
+    button {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: color-mix(in srgb, var(--textColor) 54%, transparent);
+      background: transparent;
+      cursor: pointer;
+
+      &:hover, &:focus-visible { color: var(--primaryColor); background: color-mix(in srgb, var(--primaryColor) 10%, transparent); }
+      &:focus-visible { outline: 2px solid color-mix(in srgb, var(--primaryColor) 72%, #42e8c6); outline-offset: 1px; }
+      &.is-favorite { color: var(--primaryColor); }
+    }
+  }
+}
+
+@keyframes song-recognition-pulse { 50% { box-shadow: 0 0 0 18px color-mix(in srgb, var(--primaryColor) 5%, transparent), 0 12px 30px color-mix(in srgb, var(--primaryColor) 32%, transparent); } }
+@keyframes song-recognition-wave { 50% { height: 27px; } }
+@keyframes song-recognition-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .modal--song-recognition-container * { animation: none !important; transition: none !important; }
+}

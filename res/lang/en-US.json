@@ -425,7 +425,8 @@
         "theme": "Theme",
         "search": "Search",
         "maximize": "Maximize or restore",
-        "developer_message": "Developer message"
+        "developer_message": "Developer message",
+        "song_recognition": "Song recognition"
     },
     "music_bar": {
         "open_music_detail_page": "Open Song Details",
@@ -518,6 +519,26 @@
         "sparkles_feedback": "Visit GitHub to follow progress, report issues, or share an idea.",
         "sparkles_repo": "GitHub repository",
         "sparkles_secret": "The goal is to shape BakaMusic into a carefully maintained app worth using for the long term."
+    },
+    "song_recognition": {
+        "title": "Song recognition",
+        "start": "Start recognition",
+        "stop": "Stop recognition",
+        "hint": "Click the button to identify the song",
+        "listening": "Listening… {{seconds}} / {{max}} s",
+        "recognizing": "Recognizing…",
+        "help": "Captures the audio currently playing on your system. Start music before recognition.",
+        "failed": "Recognition failed",
+        "no_plugin": "No song-recognition plugin is available",
+        "no_result": "No match found. Make sure music is playing.",
+        "retry": "Recognize again",
+        "result_count": "{{count}} matches found",
+        "match": "match",
+        "play": "Play",
+        "favorite": "Add to favorites",
+        "unfavorite": "Remove from favorites",
+        "add_to_sheet": "Add to playlist",
+        "unknown_artist": "Unknown artist"
     },
     "panel": {
         "play_list_song_num": "Playlist ({{number}} songs)",

@@ -58,6 +58,7 @@ export type SvgAssetIconNames =
     | "rolling-1s"
     | "share"
     | "shuffle"
+    | "song-recognition"
     | "skip-left"
     | "skip-right"
     | "sort-asc"

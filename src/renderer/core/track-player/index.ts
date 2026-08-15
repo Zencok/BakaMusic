@@ -43,6 +43,7 @@ import {
     bindMediaToPlugin,
     buildPlayByIdMusicItem,
     createMusicIdentifierBase,
+    getPrefetchedMediaSource,
     getMediaPluginDelegate,
     matchesMusicIdentifier,
     IPluginDelegateReference,
@@ -1308,6 +1309,17 @@ class TrackPlayer {
             } else {
                 // TODO 删除
             }
+        }
+
+        // Listening recognition and other quick-play entry points may have
+        // already resolved a short-lived plugin URL. Reuse it before asking
+        // the plugin for another (often expiring) URL.
+        const prefetched = getPrefetchedMediaSource(musicItem, qualityOrder);
+        if (prefetched) {
+            return {
+                mediaSource: prefetched.mediaSource as IPlugin.IMediaSourceResult,
+                quality: prefetched.quality as IMusic.IQualityKey,
+            };
         }
 
         // 2. 如果没有下载

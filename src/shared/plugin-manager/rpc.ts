@@ -15,6 +15,7 @@ export const pluginMethodNames = [
     "getRecommendSheetsByTag",
     "getMusicComments",
     "getMusicDetailPageUrl",
+    "recognize",
 ] as const;
 
 export type PluginMethodName = (typeof pluginMethodNames)[number];
