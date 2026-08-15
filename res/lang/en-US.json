@@ -220,6 +220,8 @@
         "lx_url_hint": "Enter an HTTPS LX source URL",
         "lx_install_successfully": "LX source installed and enabled",
         "use_lx_source": "Use this source",
+        "disable_lx_source": "Disable LX playback sources",
+        "disable_lx_source_desc": "Use each base plugin's own playback API and quality list",
         "lx_base_ready": "{{count}} base plugins ready",
         "lx_no_base": "Base plugin missing",
         "lx_supported_platforms": "Platforms supported by this LX source",

@@ -295,6 +295,7 @@ let lastDuration = 0;
 let lastSnapshotKey = "";
 let lastError = "";
 let lastErrorKind: NativePlaybackErrorKind = "playback";
+let lastAudioOutputError = "";
 let endedPending = false;
 let pendingSeek: number | null = null;
 let disposed = false;
@@ -432,7 +433,10 @@ function processEvents() {
             if (endFile.reason === MPV_END_FILE_REASON_EOF && !loopEnabled) {
                 endedPending = true;
             } else if (endFile.reason === MPV_END_FILE_REASON_ERROR) {
-                lastError = mpvError(endFile.error, "libmpv playback").message;
+                const playbackError = mpvError(endFile.error, "libmpv playback").message;
+                lastError = endFile.error === MPV_ERROR_AO_INIT_FAILED && lastAudioOutputError
+                    ? `${playbackError}: ${lastAudioOutputError}`
+                    : playbackError;
                 lastErrorKind = isAudioDeviceFailure(endFile.error)
                     ? "audio-device"
                     : "playback";
@@ -444,6 +448,16 @@ function processEvents() {
                 event.data,
                 mpvEventLogMessageType,
             ) as MpvEventLogMessage;
+            if (message.prefix?.startsWith("ao/") && message.text) {
+                lastAudioOutputError = message.text.trim().slice(0, 1024);
+                if (
+                    lastErrorKind === "audio-device"
+                    && lastError
+                    && !lastError.includes(lastAudioOutputError)
+                ) {
+                    lastError = `${lastError}: ${lastAudioOutputError}`;
+                }
+            }
             if (message.logLevel <= 20 && message.text) {
                 process.stderr.write(
                     `[${message.prefix ?? "mpv"}] ${message.text.trim()}\n`,
@@ -555,6 +569,7 @@ function handleCommand(command: NativePlaybackRuntimeCommand) {
             lastSnapshotKey = "";
             lastError = "";
             lastErrorKind = "playback";
+            lastAudioOutputError = "";
             endedPending = false;
             pendingSeek = null;
             playbackSpeed = 1;

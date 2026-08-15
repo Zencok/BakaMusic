@@ -132,10 +132,15 @@ assert.doesNotMatch(managerSource, /LX plugin URL must end with \.js/);
 assert.doesNotMatch(sectionSource, /pathname[\s\S]{0,80}endsWith\("\.js"\)/);
 assert.match(sectionSource, /\{plugin\.version \|\| "-"\}/);
 assert.doesNotMatch(sectionSource, /`v\$\{plugin\.version\}`/);
+assert.match(sectionSource, /setActiveLxPlugin\(null\)/);
+assert.match(managerSource, /activeSelection\.configured/);
+assert.match(managerSource, /LX_MEDIA_RESOLVE_ATTEMPTS = 2/);
 
 assert.match(hostSource, /type !== "music"/);
 assert.match(hostSource, /actions\.includes\("musicUrl"\)/);
 assert.match(hostSource, /action: "musicUrl"/);
+assert.match(hostSource, /probeLxMediaUrl/);
+assert.match(hostSource, /Range: "bytes=0-1"/);
 assert.match(
     managerSource,
     /getLxMusicQualityKeys\(musicItem, sourceDescriptor\.qualities\)\.includes\(quality\)/,

@@ -348,6 +348,16 @@ async function run() {
             response.end(audio);
             return;
         }
+        if (request.url?.startsWith("/lx-audio/")) {
+            const audioHeader = Buffer.from("fLaC", "ascii");
+            response.writeHead(200, {
+                "Accept-Ranges": "bytes",
+                "Content-Length": String(audioHeader.length),
+                "Content-Type": "audio/flac",
+            });
+            response.end(audioHeader);
+            return;
+        }
         if (request.url === "/pixel.png" || request.url?.endsWith("/pixel.png")) {
             response.writeHead(200, {
                 "Cache-Control": "no-store",
@@ -504,9 +514,20 @@ async function run() {
      * @name Package Smoke LX
      * @version v1
      */
+    let flacRequestCount = 0;
     lx.on(lx.EVENT_NAMES.request, ({ source, action, info }) => {
         if (source !== "wy" || action !== "musicUrl") return null;
-        return "https://lx-smoke.invalid/" + info.type + "/" + info.musicInfo.songmid;
+        if (info.type === "320k") {
+            return ${JSON.stringify(`${resourceOrigin}/lx-missing/`)}
+                + info.type + "/" + info.musicInfo.songmid;
+        }
+        flacRequestCount += 1;
+        if (flacRequestCount === 1) {
+            return ${JSON.stringify(`${resourceOrigin}/lx-missing/`)}
+                + info.type + "/" + info.musicInfo.songmid;
+        }
+        return ${JSON.stringify(`${resourceOrigin}/lx-audio/`)}
+            + info.type + "/" + info.musicInfo.songmid;
     });
     lx.send(lx.EVENT_NAMES.inited, {
         sources: {
@@ -681,13 +702,19 @@ async function run() {
                 "music",
             );
             const musicItem = searchResult.data[0];
-            return {
+            const lxState = {
                 qualities: Object.keys(musicItem.qualities),
                 flacSource: await pluginBridge.callPluginMethod(
                     { platform: "网易云音乐" },
                     "getMediaSource",
                     musicItem,
                     "flac",
+                ),
+                fallbackSource: await pluginBridge.callPluginMethod(
+                    { platform: "网易云音乐" },
+                    "getMediaSource",
+                    musicItem,
+                    "320k",
                 ),
                 unsupportedSource: await pluginBridge.callPluginMethod(
                     { platform: "网易云音乐" },
@@ -700,6 +727,25 @@ async function run() {
                     "getMediaSource",
                     musicItem,
                     "master",
+                ),
+            };
+            await pluginBridge.setActiveLxPlugin(null);
+            const disabledSearchResult = await pluginBridge.callPluginMethod(
+                { platform: "网易云音乐" },
+                "search",
+                "smoke",
+                1,
+                "music",
+            );
+            const disabledMusicItem = disabledSearchResult.data[0];
+            return {
+                ...lxState,
+                disabledQualities: Object.keys(disabledMusicItem.qualities),
+                disabledSource: await pluginBridge.callPluginMethod(
+                    { platform: "网易云音乐" },
+                    "getMediaSource",
+                    disabledMusicItem,
+                    "flac",
                 ),
             };
         })()`, "LX plugin playback override");
@@ -892,11 +938,18 @@ async function run() {
             lxPluginState: {
                 qualities: ["320k", "flac"],
                 flacSource: {
-                    url: "https://lx-smoke.invalid/flac/lx-smoke-song",
+                    url: `${resourceOrigin}/lx-audio/flac/lx-smoke-song`,
                     quality: "flac",
+                },
+                fallbackSource: {
+                    url: "https://base-smoke.invalid/320k",
                 },
                 unsupportedSource: null,
                 missingTrackQualitySource: null,
+                disabledQualities: ["128k", "320k", "flac"],
+                disabledSource: {
+                    url: "https://base-smoke.invalid/flac",
+                },
             },
             localScanState: {
                 count: 1,

@@ -339,6 +339,8 @@ function testAudioDeviceLossContract() {
     );
     assert.match(nativeHost, /const MPV_ERROR_AO_INIT_FAILED = -14;/);
     assert.match(nativeHost, /function isAudioDeviceFailure\(errorCode: number\)/);
+    assert.match(nativeHost, /lastAudioOutputError/);
+    assert.match(nativeHost, /message\.prefix\?\.startsWith\("ao\/"\)/);
     assert.match(
         nativeHost,
         /lastErrorKind = isAudioDeviceFailure\(endFile\.error\)\s*\?\s*"audio-device"\s*:\s*"playback";/,
@@ -356,6 +358,7 @@ function testAudioDeviceLossContract() {
         /snapshot\.errorKind === "audio-device"\s*\?\s*ErrorReason\.AudioDeviceUnavailable/,
     );
     assert.match(nativeController, /reloadTrack\(options: \{ seekTo\?: number; autoPlay\?: boolean \}/);
+    assert.match(nativeController, /next === this\.audioExclusive/);
     // 重载后 playerState 已经是 Paused，播放意图只能取自控制器自身。
     assert.match(nativeController, /options\.autoPlay \?\? this\.playRequested/);
 
@@ -366,6 +369,8 @@ function testAudioDeviceLossContract() {
     );
     assert.ok(onErrorBlock.length > 0);
     assert.match(onErrorBlock, /type === ErrorReason\.AudioDeviceUnavailable/);
+    assert.match(trackPlayer, /AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED/);
+    assert.match(trackPlayer, /"playMusic\.wasapiExclusive": false/);
     // 设备错误必须在 emit 之前 return，否则仍会走 playError=skip 分支。
     assert.ok(
         onErrorBlock.indexOf("handleAudioDeviceLoss") <

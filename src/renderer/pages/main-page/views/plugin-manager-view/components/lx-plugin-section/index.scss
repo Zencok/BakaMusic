@@ -79,10 +79,59 @@
     }
   }
 
+  & .lx-plugin-controls,
   & .lx-plugin-list {
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+
+  & .lx-plugin-disable-selector {
+    min-width: 0;
+    padding: 9px 10px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    border: 1px solid var(--appSurfaceBorder);
+    border-radius: 8px;
+    background: var(--backgroundColor);
+    cursor: pointer;
+
+    &[data-active="true"] {
+      border-color: color-mix(in srgb, var(--infoColor) 45%, var(--appSurfaceBorder));
+      box-shadow: inset 3px 0 0 var(--infoColor);
+    }
+
+    & input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0;
+    }
+
+    &:has(input:focus-visible) .lx-plugin-radio {
+      outline: 2px solid var(--infoColor);
+      outline-offset: 2px;
+    }
+  }
+
+  & .lx-plugin-disable-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  & .lx-plugin-disable-title {
+    color: var(--appTextPrimary);
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  & .lx-plugin-disable-description {
+    color: var(--appTextTertiary);
+    font-size: 0.72rem;
   }
 
   & .lx-plugin-row {

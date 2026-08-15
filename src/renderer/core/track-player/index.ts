@@ -53,6 +53,7 @@ const PROGRESS_PERSIST_INTERVAL_MS = 3_000;
 
 /** 同一次设备拔出会同时产生错误和列表变化，这段时间内只处理一次。 */
 const AUDIO_DEVICE_LOSS_GUARD_MS = 5_000;
+const WASAPI_BUFFER_ALIGNMENT_ERROR = /AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED/i;
 
 const {
     musicQueueStore,
@@ -1081,6 +1082,10 @@ class TrackPlayer {
         const duplicated = now - this.audioDeviceLossAt < AUDIO_DEVICE_LOSS_GUARD_MS;
         this.audioDeviceLossAt = now;
         const keepPlaying = AppConfig.getConfig("playMusic.whenDeviceRemoved") !== "pause";
+        const reasonMessage = reason instanceof Error ? reason.message : String(reason ?? "");
+        const shouldDisableExclusive = cause === "error"
+            && AppConfig.getConfig("playMusic.wasapiExclusive")
+            && WASAPI_BUFFER_ALIGNMENT_ERROR.test(reasonMessage);
 
         if (cause === "removed") {
             if (duplicated) {
@@ -1094,9 +1099,15 @@ class TrackPlayer {
         }
 
         logger.logInfo("audio output device is unavailable", {
-            reason: reason instanceof Error ? reason.message : reason,
+            reason: reasonMessage,
             deviceId: this.preferredSinkId || "auto",
         });
+
+        if (shouldDisableExclusive) {
+            logger.logInfo("WASAPI exclusive mode disabled after buffer alignment failure");
+            await this.setWasapiExclusive(false);
+            await AppConfig.setConfig({ "playMusic.wasapiExclusive": false });
+        }
 
         // 回落之后如果还是打不开设备，就不再重试，避免重载风暴
         if (now - this.audioDeviceReloadAt < AUDIO_DEVICE_LOSS_GUARD_MS) {
@@ -1112,7 +1123,7 @@ class TrackPlayer {
         // Paused，这里读不出用户到底是不是在播。
         const reloaded = this.audioController.reloadTrack?.({
             seekTo: resumeAt,
-            autoPlay: keepPlaying ? undefined : false,
+            autoPlay: keepPlaying || shouldDisableExclusive ? undefined : false,
         });
         if (!reloaded) {
             this.setPlayerState(PlayerState.Paused);

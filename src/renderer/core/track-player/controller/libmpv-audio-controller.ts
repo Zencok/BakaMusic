@@ -391,13 +391,23 @@ class LibmpvAudioController extends ControllerBase implements IAudioController {
     }
 
     async setAudioExclusive(enabled: boolean) {
-        this.audioExclusive = !!enabled;
+        const next = !!enabled;
+        if (next === this.audioExclusive) {
+            return;
+        }
+        const previous = this.audioExclusive;
+        this.audioExclusive = next;
         // Always send: host allows exclusive/device ops without a loaded track.
-        await this.runNativeCommand({
-            operation: "audio-exclusive",
-            sourceId: this.sourceId || "session",
-            enabled: this.audioExclusive,
-        }, false);
+        try {
+            await this.runNativeCommand({
+                operation: "audio-exclusive",
+                sourceId: this.sourceId || "session",
+                enabled: this.audioExclusive,
+            }, false);
+        } catch (error) {
+            this.audioExclusive = previous;
+            throw error;
+        }
     }
 
     reset() {

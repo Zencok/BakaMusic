@@ -32,6 +32,7 @@ const INIT_TIMEOUT_MS = 10_000;
 const SCRIPT_SYNC_TIMEOUT_MS = 5_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 const MAX_REQUEST_TIMEOUT_MS = 60_000;
+const MEDIA_PROBE_TIMEOUT_MS = 8_000;
 const EVENT_NAMES = Object.freeze({
     request: "request",
     inited: "inited",
@@ -110,6 +111,37 @@ function getRequestAgent(environment: PluginExecutionEnvironment, url: URL) {
         throw new Error("LX plugin proxy URL is invalid");
     }
     return new HttpsProxyAgent(proxyUrl);
+}
+
+async function probeLxMediaUrl(
+    url: URL,
+    environment: PluginExecutionEnvironment,
+) {
+    const agent = getRequestAgent(environment, url);
+    const response = await axios.request({
+        url: url.toString(),
+        method: "get",
+        headers: {
+            Range: "bytes=0-1",
+            "User-Agent": "Mozilla/5.0 BakaMusic LX Compatibility/2.0",
+        },
+        timeout: MEDIA_PROBE_TIMEOUT_MS,
+        responseType: "stream",
+        maxRedirects: 5,
+        beforeRedirect(options) {
+            if (!options.protocol || !["http:", "https:"].includes(options.protocol)) {
+                throw new Error("LX media redirect protocol is not accepted");
+            }
+        },
+        httpAgent: agent,
+        httpsAgent: agent,
+        validateStatus: () => true,
+    });
+    const body = response.data as { destroy?: () => void };
+    body.destroy?.();
+    if (response.status !== 200 && response.status !== 206) {
+        throw new Error(`LX media URL probe failed with HTTP ${response.status}`);
+    }
 }
 
 function normalizeRequestHeaders(value: unknown) {
@@ -478,6 +510,7 @@ async function invokePlugin(payload: unknown) {
     if (!["http:", "https:"].includes(url.protocol) || !url.hostname) {
         throw new Error("LX plugin media URL protocol is invalid");
     }
+    await probeLxMediaUrl(url, hosted.environment);
     return url.toString();
 }
 

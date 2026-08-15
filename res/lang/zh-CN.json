@@ -220,6 +220,8 @@
         "lx_url_hint": "请输入 HTTPS LX 音源地址",
         "lx_install_successfully": "LX 音源已安装并启用",
         "use_lx_source": "使用此音源",
+        "disable_lx_source": "关闭 LX 播放接口",
+        "disable_lx_source_desc": "使用底座插件自身的播放接口与音质表",
         "lx_base_ready": "{{count}} 个底座就绪",
         "lx_no_base": "缺少底座插件",
         "lx_supported_platforms": "LX 音源支持的平台",

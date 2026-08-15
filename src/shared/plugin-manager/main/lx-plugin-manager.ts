@@ -25,6 +25,7 @@ import LxPluginHostClient from "./lx-plugin-host-client";
 
 const MAX_LX_PLUGIN_CODE_BYTES = 5 * 1024 * 1024;
 const MAX_LX_PLUGINS = 100;
+const LX_MEDIA_RESOLVE_ATTEMPTS = 2;
 const REMOTE_TIMEOUT_MS = 20_000;
 const STATE_FILE_NAME = "state.json";
 
@@ -32,6 +33,11 @@ interface LxPluginIntegrityRecord {
     sha256: string;
     sourceUrl?: string;
     installedAt: string;
+}
+
+interface LxActiveSelection {
+    configured: boolean;
+    hash: string | null;
 }
 
 type EnvironmentProvider = () => PluginExecutionEnvironment;
@@ -117,16 +123,26 @@ export default class LxPluginManager {
         }
     }
 
-    private async readActiveHash() {
+    private async readActiveSelection(): Promise<LxActiveSelection> {
         try {
             const state = JSON.parse(await fs.readFile(this.statePath, "utf8")) as {
                 activeHash?: unknown;
             };
-            return typeof state.activeHash === "string" && /^[a-f0-9]{64}$/.test(state.activeHash)
-                ? state.activeHash
-                : null;
+            if (!Object.prototype.hasOwnProperty.call(state, "activeHash")) {
+                return { configured: false, hash: null };
+            }
+            if (state.activeHash === null) {
+                return { configured: true, hash: null };
+            }
+            return {
+                configured: true,
+                hash: typeof state.activeHash === "string"
+                    && /^[a-f0-9]{64}$/.test(state.activeHash)
+                    ? state.activeHash
+                    : null,
+            };
         } catch {
-            return null;
+            return { configured: false, hash: null };
         }
     }
 
@@ -150,7 +166,7 @@ export default class LxPluginManager {
     async loadAllPlugins() {
         await this.ensureDirectory();
         await this.host.clearPlugins();
-        const activeHash = await this.readActiveHash();
+        const activeSelection = await this.readActiveSelection();
         const nextPlugins: LxPluginDescriptor[] = [];
         const fileNames = await fs.readdir(this.pluginBasePath);
         for (const fileName of fileNames.slice(0, MAX_LX_PLUGINS * 3)) {
@@ -178,8 +194,10 @@ export default class LxPluginManager {
             }
         }
         this.plugins = nextPlugins;
-        this.activeHash = nextPlugins.some((plugin) => plugin.hash === activeHash)
-            ? activeHash
+        this.activeHash = activeSelection.configured
+            ? nextPlugins.some((plugin) => plugin.hash === activeSelection.hash)
+                ? activeSelection.hash
+                : null
             : nextPlugins[0]?.hash ?? null;
         await this.persistActiveHash();
         this.onChanged();
@@ -330,26 +348,34 @@ export default class LxPluginManager {
         if (!getLxMusicQualityKeys(musicItem, sourceDescriptor.qualities).includes(quality)) {
             return null;
         }
-        try {
-            const url = await this.host.invokePlugin({
-                hash: plugin.hash,
-                source,
-                quality,
-                musicInfo: toLxMusicInfo(
+        let lastError: unknown;
+        for (let attempt = 0; attempt < LX_MEDIA_RESOLVE_ATTEMPTS; attempt += 1) {
+            try {
+                const url = await this.host.invokePlugin({
+                    hash: plugin.hash,
                     source,
-                    replaceLxMusicQualities({ ...musicItem }, sourceDescriptor.qualities),
-                ),
-                environment: this.getEnvironment(),
-            });
-            return url ? { url, quality } : null;
-        } catch (error) {
-            logger.logError("LX playback override failed", toError(error), {
+                    quality,
+                    musicInfo: toLxMusicInfo(
+                        source,
+                        replaceLxMusicQualities({ ...musicItem }, sourceDescriptor.qualities),
+                    ),
+                    environment: this.getEnvironment(),
+                });
+                if (url) {
+                    return { url, quality };
+                }
+            } catch (error) {
+                lastError = error;
+            }
+        }
+        if (lastError) {
+            logger.logError("LX playback override failed", toError(lastError), {
                 plugin: plugin.name,
                 platform,
                 quality,
             });
-            return null;
         }
+        return null;
     }
 
     dispose() {

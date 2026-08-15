@@ -52,6 +52,7 @@ function getSourceEntries(plugin: LxPluginDescriptor) {
 export default function LxPluginSection({ basePlugins }: LxPluginSectionProps) {
     const { t } = useTranslation();
     const lxPlugins = useLxPlugins();
+    const hasActiveLxPlugin = lxPlugins.some((plugin) => plugin.active);
     const installedBaseSources = useMemo(() => new Set(
         basePlugins
             .map((plugin) => getLxSourceForPlatform(plugin.platform))
@@ -167,97 +168,124 @@ export default function LxPluginSection({ basePlugins }: LxPluginSectionProps) {
                 condition={lxPlugins.length}
                 falsy={<Empty style={{ minHeight: "112px" }}></Empty>}
             >
-                <div className="lx-plugin-list">
-                    {lxPlugins.map((plugin) => {
-                        const sources = getSourceEntries(plugin);
-                        const availableCount = sources.filter((source) =>
-                            installedBaseSources.has(source),
-                        ).length;
-                        return (
-                            <article
-                                key={plugin.hash}
-                                className="lx-plugin-row"
-                                data-active={String(plugin.active)}
-                                data-available={String(availableCount > 0)}
-                            >
-                                <label className="lx-plugin-selector">
-                                    <input
-                                        type="radio"
-                                        name="active-lx-plugin"
-                                        checked={plugin.active}
-                                        onChange={() => void PluginManager.setActiveLxPlugin(plugin.hash)}
-                                    />
-                                    <span className="lx-plugin-radio" aria-hidden="true">
-                                        {plugin.active
-                                            ? <span className="lx-plugin-radio-dot"></span>
-                                            : null}
-                                    </span>
-                                    <span>{t("plugin_management_page.use_lx_source")}</span>
-                                </label>
+                <div className="lx-plugin-controls">
+                    <label
+                        className="lx-plugin-disable-selector"
+                        data-active={String(!hasActiveLxPlugin)}
+                    >
+                        <input
+                            type="radio"
+                            name="active-lx-plugin"
+                            checked={!hasActiveLxPlugin}
+                            onChange={() => void PluginManager.setActiveLxPlugin(null)}
+                        />
+                        <span className="lx-plugin-radio" aria-hidden="true">
+                            {!hasActiveLxPlugin
+                                ? <span className="lx-plugin-radio-dot"></span>
+                                : null}
+                        </span>
+                        <span className="lx-plugin-disable-copy">
+                            <span className="lx-plugin-disable-title">
+                                {t("plugin_management_page.disable_lx_source")}
+                            </span>
+                            <span className="lx-plugin-disable-description">
+                                {t("plugin_management_page.disable_lx_source_desc")}
+                            </span>
+                        </span>
+                    </label>
 
-                                <div className="lx-plugin-main">
-                                    <div className="lx-plugin-title-line">
-                                        <span className="lx-plugin-name" title={plugin.name}>{plugin.name}</span>
-                                        <span className="lx-plugin-version">
-                                            {plugin.version || "-"}
+                    <div className="lx-plugin-list">
+                        {lxPlugins.map((plugin) => {
+                            const sources = getSourceEntries(plugin);
+                            const availableCount = sources.filter((source) =>
+                                installedBaseSources.has(source),
+                            ).length;
+                            return (
+                                <article
+                                    key={plugin.hash}
+                                    className="lx-plugin-row"
+                                    data-active={String(plugin.active)}
+                                    data-available={String(availableCount > 0)}
+                                >
+                                    <label className="lx-plugin-selector">
+                                        <input
+                                            type="radio"
+                                            name="active-lx-plugin"
+                                            checked={plugin.active}
+                                            onChange={() => void PluginManager.setActiveLxPlugin(plugin.hash)}
+                                        />
+                                        <span className="lx-plugin-radio" aria-hidden="true">
+                                            {plugin.active
+                                                ? <span className="lx-plugin-radio-dot"></span>
+                                                : null}
                                         </span>
-                                        <span
-                                            className="lx-plugin-availability"
-                                            data-ready={String(availableCount > 0)}
+                                        <span>{t("plugin_management_page.use_lx_source")}</span>
+                                    </label>
+
+                                    <div className="lx-plugin-main">
+                                        <div className="lx-plugin-title-line">
+                                            <span className="lx-plugin-name" title={plugin.name}>{plugin.name}</span>
+                                            <span className="lx-plugin-version">
+                                                {plugin.version || "-"}
+                                            </span>
+                                            <span
+                                                className="lx-plugin-availability"
+                                                data-ready={String(availableCount > 0)}
+                                            >
+                                                {availableCount > 0
+                                                    ? t("plugin_management_page.lx_base_ready", {
+                                                        count: availableCount,
+                                                    })
+                                                    : t("plugin_management_page.lx_no_base")}
+                                            </span>
+                                        </div>
+                                        <div className="lx-plugin-author">
+                                            {plugin.author || t("media.unknown_artist")}
+                                        </div>
+                                        <div
+                                            className="lx-plugin-bindings"
+                                            aria-label={t("plugin_management_page.lx_supported_platforms")}
                                         >
-                                            {availableCount > 0
-                                                ? t("plugin_management_page.lx_base_ready", {
-                                                    count: availableCount,
-                                                })
-                                                : t("plugin_management_page.lx_no_base")}
-                                        </span>
+                                            {sources.map((source) => {
+                                                const ready = installedBaseSources.has(source);
+                                                return (
+                                                    <span
+                                                        key={source}
+                                                        className="lx-plugin-binding"
+                                                        data-ready={String(ready)}
+                                                        title={ready
+                                                            ? t("plugin_management_page.lx_base_connected")
+                                                            : t("plugin_management_page.lx_base_missing")}
+                                                    >
+                                                        <span>{getLxPlatformName(source)}</span>
+                                                        <SvgAsset
+                                                            iconName={ready ? "check-circle" : "question-mark-circle"}
+                                                            size={13}
+                                                        ></SvgAsset>
+                                                    </span>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                    <div className="lx-plugin-author">
-                                        {plugin.author || t("media.unknown_artist")}
-                                    </div>
-                                    <div
-                                        className="lx-plugin-bindings"
-                                        aria-label={t("plugin_management_page.lx_supported_platforms")}
-                                    >
-                                        {sources.map((source) => {
-                                            const ready = installedBaseSources.has(source);
-                                            return (
-                                                <span
-                                                    key={source}
-                                                    className="lx-plugin-binding"
-                                                    data-ready={String(ready)}
-                                                    title={ready
-                                                        ? t("plugin_management_page.lx_base_connected")
-                                                        : t("plugin_management_page.lx_base_missing")}
-                                                >
-                                                    <span>{getLxPlatformName(source)}</span>
-                                                    <SvgAsset
-                                                        iconName={ready ? "check-circle" : "question-mark-circle"}
-                                                        size={13}
-                                                    ></SvgAsset>
-                                                </span>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
 
-                                <div className="lx-plugin-row-actions">
-                                    <Condition condition={!!plugin.sourceUrl}>
-                                        <LxActionButton iconName="sparkles" onClick={() => update(plugin)}>
-                                            {t("plugin_management_page.update")}
+                                    <div className="lx-plugin-row-actions">
+                                        <Condition condition={!!plugin.sourceUrl}>
+                                            <LxActionButton iconName="sparkles" onClick={() => update(plugin)}>
+                                                {t("plugin_management_page.update")}
+                                            </LxActionButton>
+                                        </Condition>
+                                        <LxActionButton
+                                            iconName="trash"
+                                            variant="danger"
+                                            onClick={() => uninstall(plugin)}
+                                        >
+                                            {t("plugin_management_page.uninstall")}
                                         </LxActionButton>
-                                    </Condition>
-                                    <LxActionButton
-                                        iconName="trash"
-                                        variant="danger"
-                                        onClick={() => uninstall(plugin)}
-                                    >
-                                        {t("plugin_management_page.uninstall")}
-                                    </LxActionButton>
-                                </div>
-                            </article>
-                        );
-                    })}
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
                 </div>
             </Condition>
         </section>
