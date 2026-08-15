@@ -1,5 +1,20 @@
 import type { LxScriptInfo, LxSource } from "./lx-types";
 
+const lxQualityOrder: readonly IMusic.IQualityKey[] = [
+    "mgg",
+    "128k",
+    "192k",
+    "320k",
+    "flac",
+    "flac24bit",
+    "hires",
+    "vinyl",
+    "dolby",
+    "atmos",
+    "atmos_plus",
+    "master",
+];
+
 function normalizeInfoValue(value: string | undefined, maxLength: number) {
     return (value ?? "").trim().slice(0, maxLength);
 }
@@ -147,6 +162,7 @@ export function toLxMusicInfo(
 export function getLxMusicQualityKeys(
     musicItem: IMusic.IMusicItemPartial,
     supportedQualities: readonly IMusic.IQualityKey[],
+    useSupportedQualities = false,
 ) {
     const rawMusicItem = musicItem as IMusic.IMusicItemPartial & {
         qualities?: IMusic.IQuality;
@@ -161,7 +177,13 @@ export function getLxMusicQualityKeys(
         : {};
     const qualityKeys = Object.keys(baseQualities);
     if (qualityKeys.length) {
+        if (useSupportedQualities) {
+            return [...supportedQualities];
+        }
         return supportedQualities.filter((quality) => baseQualities[quality] !== undefined);
+    }
+    if (useSupportedQualities) {
+        return [...supportedQualities];
     }
     const source = rawMusicItem.source && typeof rawMusicItem.source === "object"
         ? rawMusicItem.source
@@ -172,16 +194,36 @@ export function getLxMusicQualityKeys(
     });
 }
 
+export function getLxQualityFallbacks(
+    quality: IMusic.IQualityKey,
+    supportedQualities: readonly IMusic.IQualityKey[],
+) {
+    const qualityIndex = lxQualityOrder.indexOf(quality);
+    const supportedSet = new Set(supportedQualities);
+    if (qualityIndex < 0) {
+        return supportedSet.has(quality) ? [quality] : [];
+    }
+    return [
+        quality,
+        ...lxQualityOrder.slice(0, qualityIndex).reverse(),
+    ].filter((candidate) => supportedSet.has(candidate));
+}
+
 export function replaceLxMusicQualities<T extends IMusic.IMusicItemPartial>(
     musicItem: T,
     supportedQualities: readonly IMusic.IQualityKey[],
+    useSupportedQualities = false,
 ): T {
     const mutableMusicItem = musicItem as T & { qualities?: IMusic.IQuality };
     const baseQualities = mutableMusicItem.qualities
         && typeof mutableMusicItem.qualities === "object"
         ? mutableMusicItem.qualities
         : {};
-    const musicQualities = getLxMusicQualityKeys(musicItem, supportedQualities);
+    const musicQualities = getLxMusicQualityKeys(
+        musicItem,
+        supportedQualities,
+        useSupportedQualities,
+    );
     mutableMusicItem.qualities = Object.fromEntries(musicQualities.map((quality) => [
         quality,
         baseQualities[quality] && typeof baseQualities[quality] === "object"

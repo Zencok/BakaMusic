@@ -11,9 +11,14 @@ import type {
     LxPluginHostDescriptor,
     LxPluginHostInvokePayload,
     LxPluginHostLoadPayload,
+    LxPluginHostMessage,
     LxPluginHostRequest,
-    LxPluginHostResponse,
+    LxPluginHostUpdateAlert,
 } from "../lx-rpc";
+import {
+    isPluginPlaybackLogEvent,
+    type PluginPlaybackLogEvent,
+} from "../playback-log";
 
 const LOAD_TIMEOUT_MS = 12_000;
 const INVOKE_TIMEOUT_MS = 30_000;
@@ -70,6 +75,11 @@ export default class LxPluginHostClient {
     private resourceTimer: NodeJS.Timeout | null = null;
     private shuttingDown = false;
 
+    constructor(
+        private readonly onPlaybackLog?: (event: PluginPlaybackLogEvent) => void,
+        private readonly onUpdateAlert?: (event: LxPluginHostUpdateAlert) => void,
+    ) {}
+
     private get hostPath() {
         return path.resolve(__dirname, "lx_plugin_host.js");
     }
@@ -105,7 +115,7 @@ export default class LxPluginHostClient {
         });
         this.child = child;
         child.on("message", (message) => {
-            this.handleMessage(child, message as LxPluginHostResponse);
+            this.handleMessage(child, message as LxPluginHostMessage);
         });
         child.on("exit", (code) => {
             if (this.child !== child) {
@@ -192,10 +202,42 @@ export default class LxPluginHostClient {
         this.pending.clear();
     }
 
-    private handleMessage(child: UtilityProcess, message: LxPluginHostResponse) {
+    private handleMessage(child: UtilityProcess, message: LxPluginHostMessage) {
+        if (this.child !== child || !message || typeof message !== "object") {
+            return;
+        }
+        if (message.type === "playback-log") {
+            if (!isPluginPlaybackLogEvent(message) || estimateRpcBytes(message) > 16 * 1024) {
+                logger.logError(
+                    "LX plugin host playback log is invalid",
+                    new Error("Invalid playback log payload"),
+                );
+                child.kill();
+                return;
+            }
+            this.onPlaybackLog?.(message);
+            return;
+        }
+        if (message.type === "lx-update-alert") {
+            if (
+                !/^[a-f0-9]{64}$/.test(message.hash)
+                || (message.log !== undefined
+                    && (typeof message.log !== "string" || message.log.length > 1024))
+                || (message.updateUrl !== undefined
+                    && (typeof message.updateUrl !== "string" || message.updateUrl.length > 8192))
+                || estimateRpcBytes(message) > 16 * 1024
+            ) {
+                logger.logError(
+                    "LX plugin host update alert is invalid",
+                    new Error("Invalid update alert payload"),
+                );
+                return;
+            }
+            this.onUpdateAlert?.(message);
+            return;
+        }
         if (
-            this.child !== child
-            || message?.type !== "response"
+            message.type !== "response"
             || typeof message.requestId !== "string"
         ) {
             return;

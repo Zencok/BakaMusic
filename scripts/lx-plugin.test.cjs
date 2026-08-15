@@ -10,6 +10,7 @@ function read(relativePath) {
 
 const {
     getLxMusicQualityKeys,
+    getLxQualityFallbacks,
     parseLxScriptInfo,
     replaceLxMusicQualities,
     toLxMusicInfo,
@@ -114,11 +115,24 @@ assert.deepEqual(
     getLxMusicQualityKeys(baseMusic, ["320k", "hires", "master"]),
     ["320k", "hires"],
 );
+assert.deepEqual(
+    getLxMusicQualityKeys(baseMusic, ["320k", "hires", "master"], true),
+    ["320k", "hires", "master"],
+);
 assert.deepEqual(Object.keys(replacedMusic.qualities), ["320k", "hires"]);
 assert.deepEqual(replacedMusic.qualities["320k"], { size: 2000 });
 assert.equal(replacedMusic.qualities.master, undefined);
 assert.equal(replacedMusic.qualities["128k"], undefined);
 assert.equal(replacedMusic.qualities.flac, undefined);
+
+assert.deepEqual(
+    getLxQualityFallbacks("flac", ["128k", "320k", "flac", "master"]),
+    ["flac", "320k", "128k"],
+);
+assert.deepEqual(
+    getLxQualityFallbacks("128k", ["128k", "320k", "flac"]),
+    ["128k"],
+);
 
 const managerSource = read("src/shared/plugin-manager/main/lx-plugin-manager.ts");
 const hostSource = read("src/shared/plugin-manager/utility/lx-plugin-host.ts");
@@ -134,19 +148,26 @@ assert.match(sectionSource, /\{plugin\.version \|\| "-"\}/);
 assert.doesNotMatch(sectionSource, /`v\$\{plugin\.version\}`/);
 assert.match(sectionSource, /setActiveLxPlugin\(null\)/);
 assert.match(managerSource, /activeSelection\.configured/);
-assert.match(managerSource, /LX_MEDIA_RESOLVE_ATTEMPTS = 2/);
+assert.match(managerSource, /getLxQualityFallbacks/);
+assert.match(managerSource, /quality: candidateQuality/);
+assert.match(managerSource, /LX_MEDIA_PROBE_ATTEMPTS = 2/);
+assert.match(managerSource, /LX media URL probe failed/);
 
 assert.match(hostSource, /type !== "music"/);
 assert.match(hostSource, /actions\.includes\("musicUrl"\)/);
 assert.match(hostSource, /action: "musicUrl"/);
 assert.match(hostSource, /probeLxMediaUrl/);
 assert.match(hostSource, /Range: "bytes=0-1"/);
+assert.match(hostSource, /lx-update-alert/);
+assert.match(hostSource, /updateUrl/);
+assert.match(managerSource, /handleUpdateAlert/);
+assert.match(managerSource, /pendingUpdateAlerts/);
+assert.match(managerSource, /expectedName/);
 assert.match(
     managerSource,
-    /getLxMusicQualityKeys\(musicItem, sourceDescriptor\.qualities\)\.includes\(quality\)/,
+    /getLxMusicQualityKeys\(musicItem, sourceDescriptor\.qualities, true\)\.includes\(quality\)/,
 );
-assert.doesNotMatch(managerSource, /qualityFallback|resolveLxQuality/);
-assert.match(methodsSource, /getLxMusicQualityKeys\(musicItem, lxQualityKeys\)/);
+assert.match(methodsSource, /getLxMusicQualityKeys\(musicItem, lxQualityKeys, true\)/);
 
 const extensionlessUrl = new URL("https://source.example.com/api/script/lx?key=fixture");
 assert.equal(extensionlessUrl.protocol, "https:");

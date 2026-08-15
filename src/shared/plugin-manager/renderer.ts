@@ -11,6 +11,11 @@ import {
     getLxSourceForPlatform,
     type LxPluginDescriptor,
 } from "./lx-types";
+import {
+    isPluginPlaybackLogEntry,
+    PLUGIN_PLAYBACK_LOG_LIMIT,
+    type PluginPlaybackLogEntry,
+} from "./playback-log";
 
 interface IPluginDelegateLike {
     platform?: string;
@@ -20,6 +25,9 @@ interface IPluginDelegateLike {
 interface IMod {
     onPluginUpdated: (callback: (plugins: IPlugin.IPluginDelegate[]) => void) => void,
     onLxPluginUpdated: (callback: (plugins: LxPluginDescriptor[]) => void) => void,
+    onPlaybackLogAppended: (
+        callback: (entry: PluginPlaybackLogEntry) => void,
+    ) => () => void,
 
     callPluginMethod<
         T extends keyof IPlugin.IPluginInstanceMethods,
@@ -40,6 +48,8 @@ interface IMod {
     installLxPluginFromRemote: (url: string) => Promise<void>,
     setActiveLxPlugin: (hash: string | null) => Promise<void>,
     uninstallLxPlugin: (hash: string) => Promise<void>,
+    loadPlaybackLogs: () => Promise<PluginPlaybackLogEntry[]>,
+    clearPlaybackLogs: () => Promise<void>,
 }
 
 function fallbackCallPluginMethod<
@@ -59,6 +69,9 @@ const mod: IMod = bridge ?? {
         // pass
     },
     onLxPluginUpdated: () => {
+        // pass
+    },
+    onPlaybackLogAppended: () => () => {
         // pass
     },
     callPluginMethod: fallbackCallPluginMethod,
@@ -95,6 +108,10 @@ const mod: IMod = bridge ?? {
     uninstallLxPlugin: async () => {
         // pass
     },
+    loadPlaybackLogs: async () => [],
+    clearPlaybackLogs: async () => {
+        // pass
+    },
 };
 
 if (!bridge) {
@@ -103,6 +120,7 @@ if (!bridge) {
 
 const delegatePluginsStore = new Store<IPlugin.IPluginDelegate[]>([]);
 const lxPluginsStore = new Store<LxPluginDescriptor[]>([]);
+const playbackLogsStore = new Store<PluginPlaybackLogEntry[]>([]);
 const emptyPluginMeta = Object.freeze({}) as Record<
     string,
     IPlugin.IPluginMeta | undefined
@@ -139,6 +157,34 @@ mod.onPluginUpdated((plugins) => {
 mod.onLxPluginUpdated((plugins) => {
     lxPluginsStore.setValue(plugins);
 });
+
+mod.onPlaybackLogAppended((entry) => {
+    if (!isPluginPlaybackLogEntry(entry)) {
+        return;
+    }
+    playbackLogsStore.setValue([
+        ...playbackLogsStore.getValue().filter((item) => item.id !== entry.id),
+        entry,
+    ].slice(-PLUGIN_PLAYBACK_LOG_LIMIT));
+});
+
+async function reloadPlaybackLogs() {
+    const loadedEntries = (await mod.loadPlaybackLogs()).filter(isPluginPlaybackLogEntry);
+    const entriesById = new Map(
+        [...loadedEntries, ...playbackLogsStore.getValue()]
+            .map((entry) => [entry.id, entry] as const),
+    );
+    const nextEntries = [...entriesById.values()]
+        .sort((a, b) => a.timestamp - b.timestamp)
+        .slice(-PLUGIN_PLAYBACK_LOG_LIMIT);
+    playbackLogsStore.setValue(nextEntries);
+    return nextEntries;
+}
+
+async function clearPlaybackLogs() {
+    await mod.clearPlaybackLogs();
+    playbackLogsStore.setValue([]);
+}
 
 function isPluginEnabled(platform: string, meta: Record<string, IPlugin.IPluginMeta | undefined>) {
     return !(meta[platform]?.disabled ?? false);
@@ -273,6 +319,8 @@ const PluginManager = {
     installLxPluginFromRemote: mod.installLxPluginFromRemote,
     setActiveLxPlugin: mod.setActiveLxPlugin,
     uninstallLxPlugin: mod.uninstallLxPlugin,
+    reloadPlaybackLogs,
+    clearPlaybackLogs,
 };
 
 export default PluginManager;
@@ -304,4 +352,8 @@ export function useSortedPlugins() {
 
 export function useLxPlugins() {
     return lxPluginsStore.useValue();
+}
+
+export function usePluginPlaybackLogs() {
+    return playbackLogsStore.useValue();
 }

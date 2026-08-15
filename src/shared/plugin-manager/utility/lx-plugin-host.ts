@@ -15,8 +15,9 @@ import type {
     LxPluginHostDescriptor,
     LxPluginHostInvokePayload,
     LxPluginHostLoadPayload,
+    LxPluginHostMessage,
     LxPluginHostRequest,
-    LxPluginHostResponse,
+    LxPluginHostUpdateAlert,
 } from "../lx-rpc";
 import {
     lxSources,
@@ -24,6 +25,13 @@ import {
     type LxSourceDescriptor,
 } from "../lx-types";
 import type { PluginExecutionEnvironment } from "../rpc";
+import {
+    createPlaybackCallId,
+    createPlaybackConsole,
+    emitPlaybackLifecycle,
+    getPlaybackErrorMessage,
+    runWithPlaybackLog,
+} from "./playback-console";
 
 const MAX_PLUGIN_CODE_BYTES = 5 * 1024 * 1024;
 const MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
@@ -65,6 +73,8 @@ type LxRequestHandler = (request: {
     };
 }) => unknown;
 
+type LxUpdateAlertHandler = (event: LxPluginHostUpdateAlert) => void;
+
 interface HostedLxPlugin {
     context: vm.Context;
     descriptor: LxPluginHostDescriptor;
@@ -83,9 +93,11 @@ function toErrorPayload(error: unknown) {
     };
 }
 
-function postMessage(message: LxPluginHostResponse) {
+function postMessage(message: LxPluginHostMessage) {
     parentPort.postMessage(message);
 }
+
+const pluginConsole = createPlaybackConsole((event) => postMessage(event));
 
 function parseResponseBody(body: unknown) {
     if (typeof body !== "string") {
@@ -337,13 +349,16 @@ function createCryptoUtils() {
 }
 
 function createLxApi(
+    hash: string,
     scriptInfo: LxPluginHostLoadPayload["scriptInfo"],
     code: string,
     environment: PluginExecutionEnvironment,
     onInited: (sources: LxPluginHostDescriptor["sources"]) => void,
+    onUpdateAlert: LxUpdateAlertHandler,
 ) {
     let requestHandler: LxRequestHandler | null = null;
     let inited = false;
+    let updateAlertSent = false;
     const lx = {
         EVENT_NAMES,
         request: createLxRequest(environment),
@@ -357,6 +372,29 @@ function createLxApi(
                 return;
             }
             if (eventName === EVENT_NAMES.updateAlert) {
+                if (updateAlertSent) {
+                    return;
+                }
+                updateAlertSent = true;
+                if (!data || typeof data !== "object" || Array.isArray(data)) {
+                    return;
+                }
+                const update = data as Record<string, unknown>;
+                const log = typeof update.log === "string"
+                    ? update.log.slice(0, 1024)
+                    : undefined;
+                const updateUrl = typeof update.updateUrl === "string"
+                    ? update.updateUrl.trim().slice(0, MAX_URL_LENGTH)
+                    : undefined;
+                if (!log && !updateUrl) {
+                    return;
+                }
+                onUpdateAlert({
+                    type: "lx-update-alert",
+                    hash,
+                    log,
+                    updateUrl,
+                });
                 return;
             }
             throw new Error(`The LX event is not supported: ${String(eventName)}`);
@@ -419,14 +457,16 @@ async function loadPlugin(payload: unknown) {
         rejectInited(new Error("LX plugin initialization timed out"));
     }, INIT_TIMEOUT_MS);
     const runtime = createLxApi(
+        request.hash,
         request.scriptInfo,
         request.code,
         request.environment,
         resolveInited,
+        (event) => postMessage(event),
     );
     const sandbox: Record<string, unknown> = {
         lx: runtime.lx,
-        console,
+        console: pluginConsole,
         URL,
         URLSearchParams,
         TextEncoder,
@@ -481,12 +521,21 @@ async function invokePlugin(payload: unknown) {
         || !request.musicInfo
         || typeof request.musicInfo !== "object"
         || !request.environment
+        || typeof request.pluginName !== "string"
+        || request.pluginName.length > 256
+        || typeof request.platform !== "string"
+        || request.platform.length > 128
+        || typeof request.attempt !== "number"
+        || !Number.isInteger(request.attempt)
+        || request.attempt < 1
+        || request.attempt > 32
     ) {
         throw new Error("LX plugin invocation request is invalid");
     }
     const hosted = hostedPlugins.get(request.hash);
     const source = request.source as LxSource;
     const quality = request.quality as IMusic.IQualityKey;
+    const musicInfo = request.musicInfo;
     if (!hosted?.descriptor.sources[source]?.qualities.includes(quality)) {
         return null;
     }
@@ -495,23 +544,47 @@ async function invokePlugin(payload: unknown) {
     if (!handler) {
         return null;
     }
-    const result = await Promise.resolve(handler.call(hosted.context.lx, {
-        source,
-        action: "musicUrl",
-        info: {
-            type: quality,
-            musicInfo: request.musicInfo,
-        },
-    }));
-    if (typeof result !== "string" || result.length > MAX_URL_LENGTH) {
-        throw new Error("LX plugin returned an invalid media URL");
-    }
-    const url = new URL(result);
-    if (!["http:", "https:"].includes(url.protocol) || !url.hostname) {
-        throw new Error("LX plugin media URL protocol is invalid");
-    }
-    await probeLxMediaUrl(url, hosted.environment);
-    return url.toString();
+    const context = {
+        callId: createPlaybackCallId("lx"),
+        kind: "lx" as const,
+        pluginHash: request.hash,
+        pluginName: request.pluginName,
+        platform: request.platform,
+        quality,
+        attempt: request.attempt,
+    };
+    return await runWithPlaybackLog(context, async () => {
+        const startedAt = performance.now();
+        emitPlaybackLifecycle((event) => postMessage(event), context, "request");
+        try {
+            const result = await Promise.resolve(handler.call(hosted.context.lx, {
+                source,
+                action: "musicUrl",
+                info: {
+                    type: quality,
+                    musicInfo,
+                },
+            }));
+            if (typeof result !== "string" || result.length > MAX_URL_LENGTH) {
+                throw new Error("LX plugin returned an invalid media URL");
+            }
+            const url = new URL(result);
+            if (!["http:", "https:"].includes(url.protocol) || !url.hostname) {
+                throw new Error("LX plugin media URL protocol is invalid");
+            }
+            await probeLxMediaUrl(url, hosted.environment);
+            emitPlaybackLifecycle((event) => postMessage(event), context, "success", {
+                durationMs: performance.now() - startedAt,
+            });
+            return url.toString();
+        } catch (error) {
+            emitPlaybackLifecycle((event) => postMessage(event), context, "error", {
+                durationMs: performance.now() - startedAt,
+                message: getPlaybackErrorMessage(error),
+            });
+            throw error;
+        }
+    });
 }
 
 async function handleRequest(request: LxPluginHostRequest) {

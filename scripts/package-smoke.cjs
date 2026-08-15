@@ -945,7 +945,10 @@ async function run() {
                     url: "https://base-smoke.invalid/320k",
                 },
                 unsupportedSource: null,
-                missingTrackQualitySource: null,
+                missingTrackQualitySource: {
+                    url: `${resourceOrigin}/lx-audio/master/lx-smoke-song`,
+                    quality: "master",
+                },
                 disabledQualities: ["128k", "320k", "flac"],
                 disabledSource: {
                     url: "https://base-smoke.invalid/flac",

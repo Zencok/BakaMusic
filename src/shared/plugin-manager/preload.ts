@@ -1,6 +1,10 @@
 import { ipcRenderer } from "electron";
 import exposeInMainWorld from "@/preload/expose-in-main-world";
 import type { LxPluginDescriptor } from "./lx-types";
+import {
+    isPluginPlaybackLogEntry,
+    type PluginPlaybackLogEntry,
+} from "./playback-log";
 
 ipcRenderer.on("@/shared/plugin-manager/sync-plugins", (_evt, newPlugins) => {
     pluginUpdateCallback?.(newPlugins);
@@ -9,6 +13,22 @@ ipcRenderer.on("@/shared/plugin-manager/sync-plugins", (_evt, newPlugins) => {
 ipcRenderer.on("@/shared/plugin-manager/sync-lx-plugins", (_evt, newPlugins) => {
     lxPluginUpdateCallback?.(newPlugins);
 });
+
+const playbackLogCallbacks = new Set<
+    (entry: PluginPlaybackLogEntry) => void
+>();
+
+ipcRenderer.on(
+    "@shared/plugin-manager/playback-log-appended",
+    (_event, entry: unknown) => {
+        if (!isPluginPlaybackLogEntry(entry)) {
+            return;
+        }
+        for (const callback of playbackLogCallbacks) {
+            callback(entry);
+        }
+    },
+);
 
 let pluginUpdateCallback: (plugins: IPlugin.IPluginDelegate[]) => void;
 let lxPluginUpdateCallback: (plugins: LxPluginDescriptor[]) => void;
@@ -19,6 +39,13 @@ function onPluginUpdated(callback: (plugins: IPlugin.IPluginDelegate[]) => void)
 
 function onLxPluginUpdated(callback: (plugins: LxPluginDescriptor[]) => void) {
     lxPluginUpdateCallback = callback;
+}
+
+function onPlaybackLogAppended(
+    callback: (entry: PluginPlaybackLogEntry) => void,
+) {
+    playbackLogCallbacks.add(callback);
+    return () => playbackLogCallbacks.delete(callback);
 }
 
 
@@ -88,9 +115,20 @@ async function uninstallLxPlugin(hash: string) {
     return await ipcRenderer.invoke("@shared/plugin-manager/uninstall-lx-plugin", hash);
 }
 
+async function loadPlaybackLogs() {
+    return await ipcRenderer.invoke(
+        "@shared/plugin-manager/load-playback-logs",
+    ) as PluginPlaybackLogEntry[];
+}
+
+async function clearPlaybackLogs() {
+    await ipcRenderer.invoke("@shared/plugin-manager/clear-playback-logs");
+}
+
 const mod = {
     onPluginUpdated,
     onLxPluginUpdated,
+    onPlaybackLogAppended,
     callPluginMethod,
     reloadPlugins,
     reloadLxPlugins,
@@ -103,6 +141,8 @@ const mod = {
     installLxPluginFromRemote,
     setActiveLxPlugin,
     uninstallLxPlugin,
+    loadPlaybackLogs,
+    clearPlaybackLogs,
 };
 
 exposeInMainWorld("@shared/plugin-manager", mod);

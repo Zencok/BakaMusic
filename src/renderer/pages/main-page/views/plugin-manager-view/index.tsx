@@ -15,9 +15,10 @@ import PluginManager, {
     useLxPlugins,
     useSortedPlugins,
 } from "@shared/plugin-manager/renderer";
-import type { MouseEvent } from "react";
+import { useState, type MouseEvent } from "react";
 import LxPluginSection from "./components/lx-plugin-section";
 import useAppConfig from "@/hooks/useAppConfig";
+import PluginLogConsole from "./components/plugin-log-console";
 
 export default function PluginManagerView() {
     const { t } = useTranslation();
@@ -25,6 +26,7 @@ export default function PluginManagerView() {
     const lxPlugins = useLxPlugins();
     const pluginMeta = useAppConfig("private.pluginMeta") ?? {};
     const [subscriptionList] = useUserPreference("subscription");
+    const [logConsoleOpen, setLogConsoleOpen] = useState(false);
     const enabledPluginCount = plugins.filter(
         (plugin) => !(pluginMeta[plugin.platform]?.disabled ?? false),
     ).length;
@@ -295,6 +297,14 @@ export default function PluginManagerView() {
                     <div className="plugin-manager-header-actions">
                         <button
                             type="button"
+                            className="plugin-manager-log-button"
+                            onClick={() => setLogConsoleOpen(true)}
+                        >
+                            <SvgAsset iconName="code-bracket-square" size={17}></SvgAsset>
+                            <span>{t("plugin_management_page.plugin_logs")}</span>
+                        </button>
+                        <button
+                            type="button"
                             className="plugin-manager-install-button"
                             aria-haspopup="menu"
                             onClick={openInstallMenu}
@@ -345,6 +355,10 @@ export default function PluginManagerView() {
 
                 <PluginTable plugins={plugins}></PluginTable>
             </div>
+            <PluginLogConsole
+                open={logConsoleOpen}
+                onClose={() => setLogConsoleOpen(false)}
+            ></PluginLogConsole>
         </div>
     );
 }

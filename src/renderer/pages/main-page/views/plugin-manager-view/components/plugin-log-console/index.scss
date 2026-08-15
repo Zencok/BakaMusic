@@ -1,0 +1,738 @@
+.plugin-log-console-backdrop {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  box-sizing: border-box;
+  background: color-mix(in srgb, #050910 58%, transparent);
+  backdrop-filter: blur(10px);
+  animation: plugin-log-backdrop-in 140ms ease-out;
+}
+
+.plugin-log-console-dialog {
+  --log-border: color-mix(in srgb, var(--textColor) 10%, transparent);
+  --log-border-strong: color-mix(in srgb, var(--textColor) 16%, transparent);
+  --log-control: color-mix(in srgb, var(--textColor) 4.5%, transparent);
+  --log-control-hover: color-mix(in srgb, var(--textColor) 8%, transparent);
+  --log-surface: var(--appPanelSurface, var(--backgroundColor));
+  --log-surface-muted: color-mix(in srgb, var(--textColor) 2.5%, var(--backgroundColor));
+
+  width: min(1180px, 100%);
+  height: min(720px, calc(100vh - 40px));
+  min-height: min(32rem, calc(100vh - 40px));
+  max-height: calc(100vh - 40px);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  color: var(--panelTextOnSurface, var(--textColor));
+  border: 1px solid var(--panelBorder, var(--log-border-strong));
+  border-radius: min(var(--modalRadius, 14px), 14px);
+  background: var(--log-surface);
+  box-shadow:
+    0 28px 80px color-mix(in srgb, #02050a 32%, transparent),
+    0 0 0 1px color-mix(in srgb, white 4%, transparent);
+  animation: plugin-log-dialog-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.plugin-log-console-header {
+  min-width: 0;
+  min-height: 4.6rem;
+  padding: 0.8rem 0.85rem 0.8rem 1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid var(--log-border);
+}
+
+.plugin-log-console-title-block {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.72rem;
+}
+
+.plugin-log-console-mark {
+  width: 2.2rem;
+  height: 2.2rem;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: color-mix(in srgb, var(--primaryColor) 82%, var(--appTextPrimary));
+  border: 1px solid color-mix(in srgb, var(--primaryColor) 24%, var(--log-border));
+  border-radius: var(--controlRadius, 6px);
+  background: color-mix(in srgb, var(--primaryColor) 8%, transparent);
+}
+
+.plugin-log-console-heading {
+  min-width: 0;
+
+  & h2,
+  & p {
+    margin: 0;
+  }
+
+  & h2 {
+    overflow: hidden;
+    color: var(--appTextPrimary);
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  & p {
+    margin-top: 0.2rem;
+    overflow: hidden;
+    color: var(--appTextTertiary);
+    font-size: 0.68rem;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.plugin-log-console-title-line {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.62rem;
+}
+
+.plugin-log-console-live {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 0.35rem;
+  color: color-mix(in srgb, var(--successColor) 76%, var(--appTextSecondary));
+  font-size: 0.56rem;
+  font-weight: 780;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+
+  & > span {
+    width: 0.38rem;
+    height: 0.38rem;
+    border-radius: 50%;
+    background: var(--successColor);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--successColor) 14%, transparent);
+  }
+}
+
+.plugin-log-console-summary {
+  margin: 0;
+  display: flex;
+  align-items: center;
+
+  & > div {
+    min-width: 3.8rem;
+    padding: 0.05rem 0.75rem;
+    border-left: 1px solid var(--log-border);
+  }
+
+  & dt {
+    color: var(--appTextTertiary);
+    font-size: 0.58rem;
+    font-weight: 650;
+    line-height: 1.2;
+  }
+
+  & dd {
+    margin: 0.18rem 0 0;
+    color: var(--appTextPrimary);
+    font-size: 0.92rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+
+  & [data-tone="error"] dd {
+    color: var(--dangerColor);
+  }
+}
+
+.plugin-log-console-close,
+.plugin-log-console-actions button,
+.plugin-log-console-resume {
+  min-height: 2.1rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--appTextSecondary);
+  border: 1px solid var(--log-border);
+  border-radius: var(--controlRadius, 6px);
+  background: var(--log-control);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease,
+    background-color 120ms ease,
+    opacity 120ms ease;
+
+  &:hover:not(:disabled) {
+    color: var(--appTextPrimary);
+    border-color: var(--log-border-strong);
+    background: var(--log-control-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primaryColor);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.38;
+    cursor: default;
+  }
+}
+
+.plugin-log-console-close,
+.plugin-log-console-actions > button:not(.plugin-log-follow-toggle) {
+  width: 2.1rem;
+}
+
+.plugin-log-console-toolbar {
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  border-bottom: 1px solid var(--log-border);
+  background: var(--log-surface-muted);
+}
+
+.plugin-log-console-filters {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(11rem, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.plugin-log-source-filter {
+  padding: 0.15rem;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--log-border);
+  border-radius: var(--controlRadius, 6px);
+  background: var(--log-control);
+
+  & button {
+    min-width: 3.2rem;
+    min-height: 1.75rem;
+    padding: 0 0.58rem;
+    color: var(--appTextTertiary);
+    border: 0;
+    border-radius: max(2px, calc(var(--controlRadius, 6px) - 2px));
+    background: transparent;
+    font: inherit;
+    font-size: 0.65rem;
+    font-weight: 680;
+    cursor: pointer;
+
+    &[aria-pressed="true"] {
+      color: var(--appTextPrimary);
+      background: color-mix(in srgb, var(--textColor) 9%, transparent);
+      box-shadow: 0 1px 2px color-mix(in srgb, #000 12%, transparent);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--primaryColor);
+      outline-offset: -1px;
+    }
+  }
+}
+
+.plugin-log-search {
+  min-width: 0;
+  min-height: 2.1rem;
+  padding: 0 0.62rem;
+  display: flex;
+  align-items: center;
+  gap: 0.46rem;
+  color: var(--appTextTertiary);
+  border: 1px solid var(--log-border);
+  border-radius: var(--controlRadius, 6px);
+  background: var(--log-control);
+
+  &:focus-within {
+    border-color: color-mix(in srgb, var(--primaryColor) 54%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primaryColor) 10%, transparent);
+  }
+
+  & input {
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    color: var(--appTextPrimary);
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 0.7rem;
+
+    &::placeholder {
+      color: var(--appTextTertiary);
+      opacity: 0.86;
+    }
+  }
+
+  & button {
+    width: 1.4rem;
+    height: 1.4rem;
+    padding: 0;
+    display: grid;
+    flex: 0 0 auto;
+    place-items: center;
+    color: var(--appTextTertiary);
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--appTextPrimary);
+      background: var(--log-control-hover);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--primaryColor);
+    }
+  }
+}
+
+.plugin-log-level-filter select {
+  min-height: 2.1rem;
+  padding: 0 1.8rem 0 0.62rem;
+  color: var(--appTextSecondary);
+  border: 1px solid var(--log-border);
+  border-radius: var(--controlRadius, 6px);
+  outline: 0;
+  background: var(--log-control);
+  font: inherit;
+  font-size: 0.67rem;
+
+  &:focus-visible {
+    outline: 2px solid var(--primaryColor);
+    outline-offset: 2px;
+  }
+}
+
+.plugin-log-console-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+
+  & .plugin-log-follow-toggle {
+    min-width: 5.5rem;
+    padding: 0 0.6rem;
+    gap: 0.4rem;
+    font-size: 0.64rem;
+    font-weight: 680;
+
+    &.is-active {
+      color: color-mix(in srgb, var(--successColor) 78%, var(--appTextPrimary));
+      border-color: color-mix(in srgb, var(--successColor) 24%, var(--log-border));
+      background: color-mix(in srgb, var(--successColor) 7%, transparent);
+    }
+  }
+
+  & button.is-danger:hover:not(:disabled) {
+    color: var(--dangerColor);
+    border-color: color-mix(in srgb, var(--dangerColor) 36%, transparent);
+    background: color-mix(in srgb, var(--dangerColor) 8%, transparent);
+  }
+
+  & button.is-loading svg {
+    animation: plugin-log-spin 800ms linear infinite;
+  }
+}
+
+.plugin-log-follow-indicator {
+  width: 0.42rem;
+  height: 0.42rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.62;
+}
+
+.plugin-log-console-body {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--log-surface);
+}
+
+.plugin-log-console-stream {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  color: var(--appTextPrimary);
+  background: var(--log-surface);
+  scrollbar-color: var(--scrollbarThumbColor) transparent;
+}
+
+.plugin-log-console-table-head {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  min-width: 820px;
+  border-bottom: 1px solid var(--log-border-strong);
+  background: color-mix(in srgb, var(--backgroundColor) 96%, var(--textColor) 4%);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--textColor) 3%, transparent);
+}
+
+.plugin-log-console-column-head,
+.plugin-log-row {
+  min-width: 820px;
+  display: grid;
+  grid-template-columns: 5.5rem 4.2rem 3.5rem minmax(8rem, 0.82fr) minmax(18rem, 2.7fr) 4.2rem;
+  align-items: start;
+  column-gap: 0.65rem;
+  box-sizing: border-box;
+}
+
+.plugin-log-console-column-head {
+  padding: 0.5rem 0.8rem;
+  color: var(--appTextTertiary);
+  font-size: 0.57rem;
+  font-weight: 740;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+.plugin-log-console-rows {
+  min-width: 820px;
+}
+
+.plugin-log-row {
+  --log-row-accent: transparent;
+
+  position: relative;
+  min-height: 2.2rem;
+  padding: 0.46rem 0.8rem;
+  border-bottom: 1px solid var(--log-border);
+  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.66rem;
+  line-height: 1.45;
+
+  &::before {
+    position: absolute;
+    top: 0.42rem;
+    bottom: 0.42rem;
+    left: 0;
+    width: 2px;
+    border-radius: 0 2px 2px 0;
+    background: var(--log-row-accent);
+    content: "";
+  }
+
+  &:hover {
+    background: var(--log-control);
+  }
+
+  & time,
+  & .plugin-log-duration {
+    color: var(--appTextTertiary);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  &[data-phase="request"] {
+    --log-row-accent: color-mix(in srgb, var(--primaryColor) 72%, transparent);
+  }
+
+  &[data-phase="success"] {
+    --log-row-accent: color-mix(in srgb, var(--successColor) 78%, transparent);
+  }
+
+  &[data-phase="error"],
+  &[data-level="error"] {
+    --log-row-accent: color-mix(in srgb, var(--dangerColor) 84%, transparent);
+  }
+
+  &[data-level="warn"] {
+    --log-row-accent: color-mix(in srgb, var(--warningColor) 84%, transparent);
+  }
+
+  &[data-level="warn"] .plugin-log-message {
+    color: color-mix(in srgb, var(--warningColor) 78%, var(--appTextPrimary));
+  }
+
+  &[data-level="error"] .plugin-log-message,
+  &[data-phase="error"] .plugin-log-message {
+    color: color-mix(in srgb, var(--dangerColor) 82%, var(--appTextPrimary));
+  }
+
+  &[data-level="debug"] .plugin-log-message {
+    color: var(--appTextTertiary);
+  }
+}
+
+.plugin-log-level,
+.plugin-log-kind {
+  width: fit-content;
+  padding: 0.08rem 0.28rem;
+  border-radius: 3px;
+  font-size: 0.55rem;
+  font-weight: 780;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.plugin-log-level {
+  color: var(--appTextSecondary);
+  background: var(--log-control-hover);
+}
+
+[data-level="warn"] .plugin-log-level {
+  color: color-mix(in srgb, var(--warningColor) 82%, var(--appTextPrimary));
+  background: color-mix(in srgb, var(--warningColor) 10%, transparent);
+}
+
+[data-level="error"] .plugin-log-level {
+  color: color-mix(in srgb, var(--dangerColor) 82%, var(--appTextPrimary));
+  background: color-mix(in srgb, var(--dangerColor) 10%, transparent);
+}
+
+[data-phase="success"] .plugin-log-level {
+  color: color-mix(in srgb, var(--successColor) 80%, var(--appTextPrimary));
+  background: color-mix(in srgb, var(--successColor) 9%, transparent);
+}
+
+.plugin-log-kind {
+  color: color-mix(in srgb, var(--primaryColor) 78%, var(--appTextPrimary));
+  background: color-mix(in srgb, var(--primaryColor) 9%, transparent);
+}
+
+.plugin-log-origin {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+
+  & strong {
+    overflow: hidden;
+    color: var(--appTextPrimary);
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  & small {
+    overflow: hidden;
+    color: var(--appTextTertiary);
+    font-size: 0.56rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.plugin-log-message {
+  min-width: 0;
+  padding-left: calc(var(--log-depth, 0) * 0.9rem);
+  color: var(--appTextSecondary);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+
+  & > span {
+    margin-right: 0.34rem;
+    color: color-mix(in srgb, var(--primaryColor) 76%, var(--appTextSecondary));
+  }
+
+  & > small {
+    margin-left: 0.45rem;
+    padding: 0.04rem 0.25rem;
+    color: var(--appTextTertiary);
+    border: 1px solid var(--log-border-strong);
+    border-radius: 3px;
+    font-size: 0.55rem;
+    white-space: nowrap;
+  }
+}
+
+.plugin-log-console-state {
+  min-width: 100%;
+  min-height: calc(100% - 2.15rem);
+  padding: 3rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--appTextSecondary);
+  box-sizing: border-box;
+  font-size: 0.74rem;
+  text-align: center;
+
+  & svg {
+    color: var(--appTextTertiary);
+  }
+
+  & small {
+    max-width: 30rem;
+    color: var(--appTextTertiary);
+    font-size: 0.64rem;
+    line-height: 1.5;
+  }
+
+  &.is-error {
+    color: var(--dangerColor);
+  }
+}
+
+.plugin-log-console-resume {
+  position: absolute;
+  z-index: 3;
+  bottom: 0.8rem;
+  left: 50%;
+  min-height: 1.9rem;
+  padding: 0 0.72rem;
+  gap: 0.38rem;
+  color: var(--appTextPrimary);
+  border-color: var(--log-border-strong);
+  border-radius: 999px;
+  background: var(--log-surface);
+  box-shadow: 0 5px 18px color-mix(in srgb, #000 16%, transparent);
+  font-size: 0.62rem;
+  font-weight: 680;
+  transform: translateX(-50%);
+}
+
+.plugin-log-console-footer {
+  min-height: 1.9rem;
+  padding: 0 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--appTextTertiary);
+  border-top: 1px solid var(--log-border);
+  background: var(--log-surface-muted);
+  font-size: 0.59rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes plugin-log-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.992);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes plugin-log-backdrop-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes plugin-log-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 840px) {
+  .plugin-log-console-backdrop {
+    padding: 10px;
+  }
+
+  .plugin-log-console-dialog {
+    width: 100%;
+    height: calc(100vh - 20px);
+    min-height: 0;
+    max-height: calc(100vh - 20px);
+  }
+
+  .plugin-log-console-summary {
+    & > div {
+      min-width: 3.2rem;
+      padding-right: 0.55rem;
+      padding-left: 0.55rem;
+    }
+  }
+
+  .plugin-log-console-toolbar {
+    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .plugin-log-console-actions {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 640px) {
+  .plugin-log-console-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.65rem;
+  }
+
+  .plugin-log-console-summary {
+    display: none;
+  }
+
+  .plugin-log-console-heading p {
+    display: none;
+  }
+
+  .plugin-log-console-filters {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .plugin-log-source-filter {
+    grid-column: 1 / -1;
+
+    & button {
+      flex: 1;
+    }
+  }
+}
+
+@media (max-height: 560px) {
+  .plugin-log-console-header {
+    min-height: 3.8rem;
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+  }
+
+  .plugin-log-console-heading p,
+  .plugin-log-console-summary {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plugin-log-console-backdrop,
+  .plugin-log-console-dialog,
+  .plugin-log-console-actions button.is-loading svg {
+    animation: none;
+  }
+
+  .plugin-log-console-close,
+  .plugin-log-console-actions button,
+  .plugin-log-console-resume {
+    transition: none;
+  }
+
+  .plugin-log-console-stream {
+    scroll-behavior: auto;
+  }
+}

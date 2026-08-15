@@ -11,21 +11,26 @@ import {
 } from "@shared/ipc-security/main";
 import {
     getLxMusicQualityKeys,
+    getLxQualityFallbacks,
     parseLxScriptInfo,
     replaceLxMusicQualities,
     toLxMusicInfo,
 } from "../lx-adapter";
-import type { LxPluginHostDescriptor } from "../lx-rpc";
+import type {
+    LxPluginHostDescriptor,
+    LxPluginHostUpdateAlert,
+} from "../lx-rpc";
 import {
     getLxSourceForPlatform,
     type LxPluginDescriptor,
 } from "../lx-types";
 import type { PluginExecutionEnvironment } from "../rpc";
+import type { PluginPlaybackLogEvent } from "../playback-log";
 import LxPluginHostClient from "./lx-plugin-host-client";
 
 const MAX_LX_PLUGIN_CODE_BYTES = 5 * 1024 * 1024;
 const MAX_LX_PLUGINS = 100;
-const LX_MEDIA_RESOLVE_ATTEMPTS = 2;
+const LX_MEDIA_PROBE_ATTEMPTS = 2;
 const REMOTE_TIMEOUT_MS = 20_000;
 const STATE_FILE_NAME = "state.json";
 
@@ -40,6 +45,12 @@ interface LxActiveSelection {
     hash: string | null;
 }
 
+interface InstallOptions {
+    activate?: boolean;
+    expectedName?: string;
+    replaceHash?: string;
+}
+
 type EnvironmentProvider = () => PluginExecutionEnvironment;
 type ChangeListener = () => void;
 
@@ -52,15 +63,24 @@ function getIntegrityPath(pluginPath: string) {
 }
 
 export default class LxPluginManager {
-    private readonly host = new LxPluginHostClient();
+    private readonly host: LxPluginHostClient;
     private plugins: LxPluginDescriptor[] = [];
     private activeHash: string | null = null;
     private basePath = "";
+    private updatesReady = false;
+    private readonly pendingUpdateAlerts = new Map<string, LxPluginHostUpdateAlert>();
+    private readonly updateInFlight = new Map<string, Promise<void>>();
 
     constructor(
         private readonly getEnvironment: EnvironmentProvider,
         private readonly onChanged: ChangeListener,
-    ) {}
+        onPlaybackLog: (event: PluginPlaybackLogEvent) => void,
+    ) {
+        this.host = new LxPluginHostClient(
+            onPlaybackLog,
+            (event) => void this.handleUpdateAlert(event),
+        );
+    }
 
     private get pluginBasePath() {
         this.basePath ||= path.resolve(app.getPath("userData"), "bakamusic-lx-plugins");
@@ -81,6 +101,59 @@ export default class LxPluginManager {
     async setup() {
         await this.ensureDirectory();
         await this.loadAllPlugins();
+        this.updatesReady = true;
+        const pendingAlerts = [...this.pendingUpdateAlerts.values()];
+        this.pendingUpdateAlerts.clear();
+        await Promise.all(pendingAlerts.map((event) => this.handleUpdateAlert(event)));
+    }
+
+    private async handleUpdateAlert(event: LxPluginHostUpdateAlert) {
+        if (!this.updatesReady) {
+            this.pendingUpdateAlerts.set(event.hash, event);
+            return;
+        }
+        const plugin = this.plugins.find((item) => item.hash === event.hash);
+        if (!plugin) {
+            return;
+        }
+        const updateUrl = event.updateUrl?.trim() || plugin.sourceUrl;
+        if (!updateUrl) {
+            logger.logInfo("LX plugin announced an update without a download URL", {
+                plugin: plugin.name,
+                message: event.log,
+            });
+            return;
+        }
+        const previous = this.updateInFlight.get(plugin.hash);
+        if (previous) {
+            return previous;
+        }
+        const updatePromise = (async () => {
+            try {
+                await this.installFromRemoteUrl(updateUrl, {
+                    activate: plugin.hash === this.activeHash,
+                    expectedName: plugin.name,
+                    replaceHash: plugin.hash,
+                });
+                logger.logInfo("LX plugin updated", {
+                    plugin: plugin.name,
+                    message: event.log,
+                });
+            } catch (error) {
+                logger.logError(`LX plugin update failed: ${plugin.name}`, toError(error), {
+                    url: updateUrl,
+                    message: event.log,
+                });
+            }
+        })();
+        this.updateInFlight.set(plugin.hash, updatePromise);
+        try {
+            await updatePromise;
+        } finally {
+            if (this.updateInFlight.get(plugin.hash) === updatePromise) {
+                this.updateInFlight.delete(plugin.hash);
+            }
+        }
     }
 
     private async ensureDirectory() {
@@ -207,6 +280,7 @@ export default class LxPluginManager {
         code: string,
         fallbackName: string,
         sourceUrl?: string,
+        options: InstallOptions = {},
     ) {
         if (Buffer.byteLength(code, "utf8") > MAX_LX_PLUGIN_CODE_BYTES) {
             throw new Error("LX plugin code exceeds the accepted size");
@@ -214,7 +288,10 @@ export default class LxPluginManager {
         const hash = sha256(code);
         const duplicate = this.plugins.find((plugin) => plugin.hash === hash);
         if (duplicate) {
-            if (this.activeHash !== duplicate.hash) {
+            if (options.expectedName && duplicate.name !== options.expectedName) {
+                throw new Error("LX plugin update name does not match the installed plugin");
+            }
+            if (options.activate !== false && this.activeHash !== duplicate.hash) {
                 this.activeHash = duplicate.hash;
                 await this.persistActiveHash();
                 this.onChanged();
@@ -222,6 +299,9 @@ export default class LxPluginManager {
             return duplicate;
         }
         const scriptInfo = parseLxScriptInfo(code, fallbackName);
+        if (options.expectedName && scriptInfo.name !== options.expectedName) {
+            throw new Error("LX plugin update name does not match the installed plugin");
+        }
         const descriptor = await this.host.loadPlugin({
             hash,
             code,
@@ -247,7 +327,9 @@ export default class LxPluginManager {
             await fs.rm(temporaryPath, { force: true }).catch((): undefined => undefined);
         }
 
-        const oldPlugin = this.plugins.find((plugin) => plugin.name === descriptor.name);
+        const oldPlugin = options.replaceHash
+            ? this.plugins.find((plugin) => plugin.hash === options.replaceHash)
+            : this.plugins.find((plugin) => plugin.name === descriptor.name);
         if (oldPlugin) {
             await this.removeFiles(oldPlugin);
             await this.host.unloadPlugin(oldPlugin.hash);
@@ -256,7 +338,11 @@ export default class LxPluginManager {
         this.plugins = this.plugins
             .filter((plugin) => plugin.hash !== oldPlugin?.hash)
             .concat(installed);
-        this.activeHash = hash;
+        if (options.activate !== false) {
+            this.activeHash = hash;
+        } else if (this.activeHash === oldPlugin?.hash) {
+            this.activeHash = hash;
+        }
         await this.persistActiveHash();
         this.onChanged();
         return installed;
@@ -270,7 +356,7 @@ export default class LxPluginManager {
         );
     }
 
-    async installFromRemoteUrl(urlLike: string) {
+    async installFromRemoteUrl(urlLike: string, options: InstallOptions = {}) {
         const url = assertUrl(urlLike.trim(), ["https:"], 8192);
         url.searchParams.set("_bakamusic_cache", Date.now().toString());
         const response = await axios.get<string>(url.toString(), {
@@ -293,6 +379,7 @@ export default class LxPluginManager {
             response.data,
             path.posix.basename(url.pathname, path.posix.extname(url.pathname)),
             urlLike.trim(),
+            options,
         );
     }
 
@@ -345,27 +432,47 @@ export default class LxPluginManager {
         if (!source || !plugin || !sourceDescriptor) {
             return null;
         }
-        if (!getLxMusicQualityKeys(musicItem, sourceDescriptor.qualities).includes(quality)) {
+        if (!getLxMusicQualityKeys(musicItem, sourceDescriptor.qualities, true).includes(quality)) {
             return null;
         }
+        const musicInfo = toLxMusicInfo(
+            source,
+            replaceLxMusicQualities(
+                { ...musicItem },
+                sourceDescriptor.qualities,
+                true,
+            ),
+        );
+        const qualityCandidates = getLxQualityFallbacks(
+            quality,
+            sourceDescriptor.qualities,
+        );
         let lastError: unknown;
-        for (let attempt = 0; attempt < LX_MEDIA_RESOLVE_ATTEMPTS; attempt += 1) {
-            try {
-                const url = await this.host.invokePlugin({
-                    hash: plugin.hash,
-                    source,
-                    quality,
-                    musicInfo: toLxMusicInfo(
+        let attempt = 0;
+        for (const candidateQuality of qualityCandidates) {
+            for (let probeAttempt = 0; probeAttempt < LX_MEDIA_PROBE_ATTEMPTS; probeAttempt += 1) {
+                attempt += 1;
+                try {
+                    const url = await this.host.invokePlugin({
+                        hash: plugin.hash,
                         source,
-                        replaceLxMusicQualities({ ...musicItem }, sourceDescriptor.qualities),
-                    ),
-                    environment: this.getEnvironment(),
-                });
-                if (url) {
-                    return { url, quality };
+                        quality: candidateQuality,
+                        musicInfo,
+                        environment: this.getEnvironment(),
+                        pluginName: plugin.name,
+                        platform,
+                        attempt,
+                    });
+                    if (url) {
+                        return { url, quality: candidateQuality };
+                    }
+                    break;
+                } catch (error) {
+                    lastError = error;
+                    if (!toError(error).message.startsWith("LX media URL probe failed")) {
+                        break;
+                    }
                 }
-            } catch (error) {
-                lastError = error;
             }
         }
         if (lastError) {
@@ -373,6 +480,7 @@ export default class LxPluginManager {
                 plugin: plugin.name,
                 platform,
                 quality,
+                attemptedQualities: qualityCandidates,
             });
         }
         return null;

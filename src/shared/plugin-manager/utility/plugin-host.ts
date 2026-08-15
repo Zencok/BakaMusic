@@ -21,6 +21,14 @@ import {
     PluginMethodName,
     pluginMethodNames,
 } from "../rpc";
+import type { PluginPlaybackLogEvent } from "../playback-log";
+import {
+    createPlaybackCallId,
+    createPlaybackConsole,
+    emitPlaybackLifecycle,
+    getPlaybackErrorMessage,
+    runWithPlaybackLog,
+} from "./playback-console";
 
 const MAX_PLUGIN_CODE_BYTES = 5 * 1024 * 1024;
 const MAX_STORAGE_BYTES = 10 * 1024 * 1024;
@@ -51,9 +59,13 @@ let storage: Record<string, string> = {};
 let storageWriteQueue = Promise.resolve();
 let configuredProxyUrl: string | undefined;
 
-function postMessage(message: PluginHostResponse | PluginHostCallbackRequest) {
+function postMessage(
+    message: PluginHostResponse | PluginHostCallbackRequest | PluginPlaybackLogEvent,
+) {
     parentPort.postMessage(message);
 }
+
+const pluginConsole = createPlaybackConsole((event) => postMessage(event));
 
 /**
  * 插件的返回值是任意 JS 值，而 postMessage 走 structured clone：含函数的对象
@@ -319,7 +331,7 @@ function executePlugin(
         pluginRequire,
         moduleValue,
         moduleValue.exports,
-        console,
+        pluginConsole,
         environment,
         URL,
         pluginProcess,
@@ -407,7 +419,38 @@ async function invokePlugin(payload: unknown) {
     if (typeof method !== "function") {
         return null;
     }
-    return await (method as (...args: unknown[]) => unknown).apply(hosted.instance, request.args);
+    const args = request.args as unknown[];
+    const invoke = () => Promise.resolve(
+        (method as (...values: unknown[]) => unknown).apply(hosted.instance, args),
+    );
+    if (request.method !== "getMediaSource") {
+        return await invoke();
+    }
+    const context = {
+        callId: createPlaybackCallId("plugin"),
+        kind: "plugin" as const,
+        pluginHash: request.hash,
+        pluginName: hosted.instance.platform,
+        platform: hosted.instance.platform,
+        quality: typeof args[1] === "string" ? args[1] : undefined,
+    };
+    return await runWithPlaybackLog(context, async () => {
+        const startedAt = performance.now();
+        emitPlaybackLifecycle((event) => postMessage(event), context, "request");
+        try {
+            const result = await invoke();
+            emitPlaybackLifecycle((event) => postMessage(event), context, "success", {
+                durationMs: performance.now() - startedAt,
+            });
+            return result;
+        } catch (error) {
+            emitPlaybackLifecycle((event) => postMessage(event), context, "error", {
+                durationMs: performance.now() - startedAt,
+                message: getPlaybackErrorMessage(error),
+            });
+            throw error;
+        }
+    });
 }
 
 async function handleRequest(request: PluginHostRequest) {

@@ -32,6 +32,8 @@ import localPlugin from "./internal-plugins/local-plugin";
 import { Plugin } from "./plugin";
 import PluginHostClient from "./plugin-host-client";
 import LxPluginManager from "./lx-plugin-manager";
+import PlaybackLogStore from "./playback-log-store";
+import type { PluginPlaybackLogEntry } from "../playback-log";
 
 const MAX_PLUGIN_CODE_BYTES = 5 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 1024 * 1024;
@@ -161,10 +163,16 @@ class PluginManager {
     private _plugins: Plugin[] = [];
     private windowManager!: IWindowManager;
     private _pluginBasePath = "";
-    private readonly host = new PluginHostClient();
+    private readonly playbackLogs = new PlaybackLogStore(
+        (entry) => this.syncPlaybackLog(entry),
+    );
+    private readonly host = new PluginHostClient(
+        (event) => this.playbackLogs.append(event),
+    );
     private readonly lxPlugins = new LxPluginManager(
         () => this.getEnvironment(""),
         () => this.syncLxPlugins(),
+        (event) => this.playbackLogs.append(event),
     );
     private resolveReady!: () => void;
     private readonly readyPromise = new Promise<void>((resolve) => {
@@ -267,6 +275,7 @@ class PluginManager {
         this.windowManager = windowManager;
         this.setupIpcHandlers();
         await this.ensurePluginDirectory();
+        await this.playbackLogs.setup();
         await Promise.all([
             this.loadAllPlugins(),
             this.lxPlugins.setup(),
@@ -356,6 +365,16 @@ class PluginManager {
             }
             await this.lxPlugins.uninstall(hash);
         });
+        ipcMain.handle("@shared/plugin-manager/load-playback-logs", async (event) => {
+            assertIpcSender(event, ["main"]);
+            await this.whenReady();
+            return this.playbackLogs.getEntries();
+        });
+        ipcMain.handle("@shared/plugin-manager/clear-playback-logs", async (event) => {
+            assertIpcSender(event, ["main"]);
+            await this.whenReady();
+            await this.playbackLogs.clear();
+        });
     }
 
     private async ensurePluginDirectory() {
@@ -421,6 +440,16 @@ class PluginManager {
             mainWindow.webContents.send(
                 "@/shared/plugin-manager/sync-lx-plugins",
                 this.lxPlugins.descriptors,
+            );
+        }
+    }
+
+    private syncPlaybackLog(entry: PluginPlaybackLogEntry) {
+        const mainWindow = this.windowManager?.mainWindow;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send(
+                "@shared/plugin-manager/playback-log-appended",
+                entry,
             );
         }
     }

@@ -4,6 +4,7 @@ import type {
     LxSource,
 } from "./lx-types";
 import type { PluginExecutionEnvironment } from "./rpc";
+import type { PluginPlaybackLogEvent } from "./playback-log";
 
 export interface LxPluginHostLoadPayload {
     hash: string;
@@ -18,6 +19,9 @@ export interface LxPluginHostInvokePayload {
     quality: IMusic.IQualityKey;
     musicInfo: Record<string, unknown>;
     environment: PluginExecutionEnvironment;
+    pluginName: string;
+    platform: string;
+    attempt: number;
 }
 
 export type LxPluginHostOperation = "load" | "invoke" | "unload" | "clear";
@@ -39,5 +43,17 @@ export interface LxPluginHostResponse {
         stack?: string;
     };
 }
+
+export interface LxPluginHostUpdateAlert {
+    type: "lx-update-alert";
+    hash: string;
+    log?: string;
+    updateUrl?: string;
+}
+
+export type LxPluginHostMessage =
+    | LxPluginHostResponse
+    | PluginPlaybackLogEvent
+    | LxPluginHostUpdateAlert;
 
 export type LxPluginHostDescriptor = Omit<LxPluginDescriptor, "path" | "active" | "sourceUrl">;

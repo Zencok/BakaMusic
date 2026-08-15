@@ -17,6 +17,10 @@ import {
     PluginHostResponse,
     PluginMethodName,
 } from "../rpc";
+import {
+    isPluginPlaybackLogEvent,
+    type PluginPlaybackLogEvent,
+} from "../playback-log";
 
 const LOAD_TIMEOUT_MS = 10_000;
 const INVOKE_TIMEOUT_MS = 30_000;
@@ -114,6 +118,10 @@ export default class PluginHostClient {
     private resourceTimer: NodeJS.Timeout | null = null;
     private shuttingDown = false;
 
+    constructor(
+        private readonly onPlaybackLog?: (event: PluginPlaybackLogEvent) => void,
+    ) {}
+
     private get hostPath() {
         return path.resolve(__dirname, "plugin_host.js");
     }
@@ -153,7 +161,7 @@ export default class PluginHostClient {
         child.on("message", (message) => {
             void this.handleMessage(
                 child,
-                message as PluginHostResponse | PluginHostCallbackRequest,
+                message as PluginHostResponse | PluginHostCallbackRequest | PluginPlaybackLogEvent,
             ).catch((error) => {
                 logger.logError("Plugin host sent an invalid RPC message", toError(error));
                 if (this.child === child) {
@@ -248,9 +256,16 @@ export default class PluginHostClient {
 
     private async handleMessage(
         child: UtilityProcess,
-        message: PluginHostResponse | PluginHostCallbackRequest,
+        message: PluginHostResponse | PluginHostCallbackRequest | PluginPlaybackLogEvent,
     ) {
         if (this.child !== child || !message || typeof message !== "object") {
+            return;
+        }
+        if (message.type === "playback-log") {
+            if (!isPluginPlaybackLogEvent(message) || estimateRpcBytes(message) > 16 * 1024) {
+                throw new Error("Plugin host playback log is invalid");
+            }
+            this.onPlaybackLog?.(message);
             return;
         }
         if (message.type === "host-request") {

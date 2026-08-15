@@ -40,6 +40,7 @@
   }
 
   & .plugin-manager-install-button,
+  & .plugin-manager-log-button,
   & .plugin-manager-more-button,
   & .plugin-manager-row-menu-button {
     min-height: 2.5rem;
@@ -73,6 +74,34 @@
     &:hover {
       border-color: color-mix(in srgb, var(--discovery-cool) 82%, var(--appTextPrimary));
       background: color-mix(in srgb, var(--discovery-cool) 82%, var(--appTextPrimary));
+    }
+  }
+
+  & .plugin-manager-log-button {
+    min-height: 2.5rem;
+    padding: 0 0.78rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.42rem;
+    color: var(--appTextSecondary);
+    border: 1px solid var(--discovery-line);
+    border-radius: var(--controlRadius, 5px);
+    background: transparent;
+    font: inherit;
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--appTextPrimary);
+      border-color: color-mix(in srgb, var(--discovery-cool) 48%, transparent);
+      background: color-mix(in srgb, var(--discovery-cool) 9%, transparent);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--primaryColor);
+      outline-offset: 2px;
     }
   }
 
@@ -216,6 +245,14 @@
       flex: 1;
     }
 
+    & .plugin-manager-header-actions {
+      flex-wrap: wrap;
+    }
+
+    & .plugin-manager-log-button {
+      flex: 1 1 9rem;
+    }
+
     & .plugin-manager-install-button {
       min-width: 0;
     }
@@ -254,6 +291,7 @@
 @media (prefers-reduced-motion: reduce) {
   .plugin-manager-view-container {
     & .plugin-manager-install-button,
+    & .plugin-manager-log-button,
     & .plugin-manager-more-button,
     & .plugin-manager-row-menu-button {
       transition: none;

@@ -225,7 +225,7 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
         try {
             const lxQualityKeys = this.plugin.mediaQualityOverride?.();
             const declaredQualityKeys = lxQualityKeys
-                ? getLxMusicQualityKeys(musicItem, lxQualityKeys)
+                ? getLxMusicQualityKeys(musicItem, lxQualityKeys, true)
                 : getDeclaredQualityKeys(musicItem);
             const hasLxQualityOverride = lxQualityKeys !== null
                 && lxQualityKeys !== undefined;
