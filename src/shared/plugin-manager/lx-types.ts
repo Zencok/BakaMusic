@@ -36,6 +36,27 @@ export interface LxScriptInfo {
     homepage: string;
 }
 
+/**
+ * Resolve the LX script explicitly selected by the user for one source.
+ *
+ * A null active hash means the native playback interface is selected. An
+ * active script that does not declare the requested source also leaves that
+ * platform on its native plugin; it must not silently switch to another LX
+ * script.
+ */
+export function getActiveLxPluginForSource(
+    plugins: readonly LxPluginDescriptor[],
+    activeHash: string | null,
+    source: LxSource | null,
+) {
+    if (!activeHash || !source) {
+        return undefined;
+    }
+    return plugins.find((plugin) =>
+        plugin.hash === activeHash && plugin.sources[source],
+    );
+}
+
 export function getLxSourceForPlatform(platform: string): LxSource | null {
     const normalized = platform.trim().toLocaleLowerCase();
     for (const source of lxSources) {

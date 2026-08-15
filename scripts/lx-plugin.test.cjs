@@ -16,6 +16,7 @@ const {
     toLxMusicInfo,
 } = require("../src/shared/plugin-manager/lx-adapter.ts");
 const {
+    getActiveLxPluginForSource,
     getLxSourceForPlatform,
 } = require("../src/shared/plugin-manager/lx-types.ts");
 
@@ -29,6 +30,31 @@ for (const [platform, source] of [
     assert.equal(getLxSourceForPlatform(platform), source);
 }
 assert.equal(getLxSourceForPlatform("Bilibili"), null);
+
+const selectedKgPlugin = {
+    hash: "selected-kg",
+    sources: { kg: { actions: ["musicUrl"], qualities: ["128k"] } },
+};
+const otherKgPlugin = {
+    hash: "other-kg",
+    sources: { kg: { actions: ["musicUrl"], qualities: ["320k"] } },
+};
+const txOnlyPlugin = {
+    hash: "selected-tx",
+    sources: { tx: { actions: ["musicUrl"], qualities: ["128k"] } },
+};
+assert.equal(
+    getActiveLxPluginForSource([selectedKgPlugin, otherKgPlugin], "selected-kg", "kg"),
+    selectedKgPlugin,
+);
+assert.equal(
+    getActiveLxPluginForSource([selectedKgPlugin, otherKgPlugin], null, "kg"),
+    undefined,
+);
+assert.equal(
+    getActiveLxPluginForSource([selectedKgPlugin, otherKgPlugin], "selected-tx", "kg"),
+    undefined,
+);
 
 const scriptInfo = parseLxScriptInfo(`/*
  * @name Fixture LX Source
@@ -150,6 +176,7 @@ assert.deepEqual(
 const managerSource = read("src/shared/plugin-manager/main/lx-plugin-manager.ts");
 const hostSource = read("src/shared/plugin-manager/utility/lx-plugin-host.ts");
 const methodsSource = read("src/shared/plugin-manager/main/plugin-methods.ts");
+const rendererSource = read("src/shared/plugin-manager/renderer.ts");
 const sectionSource = read(
     "src/renderer/pages/main-page/views/plugin-manager-view/components/lx-plugin-section/index.tsx",
 );
@@ -181,7 +208,9 @@ assert.match(
     /getLxMusicQualityKeys\(musicItem, sourceDescriptor\.qualities, true\)\.includes\(quality\)/,
 );
 assert.match(methodsSource, /getLxMusicQualityKeys\(musicItem, lxQualityKeys, true\)/);
-assert.match(managerSource, /source !== "kg"/);
+assert.match(managerSource, /getActiveLxPluginForSource/);
+assert.match(rendererSource, /getActiveLxPluginForSource/);
+assert.doesNotMatch(managerSource, /source !== "kg"/);
 assert.match(methodsSource, /!result\?\.url && !hasLxSource/);
 
 const extensionlessUrl = new URL("https://source.example.com/api/script/lx?key=fixture");

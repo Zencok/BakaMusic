@@ -8,6 +8,7 @@ import useAppConfig from "@/hooks/useAppConfig";
 import { useMemo } from "react";
 import logger from "@shared/logger/renderer";
 import {
+    getActiveLxPluginForSource,
     getLxSourceForPlatform,
     type LxPluginDescriptor,
 } from "./lx-types";
@@ -253,11 +254,8 @@ function getLxQualityOverride(platform: string) {
         return null;
     }
     const lxPlugins = lxPluginsStore.getValue();
-    const plugin = lxPlugins.find((item) => item.active && item.sources[source])
-        // `kg` is a built-in base source. Keep it available when no global LX
-        // script is selected so Kugou recognition/playback uses one provider
-        // instead of falling through to a second platform plugin.
-        ?? (source === "kg" ? lxPlugins.find((item) => item.sources.kg) : undefined);
+    const activeHash = lxPlugins.find((item) => item.active)?.hash ?? null;
+    const plugin = getActiveLxPluginForSource(lxPlugins, activeHash, source);
     const qualities = plugin?.sources[source]?.qualities;
     return qualities ? [...qualities] : null;
 }
