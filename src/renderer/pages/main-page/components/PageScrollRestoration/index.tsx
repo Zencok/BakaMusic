@@ -1,5 +1,5 @@
 import { useLayoutEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigationType } from "react-router-dom";
 
 interface IScrollPosition {
     left: number;
@@ -8,6 +8,7 @@ interface IScrollPosition {
 
 const MAX_CACHED_ENTRIES = 64;
 const scrollPositions = new Map<string, IScrollPosition>();
+const scrollPositionsByRoute = new Map<string, IScrollPosition>();
 
 function rememberScrollPosition(key: string, position: IScrollPosition) {
     scrollPositions.delete(key);
@@ -23,8 +24,23 @@ function rememberScrollPosition(key: string, position: IScrollPosition) {
     }
 }
 
+function rememberRoutePosition(routeKey: string, position: IScrollPosition) {
+    scrollPositionsByRoute.delete(routeKey);
+    scrollPositionsByRoute.set(routeKey, position);
+    if (scrollPositionsByRoute.size <= MAX_CACHED_ENTRIES) {
+        return;
+    }
+
+    const oldestKey = scrollPositionsByRoute.keys().next().value;
+    if (oldestKey) {
+        scrollPositionsByRoute.delete(oldestKey);
+    }
+}
+
 export default function PageScrollRestoration() {
     const location = useLocation();
+    const navigationType = useNavigationType();
+    const routeKey = `${location.pathname}${location.search}${location.hash}`;
 
     useLayoutEffect(() => {
         const pageContainer = document.querySelector<HTMLElement>("#page-container");
@@ -32,7 +48,8 @@ export default function PageScrollRestoration() {
             return;
         }
 
-        const cachedPosition = scrollPositions.get(location.key);
+        const cachedPosition = scrollPositions.get(location.key)
+            ?? (navigationType === "POP" ? scrollPositionsByRoute.get(routeKey) : undefined);
         let restoreFrame = 0;
         let restoreTimer: number | null = null;
         let restorationSettled = cachedPosition === undefined;
@@ -80,10 +97,12 @@ export default function PageScrollRestoration() {
             // Do not replace a pending target with the temporary 0/max scroll
             // value while the page is still loading its list.
             if (!cachedPosition || restorationSettled) {
-                rememberScrollPosition(location.key, {
+                const position = {
                     left: pageContainer.scrollLeft,
                     top: pageContainer.scrollTop,
-                });
+                };
+                rememberScrollPosition(location.key, position);
+                rememberRoutePosition(routeKey, position);
             }
         };
         pageContainer.addEventListener("scroll", rememberCurrentPosition, {
@@ -112,17 +131,16 @@ export default function PageScrollRestoration() {
             window.removeEventListener("resize", scheduleRestore);
             pageContainer.removeEventListener("scroll", rememberCurrentPosition);
 
-            rememberScrollPosition(
-                location.key,
-                !restorationSettled && cachedPosition
-                    ? cachedPosition
-                    : {
-                        left: pageContainer.scrollLeft,
-                        top: pageContainer.scrollTop,
-                    },
-            );
+            const position = !restorationSettled && cachedPosition
+                ? cachedPosition
+                : {
+                    left: pageContainer.scrollLeft,
+                    top: pageContainer.scrollTop,
+                };
+            rememberScrollPosition(location.key, position);
+            rememberRoutePosition(routeKey, position);
         };
-    }, [location.key]);
+    }, [location.key, navigationType, routeKey]);
 
     return null;
 }
