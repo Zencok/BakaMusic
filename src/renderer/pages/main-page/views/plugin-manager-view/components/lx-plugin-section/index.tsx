@@ -1,10 +1,14 @@
-import { useMemo, type ReactNode } from "react";
+import { type MouseEvent, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import Condition from "@/renderer/components/Condition";
+import {
+    showContextMenu,
+    type IContextMenuItem,
+} from "@/renderer/components/ContextMenu";
 import Empty from "@/renderer/components/Empty";
 import { hideModal, showModal } from "@/renderer/components/Modal";
-import SvgAsset, { type SvgAssetIconNames } from "@/renderer/components/SvgAsset";
+import SvgAsset from "@/renderer/components/SvgAsset";
 import PluginManager, { useLxPlugins } from "@shared/plugin-manager/renderer";
 import {
     getLxPlatformName,
@@ -12,37 +16,10 @@ import {
     type LxPluginDescriptor,
     type LxSource,
 } from "@shared/plugin-manager/lx-types";
-import { dialogUtil } from "@shared/utils/renderer";
 import "./index.scss";
 
 interface LxPluginSectionProps {
     basePlugins: IPlugin.IPluginDelegate[];
-}
-
-interface LxActionButtonProps {
-    children: ReactNode;
-    iconName: SvgAssetIconNames;
-    onClick: () => void | Promise<void>;
-    variant?: "normal" | "danger";
-}
-
-function LxActionButton({
-    children,
-    iconName,
-    onClick,
-    variant = "normal",
-}: LxActionButtonProps) {
-    return (
-        <button
-            type="button"
-            className="lx-plugin-action-button"
-            data-variant={variant}
-            onClick={onClick}
-        >
-            <SvgAsset iconName={iconName} size={14}></SvgAsset>
-            <span>{children}</span>
-        </button>
-    );
 }
 
 function getSourceEntries(plugin: LxPluginDescriptor) {
@@ -58,58 +35,6 @@ export default function LxPluginSection({ basePlugins }: LxPluginSectionProps) {
             .map((plugin) => getLxSourceForPlatform(plugin.platform))
             .filter((source): source is LxSource => source !== null),
     ), [basePlugins]);
-
-    async function installFromLocal() {
-        try {
-            const result = await dialogUtil.showOpenDialog({
-                title: t("plugin_management_page.choose_lx_plugin"),
-                buttonLabel: t("plugin_management_page.install"),
-                filters: [{
-                    extensions: ["js"],
-                    name: t("plugin_management_page.lx_plugin"),
-                }],
-            });
-            if (result.canceled) {
-                return;
-            }
-            await PluginManager.installLxPluginFromLocal(result.filePaths[0]);
-            toast.success(t("plugin_management_page.lx_install_successfully"));
-        } catch (error) {
-            toast.warn(
-                `${t("plugin_management_page.install_failed")}: ${
-                    (error as Error)?.message ?? t("plugin_management_page.invalid_plugin")
-                }`,
-            );
-        }
-    }
-
-    function installFromNetwork() {
-        showModal("SimpleInputWithState", {
-            title: t("plugin_management_page.install_lx_plugin_from_network"),
-            placeholder: t("plugin_management_page.lx_url_hint"),
-            okText: t("plugin_management_page.install"),
-            loadingText: t("plugin_management_page.installing"),
-            withLoading: true,
-            async onOk(text) {
-                const url = new URL(text.trim());
-                if (url.protocol !== "https:") {
-                    throw new Error(t("plugin_management_page.lx_url_hint"));
-                }
-                return PluginManager.installLxPluginFromRemote(text.trim());
-            },
-            onPromiseResolved() {
-                toast.success(t("plugin_management_page.lx_install_successfully"));
-                hideModal();
-            },
-            onPromiseRejected(error) {
-                toast.warn(
-                    `${t("plugin_management_page.install_failed")}: ${
-                        error?.message ?? t("plugin_management_page.invalid_plugin")
-                    }`,
-                );
-            },
-        });
-    }
 
     function uninstall(plugin: LxPluginDescriptor) {
         showModal("Reconfirm", {
@@ -145,56 +70,118 @@ export default function LxPluginSection({ basePlugins }: LxPluginSectionProps) {
         }
     }
 
+    function openPluginActions(
+        event: MouseEvent<HTMLButtonElement>,
+        plugin: LxPluginDescriptor,
+    ) {
+        event.stopPropagation();
+        const menuItems: IContextMenuItem[] = [];
+
+        if (plugin.sourceUrl) {
+            menuItems.push({
+                icon: "arrow-path",
+                title: t("plugin_management_page.update"),
+                onClick: () => void update(plugin),
+            });
+        }
+        if (menuItems.length) {
+            menuItems.push({ divider: true });
+        }
+        menuItems.push({
+            icon: "trash",
+            title: t("plugin_management_page.uninstall"),
+            onClick: () => uninstall(plugin),
+        });
+
+        const rect = event.currentTarget.getBoundingClientRect();
+        showContextMenu({
+            x: rect.right,
+            y: rect.bottom,
+            placement: "bottom-end",
+            menuItems,
+        });
+    }
+
     return (
-        <section className="lx-plugin-section" aria-labelledby="lx-plugin-section-title">
-            <div className="lx-plugin-section-header">
-                <div className="lx-plugin-section-heading">
-                    <span id="lx-plugin-section-title" className="lx-plugin-section-title">
-                        {t("plugin_management_page.lx_sources")}
-                    </span>
-                    <span className="lx-plugin-section-count">{lxPlugins.length}</span>
-                </div>
-                <div className="lx-plugin-section-actions">
-                    <LxActionButton iconName="folder-open" onClick={installFromLocal}>
-                        {t("plugin_management_page.install_lx_from_local")}
-                    </LxActionButton>
-                    <LxActionButton iconName="code-bracket-square" onClick={installFromNetwork}>
-                        {t("plugin_management_page.install_lx_from_network")}
-                    </LxActionButton>
+        <section
+            className="lx-plugin-section plugin-manager-section"
+            aria-labelledby="lx-plugin-section-title"
+        >
+            <div className="plugin-manager-section-header">
+                <div>
+                    <div className="plugin-manager-section-title-row">
+                        <h2
+                            id="lx-plugin-section-title"
+                            className="plugin-manager-section-title"
+                        >
+                            {t("plugin_management_page.lx_sources")}
+                        </h2>
+                        <span className="plugin-manager-section-count">
+                            {lxPlugins.length}
+                        </span>
+                    </div>
+                    <p className="plugin-manager-section-description">
+                        {t("plugin_management_page.lx_sources_description")}
+                    </p>
                 </div>
             </div>
 
-            <Condition
-                condition={lxPlugins.length}
-                falsy={<Empty style={{ minHeight: "112px" }}></Empty>}
-            >
-                <div className="lx-plugin-controls">
-                    <label
-                        className="lx-plugin-disable-selector"
-                        data-active={String(!hasActiveLxPlugin)}
-                    >
-                        <input
-                            type="radio"
-                            name="active-lx-plugin"
-                            checked={!hasActiveLxPlugin}
-                            onChange={() => void PluginManager.setActiveLxPlugin(null)}
-                        />
-                        <span className="lx-plugin-radio" aria-hidden="true">
-                            {!hasActiveLxPlugin
-                                ? <span className="lx-plugin-radio-dot"></span>
-                                : null}
-                        </span>
-                        <span className="lx-plugin-disable-copy">
-                            <span className="lx-plugin-disable-title">
-                                {t("plugin_management_page.disable_lx_source")}
-                            </span>
-                            <span className="lx-plugin-disable-description">
-                                {t("plugin_management_page.disable_lx_source_desc")}
-                            </span>
-                        </span>
-                    </label>
-
+            <div className="plugin-manager-list-surface">
+                <Condition
+                    condition={lxPlugins.length}
+                    falsy={<Empty style={{ minHeight: "148px" }}></Empty>}
+                >
+                    <div className="lx-plugin-columns" aria-hidden="true">
+                        <span>{t("plugin_management_page.playback_source")}</span>
+                        <span>{t("plugin_management_page.supported_platforms")}</span>
+                        <span>{t("plugin_management_page.status")}</span>
+                        <span></span>
+                    </div>
                     <div className="lx-plugin-list">
+                        <article
+                            className="lx-plugin-row lx-plugin-native-row"
+                            data-active={String(!hasActiveLxPlugin)}
+                        >
+                            <label className="lx-plugin-selector">
+                                <input
+                                    type="radio"
+                                    name="active-lx-plugin"
+                                    checked={!hasActiveLxPlugin}
+                                    onChange={() => void PluginManager
+                                        .setActiveLxPlugin(null)}
+                                />
+                                <span className="lx-plugin-radio" aria-hidden="true">
+                                    {!hasActiveLxPlugin
+                                        ? (
+                                            <SvgAsset
+                                                iconName="check"
+                                                size={13}
+                                            ></SvgAsset>
+                                        )
+                                        : null}
+                                </span>
+                                <span className="lx-plugin-main">
+                                    <span className="lx-plugin-name">
+                                        {t("plugin_management_page.plugin_native_source")}
+                                    </span>
+                                    <span className="lx-plugin-meta">
+                                        {t("plugin_management_page.disable_lx_source_desc")}
+                                    </span>
+                                </span>
+                            </label>
+                            <span className="lx-plugin-native-coverage">
+                                {t("plugin_management_page.all_installed_plugins")}
+                            </span>
+                            <span
+                                className="lx-plugin-state"
+                                data-active={String(!hasActiveLxPlugin)}
+                            >
+                                {t(!hasActiveLxPlugin
+                                    ? "plugin_management_page.active"
+                                    : "plugin_management_page.inactive")}
+                            </span>
+                        </article>
+
                         {lxPlugins.map((plugin) => {
                             const sources = getSourceEntries(plugin);
                             const availableCount = sources.filter((source) =>
@@ -212,82 +199,108 @@ export default function LxPluginSection({ basePlugins }: LxPluginSectionProps) {
                                             type="radio"
                                             name="active-lx-plugin"
                                             checked={plugin.active}
-                                            onChange={() => void PluginManager.setActiveLxPlugin(plugin.hash)}
+                                            onChange={() => void PluginManager
+                                                .setActiveLxPlugin(plugin.hash)}
                                         />
-                                        <span className="lx-plugin-radio" aria-hidden="true">
+                                        <span
+                                            className="lx-plugin-radio"
+                                            aria-hidden="true"
+                                        >
                                             {plugin.active
-                                                ? <span className="lx-plugin-radio-dot"></span>
+                                                ? (
+                                                    <SvgAsset
+                                                        iconName="check"
+                                                        size={13}
+                                                    ></SvgAsset>
+                                                )
                                                 : null}
                                         </span>
-                                        <span>{t("plugin_management_page.use_lx_source")}</span>
+                                        <span className="lx-plugin-main">
+                                            <span className="lx-plugin-title-line">
+                                                <span
+                                                    className="lx-plugin-name"
+                                                    title={plugin.name}
+                                                >
+                                                    {plugin.name}
+                                                </span>
+                                                <span className="lx-plugin-meta">
+                                                    {plugin.version || "-"}
+                                                    <span aria-hidden="true"> · </span>
+                                                    {plugin.author ||
+                                                        t("media.unknown_artist")}
+                                                </span>
+                                            </span>
+                                        </span>
                                     </label>
-
-                                    <div className="lx-plugin-main">
-                                        <div className="lx-plugin-title-line">
-                                            <span className="lx-plugin-name" title={plugin.name}>{plugin.name}</span>
-                                            <span className="lx-plugin-version">
-                                                {plugin.version || "-"}
-                                            </span>
-                                            <span
-                                                className="lx-plugin-availability"
-                                                data-ready={String(availableCount > 0)}
-                                            >
-                                                {availableCount > 0
-                                                    ? t("plugin_management_page.lx_base_ready", {
-                                                        count: availableCount,
-                                                    })
-                                                    : t("plugin_management_page.lx_no_base")}
-                                            </span>
-                                        </div>
-                                        <div className="lx-plugin-author">
-                                            {plugin.author || t("media.unknown_artist")}
-                                        </div>
-                                        <div
-                                            className="lx-plugin-bindings"
-                                            aria-label={t("plugin_management_page.lx_supported_platforms")}
-                                        >
-                                            {sources.map((source) => {
-                                                const ready = installedBaseSources.has(source);
-                                                return (
-                                                    <span
-                                                        key={source}
-                                                        className="lx-plugin-binding"
-                                                        data-ready={String(ready)}
-                                                        title={ready
-                                                            ? t("plugin_management_page.lx_base_connected")
-                                                            : t("plugin_management_page.lx_base_missing")}
-                                                    >
-                                                        <span>{getLxPlatformName(source)}</span>
-                                                        <SvgAsset
-                                                            iconName={ready ? "check-circle" : "question-mark-circle"}
-                                                            size={13}
-                                                        ></SvgAsset>
-                                                    </span>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    <div className="lx-plugin-row-actions">
-                                        <Condition condition={!!plugin.sourceUrl}>
-                                            <LxActionButton iconName="sparkles" onClick={() => update(plugin)}>
-                                                {t("plugin_management_page.update")}
-                                            </LxActionButton>
-                                        </Condition>
-                                        <LxActionButton
-                                            iconName="trash"
-                                            variant="danger"
-                                            onClick={() => uninstall(plugin)}
-                                        >
-                                            {t("plugin_management_page.uninstall")}
-                                        </LxActionButton>
-                                    </div>
+                                    <span
+                                        className="lx-plugin-bindings"
+                                        aria-label={t(
+                                            "plugin_management_page.lx_supported_platforms",
+                                        )}
+                                    >
+                                        {sources.map((source) => {
+                                            const ready = installedBaseSources.has(source);
+                                            return (
+                                                <span
+                                                    key={source}
+                                                    className="lx-plugin-binding"
+                                                    data-ready={String(ready)}
+                                                    title={ready
+                                                        ? t(
+                                                            "plugin_management_page.lx_base_connected",
+                                                        )
+                                                        : t(
+                                                            "plugin_management_page.lx_base_missing",
+                                                        )}
+                                                >
+                                                    <SvgAsset
+                                                        iconName={ready
+                                                            ? "check-circle"
+                                                            : "question-mark-circle"}
+                                                        size={12}
+                                                    ></SvgAsset>
+                                                    <span>{getLxPlatformName(source)}</span>
+                                                </span>
+                                            );
+                                        })}
+                                    </span>
+                                    <span
+                                        className="lx-plugin-state"
+                                        data-active={String(plugin.active)}
+                                        data-ready={String(availableCount > 0)}
+                                    >
+                                        {plugin.active
+                                            ? t("plugin_management_page.active")
+                                            : availableCount > 0
+                                                ? t("plugin_management_page.available")
+                                                : t("plugin_management_page.lx_no_base")}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className="plugin-manager-row-menu-button"
+                                        aria-label={t(
+                                            "plugin_management_page.plugin_actions",
+                                            { plugin: plugin.name },
+                                        )}
+                                        title={t(
+                                            "plugin_management_page.plugin_actions",
+                                            { plugin: plugin.name },
+                                        )}
+                                        aria-haspopup="menu"
+                                        onClick={(event) =>
+                                            openPluginActions(event, plugin)}
+                                    >
+                                        <SvgAsset
+                                            iconName="ellipsis-horizontal"
+                                            size={18}
+                                        ></SvgAsset>
+                                    </button>
                                 </article>
                             );
                         })}
                     </div>
-                </div>
-            </Condition>
+                </Condition>
+            </div>
         </section>
     );
 }

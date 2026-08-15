@@ -20,6 +20,7 @@ export type SvgAssetIconNames =
     | "cog-8-tooth"
     | "dashboard-speed"
     | "document-plus"
+    | "ellipsis-horizontal"
     | "fire"
     | "folder-open"
     | "font-size-larger"

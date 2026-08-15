@@ -426,7 +426,7 @@ assert.match(
 );
 assert.match(
     musicBarStyleSource,
-    /\.plugin-manager-view-container \.plugin-card-list::after/,
+    /\.plugin-manager-view-container \.plugin-manager-content::after/,
 );
 assert.match(liquidGlassSource, /ResizeObserver/);
 assert.match(liquidGlassSource, /feDisplacementMap/);

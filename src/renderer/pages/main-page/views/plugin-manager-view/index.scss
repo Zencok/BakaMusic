@@ -1,85 +1,262 @@
+@use "../discovery-pages";
+
 .plugin-manager-view-container {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  --discovery-cool: color-mix(in srgb, var(--primaryColor) 78%, #35d5d1);
+  --discovery-warm: color-mix(in srgb, var(--warningColor) 74%, #ff5d3f);
+  --discovery-line: color-mix(in srgb, var(--textColor) 15%, transparent);
+
   min-height: 100%;
+  padding-top: 1.45rem;
+  container-type: inline-size;
+
+  & .plugin-manager-content {
+    width: 100%;
+    max-width: 1180px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
 
   & .plugin-manager-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 1.5rem;
+
+    & a {
+      color: var(--discovery-cool);
+      font-weight: 650;
+      text-decoration-color: color-mix(in srgb, var(--discovery-cool) 45%, transparent);
+      text-underline-offset: 0.2em;
+    }
+  }
+
+  & .plugin-manager-header-actions {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 14px;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
   }
 
-  & .plugin-manager-header-copy {
-    min-width: 0;
-  }
-
-  & .plugin-manager-title {
-    font-size: 1.28rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: var(--appTextPrimary);
-    user-select: none;
-  }
-
-  & .plugin-manager-header-description {
-    max-width: 760px;
-    margin-top: 0.35rem;
-    line-height: 1.55;
-    font-size: 0.88rem;
-    color: var(--appTextSecondary);
-  }
-
-  & .plugin-manager-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  & .plugin-manager-action-button {
+  & .plugin-manager-install-button,
+  & .plugin-manager-more-button,
+  & .plugin-manager-row-menu-button {
     min-height: 2.5rem;
-    padding: 0 0.95rem;
-    border: 1px solid var(--appInteractiveBorder);
-    border-radius: var(--appRadiusPill, 999px);
-    background: var(--appSurfaceMuted);
-    box-shadow: var(--appSurfaceInset);
-    color: var(--appTextPrimary);
+    border: 1px solid var(--discovery-line);
+    border-radius: var(--controlRadius, 5px);
+    font: inherit;
+    cursor: pointer;
+    transition:
+      color 150ms ease,
+      border-color 150ms ease,
+      background-color 150ms ease;
+
+    &:focus-visible {
+      outline: 2px solid var(--primaryColor);
+      outline-offset: 2px;
+    }
+  }
+
+  & .plugin-manager-install-button {
+    padding: 0 0.86rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    font-size: 0.92rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+    gap: 0.45rem;
+    border-color: var(--discovery-cool);
+    color: var(--theme-text-on-primary);
+    background: var(--discovery-cool);
+    font-size: 0.78rem;
+    font-weight: 700;
 
     &:hover {
-      transform: translateY(-1px);
+      border-color: color-mix(in srgb, var(--discovery-cool) 82%, var(--appTextPrimary));
+      background: color-mix(in srgb, var(--discovery-cool) 82%, var(--appTextPrimary));
+    }
+  }
+
+  & .plugin-manager-more-button,
+  & .plugin-manager-row-menu-button {
+    width: 2.4rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--appTextSecondary);
+    background: transparent;
+
+    &:hover {
+      border-color: color-mix(in srgb, var(--appTextPrimary) 30%, transparent);
+      color: var(--appTextPrimary);
       background: var(--appInteractiveSurface);
     }
+  }
 
-    &[data-variant="danger"] {
-      color: color-mix(in srgb, var(--dangerColor) 90%, var(--appTextPrimary));
-      border-color: color-mix(in srgb, var(--dangerColor) 24%, transparent);
-      background: color-mix(in srgb, var(--dangerColor) 10%, var(--backgroundColor));
+  & .plugin-manager-row-menu-button {
+    width: 2rem;
+    min-height: 2rem;
+    border-color: transparent;
+  }
+
+  & .plugin-manager-overview {
+    width: 100%;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(7rem, 0.72fr)) minmax(12rem, 1.4fr);
+    border-top: 1px solid var(--discovery-line);
+    border-bottom: 1px solid var(--discovery-line);
+  }
+
+  & .plugin-manager-metric {
+    min-width: 0;
+    min-height: 4.4rem;
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: center;
+    gap: 0.28rem;
+    border-left: 1px solid var(--discovery-line);
+    box-sizing: border-box;
+
+    &:first-child {
+      padding-left: 0;
+      border-left: 0;
     }
+
+    & dt {
+      overflow: hidden;
+      color: var(--appTextTertiary);
+      font-size: 0.7rem;
+      font-weight: 680;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    & dd {
+      min-width: 0;
+      margin: 0;
+      overflow: hidden;
+      color: var(--appTextPrimary);
+      font-size: 1.18rem;
+      font-weight: 820;
+      line-height: 1.1;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  & .plugin-manager-metric-source dd {
+    color: var(--discovery-cool);
+    font-size: 0.94rem;
+  }
+
+  & .plugin-manager-section {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  & .plugin-manager-section-header {
+    min-width: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  & .plugin-manager-section-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+  }
+
+  & .plugin-manager-section-title {
+    margin: 0;
+    color: var(--appTextPrimary);
+    font-size: 1.15rem;
+    font-weight: 800;
+    line-height: 1.3;
+  }
+
+  & .plugin-manager-section-count {
+    color: var(--discovery-warm);
+    font-size: 0.72rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  & .plugin-manager-section-description {
+    margin: 0.22rem 0 0;
+    color: var(--appTextTertiary);
+    font-size: 0.78rem;
+    line-height: 1.45;
+  }
+
+  & .plugin-manager-list-surface {
+    width: 100%;
+    overflow: hidden;
+    border-top: 1px solid var(--discovery-line);
+    border-bottom: 1px solid var(--discovery-line);
   }
 }
 
-@media (max-width: 980px) {
+@container (max-width: 760px) {
   .plugin-manager-view-container {
     & .plugin-manager-header {
-      flex-direction: column;
+      align-items: stretch;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.1rem;
+    }
+
+    & .plugin-manager-header-actions,
+    & .plugin-manager-install-button {
+      flex: 1;
+    }
+
+    & .plugin-manager-install-button {
+      min-width: 0;
+    }
+
+    & .plugin-manager-overview {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    & .plugin-manager-metric,
+    & .plugin-manager-metric:first-child {
+      padding-left: 0.8rem;
+      border-left: 1px solid var(--discovery-line);
+
+      &:nth-child(odd) {
+        padding-left: 0;
+        border-left: 0;
+      }
+
+      &:nth-child(n + 3) {
+        border-top: 1px solid var(--discovery-line);
+      }
     }
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .plugin-manager-view-container {
-    & .plugin-manager-action-button {
-      width: 100%;
-      justify-content: center;
+    padding-top: 1rem;
+
+    & .plugin-manager-content {
+      gap: 1.6rem;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plugin-manager-view-container {
+    & .plugin-manager-install-button,
+    & .plugin-manager-more-button,
+    & .plugin-manager-row-menu-button {
+      transition: none;
     }
   }
 }

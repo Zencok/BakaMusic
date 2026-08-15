@@ -21,6 +21,8 @@ export interface IContextMenuItem {
     subMenu?: IContextMenuItem[];
 }
 
+type ContextMenuPlacement = "auto" | "bottom-end" | "bottom-start";
+
 interface IContextMenuData {
     /** 菜单 */
     menuItems?: IContextMenuItem[];
@@ -28,6 +30,8 @@ interface IContextMenuData {
     x: number;
     /** 出现位置 y */
     y: number;
+    /** 相对锚点的展开方向 */
+    placement?: ContextMenuPlacement;
     /** 设置子目录 */
     setSubMenu?: (
         subMenu?: Omit<IContextMenuData, "setSubMenu">,
@@ -38,13 +42,17 @@ interface IContextMenuData {
     /** 自定义的菜单 */
     width?: number;
     height?: number;
+    maxHeight?: number;
     component?: ReactNode;
 }
 
 const contextMenuDataStore = new Store<IContextMenuData | null>(null);
 
 export function showContextMenu(
-    contextMenuData: Pick<IContextMenuData, "menuItems" | "x" | "y">,
+    contextMenuData: Pick<
+        IContextMenuData,
+        "menuItems" | "placement" | "x" | "y"
+    >,
 ) {
     contextMenuDataStore.setValue(contextMenuData);
 }
@@ -71,7 +79,14 @@ const menuItemHeight = 32;
 const menuContainerMaxHeight = menuItemHeight * 14;
 
 function SingleColumnContextMenuComponent(props: IContextMenuData) {
-    const { menuItems = [], x, y, setSubMenu, onItemClick } = props;
+    const {
+        menuItems = [],
+        maxHeight = menuContainerMaxHeight,
+        x,
+        y,
+        setSubMenu,
+        onItemClick,
+    } = props;
     const menuContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -107,7 +122,7 @@ function SingleColumnContextMenuComponent(props: IContextMenuData) {
                 paddingBottom: menuItemHeight / 4,
                 top: y,
                 left: x,
-                maxHeight: menuContainerMaxHeight,
+                maxHeight,
             }}
             ref={menuContainerRef}
             role="menu"
@@ -208,12 +223,20 @@ const offset = 6;
 
 export function ContextMenuComponent() {
     const contextMenuData = contextMenuDataStore.useValue();
-    const { menuItems, x, y, width, height, component } = contextMenuData ?? {};
+    const {
+        menuItems,
+        x,
+        y,
+        width,
+        height,
+        component,
+        placement = "auto",
+    } = contextMenuData ?? {};
     const [subMenuData, setSubMenuData] = useState<IContextMenuData | null>(null);
 
-    const [actualX, actualY] = useMemo(() => {
+    const [actualX, actualY, actualMaxHeight] = useMemo(() => {
         if (x === undefined || y === undefined) {
-            return [-1000, -1000] as [number, number];
+            return [-1000, -1000, menuContainerMaxHeight] as [number, number, number];
         }
         const isLeft = x < window.innerWidth / 2 ? 0 : 1;
         const isTop = y < window.innerHeight / 2 ? 0 : 2;
@@ -233,19 +256,56 @@ export function ContextMenuComponent() {
 
         const containerWidth = width ?? menuItemWidth;
 
-        switch (isLeft + isTop) {
-            case 0: // 左上角
-                return [x + offset, y + offset];
-            case 1: // 右上角
-                return [x - containerWidth - offset, y + offset];
-            case 2: // 左下角
-                return [x + offset, y - offset - containerHeight];
-            case 3: // 右下角
-                return [x - containerWidth - offset, y - offset - containerHeight];
+        if (placement !== "auto") {
+            const desiredX = placement === "bottom-end"
+                ? x - containerWidth
+                : x;
+            const actualPlacementX = Math.max(
+                offset,
+                Math.min(window.innerWidth - containerWidth - offset, desiredX),
+            );
+            const actualPlacementY = Math.max(54, y + offset);
+            const availableHeight = Math.max(
+                menuItemHeight + menuItemHeight / 2,
+                window.innerHeight - 64 - actualPlacementY,
+            );
+
+            return [
+                actualPlacementX,
+                actualPlacementY,
+                Math.min(containerHeight, availableHeight),
+            ] as [number, number, number];
         }
 
-        return [x + offset, y + offset] as [number, number];
-    }, [component, height, menuItems, width, x, y]);
+        switch (isLeft + isTop) {
+            case 0: // 左上角
+                return [x + offset, y + offset, menuContainerMaxHeight];
+            case 1: // 右上角
+                return [
+                    x - containerWidth - offset,
+                    y + offset,
+                    menuContainerMaxHeight,
+                ];
+            case 2: // 左下角
+                return [
+                    x + offset,
+                    y - offset - containerHeight,
+                    menuContainerMaxHeight,
+                ];
+            case 3: // 右下角
+                return [
+                    x - containerWidth - offset,
+                    y - offset - containerHeight,
+                    menuContainerMaxHeight,
+                ];
+        }
+
+        return [
+            x + offset,
+            y + offset,
+            menuContainerMaxHeight,
+        ] as [number, number, number];
+    }, [component, height, menuItems, placement, width, x, y]);
 
     useEffect(() => {
         const contextClickListener = () => {
@@ -289,6 +349,7 @@ export function ContextMenuComponent() {
                 {contextMenuData ? (
                     <SingleColumnContextMenuComponent
                         menuItems={menuItems ?? []}
+                        maxHeight={actualMaxHeight}
                         x={actualX}
                         y={actualY}
                         setSubMenu={(data, menuItem) => {

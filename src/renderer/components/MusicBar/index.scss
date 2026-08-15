@@ -272,7 +272,7 @@ html[data-ui-style="glass"] {
 
   .download-view--container > .downloading-container::after,
   .recommend-sheets-view--container .music-sheet-like-list--container::after,
-  .plugin-manager-view-container .plugin-card-list::after {
+  .plugin-manager-view-container .plugin-manager-content::after {
     content: "";
     display: block;
     width: 100%;
