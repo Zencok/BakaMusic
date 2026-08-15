@@ -2,8 +2,6 @@ import { CurrentTime, ErrorReason, ICurrentLyric, PlayerEvents } from "./enum";
 import shuffle from "lodash.shuffle";
 import {
     addSortProperty,
-    filterQualityOrderByDeclaredQualities,
-    getDeclaredQualityKeys,
     getInternalData,
     getQualityOrder,
     isSameMedia,
@@ -962,7 +960,7 @@ class TrackPlayer {
             return true;
         }
 
-        const declaredQualityKeys = getDeclaredQualityKeys(currentMusic);
+        const declaredQualityKeys = PluginManager.getMediaQualityKeys(currentMusic);
         if (declaredQualityKeys.length && !declaredQualityKeys.includes(quality)) {
             return false;
         }
@@ -1274,7 +1272,7 @@ class TrackPlayer {
         const defaultQuality = AppConfig.getConfig("playMusic.defaultQuality") ?? "128k";
         const whenQualityMissing = AppConfig.getConfig("playMusic.whenQualityMissing") ?? "lower";
 
-        const qualityOrder = filterQualityOrderByDeclaredQualities(
+        const qualityOrder = PluginManager.filterMediaQualityOrder(
             musicItem,
             getQualityOrder(quality ?? defaultQuality, whenQualityMissing),
         );

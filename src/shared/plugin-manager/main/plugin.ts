@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import PluginMethods from "./plugin-methods";
+import { replaceLxMusicQualities } from "../lx-adapter";
 import {
     isReservedObjectKey,
     PluginExecutionEnvironment,
@@ -21,6 +22,13 @@ type RemoteInvoker = (
 
 type EnvironmentProvider = () => PluginExecutionEnvironment;
 
+type MediaSourceOverride = (
+    musicItem: IMusic.IMusicItemPartial,
+    quality: IMusic.IQualityKey,
+) => Promise<IPlugin.IMediaSourceResult | null>;
+
+type MediaQualityOverride = () => IMusic.IQualityKey[] | null;
+
 export class Plugin {
     public name: string;
     public hash: string;
@@ -28,14 +36,20 @@ export class Plugin {
     public instance: IPlugin.IPluginInstance;
     public path: string;
     public methods: PluginMethods;
+    public mediaSourceOverride?: MediaSourceOverride;
+    public mediaQualityOverride?: MediaQualityOverride;
 
     constructor(
         source: (() => IPlugin.IPluginInstance) | PluginHostDescriptor,
         pluginPath: string,
         invokeRemote?: RemoteInvoker,
         getEnvironment?: EnvironmentProvider,
+        mediaSourceOverride?: MediaSourceOverride,
+        mediaQualityOverride?: MediaQualityOverride,
     ) {
         this.path = pluginPath;
+        this.mediaSourceOverride = mediaSourceOverride;
+        this.mediaQualityOverride = mediaQualityOverride;
         if (typeof source === "function") {
             try {
                 this.instance = source();
@@ -81,5 +95,10 @@ export class Plugin {
         }
         this.name = this.instance.platform ?? "";
         this.methods = new PluginMethods(this);
+    }
+
+    applyMediaQualityOverride<T extends IMusic.IMusicItemPartial>(musicItem: T) {
+        const qualities = this.mediaQualityOverride?.();
+        return qualities ? replaceLxMusicQualities(musicItem, qualities) : musicItem;
     }
 }

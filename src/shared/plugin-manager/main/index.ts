@@ -31,6 +31,7 @@ import {
 import localPlugin from "./internal-plugins/local-plugin";
 import { Plugin } from "./plugin";
 import PluginHostClient from "./plugin-host-client";
+import LxPluginManager from "./lx-plugin-manager";
 
 const MAX_PLUGIN_CODE_BYTES = 5 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 1024 * 1024;
@@ -161,6 +162,10 @@ class PluginManager {
     private windowManager!: IWindowManager;
     private _pluginBasePath = "";
     private readonly host = new PluginHostClient();
+    private readonly lxPlugins = new LxPluginManager(
+        () => this.getEnvironment(""),
+        () => this.syncLxPlugins(),
+    );
     private resolveReady!: () => void;
     private readonly readyPromise = new Promise<void>((resolve) => {
         this.resolveReady = resolve;
@@ -172,7 +177,11 @@ class PluginManager {
 
     public set plugins(newPlugins: Plugin[]) {
         this._plugins = newPlugins;
-        this.clonedPlugins = newPlugins.map((plugin) => {
+        this.refreshClonedPlugins();
+    }
+
+    private refreshClonedPlugins() {
+        this.clonedPlugins = this._plugins.map((plugin) => {
             const delegate = { supportedMethod: [] } as unknown as IPlugin.IPluginDelegate;
             for (const [key, value] of Object.entries(plugin.instance)) {
                 if (typeof value === "function") {
@@ -180,6 +189,10 @@ class PluginManager {
                 } else {
                     (delegate as unknown as Record<string, unknown>)[key] = value;
                 }
+            }
+            const lxQualities = plugin.mediaQualityOverride?.();
+            if (lxQualities) {
+                delegate.supportedQualities = lxQualities;
             }
             delegate.hash = plugin.hash;
             delegate.path = plugin.path;
@@ -244,6 +257,9 @@ class PluginManager {
             (hash, method, args, environment) =>
                 this.host.invokePlugin(hash, method, args, environment),
             () => this.getEnvironment(platform),
+            (musicItem, quality) =>
+                this.lxPlugins.resolveMediaSource(platform, musicItem, quality),
+            () => this.lxPlugins.getQualityOverride(platform),
         );
     }
 
@@ -251,10 +267,16 @@ class PluginManager {
         this.windowManager = windowManager;
         this.setupIpcHandlers();
         await this.ensurePluginDirectory();
-        await this.loadAllPlugins();
+        await Promise.all([
+            this.loadAllPlugins(),
+            this.lxPlugins.setup(),
+        ]);
         this.inited = true;
         this.resolveReady();
-        app.on("before-quit", () => this.host.dispose());
+        app.on("before-quit", () => {
+            this.host.dispose();
+            this.lxPlugins.dispose();
+        });
     }
 
     public whenReady() {
@@ -270,11 +292,8 @@ class PluginManager {
         });
         ipcMain.handle("@shared/plugin-manager/load-all-plugins", async (event) => {
             assertIpcSender(event, ["main"]);
-            if (!this.inited) {
-                await this.loadAllPlugins();
-            } else {
-                this.syncPlugins();
-            }
+            await this.whenReady();
+            this.syncPlugins();
             return this.clonedPlugins;
         });
         ipcMain.handle("@shared/plugin-manager/uninstall-plugin", async (event, hash) => {
@@ -304,6 +323,38 @@ class PluginManager {
             assertIpcSender(event, ["main"]);
             assertString(filePath, "plugin path", 32768);
             return await this.installPluginFromLocalFile(filePath);
+        });
+        ipcMain.handle("@shared/plugin-manager/load-lx-plugins", async (event) => {
+            assertIpcSender(event, ["main"]);
+            return this.lxPlugins.descriptors;
+        });
+        ipcMain.handle("@shared/plugin-manager/install-lx-plugin-local", async (event, filePath) => {
+            assertIpcSender(event, ["main"]);
+            assertString(filePath, "LX plugin path", 32768);
+            return await this.lxPlugins.installFromLocalFile(filePath);
+        });
+        ipcMain.handle("@shared/plugin-manager/install-lx-plugin-remote", async (event, url) => {
+            assertIpcSender(event, ["main"]);
+            assertString(url, "LX plugin URL", 8192);
+            return await this.lxPlugins.installFromRemoteUrl(url);
+        });
+        ipcMain.handle("@shared/plugin-manager/set-active-lx-plugin", async (event, hash) => {
+            assertIpcSender(event, ["main"]);
+            if (hash !== null) {
+                assertString(hash, "LX plugin hash", 64);
+                if (!/^[a-f0-9]{64}$/i.test(hash)) {
+                    throw new Error("LX plugin hash is not valid");
+                }
+            }
+            await this.lxPlugins.setActive(hash);
+        });
+        ipcMain.handle("@shared/plugin-manager/uninstall-lx-plugin", async (event, hash) => {
+            assertIpcSender(event, ["main"]);
+            assertString(hash, "LX plugin hash", 64);
+            if (!/^[a-f0-9]{64}$/i.test(hash)) {
+                throw new Error("LX plugin hash is not valid");
+            }
+            await this.lxPlugins.uninstall(hash);
         });
     }
 
@@ -358,6 +409,18 @@ class PluginManager {
             mainWindow.webContents.send(
                 "@/shared/plugin-manager/sync-plugins",
                 this.clonedPlugins,
+            );
+        }
+    }
+
+    private syncLxPlugins() {
+        this.refreshClonedPlugins();
+        this.syncPlugins();
+        const mainWindow = this.windowManager?.mainWindow;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send(
+                "@/shared/plugin-manager/sync-lx-plugins",
+                this.lxPlugins.descriptors,
             );
         }
     }

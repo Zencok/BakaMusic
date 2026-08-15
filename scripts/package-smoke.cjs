@@ -4,6 +4,7 @@ const http = require("node:http");
 const net = require("node:net");
 const os = require("node:os");
 const path = require("node:path");
+const { createHash } = require("node:crypto");
 const { spawn, spawnSync } = require("node:child_process");
 
 const appPath = path.resolve(__dirname, "../out/BakaMusic-win32-x64/BakaMusic.exe");
@@ -472,6 +473,73 @@ async function run() {
         };`,
         "utf8",
     );
+    await fs.promises.writeFile(
+        path.join(pluginPath, "lx-base-smoke.js"),
+        `module.exports = {
+            platform: "网易云音乐",
+            version: "1.0.0",
+            supportedQualities: ["128k", "320k", "flac"],
+            async search() {
+                return {
+                    isEnd: true,
+                    data: [{
+                        id: "lx-smoke-song",
+                        title: "LX Smoke Song",
+                        artist: "LX Smoke Artist",
+                        qualities: {
+                            "128k": { size: 1000 },
+                            "320k": { size: 2000 },
+                            flac: { size: 3000 }
+                        }
+                    }]
+                };
+            },
+            async getMediaSource(_musicItem, quality) {
+                return { url: "https://base-smoke.invalid/" + quality };
+            }
+        };`,
+        "utf8",
+    );
+    const lxPluginCode = `/*
+     * @name Package Smoke LX
+     * @version v1
+     */
+    lx.on(lx.EVENT_NAMES.request, ({ source, action, info }) => {
+        if (source !== "wy" || action !== "musicUrl") return null;
+        return "https://lx-smoke.invalid/" + info.type + "/" + info.musicInfo.songmid;
+    });
+    lx.send(lx.EVENT_NAMES.inited, {
+        sources: {
+            wy: {
+                type: "music",
+                actions: ["musicUrl"],
+                qualitys: ["320k", "flac", "master"]
+            }
+        }
+    });`;
+    const lxPluginHash = createHash("sha256").update(lxPluginCode, "utf8").digest("hex");
+    const lxPluginPath = path.join(userDataPath, "bakamusic-lx-plugins");
+    await fs.promises.mkdir(lxPluginPath, { recursive: true });
+    await Promise.all([
+        fs.promises.writeFile(
+            path.join(lxPluginPath, `${lxPluginHash}.js`),
+            lxPluginCode,
+            "utf8",
+        ),
+        fs.promises.writeFile(
+            path.join(lxPluginPath, `${lxPluginHash}.js.integrity.json`),
+            JSON.stringify({
+                sha256: lxPluginHash,
+                installedAt: new Date().toISOString(),
+            }),
+            "utf8",
+        ),
+        fs.promises.writeFile(
+            path.join(lxPluginPath, "state.json"),
+            JSON.stringify({ activeHash: lxPluginHash }),
+            "utf8",
+        ),
+    ]);
     const localMediaPath = path.join(userDataPath, "local-media-smoke.wav");
     await fs.promises.writeFile(localMediaPath, createSilentWav());
     const alacMediaPath = path.join(userDataPath, "local-media-alac-smoke.m4a");
@@ -599,6 +667,42 @@ async function run() {
                 "music",
             );
         })()`, "plugin utility roundtrip");
+        const lxPluginState = await mainSession.evaluate(`(async () => {
+            const pluginBridge = window["@shared/plugin-manager"];
+            await Promise.all([
+                pluginBridge.reloadPlugins(),
+                pluginBridge.reloadLxPlugins(),
+            ]);
+            const searchResult = await pluginBridge.callPluginMethod(
+                { platform: "网易云音乐" },
+                "search",
+                "smoke",
+                1,
+                "music",
+            );
+            const musicItem = searchResult.data[0];
+            return {
+                qualities: Object.keys(musicItem.qualities),
+                flacSource: await pluginBridge.callPluginMethod(
+                    { platform: "网易云音乐" },
+                    "getMediaSource",
+                    musicItem,
+                    "flac",
+                ),
+                unsupportedSource: await pluginBridge.callPluginMethod(
+                    { platform: "网易云音乐" },
+                    "getMediaSource",
+                    musicItem,
+                    "128k",
+                ),
+                missingTrackQualitySource: await pluginBridge.callPluginMethod(
+                    { platform: "网易云音乐" },
+                    "getMediaSource",
+                    musicItem,
+                    "master",
+                ),
+            };
+        })()`, "LX plugin playback override");
         const webdavState = await mainSession.evaluate(`(async () => {
             const backupBridge = window["@shared/backup"];
             const connection = {
@@ -753,6 +857,7 @@ async function run() {
             ...rendererState,
             nativePlaybackState,
             pluginResult,
+            lxPluginState,
             localScanState,
             pitchShiftState,
             remoteArtworkCors,
@@ -784,6 +889,15 @@ async function run() {
                 },
             },
             pluginResult: { isEnd: true, data: [] },
+            lxPluginState: {
+                qualities: ["320k", "flac"],
+                flacSource: {
+                    url: "https://lx-smoke.invalid/flac/lx-smoke-song",
+                    quality: "flac",
+                },
+                unsupportedSource: null,
+                missingTrackQualitySource: null,
+            },
             localScanState: {
                 count: 1,
                 removedCount: 0,

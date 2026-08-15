@@ -11,6 +11,7 @@ import { safeStat } from "@/common/file-util";
 import path from "path";
 import { autoDecryptLyric } from "./lyric-decrypt";
 import ServiceManager from "@shared/service-manager/main";
+import { getLxMusicQualityKeys } from "../lx-adapter";
 
 /** 新音质 -> 旧插件兼容的音质键 (用于旧插件不认识新音质时的回退) */
 const newToLegacyQualityMap: Record<string, string> = {
@@ -197,6 +198,9 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
         if (Array.isArray(result.data)) {
             result.data.forEach((_) => {
                 resetMediaItem(_, this.plugin.name);
+                if (type === "music") {
+                    this.plugin.applyMediaQualityOverride(_ as IMusic.IMusicItem);
+                }
             });
             return {
                 isEnd: result.isEnd ?? true,
@@ -218,32 +222,44 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
     ): Promise<IPlugin.IMediaSourceResult | null> {
     // TODO 2. url 缓存策略，先略过
 
-        // 3 插件解析
-        if (!this.plugin.instance.getMediaSource) {
-            return { url: musicItem?.qualities?.[quality]?.url ?? musicItem.url };
-        }
         try {
-            const declaredQualityKeys = getDeclaredQualityKeys(musicItem);
-            if (declaredQualityKeys.length && !declaredQualityKeys.includes(quality)) {
+            const lxQualityKeys = this.plugin.mediaQualityOverride?.();
+            const declaredQualityKeys = lxQualityKeys
+                ? getLxMusicQualityKeys(musicItem, lxQualityKeys)
+                : getDeclaredQualityKeys(musicItem);
+            const hasLxQualityOverride = lxQualityKeys !== null
+                && lxQualityKeys !== undefined;
+            if (
+                (hasLxQualityOverride || declaredQualityKeys.length)
+                && !declaredQualityKeys.includes(quality)
+            ) {
                 return null;
             }
 
-            // 先用新音质键请求，如果插件不认识则回退到旧音质键
-            let result = await this.plugin.instance.getMediaSource(
-                musicItem,
-                quality,
-            );
-            if (!result?.url) {
-                // 新音质键没结果，尝试旧插件兼容的音质键
-                const legacyQuality = newToLegacyQualityMap[quality];
-                if (legacyQuality && legacyQuality !== quality) {
-                    result = await this.plugin.instance.getMediaSource(
-                        musicItem,
-                        legacyQuality as any,
-                    );
+            // LX 兼容层仅覆盖播放解析；没有可用 LX 底座映射时继续调用原插件。
+            let result = lxQualityKeys
+                ? await this.plugin.mediaSourceOverride?.(musicItem, quality)
+                : null;
+            if (!result?.url && this.plugin.instance.getMediaSource) {
+                // 先用新音质键请求，如果插件不认识则回退到旧音质键
+                result = await this.plugin.instance.getMediaSource(
+                    musicItem,
+                    quality,
+                );
+                if (!result?.url) {
+                    // 新音质键没结果，尝试旧插件兼容的音质键
+                    const legacyQuality = newToLegacyQualityMap[quality];
+                    if (legacyQuality && legacyQuality !== quality) {
+                        result = await this.plugin.instance.getMediaSource(
+                            musicItem,
+                            legacyQuality as any,
+                        );
+                    }
                 }
             }
-            const { url, headers } = result ?? { url: musicItem?.qualities?.[quality]?.url };
+            const { url, headers } = result ?? {
+                url: musicItem?.qualities?.[quality]?.url ?? musicItem.url,
+            };
             if (!url) {
                 throw new Error("NOT RETRY");
             }
@@ -288,7 +304,8 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
             const mediaResult = {
                 url,
                 headers,
-                userAgent: headers?.["user-agent"],
+                quality: result?.quality,
+                userAgent: result?.userAgent ?? headers?.["user-agent"] ?? headers?.["User-Agent"],
             } as IPlugin.IMediaSourceResult;
 
             //   if (pluginCacheControl !== CacheControl.NoStore && !notUpdateCache) {
@@ -322,11 +339,12 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
             return null;
         }
         try {
-            return (
-                this.plugin.instance.getMusicInfo(
-                    resetMediaItem(musicItem, undefined, true),
-                ) ?? null
+            const result = await this.plugin.instance.getMusicInfo(
+                resetMediaItem(musicItem, undefined, true),
             );
+            return result
+                ? this.plugin.applyMediaQualityOverride(result)
+                : null;
         } catch {
             // devLog('error', '获取音乐详情失败', e, e?.message);
             return null;
@@ -491,7 +509,9 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
             return {
                 albumItem,
                 musicList: (albumItem?.musicList ?? []).map((it) =>
-                    resetMediaItem(it, this.plugin.name),
+                    this.plugin.applyMediaQualityOverride(
+                        resetMediaItem(it, this.plugin.name),
+                    ),
                 ),
                 isEnd: true,
             };
@@ -506,6 +526,7 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
             }
             result?.musicList?.forEach((_) => {
                 resetMediaItem(_, this.plugin.name);
+                this.plugin.applyMediaQualityOverride(_);
                 _.album = albumItem.title;
             });
 
@@ -538,7 +559,9 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
         if (!this.plugin.instance.getMusicSheetInfo) {
             return {
                 sheetItem,
-                musicList: sheetItem?.musicList ?? [],
+                musicList: (sheetItem?.musicList ?? []).map((item) =>
+                    this.plugin.applyMediaQualityOverride(item),
+                ),
                 isEnd: true,
             };
         }
@@ -552,6 +575,7 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
             }
             result?.musicList?.forEach((_) => {
                 resetMediaItem(_, this.plugin.name);
+                this.plugin.applyMediaQualityOverride(_);
             });
 
             if (page <= 1) {
@@ -598,7 +622,12 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
                 data: [],
             };
         }
-        result.data?.forEach((_) => resetMediaItem(_, this.plugin.name));
+        result.data?.forEach((_) => {
+            resetMediaItem(_, this.plugin.name);
+            if (type === "music") {
+                this.plugin.applyMediaQualityOverride(_ as IMusic.IMusicItem);
+            }
+        });
         return {
             isEnd: result.isEnd ?? true,
             data: result.data,
@@ -638,7 +667,10 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
                 return null;
             }
             if (Array.isArray(result)) {
-                result.forEach((_) => resetMediaItem(_, this.plugin.name));
+                result.forEach((_) => {
+                    resetMediaItem(_, this.plugin.name);
+                    this.plugin.applyMediaQualityOverride(_);
+                });
                 return result;
             }
             if (typeof result !== "object") {
@@ -646,7 +678,10 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
             }
 
             resetMediaItem(result, this.plugin.name);
-            result.musicList?.forEach((_) => resetMediaItem(_, this.plugin.name));
+            result.musicList?.forEach((_) => {
+                resetMediaItem(_, this.plugin.name);
+                this.plugin.applyMediaQualityOverride(_);
+            });
             return result;
         } catch {
             // devLog('error', '导入歌单失败', e, e?.message);
@@ -662,7 +697,7 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
                 throw new Error();
             }
             resetMediaItem(result, this.plugin.name);
-            return result;
+            return this.plugin.applyMediaQualityOverride(result);
         } catch {
             // devLog('error', '导入单曲失败', e, e?.message);
 
@@ -696,7 +731,10 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
                 throw new Error();
             }
             if (result.musicList) {
-                result.musicList.forEach((_) => resetMediaItem(_, this.plugin.name));
+                result.musicList.forEach((_) => {
+                    resetMediaItem(_, this.plugin.name);
+                    this.plugin.applyMediaQualityOverride(_);
+                });
             }
             if (result.isEnd !== false) {
                 result.isEnd = true;

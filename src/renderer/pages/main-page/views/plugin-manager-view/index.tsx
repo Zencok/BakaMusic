@@ -12,6 +12,7 @@ import { Trans, useTranslation } from "react-i18next";
 import { dialogUtil } from "@shared/utils/renderer";
 import PluginManager, { useSortedPlugins } from "@shared/plugin-manager/renderer";
 import { ReactNode } from "react";
+import LxPluginSection from "./components/lx-plugin-section";
 
 interface IActionButtonProps {
     children: ReactNode;
@@ -222,6 +223,8 @@ export default function PluginManagerView() {
                     {t("plugin_management_page.uninstall_all_plugins")}
                 </ActionButton>
             </section>
+
+            <LxPluginSection basePlugins={plugins}></LxPluginSection>
 
             <PluginTable plugins={plugins}></PluginTable>
         </div>

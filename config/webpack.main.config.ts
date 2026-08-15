@@ -11,6 +11,7 @@ export const mainConfig: Configuration = {
     entry: {
         index: "./src/main/index.ts",
         plugin_host: "./src/shared/plugin-manager/utility/plugin-host.ts",
+        lx_plugin_host: "./src/shared/plugin-manager/utility/lx-plugin-host.ts",
         node_runtime_host: "./src/shared/node-runtime/utility/node-runtime-host.ts",
         native_playback_host: "./src/shared/native-playback/utility/native-playback-host.ts",
     },

@@ -90,6 +90,8 @@ declare namespace IPlugin {
     defaultSearchType?: IMedia.SupportMediaType;
     /** 有效搜索类型 */
     supportedSearchType?: ICommon.SupportMediaType[];
+    /** 插件可提供的播放音质 */
+    supportedQualities?: IMusic.IQualityKey[];
     /** 插件缓存控制 */
     cacheControl?: "cache" | "no-cache" | "no-store";
     /** 插件作者 */

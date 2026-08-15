@@ -75,24 +75,10 @@ function getAvailableQualityChoices(
         return [createMusicQualityChoice(downloadedData.quality, t, sizeText)];
     }
 
-    const qualities = musicItem?.qualities as IMusic.IQuality | undefined;
-    const source =
-        musicItem?.source && typeof musicItem.source === "object"
-            ? musicItem.source as Partial<Record<IMusic.IQualityKey, { size?: string | number; url?: string }>>
-            : undefined;
+    const availableQualities = new Set(PluginManager.getMediaQualityKeys(musicItem));
 
     return [...qualityKeys].reverse()
-        .filter((quality) => {
-            if (qualities?.[quality] !== undefined) {
-                return true;
-            }
-
-            const sourceItem = source?.[quality];
-            return !!sourceItem && (
-                sourceItem.url !== undefined ||
-                sourceItem.size !== undefined
-            );
-        })
+        .filter((quality) => availableQualities.has(quality))
         .map((quality) => {
             const sizeText = formatQualitySize(getMusicQualitySize(musicItem, quality));
             return createMusicQualityChoice(quality, t, sizeText);
@@ -102,8 +88,12 @@ function getAvailableQualityChoices(
 export function getPreferredQualityChoices(
     t: (key: string) => string,
     musicItem?: IMusic.IMusicItem | null,
+    allowedQualities: readonly IMusic.IQualityKey[] = qualityKeys,
 ): IMusicQualityChoice[] {
-    return [...qualityKeys].reverse().map((quality) => {
+    const allowedQualitySet = new Set(allowedQualities);
+    return [...qualityKeys].reverse().filter((quality) =>
+        allowedQualitySet.has(quality),
+    ).map((quality) => {
         const sizeText = musicItem
             ? formatQualitySize(getMusicQualitySize(musicItem, quality))
             : "";

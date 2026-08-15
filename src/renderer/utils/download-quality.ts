@@ -3,6 +3,7 @@ import { showQualitySelectPopover } from "@/renderer/components/QualitySelectPop
 import Downloader from "@/renderer/core/downloader";
 import { i18n } from "@/shared/i18n/renderer";
 import AppConfig from "@shared/app-config/renderer";
+import PluginManager from "@shared/plugin-manager/renderer";
 import { toast } from "react-toastify";
 import { getPreferredQualityChoices, resolveMusicQualityChoices } from "./music-quality";
 
@@ -30,7 +31,16 @@ export async function promptDownloadWithQuality(
     const t = i18n.t.bind(i18n);
     const defaultValue = AppConfig.getConfig("download.defaultQuality");
 
-    let choices = getPreferredQualityChoices(t);
+    const lxQualityOverrides = validItems.flatMap((item) => {
+        const qualities = PluginManager.getLxQualityOverride(item.platform);
+        return qualities ? [PluginManager.getMediaQualityKeys(item)] : [];
+    });
+    const allowedQualities = lxQualityOverrides.length
+        ? lxQualityOverrides.reduce((commonQualities, qualities) =>
+            commonQualities.filter((quality) => qualities.includes(quality)),
+        )
+        : undefined;
+    let choices = getPreferredQualityChoices(t, undefined, allowedQualities);
     if (validItems.length === 1) {
         const validItem = validItems[0];
         if (!validItem) {

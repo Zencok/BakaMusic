@@ -1,8 +1,16 @@
 ﻿import Store from "@/common/store";
 import AppConfig from "@shared/app-config/renderer";
+import {
+    filterQualityOrderByDeclaredQualities,
+    getDeclaredQualityKeys,
+} from "@/common/media-util";
 import useAppConfig from "@/hooks/useAppConfig";
 import { useMemo } from "react";
 import logger from "@shared/logger/renderer";
+import {
+    getLxSourceForPlatform,
+    type LxPluginDescriptor,
+} from "./lx-types";
 
 interface IPluginDelegateLike {
     platform?: string;
@@ -11,6 +19,7 @@ interface IPluginDelegateLike {
 
 interface IMod {
     onPluginUpdated: (callback: (plugins: IPlugin.IPluginDelegate[]) => void) => void,
+    onLxPluginUpdated: (callback: (plugins: LxPluginDescriptor[]) => void) => void,
 
     callPluginMethod<
         T extends keyof IPlugin.IPluginInstanceMethods,
@@ -21,11 +30,16 @@ interface IMod {
     ): ReturnType<IPlugin.IPluginInstanceMethods[T]>,
 
     reloadPlugins: () => Promise<void>;
+    reloadLxPlugins: () => Promise<void>;
     uninstallPlugin: (hash: string) => Promise<void>;
     uninstallAllPlugins: () => Promise<void>;
     updateAllPlugins: () => Promise<void>;
     installPluginFromRemote: (url: string) => Promise<void>,
     installPluginFromLocal: (rawCode: string) => Promise<void>,
+    installLxPluginFromLocal: (filePath: string) => Promise<void>,
+    installLxPluginFromRemote: (url: string) => Promise<void>,
+    setActiveLxPlugin: (hash: string | null) => Promise<void>,
+    uninstallLxPlugin: (hash: string) => Promise<void>,
 }
 
 function fallbackCallPluginMethod<
@@ -44,8 +58,14 @@ const mod: IMod = bridge ?? {
     onPluginUpdated: () => {
         // pass
     },
+    onLxPluginUpdated: () => {
+        // pass
+    },
     callPluginMethod: fallbackCallPluginMethod,
     reloadPlugins: async () => {
+        // pass
+    },
+    reloadLxPlugins: async () => {
         // pass
     },
     uninstallPlugin: async () => {
@@ -63,6 +83,18 @@ const mod: IMod = bridge ?? {
     installPluginFromLocal: async () => {
         // pass
     },
+    installLxPluginFromLocal: async () => {
+        // pass
+    },
+    installLxPluginFromRemote: async () => {
+        // pass
+    },
+    setActiveLxPlugin: async () => {
+        // pass
+    },
+    uninstallLxPlugin: async () => {
+        // pass
+    },
 };
 
 if (!bridge) {
@@ -70,6 +102,7 @@ if (!bridge) {
 }
 
 const delegatePluginsStore = new Store<IPlugin.IPluginDelegate[]>([]);
+const lxPluginsStore = new Store<LxPluginDescriptor[]>([]);
 const emptyPluginMeta = Object.freeze({}) as Record<
     string,
     IPlugin.IPluginMeta | undefined
@@ -101,6 +134,10 @@ function sortPluginsByMeta(
 
 mod.onPluginUpdated((plugins) => {
     delegatePluginsStore.setValue(plugins);
+});
+
+mod.onLxPluginUpdated((plugins) => {
+    lxPluginsStore.setValue(plugins);
 });
 
 function isPluginEnabled(platform: string, meta: Record<string, IPlugin.IPluginMeta | undefined>) {
@@ -164,6 +201,38 @@ function isSupportFeatureMethod(platform: string, featureMethod: keyof IPlugin.I
     return delegatePluginsStore.getValue().find((item) => item.platform === platform)?.supportedMethod?.includes?.(featureMethod) ?? false;
 }
 
+function getLxQualityOverride(platform: string) {
+    const source = getLxSourceForPlatform(platform);
+    if (!source || !delegatePluginsStore.getValue().some((plugin) => plugin.platform === platform)) {
+        return null;
+    }
+    const plugin = lxPluginsStore.getValue().find((item) => item.active);
+    const qualities = plugin?.sources[source]?.qualities;
+    return qualities ? [...qualities] : null;
+}
+
+function getMediaQualityKeys(musicItem: Partial<IMusic.IMusicItem>) {
+    const declaredQualities = getDeclaredQualityKeys(musicItem);
+    const lxQualities = getLxQualityOverride(musicItem.platform ?? "");
+    if (!lxQualities) {
+        return declaredQualities;
+    }
+    const qualitySet = new Set(lxQualities);
+    return declaredQualities.filter((quality) => qualitySet.has(quality));
+}
+
+function filterMediaQualityOrder(
+    musicItem: Partial<IMusic.IMusicItem>,
+    qualityOrder: IMusic.IQualityKey[],
+) {
+    const lxQualities = getLxQualityOverride(musicItem.platform ?? "");
+    if (!lxQualities) {
+        return filterQualityOrderByDeclaredQualities(musicItem, qualityOrder);
+    }
+    const qualitySet = new Set(getMediaQualityKeys(musicItem));
+    return qualityOrder.filter((quality) => qualitySet.has(quality));
+}
+
 
 function getPluginPrimaryKey(pluginItem: IPluginDelegateLike) {
     return (
@@ -175,7 +244,10 @@ function getPluginPrimaryKey(pluginItem: IPluginDelegateLike) {
 
 
 async function setup() {
-    await mod.reloadPlugins();
+    await Promise.all([
+        mod.reloadPlugins(),
+        mod.reloadLxPlugins(),
+    ]);
 }
 
 const PluginManager = {
@@ -188,12 +260,19 @@ const PluginManager = {
     getPluginByPlatform,
     isSupportFeatureMethod,
     getPluginPrimaryKey,
+    getLxQualityOverride,
+    getMediaQualityKeys,
+    filterMediaQualityOrder,
     callPluginDelegateMethod: mod.callPluginMethod,
     updateAllPlugins: mod.updateAllPlugins,
     uninstallPlugin: mod.uninstallPlugin,
     uninstallAllPlugins: mod.uninstallAllPlugins,
     installPluginFromRemote: mod.installPluginFromRemote,
     installPluginFromLocal: mod.installPluginFromLocal,
+    installLxPluginFromLocal: mod.installLxPluginFromLocal,
+    installLxPluginFromRemote: mod.installLxPluginFromRemote,
+    setActiveLxPlugin: mod.setActiveLxPlugin,
+    uninstallLxPlugin: mod.uninstallLxPlugin,
 };
 
 export default PluginManager;
@@ -221,4 +300,8 @@ export function useSortedPlugins() {
     return useMemo(() => {
         return sortPluginsByMeta(plugins, meta);
     }, [plugins, meta]);
+}
+
+export function useLxPlugins() {
+    return lxPluginsStore.useValue();
 }

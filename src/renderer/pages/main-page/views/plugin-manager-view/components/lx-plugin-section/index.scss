@@ -1,0 +1,261 @@
+.lx-plugin-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid var(--appSurfaceBorder);
+  border-bottom: 1px solid var(--appSurfaceBorder);
+
+  & .lx-plugin-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  & .lx-plugin-section-heading,
+  & .lx-plugin-section-actions,
+  & .lx-plugin-title-line,
+  & .lx-plugin-bindings,
+  & .lx-plugin-row-actions {
+    display: flex;
+    align-items: center;
+  }
+
+  & .lx-plugin-section-heading {
+    gap: 9px;
+  }
+
+  & .lx-plugin-section-title {
+    color: var(--appTextPrimary);
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  & .lx-plugin-section-count {
+    min-width: 26px;
+    height: 26px;
+    padding: 0 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid color-mix(in srgb, var(--infoColor) 24%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--infoColor) 10%, var(--backgroundColor));
+    color: var(--appTextPrimary);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  & .lx-plugin-section-actions,
+  & .lx-plugin-row-actions {
+    gap: 7px;
+  }
+
+  & .lx-plugin-action-button {
+    min-height: 30px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid var(--appInteractiveBorder);
+    border-radius: 999px;
+    background: var(--appSurfaceMuted);
+    color: var(--appTextPrimary);
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--appInteractiveSurface);
+      border-color: color-mix(in srgb, var(--infoColor) 30%, var(--appInteractiveBorder));
+    }
+
+    &[data-variant="danger"] {
+      color: color-mix(in srgb, var(--dangerColor) 90%, var(--appTextPrimary));
+      border-color: color-mix(in srgb, var(--dangerColor) 24%, transparent);
+      background: color-mix(in srgb, var(--dangerColor) 9%, var(--backgroundColor));
+    }
+  }
+
+  & .lx-plugin-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  & .lx-plugin-row {
+    min-width: 0;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: minmax(118px, auto) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid var(--appSurfaceBorder);
+    border-radius: 8px;
+    background: var(--appSurfaceMuted);
+
+    &[data-active="true"] {
+      border-color: color-mix(in srgb, var(--infoColor) 45%, var(--appSurfaceBorder));
+      box-shadow: inset 3px 0 0 var(--infoColor);
+    }
+
+    &[data-available="false"] {
+      opacity: 0.76;
+    }
+  }
+
+  & .lx-plugin-selector {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--appTextSecondary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+
+    & input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0;
+    }
+
+    &:has(input:focus-visible) .lx-plugin-radio {
+      outline: 2px solid var(--infoColor);
+      outline-offset: 2px;
+    }
+  }
+
+  & .lx-plugin-radio {
+    width: 17px;
+    height: 17px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid var(--appInteractiveBorder);
+    border-radius: 50%;
+    background: var(--backgroundColor);
+  }
+
+  & .lx-plugin-radio-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--infoColor);
+  }
+
+  & .lx-plugin-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  & .lx-plugin-title-line {
+    min-width: 0;
+    gap: 7px;
+    flex-wrap: wrap;
+  }
+
+  & .lx-plugin-name {
+    min-width: 0;
+    max-width: 320px;
+    overflow: hidden;
+    color: var(--appTextPrimary);
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  & .lx-plugin-version,
+  & .lx-plugin-availability,
+  & .lx-plugin-binding {
+    min-height: 20px;
+    padding: 0 7px;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--appInteractiveBorder);
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  & .lx-plugin-version {
+    color: var(--appTextSecondary);
+    background: var(--backgroundColor);
+  }
+
+  & .lx-plugin-availability,
+  & .lx-plugin-binding {
+    color: color-mix(in srgb, var(--warningColor) 88%, var(--appTextPrimary));
+    border-color: color-mix(in srgb, var(--warningColor) 25%, transparent);
+    background: color-mix(in srgb, var(--warningColor) 9%, var(--backgroundColor));
+
+    &[data-ready="true"] {
+      color: color-mix(in srgb, var(--successColor) 88%, var(--appTextPrimary));
+      border-color: color-mix(in srgb, var(--successColor) 24%, transparent);
+      background: color-mix(in srgb, var(--successColor) 9%, var(--backgroundColor));
+    }
+  }
+
+  & .lx-plugin-author {
+    color: var(--appTextTertiary);
+    font-size: 0.74rem;
+  }
+
+  & .lx-plugin-bindings {
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+
+  & .lx-plugin-binding {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 820px) {
+  .lx-plugin-section {
+    & .lx-plugin-section-header {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    & .lx-plugin-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    & .lx-plugin-selector {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
+@media (max-width: 560px) {
+  .lx-plugin-section {
+    & .lx-plugin-section-actions,
+    & .lx-plugin-action-button {
+      width: 100%;
+    }
+
+    & .lx-plugin-section-actions {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    & .lx-plugin-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    & .lx-plugin-row-actions {
+      width: 100%;
+      justify-content: flex-end;
+    }
+  }
+}

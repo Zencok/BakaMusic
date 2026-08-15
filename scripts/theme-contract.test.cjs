@@ -553,7 +553,10 @@ const statisticsViewStyles = fs.readFileSync(path.join(
 ), "utf8");
 assert.match(statisticsViewSource, /className="statistics-track-meta-row"/);
 assert.match(statisticsViewSource, /secondsToDuration\(entry\.musicItem\.duration\)/);
-assert.match(statisticsViewSource, /getBestMusicQualityInfo\(entry\.musicItem\)/);
+assert.match(
+    statisticsViewSource,
+    /getBestMusicQualityInfo\([\s\S]{0,120}entry\.musicItem[\s\S]{0,120}getLxQualityOverride/,
+);
 assert.match(statisticsViewSource, /statistics_page\.tracks_unit/);
 assert.match(statisticsViewSource, /statistics-summary-value-unit/);
 assert.match(

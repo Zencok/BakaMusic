@@ -33,7 +33,7 @@ import useVirtualList from "@/hooks/useVirtualList";
 import AppConfig from "@shared/app-config/renderer";
 import { i18n } from "@/shared/i18n/renderer";
 import { shellUtil } from "@shared/utils/renderer";
-import PluginManager from "@shared/plugin-manager/renderer";
+import PluginManager, { useLxPlugins } from "@shared/plugin-manager/renderer";
 import BottomLoadingState from "../BottomLoadingState";
 import Condition, { IfTruthy } from "../Condition";
 import { IContextMenuItem, showContextMenu } from "../ContextMenu";
@@ -654,14 +654,20 @@ function getSortValue(musicItem: IMusic.IMusicItem, field: SortField): string | 
             const source = musicItem?.source && typeof musicItem.source === "object"
                 ? musicItem.source as Partial<Record<IMusic.IQualityKey, { size?: string | number }>>
                 : undefined;
+            const lxQualities = PluginManager.getLxQualityOverride(musicItem.platform)
+                ? PluginManager.getMediaQualityKeys(musicItem)
+                : null;
+            const lxQualitySet = lxQualities ? new Set(lxQualities) : null;
             const downloadedData = getInternalData<IMusic.IMusicItemInternalData>(
                 musicItem,
                 "downloadData",
             );
             const quality = [...qualityKeys].reverse().find(q =>
-                qualities?.[q] !== undefined ||
-                source?.[q]?.size !== undefined ||
-                downloadedData?.quality === q,
+                lxQualitySet
+                    ? lxQualitySet.has(q)
+                    : qualities?.[q] !== undefined
+                        || source?.[q]?.size !== undefined
+                        || downloadedData?.quality === q,
             );
             if (!quality) return 0;
             const sz = qualities?.[quality]?.size ?? source?.[quality]?.size ?? (musicItem as { size?: string | number }).size;
@@ -712,6 +718,7 @@ function playMusicFromList(
 
 
 function MusicListComponent(props: IMusicListProps) {
+    useLxPlugins();
     const {
         musicList,
         state = RequestStateCode.FINISHED,
@@ -1132,7 +1139,12 @@ function MusicListComponent(props: IMusicListProps) {
                                 subtitleParts.push(musicItem.album);
                             }
 
-                            const qualityInfo = getBestMusicQualityInfo(musicItem);
+                            const qualityInfo = getBestMusicQualityInfo(
+                                musicItem,
+                                PluginManager.getLxQualityOverride(musicItem.platform)
+                                    ? PluginManager.getMediaQualityKeys(musicItem)
+                                    : null,
+                            );
                             const isActive = activeItems.has(virtualItem.rowIndex);
                             const isPlaying = !!currentMusic && isSameMedia(currentMusic, musicItem);
                             const artworkSrc = getCompactArtworkSrc(musicItem, 160) ?? albumImg;

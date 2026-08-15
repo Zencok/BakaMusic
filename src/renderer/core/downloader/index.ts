@@ -13,7 +13,6 @@ import {
 } from "@/common/audio-transcode";
 import { toError } from "@/common/error-util";
 import {
-    filterQualityOrderByDeclaredQualities,
     getMediaPrimaryKey,
     getQualityOrder,
     isSameMedia,
@@ -446,7 +445,7 @@ async function downloadMusicImpl(
         preferredQuality ?? AppConfig.getConfig("download.defaultQuality") ?? "128k",
         AppConfig.getConfig("download.whenQualityMissing") ?? "lower",
     ];
-    const qualityOrder = filterQualityOrderByDeclaredQualities(
+    const qualityOrder = PluginManager.filterMediaQualityOrder(
         musicItem,
         getQualityOrder(defaultQuality, whenQualityMissing),
     );

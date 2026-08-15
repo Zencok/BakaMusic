@@ -191,6 +191,10 @@ function testPluginIsolationAndIntegrity() {
     const managerSource = read("src/shared/plugin-manager/main/index.ts");
     const clientSource = read("src/shared/plugin-manager/main/plugin-host-client.ts");
     const hostSource = read("src/shared/plugin-manager/utility/plugin-host.ts");
+    const lxManagerSource = read("src/shared/plugin-manager/main/lx-plugin-manager.ts");
+    const lxClientSource = read("src/shared/plugin-manager/main/lx-plugin-host-client.ts");
+    const lxHostSource = read("src/shared/plugin-manager/utility/lx-plugin-host.ts");
+    const webpackMainSource = read("config/webpack.main.config.ts");
     const deepLinkSource = read("src/main/deep-link/index.ts");
 
     assert.match(managerSource, /assertUrl\(source\.url, \["https:"\]/);
@@ -199,6 +203,10 @@ function testPluginIsolationAndIntegrity() {
     assert.match(managerSource, /verifyPluginSignature/);
     assert.match(managerSource, /\.integrity\.json/);
     assert.match(managerSource, /MAX_PLUGIN_CODE_BYTES/);
+    assert.match(
+        managerSource,
+        /handle\("@shared\/plugin-manager\/load-all-plugins"[\s\S]*?await this\.whenReady\(\)/,
+    );
     assert.doesNotMatch(managerSource, /rejectUnauthorized\s*:\s*false/);
 
     assert.match(clientSource, /utilityProcess\.fork/);
@@ -220,6 +228,24 @@ function testPluginIsolationAndIntegrity() {
     assert.match(hostSource, /applyNetworkEnvironment/);
     assert.match(hostSource, /new HttpsProxyAgent/);
     assert.match(hostSource, /requestId/);
+
+    assert.match(webpackMainSource, /lx_plugin_host:/);
+    assert.match(lxClientSource, /utilityProcess\.fork/);
+    assert.match(lxClientSource, /--max-old-space-size=192/);
+    assert.match(lxClientSource, /MAX_WORKING_SET_KB/);
+    assert.match(lxClientSource, /MAX_PENDING_REQUESTS/);
+    assert.match(lxClientSource, /LX plugin RPC timed out/);
+    assert.match(lxClientSource, /child\.kill\(\)/);
+    assert.match(lxClientSource, /createLxHostEnvironment/);
+    assert.doesNotMatch(lxClientSource, /env:\s*\{\s*\.\.\.process\.env/);
+    assert.match(lxManagerSource, /assertUrl\(urlLike\.trim\(\), \["https:"\]/);
+    assert.match(lxManagerSource, /options\.protocol !== "https:"/);
+    assert.match(lxManagerSource, /MAX_LX_PLUGIN_CODE_BYTES/);
+    assert.doesNotMatch(lxManagerSource, /rejectUnauthorized\s*:\s*false/);
+    assert.match(lxHostSource, /new vm\.Script/);
+    assert.match(lxHostSource, /type !== "music"/);
+    assert.match(lxHostSource, /actions\.includes\("musicUrl"\)/);
+    assert.match(lxHostSource, /action: "musicUrl"/);
 
     // platform / 用户变量 key 会作为普通对象属性名使用，
     // "__proto__" 等保留键必须在 utility host 和主进程两侧同时拦截
@@ -298,6 +324,9 @@ function testPackagedBoundarySmokeContract() {
         assert.match(smokeSource, new RegExp(property.replaceAll(".", "\\.")));
     }
     assert.match(smokeSource, /pluginResult: \{ isEnd: true, data: \[\] \}/);
+    assert.match(smokeSource, /lxPluginState/);
+    assert.match(smokeSource, /qualities: \["320k", "flac"\]/);
+    assert.match(smokeSource, /unsupportedSource: null/);
     assert.match(smokeSource, /nodeRuntimeBridge: "function"/);
     assert.match(smokeSource, /nativeProbeBridge: "undefined"/);
     assert.match(smokeSource, /nativeCommandBridge: "function"/);

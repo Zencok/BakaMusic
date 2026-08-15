@@ -19,6 +19,7 @@ import type { SvgAssetIconNames } from "@/renderer/components/SvgAsset";
 import Tag from "@/renderer/components/Tag";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
 import { getBestMusicQualityInfo } from "@/renderer/utils/music-quality-metadata";
+import PluginManager from "@shared/plugin-manager/renderer";
 import useVirtualList from "@/hooks/useVirtualList";
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { TFunction } from "i18next";
@@ -100,7 +101,12 @@ function StatisticsTrackRow(props: IStatisticsTrackRowProps) {
         ? getListeningStatisticsKey(currentMusic) === getListeningStatisticsKey(entry.musicItem)
         : false;
     const artwork = entry.musicItem.coverImg || entry.musicItem.artwork || albumImg;
-    const qualityInfo = getBestMusicQualityInfo(entry.musicItem);
+    const qualityInfo = getBestMusicQualityInfo(
+        entry.musicItem,
+        PluginManager.getLxQualityOverride(entry.musicItem.platform)
+            ? PluginManager.getMediaQualityKeys(entry.musicItem)
+            : null,
+    );
 
     return (
         <div

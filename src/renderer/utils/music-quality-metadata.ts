@@ -84,13 +84,18 @@ export function formatQualitySize(size?: string | number) {
 
 export function getBestMusicQualityInfo(
     musicItem: IMusic.IMusicItem,
+    qualityOverride?: readonly IMusic.IQualityKey[] | null,
 ): IMusicQualityInfo | null {
     const { qualities, source } = getQualityContainers(musicItem);
     const downloadedData = getInternalData<IMusic.IMusicItemInternalData>(
         musicItem,
         "downloadData",
     );
+    const qualityOverrideSet = qualityOverride ? new Set(qualityOverride) : null;
     const quality = [...qualityKeys].reverse().find((item) => {
+        if (qualityOverrideSet) {
+            return qualityOverrideSet.has(item);
+        }
         if (qualities?.[item] !== undefined) {
             return true;
         }
