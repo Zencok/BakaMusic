@@ -34,6 +34,7 @@ export default function PageScrollRestoration() {
 
         const cachedPosition = scrollPositions.get(location.key);
         let restoreFrame = 0;
+        let restoreTimer: number | null = null;
         let restorationSettled = cachedPosition === undefined;
 
         const restore = () => {
@@ -56,6 +57,11 @@ export default function PageScrollRestoration() {
             restorationSettled =
                 maxTop >= cachedPosition.top - 1 &&
                 maxLeft >= cachedPosition.left - 1;
+
+            if (restorationSettled && restoreTimer !== null) {
+                window.clearInterval(restoreTimer);
+                restoreTimer = null;
+            }
         };
 
         const scheduleRestore = () => {
@@ -64,6 +70,25 @@ export default function PageScrollRestoration() {
         };
 
         scheduleRestore();
+        if (cachedPosition) {
+            // Data pages can finish after their DOM shape is stable. Keep trying
+            // briefly so a late response cannot leave the restored entry at 0.
+            restoreTimer = window.setInterval(restore, 50);
+        }
+
+        const rememberCurrentPosition = () => {
+            // Do not replace a pending target with the temporary 0/max scroll
+            // value while the page is still loading its list.
+            if (!cachedPosition || restorationSettled) {
+                rememberScrollPosition(location.key, {
+                    left: pageContainer.scrollLeft,
+                    top: pageContainer.scrollTop,
+                });
+            }
+        };
+        pageContainer.addEventListener("scroll", rememberCurrentPosition, {
+            passive: true,
+        });
 
         const mutationObserver = new MutationObserver(scheduleRestore);
         mutationObserver.observe(pageContainer, {
@@ -79,9 +104,13 @@ export default function PageScrollRestoration() {
 
         return () => {
             cancelAnimationFrame(restoreFrame);
+            if (restoreTimer !== null) {
+                window.clearInterval(restoreTimer);
+            }
             mutationObserver.disconnect();
             resizeObserver?.disconnect();
             window.removeEventListener("resize", scheduleRestore);
+            pageContainer.removeEventListener("scroll", rememberCurrentPosition);
 
             rememberScrollPosition(
                 location.key,
