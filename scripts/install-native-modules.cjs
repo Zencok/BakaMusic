@@ -26,7 +26,7 @@ const prebuiltRoot = path.join(outDir, "prebuilt");
 const cacheDir = path.join(root, "artifacts", "native-modules-cache");
 const platformKey = `${process.platform}-${process.arch}`;
 const MAX_REDIRECTS = 5;
-const DEFAULT_MODULES = ["qmc2", "ence", "taglib"];
+const DEFAULT_MODULES = ["qmc2", "ence", "taglib", "transcode"];
 
 function log(message) {
     console.log(`[native-install] ${message}`);

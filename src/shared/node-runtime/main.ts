@@ -5,6 +5,7 @@ import {
     utilityProcess,
     UtilityProcess,
 } from "electron";
+import { availableParallelism, totalmem } from "os";
 import path from "path";
 import type {
     DownloadCoverImageMode,
@@ -16,6 +17,8 @@ import {
     IDownloadTranscodeOptions,
     isDownloadMp3Bitrate,
     isDownloadTranscodeMode,
+    resolveNativeTranscodeConcurrency,
+    resolveNodeRuntimeWorkingSetLimitBytes,
 } from "@/common/audio-transcode";
 import { getMpvRuntimeDirectory } from "@shared/native-playback/runtime-path";
 import { supportLocalMediaType } from "@/common/constant";
@@ -52,7 +55,17 @@ const WATCHER_SCAN_TIMEOUT_MS = 30 * 60 * 1000;
 const TRANSCODE_TIMEOUT_MS = 20 * 60 * 1000;
 const MAX_PENDING_REQUESTS = 256;
 const MAX_RPC_BYTES = 128 * 1024 * 1024;
-const MAX_RUNTIME_WORKING_SET_KB = 512 * 1024;
+const NATIVE_TRANSCODE_CONCURRENCY = resolveNativeTranscodeConcurrency(
+    availableParallelism(),
+    totalmem(),
+);
+const NATIVE_THREAD_POOL_SIZE = Math.max(8, NATIVE_TRANSCODE_CONCURRENCY + 4);
+const MAX_RUNTIME_WORKING_SET_KB = Math.floor(
+    resolveNodeRuntimeWorkingSetLimitBytes(
+        NATIVE_TRANSCODE_CONCURRENCY,
+        totalmem(),
+    ) / 1024,
+);
 const MAX_MEDIA_HEADERS = 64;
 const MAX_EMBEDDED_LYRIC_BYTES = 16 * 1024 * 1024;
 const forbiddenMediaHeaders = new Set([
@@ -425,6 +438,10 @@ class NodeRuntimeManager {
                 env: {
                     ...process.env,
                     BAKAMUSIC_MPV_DIR: mpvRuntimeDirectory,
+                    // N-API AsyncWorker uses libuv. Reserve four lanes for
+                    // downloads, fs metadata and watcher work while every
+                    // native encoder has a dedicated lane.
+                    UV_THREADPOOL_SIZE: `${NATIVE_THREAD_POOL_SIZE}`,
                     PATH: `${mpvRuntimeDirectory}${path.delimiter}${process.env.PATH ?? ""}`,
                 },
                 stdio: "pipe",

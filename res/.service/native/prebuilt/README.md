@@ -4,7 +4,7 @@ These `.node` binaries are vendored from the private [`baka-native`](https://git
 
 | Path | Content |
 |------|---------|
-| `win32-x64/` | Windows x64 (`qmc2` / `ence` / `taglib`) |
+| `win32-x64/` | Windows x64 (`qmc2` / `ence` / `taglib` / `transcode`) |
 | `darwin-x64/` | macOS Intel |
 | `darwin-arm64/` | macOS Apple Silicon |
 | `linux-x64/` | Linux x64 |

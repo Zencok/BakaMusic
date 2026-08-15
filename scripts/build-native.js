@@ -20,7 +20,9 @@ const root = path.resolve(__dirname, "..");
 const nativeDir = path.join(root, "native");
 const outDir = path.join(root, "res", ".service", "native");
 const isCi = process.env.CI === "true";
-const requiredModules = (process.env.REQUIRED_NATIVE_MODULES || "qmc2,ence,taglib")
+const requiredModules = (
+    process.env.REQUIRED_NATIVE_MODULES || "qmc2,ence,taglib,transcode"
+)
     .split(",")
     .map((name) => name.trim())
     .filter(Boolean);

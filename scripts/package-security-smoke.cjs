@@ -62,6 +62,18 @@ async function run() {
     assert.equal(mpvManifest.mediaBackend, "librempeg");
     assert.ok(mpvManifest.decoders.includes("ac4"));
 
+    const transcodeAddon = path.join(
+        resourcesPath,
+        "res",
+        ".service",
+        "native",
+        "transcode.node",
+    );
+    assert.ok(
+        fs.existsSync(transcodeAddon),
+        "packaged native transcode addon is missing",
+    );
+
     if (platform === "win32" && arch === "x64") {
         const koffiAddon = path.join(
             resourcesPath,

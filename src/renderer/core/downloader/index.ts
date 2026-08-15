@@ -6,6 +6,7 @@ import {
     DownloadTranscodeMode,
     IDownloadTranscodeOptions,
     IDownloadTranscodeResult,
+    MAX_NATIVE_TRANSCODE_CONCURRENCY,
     isDownloadMp3Bitrate,
     isDownloadTranscodeMode,
     isTranscodableContainer,
@@ -98,7 +99,12 @@ const downloadingTaskStore = new Store<IDownloadTaskSnapshot[]>([]);
 const downloadingProgress = new Map<string, IDownloadStatus>();
 const taskControls = new Map<string, IDownloadTaskControl>();
 const downloadingQueue = new PQueue({ concurrency: 5 });
-const downloadFinalizeQueue = new PQueue({ concurrency: 2 });
+const downloadFinalizeQueue = new PQueue({
+    concurrency: Math.min(
+        MAX_NATIVE_TRANSCODE_CONCURRENCY,
+        Math.max(1, Math.ceil((navigator.hardwareConcurrency || 1) / 2)),
+    ),
+});
 const concurrencyLimit = 20;
 const maxAutoRecoveryPerTask = 3;
 let downloaderWorker: IDownloaderWorker | undefined;

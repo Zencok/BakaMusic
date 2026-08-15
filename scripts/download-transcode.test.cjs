@@ -7,7 +7,10 @@ const {
     isDownloadMp3Bitrate,
     isDownloadTranscodeMode,
     isTranscodableContainer,
+    MAX_NATIVE_TRANSCODE_CONCURRENCY,
     normalizeAudioCodecName,
+    resolveNativeTranscodeConcurrency,
+    resolveNodeRuntimeWorkingSetLimitBytes,
     resolveTranscodeTarget,
 } = require("../src/common/audio-transcode.ts");
 
@@ -85,6 +88,15 @@ for (const bitrate of DOWNLOAD_MP3_BITRATES) {
 assert.equal(isDownloadMp3Bitrate("128k"), false);
 assert.equal(isDownloadMp3Bitrate(320), false);
 
+// --- native batch sizing -------------------------------------------------
+assert.equal(MAX_NATIVE_TRANSCODE_CONCURRENCY, 64);
+assert.equal(resolveNativeTranscodeConcurrency(4, 8 * 1024 ** 3), 2);
+assert.equal(resolveNativeTranscodeConcurrency(32, 64 * 1024 ** 3), 16);
+assert.equal(resolveNativeTranscodeConcurrency(64, 64 * 1024 ** 3), 32);
+assert.equal(resolveNativeTranscodeConcurrency(128, 128 * 1024 ** 3), 64);
+assert.equal(resolveNativeTranscodeConcurrency(128, 4 * 1024 ** 3), 4);
+assert.ok(resolveNodeRuntimeWorkingSetLimitBytes(32, 64 * 1024 ** 3) > 512 * 1024 ** 2);
+
 // --- wiring ---------------------------------------------------------------
 const read = (relative) =>
     fs.readFileSync(path.resolve(__dirname, "..", relative), "utf8");
@@ -102,6 +114,8 @@ assert.match(appConfigMain, /\["download\.transcodeMode", new Set\(\["off", "aut
 // silently degrades to "always failed".
 const nodeRuntimeMain = read("src/shared/node-runtime/main.ts");
 assert.match(nodeRuntimeMain, /BAKAMUSIC_MPV_DIR: mpvRuntimeDirectory/);
+assert.match(nodeRuntimeMain, /UV_THREADPOOL_SIZE/);
+assert.match(nodeRuntimeMain, /resolveNodeRuntimeWorkingSetLimitBytes/);
 assert.match(nodeRuntimeMain, /@shared\/node-runtime\/transcode-download/);
 
 const host = read("src/shared/node-runtime/utility/node-runtime-host.ts");
@@ -113,7 +127,8 @@ assert.match(preload, /transcodeDownloadedFile/);
 // Download slots cover network IO only. Verified files enter the bounded
 // postprocess queue without holding back the next queued network download.
 const downloader = read("src/renderer/core/downloader/index.ts");
-assert.match(downloader, /downloadFinalizeQueue = new PQueue\(\{ concurrency: 2 \}\)/);
+assert.match(downloader, /MAX_NATIVE_TRANSCODE_CONCURRENCY/);
+assert.match(downloader, /navigator\.hardwareConcurrency/);
 assert.match(
     downloader,
     /finalizeStarted = true;[\s\S]*?onDownloadComplete\(\);[\s\S]*?downloadFinalizeQueue\.add/,
@@ -121,12 +136,31 @@ assert.match(
 
 const transcodeWorker = read("src/webworkers/audio-transcode.ts");
 assert.match(transcodeWorker, /availableParallelism\(\)/);
-assert.match(
-    transcodeWorker,
-    /Math\.min\(2, Math\.floor\(availableParallelism\(\) \/ 2\)\)/,
-);
+assert.match(transcodeWorker, /resolveNativeTranscodeConcurrency/);
+assert.match(transcodeWorker, /probeAudioCodecNative/);
+assert.match(transcodeWorker, /transcodeNative/);
+assert.match(transcodeWorker, /import\("\.\/audio-transcode-legacy"\)/);
 assert.match(transcodeWorker, /pendingTranscodes: Array<\(\) => void>/);
 assert.doesNotMatch(transcodeWorker, /let transcodeChain/);
+assert.doesNotMatch(transcodeWorker, /koffi|mpv_wait_event/);
+
+const transcodeNative = read("src/common/transcode-native.ts");
+assert.match(transcodeNative, /transcode\.node/);
+assert.match(transcodeNative, /process\.dlopen/);
+assert.match(transcodeNative, /probeMp4AudioCodec/);
+
+const legacyTranscode = read("src/webworkers/audio-transcode-legacy.ts");
+assert.match(legacyTranscode, /from "koffi"/);
+assert.match(legacyTranscode, /probeAudioCodecLegacy/);
+
+for (const nativeScript of [
+    "scripts/build-native.js",
+    "scripts/install-native-modules.cjs",
+    "scripts/native-smoke.cjs",
+    "scripts/update-native-modules-manifest.cjs",
+]) {
+    assert.match(read(nativeScript), /transcode/);
+}
 
 // Three locales must stay in sync or the settings page renders raw keys.
 for (const lang of ["zh-CN", "zh-TW", "en-US"]) {

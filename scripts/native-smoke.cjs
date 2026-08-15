@@ -33,7 +33,7 @@ const expectedArch = readOption("--arch", process.arch);
 const expectedPlatform = readOption("--platform", process.platform);
 const modules = readOption(
     "--modules",
-    process.env.REQUIRED_NATIVE_MODULES || "qmc2,ence,taglib",
+    process.env.REQUIRED_NATIVE_MODULES || "qmc2,ence,taglib,transcode",
 ).split(",").map((name) => name.trim()).filter(Boolean);
 
 assert.equal(process.arch, expectedArch, `runtime arch mismatch: ${process.arch}`);
@@ -45,6 +45,7 @@ const requiredExports = {
     qmc2: ["decryptEKey", "createDecoder", "decrypt", "destroyDecoder"],
     ence: ["createDecoder", "getInfo", "getHeader", "decrypt", "destroyDecoder"],
     taglib: ["readTags", "writeTags"],
+    transcode: ["probeMp4AudioCodec", "probeAudioCodec", "transcode"],
 };
 
 let taglibVersion = null;

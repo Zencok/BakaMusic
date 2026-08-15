@@ -8,8 +8,8 @@
  * Rules:
  * 1. Only MP4-family containers are candidates. Real `.mp3` / `.flac` / `.ogg`
  *    downloads are already in their native container and stay untouched.
- * 2. The decision is made on the *actual* codec inside the container
- *    (libmpv `audio-codec-name`), never on the file extension.
+ * 2. The decision is made on the *actual* codec inside the container (native
+ *    MP4 sample-entry probe, with libmpv fallback), never on the extension.
  * 3. Dolby / surround codecs are never transcoded. QQ 音乐 dolby is AC-4 in
  *    MP4; downmixing it to stereo MP3 destroys exactly what the user paid for.
  * 4. Lossless in → FLAC (re-encode is still bit-exact). Lossy in → MP3.
@@ -27,6 +27,75 @@ export const DOWNLOAD_MP3_BITRATES: readonly DownloadMp3Bitrate[] = [
     "320k",
     "v0",
 ];
+
+const MEBIBYTE = 1024 * 1024;
+const MIN_TRANSCODE_WORKING_SET_BYTES = 512 * MEBIBYTE;
+const MAX_TRANSCODE_WORKING_SET_BYTES = 8 * 1024 * MEBIBYTE;
+const TRANSCODE_BASE_WORKING_SET_BYTES = 384 * MEBIBYTE;
+const TRANSCODE_JOB_WORKING_SET_BYTES = 96 * MEBIBYTE;
+export const MAX_NATIVE_TRANSCODE_CONCURRENCY = 64;
+
+function normalizePositiveInteger(value: number, fallback: number) {
+    return Number.isFinite(value) && value > 0
+        ? Math.max(1, Math.floor(value))
+        : fallback;
+}
+
+/**
+ * LAME/FLAC encode a track mostly on one core. Use roughly one job per
+ * physical core (half the logical CPU count), bounded again by a conservative
+ * per-mpv memory estimate. A 64-thread workstation therefore gets 32 jobs;
+ * 128 threads can reach the explicit safety ceiling of 64 jobs.
+ */
+export function resolveNativeTranscodeConcurrency(
+    logicalCpuCount: number,
+    totalMemoryBytes: number,
+) {
+    const cpus = normalizePositiveInteger(logicalCpuCount, 1);
+    const totalMemory = normalizePositiveInteger(
+        totalMemoryBytes,
+        MIN_TRANSCODE_WORKING_SET_BYTES,
+    );
+    const memoryBudget = Math.min(
+        MAX_TRANSCODE_WORKING_SET_BYTES,
+        Math.max(MIN_TRANSCODE_WORKING_SET_BYTES, Math.floor(totalMemory * 0.2)),
+    );
+    const cpuBound = Math.max(1, Math.ceil(cpus / 2));
+    const memoryBound = Math.max(
+        1,
+        Math.floor(
+            (memoryBudget - TRANSCODE_BASE_WORKING_SET_BYTES)
+            / TRANSCODE_JOB_WORKING_SET_BYTES,
+        ),
+    );
+    return Math.min(MAX_NATIVE_TRANSCODE_CONCURRENCY, cpuBound, memoryBound);
+}
+
+/** Keep the utility resource monitor aligned with the native worker budget. */
+export function resolveNodeRuntimeWorkingSetLimitBytes(
+    nativeTranscodeConcurrency: number,
+    totalMemoryBytes: number,
+) {
+    const concurrency = Math.min(
+        MAX_NATIVE_TRANSCODE_CONCURRENCY,
+        normalizePositiveInteger(nativeTranscodeConcurrency, 1),
+    );
+    const totalMemory = normalizePositiveInteger(
+        totalMemoryBytes,
+        MIN_TRANSCODE_WORKING_SET_BYTES,
+    );
+    return Math.min(
+        MAX_TRANSCODE_WORKING_SET_BYTES,
+        Math.max(
+            MIN_TRANSCODE_WORKING_SET_BYTES,
+            Math.min(
+                Math.floor(totalMemory * 0.2),
+                TRANSCODE_BASE_WORKING_SET_BYTES
+                    + concurrency * TRANSCODE_JOB_WORKING_SET_BYTES,
+            ),
+        ),
+    );
+}
 
 /** Containers whose payload codec is ambiguous and worth unwrapping. */
 const MP4_FAMILY_EXTENSIONS = new Set([
@@ -65,8 +134,8 @@ const LOSSLESS_CODECS = new Set([
 export type AudioCodecClass = "lossless" | "lossy" | "preserve";
 
 /**
- * Normalize the libmpv `audio-codec-name` value.
- * mpv reports plain decoder names (`aac`, `flac`, `ac4`), but some builds add
+ * Normalize codec names from the native MP4 probe / libmpv fallback. mpv
+ * reports plain decoder names (`aac`, `flac`, `ac4`), but some builds add
  * profile suffixes such as `aac_latm` or vendor prefixes.
  */
 export function normalizeAudioCodecName(codecName: string | null | undefined) {
