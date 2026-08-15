@@ -431,3 +431,11 @@ pending
 - **Bug**: Returning from a recommended sheet picked a new random tag and refreshed the list.
 - **Files**: 1 file
 - **Tests**: npm exec eslint -- Body/index.tsx; npm exec tsc -- --noEmit --pretty false; npm test
+
+## 2026-08-15T18:35:49.9507317+08:00 — fix(local-music): correct nested list scrolling
+
+- **Context-Id**: 01a004fd-ff3e-7ad5-b0f5-e38610471837
+- **Decision**: Make the rendered music list own scrolling in nested local-music views
+- **Bug**: Nested local-music lists could use a different scroll surface from their virtualized rows and collide with the glass music bar.
+- **Files**: 9 files
+- **Tests**: Not run (Git-only commit workflow)

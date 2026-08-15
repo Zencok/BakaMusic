@@ -27,7 +27,9 @@ export default function FolderView(props: IProps) {
     const rightPartRef = useRef<HTMLDivElement>(null);
     const virtualProps = useMemo(() => ({
         getScrollElement() {
-            return rightPartRef.current;
+            return rightPartRef.current?.querySelector<HTMLElement>(
+                ".music-list-container",
+            ) ?? null;
         },
         fallbackRenderCount: 40,
     }), []);

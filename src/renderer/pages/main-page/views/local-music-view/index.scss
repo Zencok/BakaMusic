@@ -25,6 +25,10 @@
     margin-top: 1.15rem;
   }
 
+  &[data-full-page="false"] > .music-list-container {
+    flex-shrink: 0;
+  }
+
   & .local-music-view-actions {
     max-width: 100%;
     justify-self: start;

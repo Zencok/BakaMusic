@@ -266,7 +266,10 @@ html[data-ui-style="glass"] {
     scroll-padding-bottom: var(--musicBarClearance);
   }
 
-  .local-music-view--container[data-full-page="false"] .music-list-container::after,
+  .local-music-view--container[data-full-page="false"] {
+    padding-bottom: var(--musicBarClearance);
+  }
+
   .download-view--container > .downloading-container::after,
   .recommend-sheets-view--container .music-sheet-like-list--container::after,
   .plugin-manager-view-container .plugin-card-list::after {
@@ -294,11 +297,10 @@ html[data-ui-style="glass"] {
     padding-bottom: 0.85rem !important;
   }
 
-  .local-music--album-view-container .right-part,
-  .local-music--artist-view-container .right-part,
-  .local-music--folder-view-container .right-part {
+  .local-music--album-view-container,
+  .local-music--artist-view-container,
+  .local-music--folder-view-container {
     padding-bottom: var(--musicBarClearance);
-    scroll-padding-bottom: var(--musicBarClearance);
     box-sizing: border-box;
   }
 }

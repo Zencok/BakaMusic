@@ -1,6 +1,7 @@
 .local-music--folder-view-container {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  overflow: hidden;
   padding: 14px 0 0;
   display: flex;
   align-items: stretch;
@@ -57,6 +58,14 @@
   & .right-part {
     flex: 1;
     min-width: 0;
-    overflow-y: auto;
+    min-height: 0;
+    overflow: hidden;
+
+    & > .music-list-container {
+      height: 100%;
+      min-height: 0;
+      margin-top: 0;
+      overflow-y: auto;
+    }
   }
 }
