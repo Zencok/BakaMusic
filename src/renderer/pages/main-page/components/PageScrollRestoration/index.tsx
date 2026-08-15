@@ -7,8 +7,42 @@ interface IScrollPosition {
 }
 
 const MAX_CACHED_ENTRIES = 64;
+const HISTORY_SCROLL_KEY = "__bakamusicScrollPosition";
 const scrollPositions = new Map<string, IScrollPosition>();
 const scrollPositionsByRoute = new Map<string, IScrollPosition>();
+
+function readHistoryScrollPosition(): IScrollPosition | undefined {
+    const value = history.state?.usr?.[HISTORY_SCROLL_KEY];
+    if (!value || typeof value !== "object") {
+        return undefined;
+    }
+    const position = value as { left?: unknown; top?: unknown };
+    if (typeof position.left !== "number" || typeof position.top !== "number") {
+        return undefined;
+    }
+    if (!Number.isFinite(position.left) || !Number.isFinite(position.top)) {
+        return undefined;
+    }
+    return {
+        left: Math.max(0, position.left),
+        top: Math.max(0, position.top),
+    };
+}
+
+function writeHistoryScrollPosition(position: IScrollPosition) {
+    const state = history.state;
+    if (!state || typeof state !== "object") {
+        return;
+    }
+    const usr = state.usr && typeof state.usr === "object" ? state.usr : {};
+    history.replaceState({
+        ...state,
+        usr: {
+            ...usr,
+            [HISTORY_SCROLL_KEY]: position,
+        },
+    }, "");
+}
 
 function rememberScrollPosition(key: string, position: IScrollPosition) {
     scrollPositions.delete(key);
@@ -48,7 +82,8 @@ export default function PageScrollRestoration() {
             return;
         }
 
-        const cachedPosition = scrollPositions.get(location.key)
+        const cachedPosition = (navigationType === "POP" ? readHistoryScrollPosition() : undefined)
+            ?? scrollPositions.get(location.key)
             ?? (navigationType === "POP" ? scrollPositionsByRoute.get(routeKey) : undefined);
         let restoreFrame = 0;
         let restoreTimer: number | null = null;
@@ -103,6 +138,7 @@ export default function PageScrollRestoration() {
                 };
                 rememberScrollPosition(location.key, position);
                 rememberRoutePosition(routeKey, position);
+                writeHistoryScrollPosition(position);
             }
         };
         pageContainer.addEventListener("scroll", rememberCurrentPosition, {
@@ -139,6 +175,7 @@ export default function PageScrollRestoration() {
                 };
             rememberScrollPosition(location.key, position);
             rememberRoutePosition(routeKey, position);
+            writeHistoryScrollPosition(position);
         };
     }, [location.key, navigationType, routeKey]);
 
