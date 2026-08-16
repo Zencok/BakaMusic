@@ -13,4 +13,3 @@ import "@shared/short-cut/preload";
 import "@shared/node-runtime/preload";
 import "@shared/backup/preload";
 import "@shared/native-playback/preload";
-import "@shared/video-proxy/preload";

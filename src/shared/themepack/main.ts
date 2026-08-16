@@ -626,7 +626,32 @@ export async function setupThemePackMain() {
         }
         const resolvedScheme = resolveThemeScheme(themeScheme);
         const targetWindow = BrowserWindow.fromWebContents(event.sender);
-        if (!targetWindow || targetWindow.isDestroyed() || !supportsNativeAcrylic()) {
+        const surfaceWindow = targetWindow as (BrowserWindow & {
+            __bakaNativeVideoOverlay?: boolean;
+            __bakaWindowMaterialPreference?: {
+                enabled: boolean;
+                scheme: ThemeScheme;
+            };
+        }) | null;
+        if (surfaceWindow) {
+            surfaceWindow.__bakaWindowMaterialPreference = {
+                enabled: enabled && supportsNativeAcrylic(),
+                scheme: resolvedScheme,
+            };
+        }
+        if (!targetWindow || targetWindow.isDestroyed()) {
+            return false;
+        }
+
+        if (surfaceWindow?.__bakaNativeVideoOverlay) {
+            targetWindow.setBackgroundMaterial("none");
+            targetWindow.setBackgroundColor("#00000000");
+            // Preserve the renderer's Acrylic styling while the native video
+            // temporarily owns the actual DWM surface behind it.
+            return enabled && supportsNativeAcrylic();
+        }
+
+        if (!supportsNativeAcrylic()) {
             if (targetWindow && !targetWindow.isDestroyed() && process.platform === "win32") {
                 targetWindow.setBackgroundColor(getOpaqueWindowBackground(resolvedScheme));
             }

@@ -61,6 +61,8 @@ const runtimeDirectory = process.env.BAKAMUSIC_MPV_DIR;
 if (!runtimeDirectory) {
     throw new Error("libmpv runtime directory is missing");
 }
+const videoWindowId = process.env.BAKAMUSIC_MPV_WID?.trim() ?? "";
+const videoMode = videoWindowId.length > 0;
 
 const libraryName = process.platform === "win32"
     ? "libmpv-2.dll"
@@ -161,19 +163,45 @@ const bootstrapOptions: Array<[string, string]> = [
     ["config", "no"],
     ["load-scripts", "no"],
     ["terminal", "no"],
-    ["input-default-bindings", "no"],
-    ["input-vo-keyboard", "no"],
-    ["osc", "no"],
     ["idle", "yes"],
     ["keep-open", "yes"],
     ["pause", "yes"],
-    ["video", "no"],
     ["audio-display", "no"],
     // Lyrics and artwork are managed by BakaMusic. Avoid probing sibling
     // subtitle files, whose guessed legacy encoding can produce lavf warnings.
     ["autoload-files", "no"],
     ["audio-pitch-correction", "yes"],
 ];
+
+if (videoMode) {
+    bootstrapOptions.push(
+        ["wid", videoWindowId],
+        ["video", "auto"],
+        ["vo", "gpu-next"],
+        ["hwdec", "auto-safe"],
+        // The renderer owns the original BakaMusic controls. libmpv only
+        // decodes and presents into the click-through native surface.
+        ["input-default-bindings", "no"],
+        ["input-vo-keyboard", "no"],
+        ["osc", "no"],
+        ["target-colorspace-hint", "yes"],
+        ["tone-mapping", "auto"],
+        ["hdr-compute-peak", "yes"],
+    );
+    if (process.platform === "win32") {
+        bootstrapOptions.push(
+            ["gpu-api", "d3d11"],
+            ["gpu-context", "d3d11"],
+        );
+    }
+} else {
+    bootstrapOptions.push(
+        ["video", "no"],
+        ["input-default-bindings", "no"],
+        ["input-vo-keyboard", "no"],
+        ["osc", "no"],
+    );
+}
 
 // Windows: pin WASAPI and optionally open the device in exclusive mode so the
 // session is not mixed by the Windows audio engine (lower latency, direct path).

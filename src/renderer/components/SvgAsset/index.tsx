@@ -46,6 +46,7 @@ export type SvgAssetIconNames =
     | "mq"
     | "minus"
     | "motion-play"
+    | "mv-speed"
     | "musical-note"
     | "pause"
     | "pencil-square"

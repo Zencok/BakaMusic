@@ -53,7 +53,7 @@ function buildVideoDownloadPath(
 
 export function startMusicVideoDownload(
     musicItem: IMusic.IMusicItem,
-    sourceUrl: string,
+    mediaSource: IMusic.IMusicSource,
     quality: string,
     onProgress: (progress: IVideoDownloadProgress) => void,
 ): IVideoDownloadTask {
@@ -63,7 +63,7 @@ export function startMusicVideoDownload(
     let canceled = false;
     const completion = nodeRuntime.downloadFile(
         taskId,
-        { url: sourceUrl },
+        mediaSource,
         filePath,
         (progress) => {
             terminalState = progress;

@@ -458,6 +458,7 @@
         "now_playing": "Now playing MV",
         "retry": "Retry",
         "playback_progress": "Video playback progress",
+        "playback_speed": "Playback speed",
         "quality_short": "Quality",
         "fullscreen": "Enter fullscreen",
         "exit_fullscreen": "Exit fullscreen",
@@ -472,7 +473,8 @@
         "size_stream": "Stream",
         "size_unknown": "Size unknown",
         "captions": "Captions",
-        "no_source": "This song has no available MV"
+        "no_source": "This song has no available MV",
+        "native_active": "Playing with libmpv"
     },
     "music_detail": {
         "search_lyric": "Search Lyric",

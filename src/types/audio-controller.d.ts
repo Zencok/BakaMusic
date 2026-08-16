@@ -21,6 +21,9 @@ export interface IAudioController {
      */
     reloadTrack?(options?: { seekTo?: number; autoPlay?: boolean }): boolean;
 
+    /** 释放 libmpv 音频实例持有的输出端点，同时保留当前音源以便稍后恢复。 */
+    suspendForVideo?(): Promise<void>;
+
     // 暂停
     pause(): void;
 

@@ -9,149 +9,160 @@ const musicList = read("src/renderer/components/MusicList/index.tsx");
 assert.match(musicList, /music_list_context_menu\.play_mv/);
 assert.match(musicList, /showModal\("MvPlayer", \{ musicItem \}\)/);
 assert.match(musicList, /canPlayMusicVideo\(musicItem\)/);
-assert.match(musicList, /<MusicVideoBadge musicItem=\{musicItem\}/);
-
-const queue = read("src/renderer/components/Panel/templates/PlayList/index.tsx");
-assert.match(queue, /<MusicVideoBadge musicItem=\{musicItem\} compact/);
-
-const musicInfo = read("src/renderer/components/MusicBar/widgets/MusicInfo/index.tsx");
-assert.match(musicInfo, /<MusicVideoBadge musicItem=\{musicItem\} compact/);
 
 const badge = read("src/renderer/components/MusicVideoBadge/index.tsx");
 assert.match(badge, /canPlayMusicVideo\(musicItem\)/);
 assert.match(badge, /showModal\("MvPlayer", \{ musicItem \}\)/);
 
-const musicBar = read("src/renderer/components/MusicBar/widgets/Extra/index.tsx");
-assert.match(musicBar, /function MvBtn\(\)/);
-assert.match(musicBar, /showModal\("MvPlayer", \{ musicItem: currentMusic \}\)/);
-
 const player = read("src/renderer/components/Modal/templates/MvPlayer/index.tsx");
 assert.match(player, /"getMvSource"/);
-assert.match(player, /videoProxy\.register/);
-assert.match(player, /videoProxy\.release/);
-assert.match(player, /Hls\.isSupported/);
-assert.match(player, /Hls\.ErrorTypes\.NETWORK_ERROR/);
-assert.match(player, /Hls\.ErrorTypes\.MEDIA_ERROR/);
-assert.match(player, /playbackIntentRef/);
-assert.match(player, /\.m3u8\(\?:\$\|\[\?#\]\)/);
-assert.match(player, /video\.pause\(\)/);
-assert.match(player, /type="range"/);
-assert.match(player, /mv-player-volume/);
-assert.match(player, /mv-player-quality-picker/);
-assert.match(player, /role="menuitemradio"/);
-assert.match(player, /toggleFullscreen/);
-assert.match(player, /requestFullscreen/);
-assert.match(player, /setMainWindowFullScreen\?\.\(true\)/);
-assert.match(player, /onMainWindowFullScreenChanged/);
-assert.doesNotMatch(player, /toggleMainWindowFullScreen/);
-assert.doesNotMatch(player, /<select/);
-assert.doesNotMatch(player, /quality_short/);
-assert.doesNotMatch(player, /mv_player\.now_playing/);
-assert.match(player, /availableVideoQualities/);
-assert.match(player, /qualityOptions\.length > 0/);
-assert.match(player, /mv-player-quality-size/);
-assert.match(player, /mv-player-heading-quality/);
-assert.match(player, /cog-8-tooth/);
-assert.match(player, /dedupeVerifiedQualityOptions/);
-assert.match(player, /sourceFingerprint/);
-assert.match(player, /highestDeclaredQuality/);
-assert.match(player, /autoSelectHighestRef/);
-assert.match(player, /mv-player-download-menu/);
-assert.match(player, /downloadMenuOpen/);
-assert.match(player, /handleDownload\(item\)/);
-assert.match(player, /downloadSessionRef/);
-assert.match(player, /qualitySourceCacheRef/);
-assert.match(player, /toLocaleUpperCase\("en-US"\)/);
-assert.doesNotMatch(player, /optionMeta \|\| "—"/);
-assert.match(player, /getBufferedPercent/);
-assert.match(player, /handleWheelVolume/);
-assert.match(player, /rangeInteractionRef/);
-assert.match(player, /onPointerMove=\{handlePointerActivity\}/);
-assert.match(player, /revealControlsRef\.current\(\)/);
-assert.match(player, /syncElementFullscreen[\s\S]*?setMainWindowFullScreen\?\.\(true\)/);
-assert.match(player, /supportedVideoQualities/);
-assert.match(player, /probeProxyVideoSize/);
-assert.match(player, /content-range/);
-assert.doesNotMatch(player, /className="sr-only"/);
+assert.match(player, /nativePlayback\.openVideo/);
+assert.match(player, /nativePlayback\.prepareVideoOverlay\(sessionId\)/);
+assert.match(player, /normalizeVideoUpstreamUrl\(source\.url\)/);
+assert.match(player, /source\.backupUrls\?\.map\(normalizeVideoUpstreamUrl\)/);
+assert.match(player, /nativePlayback\.updateVideoSources/);
+assert.match(player, /nativePlayback\.selectVideoSource/);
+assert.match(player, /nativePlayback\.videoCommand/);
+assert.match(player, /nativePlayback\.updateVideoSurface/);
+assert.match(player, /VIDEO_SPEED_PRESETS/);
+assert.match(player, /VIDEO_SPEED_PRESETS = \[2, 1\.5, 1\.25, 1, 0\.75, 0\.5\]/);
+assert.match(player, /mv-player-speed-trigger[\s\S]*?iconName="mv-speed"/);
+assert.match(player, /mv-player-speed-trigger[\s\S]*?mv-player-download-picker/);
+assert.match(player, /mv_player\.playback_speed/);
+assert.match(player, /operation: "speed"/);
+assert.match(player, /nativePlayback\.closeVideo/);
+assert.match(player, /nativePlayback\.onVideoEvent/);
+assert.match(player, /trackPlayer\.suspendForVideo/);
+assert.match(player, /trackPlayer\.restoreAfterVideo/);
+assert.match(player, /dolby\[\\s_-\]\*vision/);
+assert.match(player, /dynamicRange === "dolby-vision"/);
+assert.match(player, /function getVideoSourceFingerprint/);
+assert.match(player, /function getActualQuality/);
+assert.match(player, /source\.actualKey/);
+assert.match(player, /item\.sourceFingerprint === source\.sourceFingerprint/);
+assert.match(player, /dedupeSources\(candidates, initialSource\.key\)/);
+assert.match(player, /const surfaceVisible = nativeOpened && nativeFrameReady && !error/);
+assert.match(player, /snapshot\.currentTime > 0/);
+assert.match(player, /!nativeFrameReady \|\| !nativeSurfaceRevealed/);
+assert.match(player, /setNativeSurfaceRevealed\(true\)/);
+assert.match(player, /data-native-surface-visible=\{surfaceVisible/);
+assert.match(player, /root\.dataset\.nativeVideoOverlay = "true"/);
+assert.match(player, /const \[closing, setClosing\] = useState\(false\)/);
+assert.match(player, /waitForOpacityTransition\(closeCurtainRef\.current/);
+assert.match(player, /setCloseCovered\(true\)[\s\S]*?nativePlayback\.closeVideo/);
+assert.match(player, /setExiting\(true\)/);
+assert.match(player, /await waitForRendererPaint\(\)/);
+assert.match(player, /visible: false/);
+assert.match(player, /<Base animated=\{false\} withBlur=\{false\} onRequestClose=\{requestClose\}>/);
+assert.doesNotMatch(player, /native_active/);
+assert.doesNotMatch(player, /<kbd>SPACE<\/kbd>/);
+assert.doesNotMatch(player, /surfaceVisible = nativeOpened\s*&& playing/);
+assert.doesNotMatch(player, /<video/);
+assert.doesNotMatch(player, /HTMLVideoElement/);
+assert.doesNotMatch(player, /hls\.js|\bHls\b/);
+assert.doesNotMatch(player, /videoProxy/);
 assert.match(player, /startMusicVideoDownload/);
-assert.match(player, /shellUtil\.showItemInFolder/);
-assert.match(player, /downloadPhase === "downloading"/);
-assert.match(player, /defaultClose/);
+assert.match(player, /mv-player-download-picker/);
 
-const playerStyles = read("src/renderer/components/Modal/templates/MvPlayer/index.scss");
-assert.match(playerStyles, /#components--modal-base-container > \.modal--mv-player/);
-assert.doesNotMatch(playerStyles, /#components--modal-base > \.modal--mv-player/);
-assert.match(playerStyles, /flex:\s*0 0 auto/);
-assert.match(playerStyles, /aspect-ratio:\s*16 \/ 9/);
-assert.match(playerStyles, /height:\s*100vh/);
-assert.match(playerStyles, /background:\s*#050505 !important/);
-assert.match(playerStyles, /backdrop-filter:\s*none !important/);
-assert.match(playerStyles, /&:fullscreen/);
-assert.match(playerStyles, /mv-player-quality-menu/);
-assert.match(playerStyles, /mv-player-heading-quality/);
-assert.match(playerStyles, /var\(--primaryColor, #f17d34\)/);
-assert.match(playerStyles, /width:\s*248px/);
-assert.match(playerStyles, /grid-template-columns:\s*minmax\(0, 1fr\) minmax\(64px, auto\)/);
-assert.match(playerStyles, /text-align:\s*left/);
-assert.match(playerStyles, /text-align:\s*right/);
-assert.match(playerStyles, /right:\s*43px/);
-assert.doesNotMatch(playerStyles, /0 0 0 1\.5px rgba\(5, 5, 5/);
-assert.match(playerStyles, /mv-player-seek-preview/);
-assert.match(playerStyles, /mv-player-volume-control/);
-assert.match(playerStyles, /\.mv-player-stage\s*\{[\s\S]*?cursor:\s*default/);
-assert.match(playerStyles, /data-controls-visible="false"[\s\S]*?\.mv-player-stage,[\s\S]*?cursor:\s*none/);
-assert.match(playerStyles, /\.mv-player-progress,[\s\S]*?cursor:\s*pointer/);
-assert.match(playerStyles, /\.mv-player-controls\s*\{[\s\S]*padding:\s*72px 0 16px/);
-
-const utilsMain = read("src/shared/utils/main.ts");
-assert.match(utilsMain, /powerSaveBlocker\.start\("prevent-display-sleep"\)/);
-assert.match(utilsMain, /setImmersiveSessionEffects\(true\)/);
+const nativeMain = read("src/shared/native-playback/main.ts");
+assert.match(nativeMain, /@shared\/native-playback\/open-video/);
+assert.match(nativeMain, /@shared\/native-playback\/prepare-video-overlay/);
+assert.match(nativeMain, /setBackgroundMaterial\("none"\)/);
+assert.match(nativeMain, /normalizeVideoUpstreamUrl\(value\.url\)/);
+assert.match(nativeMain, /@shared\/native-playback\/update-video-sources/);
+assert.match(nativeMain, /@shared\/native-playback\/close-video/);
+assert.match(nativeMain, /@shared\/native-playback\/video-command/);
+assert.match(nativeMain, /@shared\/native-playback\/update-video-surface/);
+assert.match(nativeMain, /getNativeWindowHandle\(\)/);
+assert.match(nativeMain, /new BaseWindow\(/);
+assert.match(nativeMain, /WS_POPUP/);
+assert.match(nativeMain, /initiallyVisible/);
+assert.match(nativeMain, /private videoWindowPriming = false/);
+assert.match(nativeMain, /this\.videoWindowPriming = true;[\s\S]*?this\.syncVideoWindowBounds\(\)/);
+assert.match(nativeMain, /optional SWP_SHOWWINDOW/);
+assert.match(nativeMain, /screen\.dipToScreenRect/);
+assert.doesNotMatch(nativeMain, /0x40000000 \/\/ WS_CHILD/);
+assert.match(nativeMain, /BAKAMUSIC_MPV_WID/);
+assert.match(nativeMain, /frame: false/);
+assert.match(nativeMain, /setIgnoreMouseEvents\(true/);
+assert.doesNotMatch(nativeMain, /Menu\.buildFromTemplate/);
+assert.match(nativeMain, /switchVideoSource/);
+assert.match(nativeMain, /videoSpeed/);
+assert.match(nativeMain, /operation: "speed"/);
+assert.match(nativeMain, /window\.hide\(\);[\s\S]*?window\.destroy\(\);/);
 
 const baseModal = read("src/renderer/components/Modal/templates/Base/index.tsx");
-assert.match(baseModal, /if \(document\.fullscreenElement\)/);
+assert.match(baseModal, /onRequestClose\?:/);
+assert.match(baseModal, /if \(onRequestClose\)/);
 
-const downloadUtil = read("src/renderer/utils/download-music-video.ts");
-assert.match(downloadUtil, /nodeRuntime\.downloadFile/);
-assert.match(downloadUtil, /nodeRuntime\.abortDownload/);
-assert.match(downloadUtil, /"AbortError"/);
+const videoUrl = read("src/common/video-url.ts");
+assert.match(videoUrl, /parsed\.protocol === "https:"/);
+assert.match(videoUrl, /fsmvpc\(\?:\\\.tx\)\?\\\.kugou\\\.com/);
+assert.match(videoUrl, /parsed\.protocol = "http:"/);
 
-const proxyMain = read("src/shared/video-proxy/main.ts");
-assert.match(proxyMain, /assertIpcSender\(event, \["main"\]\)/);
-assert.match(proxyMain, /assertUrl\(value\.url/);
-assert.match(proxyMain, /request\.headers\.range/);
-assert.match(proxyMain, /rewritePlaylist/);
-assert.match(proxyMain, /writeHlsDownload/);
-assert.match(proxyMain, /parseHlsSegments/);
-assert.match(proxyMain, /proxyDownloadUrl/);
-assert.match(proxyMain, /access-control-allow-origin/);
-assert.match(proxyMain, /access-control-expose-headers/);
-assert.match(proxyMain, /request\.method === "OPTIONS"/);
-assert.match(proxyMain, /MAX_PLAYLIST_BYTES/);
-assert.match(proxyMain, /ERR_BLOCKED_BY_CLIENT/);
-assert.match(proxyMain, /fetch\(/);
-assert.match(proxyMain, /normalizeVideoUpstreamUrl/);
+const nativeHost = read("src/shared/native-playback/utility/native-playback-host.ts");
+assert.match(nativeHost, /videoWindowId/);
+assert.match(nativeHost, /\["vo", "gpu-next"\]/);
+assert.match(nativeHost, /\["hwdec", "auto-safe"\]/);
+assert.match(nativeHost, /\["target-colorspace-hint", "yes"\]/);
+assert.match(nativeHost, /\["gpu-api", "d3d11"\]/);
+assert.match(nativeHost, /\["osc", "no"\]/);
 
-const integrity = read("src/webworkers/download-integrity.ts");
-assert.match(integrity, /video\/mp2t/);
-assert.match(integrity, /video\/webm/);
-assert.match(integrity, /\.ts/);
-assert.match(integrity, /\.webm/);
+const nativePreload = read("src/shared/native-playback/preload.ts");
+assert.match(nativePreload, /openVideo/);
+assert.match(nativePreload, /prepareVideoOverlay/);
+assert.match(nativePreload, /updateVideoSources/);
+assert.match(nativePreload, /selectVideoSource/);
+assert.match(nativePreload, /videoCommand/);
+assert.match(nativePreload, /updateVideoSurface/);
+assert.match(nativePreload, /closeVideo/);
+assert.match(nativePreload, /onVideoEvent/);
+
+const packageJson = JSON.parse(read("package.json"));
+assert.equal(packageJson.dependencies?.["hls.js"], undefined);
+assert.equal(packageJson.devDependencies?.["hls.js"], undefined);
+assert.equal(fs.existsSync(path.join(root, "src/shared/video-proxy/main.ts")), false);
+assert.equal(fs.existsSync(path.join(root, "src/renderer/utils/download-music-video.ts")), true);
+
+const playerStyles = read("src/renderer/components/Modal/templates/MvPlayer/index.scss");
+assert.match(playerStyles, /modal--mv-player/);
+assert.match(playerStyles, /mv-player-native-surface/);
+assert.match(playerStyles, /mv-player-speed-menu/);
+assert.match(playerStyles, /\.mv-player-speed-menu[\s\S]*?right:\s*auto;[\s\S]*?left:\s*0;/);
+assert.match(playerStyles, /mv-player-download-menu/);
+assert.match(playerStyles, /\.mv-player-quality-menu[\s\S]*?scrollbar-width:\s*thin/);
+assert.match(playerStyles, /\.mv-player-quality-menu[\s\S]*?::-webkit-scrollbar-thumb:hover/);
+assert.match(playerStyles, /prefers-reduced-motion/);
+assert.match(playerStyles, /data-native-video-overlay="true"/);
+assert.match(playerStyles, /\.mv-player-close-curtain/);
+assert.match(playerStyles, /data-exiting="true"/);
+assert.match(playerStyles, /#components--modal-base-container:has\(> \.modal--mv-player\)[\s\S]*?background:\s*var\(--appOverlayMask\) !important/);
+assert.match(playerStyles, /html\[data-native-video-overlay="true"\][\s\S]*?#components--modal-base-container:has\(> \.modal--mv-player\)[\s\S]*?background:\s*transparent !important/);
+assert.match(playerStyles, /data-native-surface-visible="true"[\s\S]*?visibility:\s*hidden/);
+assert.match(playerStyles, /native-video-rounded-cutout/);
+assert.match(playerStyles, /--native-video-radius-near/);
+assert.match(playerStyles, /--native-video-radius-mid/);
+assert.match(playerStyles, /--native-video-radius-far/);
+assert.match(playerStyles, /\[data-ui-style="flat"\] #components--modal-base-container > \.modal--mv-player \.mv-player-close/);
+assert.match(playerStyles, /\.mv-player-control-row \.mv-player-icon-button[\s\S]*?box-shadow:\s*none !important/);
+assert.match(playerStyles, /\.mv-player-control-row \.mv-player-icon-button[\s\S]*?&:hover[\s\S]*?background:\s*transparent !important/);
+assert.match(playerStyles, /\[aria-expanded="true"\][\s\S]*?var\(--mv-accent\)/);
+assert.match(playerStyles, /\.mv-player-native-surface\s*\{[\s\S]*?inset:\s*0;/);
+assert.match(playerStyles, /\.mv-player-topbar[\s\S]*?linear-gradient/);
+assert.match(playerStyles, /\.mv-player-controls[\s\S]*?linear-gradient/);
+assert.doesNotMatch(playerStyles, /inset:\s*74px 0 84px/);
+assert.doesNotMatch(playerStyles, /inset:\s*58px 0 72px/);
+assert.doesNotMatch(playerStyles, /data-fullscreen[^\n]*data-controls-visible/);
 
 for (const lang of ["zh-CN", "zh-TW", "en-US"]) {
     const messages = JSON.parse(read(`res/lang/${lang}.json`));
-    assert.equal(typeof messages.music_bar.play_mv, "string");
-    assert.equal(typeof messages.music_list_context_menu.play_mv, "string");
-    assert.equal(typeof messages.mv_player.title, "string");
-    assert.equal(typeof messages.mv_player.video_quality, "string");
     for (const key of [
-        "now_playing", "retry", "playback_progress", "quality_short",
-        "fullscreen", "exit_fullscreen", "download", "cancel_download",
-        "retry_download", "show_download", "download_canceled",
-        "download_complete", "download_failed", "size_loading",
-        "size_stream", "size_unknown",
+        "video_quality", "loading", "error", "retry",
+        "playback_progress", "playback_speed", "fullscreen", "exit_fullscreen",
+        "download", "cancel_download", "download_complete", "download_failed", "native_active",
     ]) {
         assert.equal(typeof messages.mv_player[key], "string", `${lang}: mv_player.${key}`);
     }
 }
 
-console.log("Video player UI tests passed.");
+console.log("Native libmpv video player tests passed.");

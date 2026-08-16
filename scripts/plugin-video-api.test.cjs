@@ -14,6 +14,8 @@ assert.match(pluginTypes, /getMvSource\?:/);
 assert.match(pluginTypes, /supportedVideoQualities\?: string\[\]/);
 assert.match(pluginTypes, /videoQuality\?: string/);
 assert.match(pluginTypes, /expiresAt\?: number/);
+assert.match(pluginTypes, /VideoDynamicRange = "sdr" \| "hdr10" \| "dolby-vision"/);
+assert.match(pluginTypes, /dynamicRange\?: VideoDynamicRange/);
 
 const mediaTypes = read("src/types/media.d.ts");
 assert.match(mediaTypes, /mv\?: string \| number/);
@@ -22,6 +24,7 @@ const pluginMethods = read("src/shared/plugin-manager/main/plugin-methods.ts");
 assert.match(pluginMethods, /async getMvSource\(/);
 assert.match(pluginMethods, /normalizeVideoSourceResult/);
 assert.match(pluginMethods, /MAX_VIDEO_SOURCE_URL_LENGTH/);
+assert.match(pluginMethods, /normalizeVideoDynamicRange/);
 
 const pluginHost = read("src/shared/plugin-manager/utility/plugin-host.ts");
 assert.match(pluginHost, /\["getMediaSource", "getMvSource"\]/);

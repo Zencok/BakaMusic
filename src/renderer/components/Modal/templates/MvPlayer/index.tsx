@@ -1,16 +1,16 @@
 import {
+    CSSProperties,
+    KeyboardEvent as ReactKeyboardEvent,
     useCallback,
     useEffect,
     useMemo,
     useRef,
     useState,
-    type CSSProperties,
-    type WheelEvent as ReactWheelEvent,
+    WheelEvent as ReactWheelEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
-import Hls from "hls.js";
-import { secondsToDuration } from "@/common/time-util";
+import { normalizeVideoUpstreamUrl } from "@/common/video-url";
 import SvgAsset from "@renderer/components/SvgAsset";
 import trackPlayer from "@renderer/core/track-player";
 import { getMediaPluginDelegate } from "@renderer/core/track-player/plugin-media";
@@ -18,31 +18,201 @@ import {
     startMusicVideoDownload,
     type IVideoDownloadTask,
 } from "@renderer/utils/download-music-video";
+import nativePlayback from "@shared/native-playback/renderer";
+import nodeRuntime from "@shared/node-runtime/renderer";
+import type {
+    INativeVideoSource,
+    INativeVideoSurfaceBounds,
+    NativeVideoCommand,
+} from "@shared/native-playback/common";
 import PluginManager from "@shared/plugin-manager/renderer";
-import videoProxy from "@shared/video-proxy/renderer";
 import { appWindowUtil, shellUtil } from "@shared/utils/renderer";
-import Base from "../Base";
 import { hideModal } from "../..";
+import Base from "../Base";
 import "./index.scss";
 
 interface IMvPlayerProps {
     musicItem: IMusic.IMusicItem;
 }
 
-type PlayerSource = IPlugin.IVideoSourceResult & {
-    url: string;
-    downloadUrl: string;
-    isHls: boolean;
+const VIDEO_SPEED_PRESETS = [2, 1.5, 1.25, 1, 0.75, 0.5] as const;
+
+type VideoCandidate = IPlugin.IVideoQualityOption & {
+    source?: IPlugin.IVideoSourceResult;
+};
+
+type PlayerVideoSource = INativeVideoSource & {
+    actualKey: string;
+    sourceFingerprint: string;
+    size?: number | string;
+    codec?: string;
+    mimeType?: string;
+    downloadSource: IPlugin.IVideoSourceResult;
 };
 
 type DownloadPhase = "idle" | "downloading" | "done" | "error";
-type QualitySizeState = "loading" | "stream" | "unknown";
-type PlayerQualityOption = IPlugin.IVideoQualityOption & {
-    actualKey?: string;
-    sourceFingerprint?: string;
-};
+type SourceSizeState = number | "loading" | "stream" | "unknown";
 
-const CONTROLS_IDLE_MS = 2400;
+type VideoCommandInput = NativeVideoCommand extends infer Command
+    ? Command extends { sourceId: string }
+        ? Omit<Command, "sourceId">
+        : never
+    : never;
+
+function getQualityHeight(option: IPlugin.IVideoQualityOption) {
+    if (option.height) return option.height;
+    const name = `${option.key} ${option.label ?? ""}`;
+    if (/8k/i.test(name)) return 4320;
+    if (/4k/i.test(name)) return 2160;
+    return Number.parseInt(name, 10) || 0;
+}
+
+function isDolbyVision(option: IPlugin.IVideoQualityOption) {
+    return option.dynamicRange === "dolby-vision"
+        || /dolby[\s_-]*vision|dovi|dvhe|dvh1|杜比视界/i.test(
+            `${option.key} ${option.label ?? ""} ${option.codec ?? ""}`,
+        );
+}
+
+function getDynamicRange(option: VideoCandidate): IPlugin.VideoDynamicRange | undefined {
+    if (option.source?.dynamicRange) return option.source.dynamicRange;
+    if (option.dynamicRange) return option.dynamicRange;
+    return isDolbyVision(option) ? "dolby-vision" : undefined;
+}
+
+function getQualityRank(option: VideoCandidate) {
+    const dynamicRange = getDynamicRange(option);
+    const rangeRank = dynamicRange === "dolby-vision" ? 3
+        : dynamicRange === "hdr10" ? 2
+            : dynamicRange === "sdr" ? 1 : 0;
+    const hfrRank = /hfr|high[\s_-]*frame|高帧/i.test(
+        `${option.key} ${option.label ?? ""}`,
+    ) ? 1 : 0;
+    return rangeRank * 100_000 + getQualityHeight(option) * 10 + hfrRank;
+}
+
+function mergeCandidates(...groups: VideoCandidate[][]) {
+    const merged = new Map<string, VideoCandidate>();
+    for (const candidate of groups.flat()) {
+        if (!candidate.key) continue;
+        const defined = Object.entries(candidate).filter(([, value]) => value !== undefined);
+        merged.set(candidate.key, {
+            ...merged.get(candidate.key),
+            ...Object.fromEntries(defined),
+            key: candidate.key,
+        });
+    }
+    return [...merged.values()];
+}
+
+function getSourceHeaders(source: IPlugin.IVideoSourceResult) {
+    const headers = { ...(source.headers ?? {}) };
+    if (source.userAgent) {
+        const existingName = Object.keys(headers).find(
+            (name) => name.toLocaleLowerCase("en-US") === "user-agent",
+        );
+        headers[existingName ?? "User-Agent"] = source.userAgent;
+    }
+    return Object.keys(headers).length ? headers : undefined;
+}
+
+function getVideoSourceFingerprint(source: IPlugin.IVideoSourceResult): string {
+    try {
+        const parsed = new URL(source.url ?? "");
+        return `${parsed.origin}${parsed.pathname}`.toLocaleLowerCase("en-US");
+    } catch {
+        return source.url?.split(/[?#]/, 1)[0]?.toLocaleLowerCase("en-US") || "";
+    }
+}
+
+function getActualQuality(candidate: VideoCandidate) {
+    return candidate.source?.videoQuality
+        || (candidate.source?.height
+            ? `${candidate.source.height}p`
+            : candidate.label || candidate.key);
+}
+
+function toNativeSource(candidate: VideoCandidate): PlayerVideoSource | null {
+    const source = candidate.source;
+    if (!source?.url) return null;
+    const normalizedUrl: string = normalizeVideoUpstreamUrl(source.url);
+    const normalizedSource: IPlugin.IVideoSourceResult = {
+        ...source,
+        url: normalizedUrl,
+        backupUrls: source.backupUrls?.map(normalizeVideoUpstreamUrl),
+    };
+    const actualKey = getActualQuality(candidate);
+    return {
+        key: candidate.key,
+        label: actualKey,
+        actualKey,
+        sourceFingerprint: getVideoSourceFingerprint(normalizedSource),
+        url: normalizedUrl,
+        backupUrls: normalizedSource.backupUrls,
+        headers: getSourceHeaders(normalizedSource),
+        width: normalizedSource.width || candidate.width,
+        height: normalizedSource.height || candidate.height,
+        dynamicRange: getDynamicRange(candidate),
+        size: normalizedSource.size || candidate.size,
+        codec: normalizedSource.codec || candidate.codec,
+        mimeType: normalizedSource.mimeType || candidate.mimeType,
+        downloadSource: normalizedSource,
+    };
+}
+
+function getSourceMetadataScore(source: PlayerVideoSource) {
+    return [
+        source.width,
+        source.height,
+        source.size,
+        source.codec,
+        source.mimeType,
+        source.dynamicRange,
+    ].filter((value) => value !== undefined && value !== "").length;
+}
+
+function dedupeSources(candidates: VideoCandidate[], activeRequestKey = "") {
+    const deduped: PlayerVideoSource[] = [];
+    const sorted = [...candidates]
+        .sort((left, right) => getQualityRank(right) - getQualityRank(left));
+    for (const candidate of sorted) {
+        const source = toNativeSource(candidate);
+        if (!source) continue;
+        const normalizedActualKey = source.actualKey.trim().toLocaleLowerCase("en-US");
+        const duplicateIndex = deduped.findIndex((item) => (
+            Boolean(
+                normalizedActualKey
+                && item.actualKey.trim().toLocaleLowerCase("en-US") === normalizedActualKey,
+            )
+            || Boolean(
+                source.sourceFingerprint
+                && item.sourceFingerprint === source.sourceFingerprint,
+            )
+        ));
+        if (duplicateIndex < 0) {
+            deduped.push(source);
+            continue;
+        }
+        const current = deduped[duplicateIndex];
+        const preferSource = source.key === activeRequestKey
+            || (
+                current.key !== activeRequestKey
+                && getSourceMetadataScore(source) > getSourceMetadataScore(current)
+            );
+        if (preferSource) deduped[duplicateIndex] = source;
+    }
+    return deduped;
+}
+
+function formatVideoTime(value: number) {
+    const seconds = Math.max(0, Number.isFinite(value) ? Math.floor(value) : 0);
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor(seconds % 3600 / 60);
+    const remainder = seconds % 60;
+    return hours > 0
+        ? `${hours}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`
+        : `${minutes}:${String(remainder).padStart(2, "0")}`;
+}
 
 function formatVideoSize(value: number | string | undefined) {
     if (typeof value === "string") return value.trim() || "";
@@ -57,176 +227,115 @@ function formatVideoSize(value: number | string | undefined) {
     return `${size >= 100 || index === 0 ? size.toFixed(0) : size.toFixed(1)}${units[index]}`;
 }
 
-function getQualityLabel(option: IPlugin.IVideoQualityOption | undefined, key: string) {
-    return (option?.label || key).toLocaleUpperCase("en-US");
+function getSurfaceBounds(element: HTMLElement | null): INativeVideoSurfaceBounds {
+    const rect = element?.getBoundingClientRect();
+    return {
+        x: Math.round(rect?.left ?? 0),
+        y: Math.round(rect?.top ?? 0),
+        width: Math.max(1, Math.round(rect?.width ?? 1)),
+        height: Math.max(1, Math.round(rect?.height ?? 1)),
+    };
 }
 
-function getQualityRank(option: IPlugin.IVideoQualityOption) {
-    const qualityName = option.label || option.key;
-    const labelHeight = /8k/i.test(qualityName)
-        ? 4320
-        : /4k/i.test(qualityName)
-            ? 2160
-            : Number.parseInt(qualityName, 10);
-    return option.height
-        || (Number.isFinite(labelHeight) ? labelHeight : 0)
-        || option.width
-        || option.bitrate
-        || 0;
-}
-
-function formatVideoTime(value: number) {
-    return Number.isFinite(value) && value >= 0 ? secondsToDuration(value) : "--:--";
-}
-
-function getBufferedPercent(video: HTMLVideoElement) {
-    if (!Number.isFinite(video.duration) || video.duration <= 0 || video.buffered.length === 0) {
-        return 0;
-    }
-    return Math.min(100, video.buffered.end(video.buffered.length - 1) / video.duration * 100);
-}
-
-function isHlsVideoSource(source: IPlugin.IVideoSourceResult) {
-    return /mpegurl|m3u8/i.test(source.mimeType ?? "")
-        || /\.m3u8(?:$|[?#])/i.test(source.url ?? "");
-}
-
-function mergeVideoQualityOptions(
-    ...groups: PlayerQualityOption[][]
-): PlayerQualityOption[] {
-    const merged = new Map<string, PlayerQualityOption>();
-    for (const option of groups.flat()) {
-        if (!option.key) continue;
-        const definedEntries = Object.entries(option).filter(([, value]) => value !== undefined);
-        merged.set(option.key, {
-            ...merged.get(option.key),
-            ...Object.fromEntries(definedEntries),
-            key: option.key,
-        });
-    }
-    return [...merged.values()];
-}
-
-function getVideoSourceFingerprint(source: IPlugin.IVideoSourceResult) {
-    try {
-        const parsed = new URL(source.url ?? "");
-        return `${parsed.origin}${parsed.pathname}`.toLocaleLowerCase("en-US");
-    } catch {
-        return source.url?.split(/[?#]/, 1)[0]?.toLocaleLowerCase("en-US") || "";
-    }
-}
-
-function dedupeVerifiedQualityOptions(
-    options: PlayerQualityOption[],
-    activeRequestKey: string,
-) {
-    const deduped: PlayerQualityOption[] = [];
-    for (const option of options) {
-        const duplicateIndex = deduped.findIndex((item) => (
-            Boolean(option.actualKey && item.actualKey === option.actualKey)
-            || Boolean(
-                option.sourceFingerprint
-                && item.sourceFingerprint === option.sourceFingerprint,
-            )
-        ));
-        if (duplicateIndex < 0) {
-            deduped.push(option);
-            continue;
-        }
-        const current = deduped[duplicateIndex];
-        const preferOption = option.key === activeRequestKey
-            || (current.key !== activeRequestKey && !formatVideoSize(current.size));
-        deduped[duplicateIndex] = preferOption
-            ? mergeVideoQualityOptions([current], [option])[0]
-            : mergeVideoQualityOptions([option], [current])[0];
-    }
-    return deduped;
-}
-
-async function probeProxyVideoSize(url: string) {
-    const request = async (method: "HEAD" | "GET", headers?: HeadersInit) => fetch(url, {
-        method,
-        headers,
-        cache: "no-store",
-        signal: AbortSignal.timeout(8000),
+function waitForRendererPaint() {
+    return new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
     });
-    try {
-        const head = await request("HEAD");
-        const contentLength = Number(head.headers.get("content-length"));
-        if (head.ok && Number.isFinite(contentLength) && contentLength > 0) return contentLength;
+}
 
-        const ranged = await request("GET", { Range: "bytes=0-0" });
-        const total = Number(ranged.headers.get("content-range")?.match(/\/(\d+)$/)?.[1]);
-        await ranged.body?.cancel();
-        return ranged.ok && Number.isFinite(total) && total > 0 ? total : undefined;
-    } catch {
-        return undefined;
+function waitForOpacityTransition(element: HTMLElement | null, fallbackMs: number) {
+    if (!element || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        return waitForRendererPaint();
+    }
+    return new Promise<void>((resolve) => {
+        let settled = false;
+        const finish = () => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timer);
+            element.removeEventListener("transitionend", onTransitionEnd);
+            resolve();
+        };
+        const onTransitionEnd = (event: TransitionEvent) => {
+            if (event.target === element && event.propertyName === "opacity") finish();
+        };
+        const timer = window.setTimeout(finish, fallbackMs);
+        element.addEventListener("transitionend", onTransitionEnd);
+    });
+}
+
+function handleMenuNavigation(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>(
+        "[role^='menuitem']",
+    )];
+    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+    let nextIndex: number | null = null;
+    if (event.key === "ArrowDown") {
+        nextIndex = (currentIndex + 1) % items.length;
+    } else if (event.key === "ArrowUp") {
+        nextIndex = (currentIndex - 1 + items.length) % items.length;
+    } else if (event.key === "Home") {
+        nextIndex = 0;
+    } else if (event.key === "End") {
+        nextIndex = items.length - 1;
+    }
+    if (nextIndex !== null && items[nextIndex]) {
+        event.preventDefault();
+        items[nextIndex].focus();
     }
 }
 
 export default function MvPlayer({ musicItem }: IMvPlayerProps) {
     const { t } = useTranslation();
     const playerRef = useRef<HTMLDivElement>(null);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const hlsRef = useRef<Hls | null>(null);
-    const hlsRecoveryCountRef = useRef(0);
-    const requestIdRef = useRef(0);
-    const qualityContextRef = useRef<IMusic.IMusicItem | null>(null);
-    const proxySessionRef = useRef<string | null>(null);
-    const controlsTimerRef = useRef<number | null>(null);
-    const stageClickTimerRef = useRef<number | null>(null);
+    const surfaceRef = useRef<HTMLDivElement>(null);
+    const closeCurtainRef = useRef<HTMLDivElement>(null);
     const qualityMenuRef = useRef<HTMLDivElement>(null);
     const downloadMenuRef = useRef<HTMLDivElement>(null);
     const downloadTaskRef = useRef<IVideoDownloadTask | null>(null);
-    const downloadSessionRef = useRef<string | null>(null);
     const downloadRequestIdRef = useRef(0);
-    const qualitySourceCacheRef = useRef(new Map<string, IPlugin.IVideoSourceResult>());
-    const autoSelectHighestRef = useRef(true);
-    const playbackIntentRef = useRef<{ currentTime: number; playing: boolean } | null>(null);
+    const sizeProbeGenerationRef = useRef(0);
+    const probedSizeKeysRef = useRef(new Set<string>());
+    const mountedRef = useRef(true);
+    const closingRef = useRef(false);
     const fullscreenRef = useRef(false);
     const fullscreenRequestedRef = useRef(false);
-    const keyboardNavigationRef = useRef(false);
-    const rangeInteractionRef = useRef(false);
-    const revealControlsRef = useRef<() => void>(() => undefined);
-    const previousVolumeRef = useRef(0.82);
-    const mountedRef = useRef(true);
-    const artwork = musicItem.coverImg || musicItem.artwork;
-    const [quality, setQuality] = useState(() => {
-        const pluginReference = getMediaPluginDelegate(musicItem);
-        const plugin = (pluginReference.hash
-            ? PluginManager.getPluginByHash(pluginReference.hash)
-            : undefined)
-            ?? PluginManager.getPluginByPlatform(pluginReference.platform ?? "");
-        const highestDeclaredQuality = (plugin?.supportedVideoQualities ?? [])
-            .map((key) => ({ key, label: key }))
-            .sort((left, right) => getQualityRank(right) - getQualityRank(left))[0];
-        return highestDeclaredQuality?.key || musicItem.videoQuality || "1080p";
-    });
-    const [qualityOptions, setQualityOptions] = useState<PlayerQualityOption[]>([]);
-    const [qualitySizeState, setQualitySizeState] = useState<Record<string, QualitySizeState>>({});
-    const [source, setSource] = useState<PlayerSource | null>(null);
+    const controlsTimerRef = useRef<number | null>(null);
+    const stageClickTimerRef = useRef<number | null>(null);
+    const sessionBase = useRef(
+        `video-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    ).current;
+    const activeSessionRef = useRef("");
+    const previousVolumeRef = useRef(Math.max(trackPlayer.volume, 0.82));
+    const [retryToken, setRetryToken] = useState(0);
+    const sessionId = `${sessionBase}-${retryToken}`;
+    const [nativeSessionId, setNativeSessionId] = useState("");
+    const [nativeOpened, setNativeOpened] = useState(false);
+    const [nativeFrameReady, setNativeFrameReady] = useState(false);
+    const [nativeSurfaceRevealed, setNativeSurfaceRevealed] = useState(false);
+    const [sources, setSources] = useState<PlayerVideoSource[]>([]);
+    const [activeSourceKey, setActiveSourceKey] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
-    const [retryToken, setRetryToken] = useState(0);
     const [playing, setPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
-    const [bufferedProgress, setBufferedProgress] = useState(0);
-    const [seekPreview, setSeekPreview] = useState<{ percent: number; time: number } | null>(null);
-    const [volume, setVolume] = useState(0.82);
-    const [muted, setMuted] = useState(false);
+    const [volume, setVolume] = useState(trackPlayer.volume);
+    const [muted, setMuted] = useState(trackPlayer.isMute);
+    const [speed, setSpeed] = useState(1);
     const [fullscreen, setFullscreen] = useState(false);
+    const [closing, setClosing] = useState(false);
+    const [closeCovered, setCloseCovered] = useState(false);
+    const [exiting, setExiting] = useState(false);
     const [controlsVisible, setControlsVisible] = useState(true);
+    const [qualityMenuOpen, setQualityMenuOpen] = useState(false);
+    const [speedMenuOpen, setSpeedMenuOpen] = useState(false);
+    const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
     const [downloadPhase, setDownloadPhase] = useState<DownloadPhase>("idle");
     const [downloadPercent, setDownloadPercent] = useState(0);
     const [downloadedPath, setDownloadedPath] = useState("");
-    const [qualityMenuOpen, setQualityMenuOpen] = useState(false);
-    const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
-
-    const setFullscreenState = useCallback((next: boolean) => {
-        fullscreenRef.current = next;
-        setFullscreen(next);
-    }, []);
+    const [sourceSizeState, setSourceSizeState] = useState<Record<string, SourceSizeState>>({});
+    const [seekPreview, setSeekPreview] = useState<{ percent: number; time: number } | null>(null);
 
     const clearControlsTimer = useCallback(() => {
         if (controlsTimerRef.current !== null) {
@@ -238,51 +347,66 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
     const revealControls = useCallback(() => {
         clearControlsTimer();
         setControlsVisible(true);
-        const activeElement = document.activeElement;
-        const hasKeyboardFocus = keyboardNavigationRef.current
-            && activeElement instanceof HTMLElement
-            && Boolean(playerRef.current?.contains(activeElement))
-            && activeElement.matches(":focus-visible");
-        if (
-            playing
-            && !qualityMenuOpen
-            && !downloadMenuOpen
-            && !rangeInteractionRef.current
-            && !hasKeyboardFocus
-        ) {
+        if (playing && !qualityMenuOpen && !speedMenuOpen && !downloadMenuOpen) {
             controlsTimerRef.current = window.setTimeout(() => {
                 setControlsVisible(false);
                 controlsTimerRef.current = null;
-            }, CONTROLS_IDLE_MS);
+            }, 2600);
         }
-    }, [clearControlsTimer, downloadMenuOpen, playing, qualityMenuOpen]);
+    }, [clearControlsTimer, downloadMenuOpen, playing, qualityMenuOpen, speedMenuOpen]);
 
-    const handlePointerActivity = useCallback(() => {
-        keyboardNavigationRef.current = false;
-        revealControls();
-    }, [revealControls]);
-
-    const beginRangeInteraction = useCallback(() => {
-        rangeInteractionRef.current = true;
-        clearControlsTimer();
-        setControlsVisible(true);
-    }, [clearControlsTimer]);
-
-    const endRangeInteraction = useCallback(() => {
-        if (!rangeInteractionRef.current) return;
-        rangeInteractionRef.current = false;
-        revealControls();
-    }, [revealControls]);
+    const sendVideoCommand = useCallback((command: VideoCommandInput) => {
+        if (!nativeSessionId || !nativeOpened) return Promise.resolve();
+        return nativePlayback.videoCommand({
+            ...command,
+            sourceId: nativeSessionId,
+        } as Parameters<typeof nativePlayback.videoCommand>[0]);
+    }, [nativeOpened, nativeSessionId]);
 
     const togglePlayback = useCallback(() => {
-        const video = videoRef.current;
-        if (!video || error || loading) return;
-        if (video.paused) {
-            void video.play().catch(() => undefined);
+        if (!nativeOpened) return;
+        const nextPlaying = !playing;
+        setPlaying(nextPlaying);
+        setLoading(false);
+        revealControls();
+        void sendVideoCommand({ operation: nextPlaying ? "play" : "pause" }).catch((reason) => {
+            setPlaying(!nextPlaying);
+            toast.error(reason instanceof Error ? reason.message : t("mv_player.error"));
+        });
+    }, [nativeOpened, playing, revealControls, sendVideoCommand, t]);
+
+    const updateVolume = useCallback((nextValue: number) => {
+        const nextVolume = Math.max(0, Math.min(1, nextValue));
+        if (nextVolume > 0) previousVolumeRef.current = nextVolume;
+        setVolume(nextVolume);
+        setMuted(nextVolume === 0);
+        void sendVideoCommand({ operation: "volume", volume: nextVolume }).catch(() => undefined);
+    }, [sendVideoCommand]);
+
+    const toggleMuted = useCallback(() => {
+        if (muted || volume === 0) {
+            updateVolume(previousVolumeRef.current || 0.82);
         } else {
-            video.pause();
+            previousVolumeRef.current = volume;
+            updateVolume(0);
         }
-    }, [error, loading]);
+    }, [muted, updateVolume, volume]);
+
+    const updateSpeed = useCallback((nextSpeed: number) => {
+        const previousSpeed = speed;
+        setSpeed(nextSpeed);
+        setSpeedMenuOpen(false);
+        revealControls();
+        void sendVideoCommand({ operation: "speed", speed: nextSpeed }).catch((reason) => {
+            setSpeed(previousSpeed);
+            toast.error(reason instanceof Error ? reason.message : t("mv_player.error"));
+        });
+    }, [revealControls, sendVideoCommand, speed, t]);
+
+    const setFullscreenState = useCallback((next: boolean) => {
+        fullscreenRef.current = next;
+        setFullscreen(next);
+    }, []);
 
     const exitFullscreen = useCallback(() => {
         fullscreenRequestedRef.current = false;
@@ -300,15 +424,8 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
         fullscreenRequestedRef.current = true;
         setFullscreenState(true);
         revealControls();
-
-        // BrowserWindow fullscreen removes the native window chrome. The element
-        // fullscreen request then promotes only the player into Chromium's top
-        // layer, so the app shell cannot remain visible around the video.
         appWindowUtil.setMainWindowFullScreen?.(true);
-        void player.requestFullscreen().catch(() => {
-            // Native fullscreen plus data-fullscreen CSS remains a complete
-            // fallback on platforms that reject the element request.
-        });
+        void player.requestFullscreen().catch(() => undefined);
     }, [revealControls, setFullscreenState]);
 
     const toggleFullscreen = useCallback(() => {
@@ -319,64 +436,125 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
         }
     }, [enterFullscreen, exitFullscreen]);
 
-    const handleStageClick = useCallback((clickCount: number) => {
-        if (stageClickTimerRef.current !== null) {
-            window.clearTimeout(stageClickTimerRef.current);
-            stageClickTimerRef.current = null;
-        }
-        if (clickCount > 1) return;
-        stageClickTimerRef.current = window.setTimeout(() => {
-            stageClickTimerRef.current = null;
-            togglePlayback();
-        }, 180);
-    }, [togglePlayback]);
+    const requestClose = useCallback(() => {
+        if (closingRef.current) return;
+        closingRef.current = true;
+        setClosing(true);
+        clearControlsTimer();
 
-    const handleStageDoubleClick = useCallback(() => {
-        if (stageClickTimerRef.current !== null) {
-            window.clearTimeout(stageClickTimerRef.current);
-            stageClickTimerRef.current = null;
-        }
-        toggleFullscreen();
-    }, [toggleFullscreen]);
-
-    const updateVolume = useCallback((nextVolume: number) => {
-        const normalized = Math.max(0, Math.min(1, nextVolume));
-        setVolume(normalized);
-        if (normalized > 0) previousVolumeRef.current = normalized;
-        const video = videoRef.current;
-        if (video) {
-            video.volume = normalized;
-            if (normalized > 0) video.muted = false;
-        }
-        if (normalized > 0) setMuted(false);
-    }, []);
+        void (async () => {
+            // Fade Chromium's curtain over the still-playing native HWND first.
+            // Once opaque, the popup and transparent cutout can be removed
+            // without exposing either DWM or the HWND teardown frame.
+            await waitForOpacityTransition(closeCurtainRef.current, 120);
+            setCloseCovered(true);
+            await waitForRendererPaint();
+            const sourceId = nativeSessionId || activeSessionRef.current;
+            if (sourceId) {
+                await nativePlayback.updateVideoSurface({
+                    sourceId,
+                    bounds: getSurfaceBounds(surfaceRef.current),
+                    visible: false,
+                }).catch(() => undefined);
+                // Hiding the HWND is the visual boundary. Runtime teardown can
+                // finish after the modal starts leaving instead of stalling the
+                // close animation on the utility-process exit.
+                void nativePlayback.closeVideo(sourceId).catch(() => undefined);
+            }
+            setExiting(true);
+            await waitForOpacityTransition(playerRef.current, 150);
+            hideModal();
+        })();
+    }, [clearControlsTimer, nativeSessionId]);
 
     const handleWheelVolume = useCallback((event: ReactWheelEvent<HTMLDivElement>) => {
-        const target = event.target;
-        if (target instanceof Element && target.closest(".mv-player-quality-menu")) return;
-        const direction = Math.sign(event.deltaY || event.deltaX);
-        if (direction === 0) return;
+        if (qualityMenuOpen || speedMenuOpen || downloadMenuOpen) return;
         event.preventDefault();
-        keyboardNavigationRef.current = false;
-        updateVolume((muted ? 0 : volume) - direction * 0.05);
+        updateVolume((muted ? 0 : volume) + (event.deltaY < 0 ? 0.05 : -0.05));
         revealControls();
-    }, [muted, revealControls, updateVolume, volume]);
+    }, [downloadMenuOpen, muted, qualityMenuOpen, revealControls, speedMenuOpen, updateVolume, volume]);
 
-    const toggleMuted = useCallback(() => {
-        const video = videoRef.current;
-        if (!video) return;
-        if (video.muted || video.volume === 0) {
-            if (video.volume === 0) {
-                video.volume = previousVolumeRef.current;
-                setVolume(previousVolumeRef.current);
+    useEffect(() => {
+        const onFullscreenChange = () => {
+            const enabled = document.fullscreenElement === playerRef.current;
+            if (enabled) {
+                fullscreenRequestedRef.current = true;
+                appWindowUtil.setMainWindowFullScreen?.(true);
+            } else if (fullscreenRequestedRef.current) {
+                fullscreenRequestedRef.current = false;
+                appWindowUtil.setMainWindowFullScreen?.(false);
             }
-            video.muted = false;
-            setMuted(false);
-        } else {
-            video.muted = true;
-            setMuted(true);
-        }
-    }, []);
+            setFullscreenState(enabled);
+            revealControls();
+        };
+        const unsubscribe = appWindowUtil.onMainWindowFullScreenChanged?.((enabled) => {
+            const next = Boolean(enabled);
+            setFullscreenState(next);
+            revealControls();
+            if (!next && document.fullscreenElement === playerRef.current) {
+                fullscreenRequestedRef.current = false;
+                void document.exitFullscreen().catch(() => undefined);
+            }
+        });
+        document.addEventListener("fullscreenchange", onFullscreenChange);
+        return () => {
+            unsubscribe?.();
+            document.removeEventListener("fullscreenchange", onFullscreenChange);
+        };
+    }, [revealControls, setFullscreenState]);
+
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            const target = event.target as HTMLElement | null;
+            if (target?.matches("input, button, [role='menuitemradio']")) return;
+            if (event.code === "Space" || event.key.toLocaleLowerCase("en-US") === "k") {
+                event.preventDefault();
+                togglePlayback();
+            } else if (event.key.toLocaleLowerCase("en-US") === "m") {
+                event.preventDefault();
+                toggleMuted();
+            } else if (event.key.toLocaleLowerCase("en-US") === "f") {
+                event.preventDefault();
+                toggleFullscreen();
+            } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+                event.preventDefault();
+                const nextTime = Math.max(0, Math.min(
+                    duration || Number.POSITIVE_INFINITY,
+                    currentTime + (event.key === "ArrowLeft" ? -5 : 5),
+                ));
+                setCurrentTime(nextTime);
+                void sendVideoCommand({ operation: "seek", seconds: nextTime });
+            }
+        };
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+    }, [currentTime, duration, sendVideoCommand, toggleFullscreen, toggleMuted, togglePlayback]);
+
+    useEffect(() => {
+        if (!qualityMenuOpen && !speedMenuOpen && !downloadMenuOpen) return;
+        const onPointerDown = (event: PointerEvent) => {
+            const target = event.target;
+            if (
+                target instanceof Element
+                && !target.closest(".mv-player-quality-picker")
+                && !target.closest(".mv-player-speed-picker")
+                && !target.closest(".mv-player-download-picker")
+            ) {
+                setQualityMenuOpen(false);
+                setSpeedMenuOpen(false);
+                setDownloadMenuOpen(false);
+            }
+        };
+        document.addEventListener("pointerdown", onPointerDown, true);
+        return () => document.removeEventListener("pointerdown", onPointerDown, true);
+    }, [downloadMenuOpen, qualityMenuOpen, speedMenuOpen]);
+
+    useEffect(() => {
+        clearControlsTimer();
+        if (playing) revealControls();
+        else setControlsVisible(true);
+        return clearControlsTimer;
+    }, [clearControlsTimer, playing, revealControls]);
 
     useEffect(() => {
         mountedRef.current = true;
@@ -385,13 +563,9 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
             downloadRequestIdRef.current = Number.MAX_SAFE_INTEGER;
             void downloadTaskRef.current?.cancel();
             downloadTaskRef.current = null;
-            const downloadSession = downloadSessionRef.current;
-            downloadSessionRef.current = null;
-            if (downloadSession) void videoProxy.release(downloadSession);
             clearControlsTimer();
             if (stageClickTimerRef.current !== null) {
                 window.clearTimeout(stageClickTimerRef.current);
-                stageClickTimerRef.current = null;
             }
             if (fullscreenRequestedRef.current) {
                 fullscreenRequestedRef.current = false;
@@ -401,503 +575,400 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
     }, [clearControlsTimer]);
 
     useEffect(() => {
-        if (playing) {
-            revealControls();
-        } else {
-            clearControlsTimer();
-            setControlsVisible(true);
-        }
-        return clearControlsTimer;
-    }, [clearControlsTimer, playing, revealControls]);
-
-    useEffect(() => {
-        const finishRangeInteraction = () => endRangeInteraction();
-        window.addEventListener("pointerup", finishRangeInteraction, true);
-        window.addEventListener("pointercancel", finishRangeInteraction, true);
-        return () => {
-            window.removeEventListener("pointerup", finishRangeInteraction, true);
-            window.removeEventListener("pointercancel", finishRangeInteraction, true);
-        };
-    }, [endRangeInteraction]);
-
-    useEffect(() => {
-        revealControlsRef.current = revealControls;
-    }, [revealControls]);
-
-    useEffect(() => {
-        const player = playerRef.current;
-        const syncElementFullscreen = () => {
-            const elementFullscreen = document.fullscreenElement === player;
-            if (elementFullscreen) {
-                // Route element fullscreen through the same main-process path as
-                // F11. Besides window chrome, that path owns display sleep blocking.
-                fullscreenRequestedRef.current = true;
-                appWindowUtil.setMainWindowFullScreen?.(true);
-                setFullscreenState(true);
-            } else if (fullscreenRequestedRef.current) {
-                // Escape exits the Chromium top layer first. Mirror that change
-                // to the native BrowserWindow so fullscreen is one coherent mode.
-                fullscreenRequestedRef.current = false;
-                appWindowUtil.setMainWindowFullScreen?.(false);
-                setFullscreenState(false);
-            }
-            revealControlsRef.current();
-        };
-        const unsubscribe = appWindowUtil.onMainWindowFullScreenChanged?.((enabled) => {
-            const next = Boolean(enabled);
-            setFullscreenState(next);
-            revealControlsRef.current();
-            if (!next && document.fullscreenElement === player) {
-                fullscreenRequestedRef.current = false;
-                void document.exitFullscreen().catch(() => undefined);
-            }
-        });
-        void appWindowUtil.isMainWindowFullScreen?.().then((enabled) => {
-            if (mountedRef.current && enabled) {
-                setFullscreenState(true);
-                revealControlsRef.current();
-            }
-        });
-        document.addEventListener("fullscreenchange", syncElementFullscreen);
-        return () => {
-            unsubscribe?.();
-            document.removeEventListener("fullscreenchange", syncElementFullscreen);
-            if (document.fullscreenElement === player) {
-                void document.exitFullscreen().catch(() => undefined);
-            }
-        };
-    }, [setFullscreenState]);
-
-    useEffect(() => {
-        if (!qualityMenuOpen && !downloadMenuOpen) return undefined;
-        clearControlsTimer();
-        setControlsVisible(true);
-        const focusFrame = window.requestAnimationFrame(() => {
-            const menu = qualityMenuOpen ? qualityMenuRef.current : downloadMenuRef.current;
-            const selected = menu?.querySelector<HTMLElement>("[aria-checked='true']");
-            const first = menu?.querySelector<HTMLElement>("[role^='menuitem']");
-            (selected ?? first)?.focus();
-        });
-        const closeMenu = (event: MouseEvent) => {
-            const target = event.target;
-            const qualityPicker = playerRef.current?.querySelector(".mv-player-quality-picker");
-            const downloadPicker = playerRef.current?.querySelector(".mv-player-download-picker");
-            if (target instanceof Node && (
-                qualityPicker?.contains(target)
-                || downloadPicker?.contains(target)
-            )) return;
-            setQualityMenuOpen(false);
-            setDownloadMenuOpen(false);
-        };
-        document.addEventListener("mousedown", closeMenu);
-        return () => {
-            window.cancelAnimationFrame(focusFrame);
-            document.removeEventListener("mousedown", closeMenu);
-        };
-    }, [clearControlsTimer, downloadMenuOpen, qualityMenuOpen]);
-
-    useEffect(() => {
-        const onKeyDown = (event: KeyboardEvent) => {
-            keyboardNavigationRef.current = true;
-            const target = event.target;
-            const key = event.key.toLocaleLowerCase();
-            if ((qualityMenuOpen || downloadMenuOpen) && key === "escape") {
-                event.preventDefault();
-                event.stopPropagation();
-                setQualityMenuOpen(false);
-                setDownloadMenuOpen(false);
-                revealControls();
-                return;
-            }
-            if (
-                target instanceof HTMLInputElement
-                || target instanceof HTMLSelectElement
-                || target instanceof HTMLTextAreaElement
-                || (target instanceof HTMLElement && (
-                    target.isContentEditable
-                    || Boolean(target.closest("button, a[href], [role='menuitemradio']"))
-                ))
-            ) return;
-            const video = videoRef.current;
-            if (!video) return;
-            let handled = true;
-            switch (key) {
-                case " ":
-                case "k":
-                    event.preventDefault();
-                    togglePlayback();
-                    break;
-                case "arrowleft":
-                    event.preventDefault();
-                    video.currentTime = Math.max(0, video.currentTime - 5);
-                    setCurrentTime(video.currentTime);
-                    break;
-                case "arrowright":
-                    event.preventDefault();
-                    video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 5);
-                    setCurrentTime(video.currentTime);
-                    break;
-                case "j":
-                    event.preventDefault();
-                    video.currentTime = Math.max(0, video.currentTime - 10);
-                    setCurrentTime(video.currentTime);
-                    break;
-                case "l":
-                    event.preventDefault();
-                    video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 10);
-                    setCurrentTime(video.currentTime);
-                    break;
-                case "arrowup":
-                    event.preventDefault();
-                    updateVolume(volume + 0.05);
-                    break;
-                case "arrowdown":
-                    event.preventDefault();
-                    updateVolume(volume - 0.05);
-                    break;
-                case "m":
-                    event.preventDefault();
-                    toggleMuted();
-                    break;
-                case "f":
-                    event.preventDefault();
-                    toggleFullscreen();
-                    break;
-                default:
-                    handled = false;
-            }
-            if (handled) revealControls();
-        };
-        window.addEventListener("keydown", onKeyDown);
-        return () => window.removeEventListener("keydown", onKeyDown);
-    }, [
-        qualityMenuOpen,
-        downloadMenuOpen,
-        revealControls,
-        toggleFullscreen,
-        toggleMuted,
-        togglePlayback,
-        updateVolume,
-        volume,
-    ]);
-
-    useEffect(() => {
-        const requestId = ++requestIdRef.current;
         let canceled = false;
+        let videoOpened = false;
+        let audioSuspended = false;
+        let audioRestored = false;
+
+        setNativeOpened(false);
+        setNativeFrameReady(false);
+        setNativeSurfaceRevealed(false);
+        setNativeSessionId("");
+        setSources([]);
+        setActiveSourceKey("");
         setLoading(true);
         setError(false);
-        setSource(null);
-        setQualityMenuOpen(false);
-        setDownloadMenuOpen(false);
+        setPlaying(false);
         setCurrentTime(0);
         setDuration(0);
-        setBufferedProgress(0);
-        setSeekPreview(null);
-        const previousSession = proxySessionRef.current;
-        proxySessionRef.current = null;
-        if (previousSession) void videoProxy.release(previousSession);
+        setQualityMenuOpen(false);
+        setSpeedMenuOpen(false);
+        setDownloadMenuOpen(false);
+        setDownloadPhase("idle");
+        setDownloadPercent(0);
+        setDownloadedPath("");
+        sizeProbeGenerationRef.current += 1;
+        probedSizeKeysRef.current.clear();
+        setSourceSizeState({});
 
-        const pluginReference = getMediaPluginDelegate(musicItem);
-        const plugin = (pluginReference.hash
-            ? PluginManager.getPluginByHash(pluginReference.hash)
-            : undefined)
-            ?? PluginManager.getPluginByPlatform(pluginReference.platform ?? "");
-        const declaredOptions: PlayerQualityOption[] = (plugin?.supportedVideoQualities ?? [])
-            .map((key) => ({ key, label: key }))
-            .sort((left, right) => getQualityRank(right) - getQualityRank(left));
-        const isNewMusic = qualityContextRef.current !== musicItem;
-        qualityContextRef.current = musicItem;
-        if (isNewMusic) {
-            autoSelectHighestRef.current = true;
-            qualitySourceCacheRef.current.clear();
-            setQualityOptions([]);
-            setQualitySizeState({});
-            setDownloadMenuOpen(false);
-            setDownloadPhase("idle");
-            setDownloadPercent(0);
-            setDownloadedPath("");
-            downloadRequestIdRef.current++;
-            void downloadTaskRef.current?.cancel();
-            downloadTaskRef.current = null;
-            const downloadSession = downloadSessionRef.current;
-            downloadSessionRef.current = null;
-            if (downloadSession) void videoProxy.release(downloadSession);
+        const restoreAudio = () => {
+            if (!audioSuspended || audioRestored) return;
+            audioRestored = true;
+            trackPlayer.restoreAfterVideo();
+        };
 
-            const preferredQuality = declaredOptions[0]?.key || musicItem.videoQuality || quality;
-            if (preferredQuality !== quality) {
-                setQuality(preferredQuality);
-                return undefined;
-            }
-        }
-
-        void PluginManager.callPluginDelegateMethod(
-            pluginReference,
-            "getMvSource",
-            musicItem,
-            quality,
-        ).then(async (result) => {
-            if (canceled || requestId !== requestIdRef.current) return;
-            if (!result?.url) throw new Error("MV source unavailable");
-            const session = await videoProxy.register({
-                url: result.url,
-                headers: result.headers,
-                userAgent: result.userAgent,
-                mimeType: result.mimeType,
-                backupUrls: result.backupUrls,
-            });
-            if (canceled || requestId !== requestIdRef.current) {
-                void videoProxy.release(session.id);
-                return;
-            }
-            proxySessionRef.current = session.id;
-            const actualQuality = result.videoQuality || quality;
-            qualitySourceCacheRef.current.set(quality, result);
-            const currentOption: PlayerQualityOption = {
-                key: quality,
-                label: actualQuality,
-                actualKey: actualQuality,
-                sourceFingerprint: getVideoSourceFingerprint(result),
-                width: result.width,
-                height: result.height,
-                bitrate: result.bitrate,
-                size: result.size,
-                codec: result.codec,
-                mimeType: result.mimeType,
-            };
-            const probeOptions = mergeVideoQualityOptions(
-                declaredOptions,
-                result.availableVideoQualities ?? [],
-                [{ key: quality, label: quality }],
-            );
-            setQualityOptions((previous) => dedupeVerifiedQualityOptions(
-                mergeVideoQualityOptions(previous, [currentOption]),
-                quality,
-            ));
-            setQualitySizeState((previous) => ({
-                ...previous,
-                [quality]: formatVideoSize(result.size)
-                    ? previous[quality]
-                    : isHlsVideoSource(result) ? "stream" : "loading",
-            }));
-            setSource({
-                ...result,
-                url: session.url,
-                downloadUrl: session.downloadUrl,
-                isHls: isHlsVideoSource(result),
-            });
-
-            const updateSizeState = (key: string, state?: QualitySizeState) => {
-                if (canceled || requestId !== requestIdRef.current) return;
-                setQualitySizeState((previous) => {
-                    const next = { ...previous };
-                    if (state) next[key] = state;
-                    else delete next[key];
-                    return next;
-                });
-            };
-            void (async () => {
-                const verifiedThisPass: PlayerQualityOption[] = [currentOption];
-                const pendingOptions = [...probeOptions].sort((left, right) => {
-                    if (left.key === quality) return -1;
-                    if (right.key === quality) return 1;
-                    return getQualityRank(right) - getQualityRank(left);
-                });
-                let nextOptionIndex = 0;
-                const hydrateOption = async (option: PlayerQualityOption) => {
-                    if (canceled || requestId !== requestIdRef.current) return;
-                    updateSizeState(option.key, "loading");
-                    const candidate = option.key === quality
-                        ? result
-                        : await PluginManager.callPluginDelegateMethod(
-                            pluginReference,
-                            "getMvSource",
-                            musicItem,
-                            option.key,
-                        ).catch(() => null);
-                    if (canceled || requestId !== requestIdRef.current) return;
-                    if (!candidate?.url) {
-                        updateSizeState(option.key);
-                        return;
-                    }
-                    qualitySourceCacheRef.current.set(option.key, candidate);
-
-                    const candidateIsHls = isHlsVideoSource(candidate);
-                    let candidateSize = candidate.size || option.size;
-                    let temporarySessionId: string | null = null;
-                    if (!formatVideoSize(candidateSize) && !candidateIsHls) {
-                        let sizeUrl = option.key === quality ? session.downloadUrl : "";
-                        if (!sizeUrl) {
-                            try {
-                                const temporarySession = await videoProxy.register({
-                                    url: candidate.url,
-                                    headers: candidate.headers,
-                                    userAgent: candidate.userAgent,
-                                    mimeType: candidate.mimeType,
-                                    backupUrls: candidate.backupUrls,
-                                });
-                                temporarySessionId = temporarySession.id;
-                                sizeUrl = temporarySession.downloadUrl;
-                            } catch {
-                                sizeUrl = "";
-                            }
-                        }
-                        if (sizeUrl) candidateSize = await probeProxyVideoSize(sizeUrl);
-                    }
-                    if (temporarySessionId) {
-                        await videoProxy.release(temporarySessionId).catch(() => undefined);
-                    }
-                    if (canceled || requestId !== requestIdRef.current) return;
-
-                    const candidateActualQuality = candidate.videoQuality
-                        || (candidate.height ? `${candidate.height}p` : option.label || option.key);
-                    const verifiedOption: PlayerQualityOption = {
-                        key: option.key,
-                        label: candidateActualQuality,
-                        actualKey: candidateActualQuality,
-                        sourceFingerprint: getVideoSourceFingerprint(candidate),
-                        width: candidate.width,
-                        height: candidate.height,
-                        bitrate: candidate.bitrate,
-                        size: candidateSize,
-                        codec: candidate.codec,
-                        mimeType: candidate.mimeType,
-                    };
-                    const existingIndex = verifiedThisPass.findIndex((item) => item.key === option.key);
-                    if (existingIndex >= 0) verifiedThisPass[existingIndex] = verifiedOption;
-                    else verifiedThisPass.push(verifiedOption);
-                    setQualityOptions((previous) => dedupeVerifiedQualityOptions(
-                        mergeVideoQualityOptions(previous, [verifiedOption]),
-                        quality,
-                    ));
-                    updateSizeState(
-                        option.key,
-                        formatVideoSize(candidateSize)
-                            ? undefined
-                            : candidateIsHls ? "stream" : "unknown",
-                    );
-                };
-                const hydrateWorker = async () => {
-                    while (nextOptionIndex < pendingOptions.length) {
-                        const option = pendingOptions[nextOptionIndex++];
-                        if (option) await hydrateOption(option);
-                    }
-                };
-                await Promise.all(Array.from(
-                    { length: Math.min(3, pendingOptions.length) },
-                    () => hydrateWorker(),
-                ));
-                if (canceled || requestId !== requestIdRef.current) return;
-                const verifiedOptions = dedupeVerifiedQualityOptions(verifiedThisPass, quality);
-                setQualityOptions((previous) => dedupeVerifiedQualityOptions(
-                    mergeVideoQualityOptions(previous, verifiedOptions),
-                    quality,
-                ));
-                const highestVerified = [...verifiedOptions]
-                    .sort((left, right) => getQualityRank(right) - getQualityRank(left))[0];
-                const activeVerified = verifiedOptions.find((option) => option.key === quality);
-                if (
-                    autoSelectHighestRef.current
-                    && highestVerified
-                    && highestVerified.key !== quality
-                    && getQualityRank(highestVerified) > getQualityRank(activeVerified ?? currentOption)
-                ) {
-                    autoSelectHighestRef.current = false;
-                    setQuality(highestVerified.key);
-                } else {
-                    autoSelectHighestRef.current = false;
-                }
-            })();
-        }).catch(() => {
-            if (!canceled && requestId === requestIdRef.current) {
-                const currentIndex = declaredOptions.findIndex((option) => option.key === quality);
-                const fallbackQuality = autoSelectHighestRef.current
-                    ? declaredOptions[currentIndex + 1]?.key
-                    : undefined;
-                if (fallbackQuality) {
-                    setQuality(fallbackQuality);
-                } else {
-                    autoSelectHighestRef.current = false;
-                    setError(true);
+        const removeVideoListener = nativePlayback.onVideoEvent((event) => {
+            if (event.sourceId !== sessionId || canceled) return;
+            if (event.type === "snapshot" && event.snapshot) {
+                const snapshot = event.snapshot;
+                setCurrentTime(snapshot.currentTime);
+                setDuration(snapshot.duration);
+                if (snapshot.state === "playing") {
+                    setPlaying(true);
+                    const frameReady = snapshot.currentTime > 0;
+                    if (frameReady) setNativeFrameReady(true);
+                    setLoading(!frameReady);
+                    setError(false);
+                } else if (snapshot.state === "buffering") {
+                    setLoading(true);
+                } else if (snapshot.state === "paused") {
+                    setPlaying(false);
                     setLoading(false);
                 }
+                return;
             }
+            if (event.type === "error") {
+                setLoading(false);
+                setNativeFrameReady(false);
+                setNativeSurfaceRevealed(false);
+                setError(true);
+                setPlaying(false);
+                toast.error(event.error || t("mv_player.error"));
+                return;
+            }
+            if (event.type === "closed" && videoOpened) {
+                restoreAudio();
+                if (!closingRef.current) {
+                    setNativeOpened(false);
+                    setLoading(false);
+                    setError(true);
+                    setPlaying(false);
+                }
+            }
+        });
+
+        const openNativeVideo = async () => {
+            const previousSessionId = activeSessionRef.current;
+            if (previousSessionId && previousSessionId !== sessionId) {
+                await nativePlayback.closeVideo(previousSessionId).catch(() => undefined);
+            }
+            if (canceled) return;
+
+            // Native Acrylic filters every HWND below the BrowserWindow. Switch
+            // to per-pixel composition before the video popup is warmed up so
+            // its decoded frames remain sharp.
+            activeSessionRef.current = sessionId;
+            await nativePlayback.prepareVideoOverlay(sessionId);
+            await waitForRendererPaint();
+            if (canceled) {
+                await nativePlayback.closeVideo(sessionId).catch(() => undefined);
+                return;
+            }
+
+            const pluginReference = getMediaPluginDelegate(musicItem);
+            const plugin = (pluginReference.hash
+                ? PluginManager.getPluginByHash(pluginReference.hash)
+                : undefined)
+                ?? PluginManager.getPluginByPlatform(pluginReference.platform ?? "");
+            const declaredCandidates: VideoCandidate[] = (plugin?.supportedVideoQualities ?? [])
+                .map((key) => ({ key, label: key }));
+            const initialCandidate = [...declaredCandidates]
+                .sort((left, right) => getQualityHeight(right) - getQualityHeight(left))[0];
+            const initialKey = musicItem.videoQuality || initialCandidate?.key || "1080p";
+            const initialResult = await PluginManager.callPluginDelegateMethod(
+                pluginReference,
+                "getMvSource",
+                musicItem,
+                initialKey,
+            );
+            if (!initialResult?.url) throw new Error("MV source unavailable");
+
+            let candidates = mergeCandidates(
+                declaredCandidates,
+                initialResult.availableVideoQualities ?? [],
+                [{
+                    key: initialKey,
+                    label: initialResult.videoQuality || initialKey,
+                    source: initialResult,
+                    width: initialResult.width,
+                    height: initialResult.height,
+                    codec: initialResult.codec,
+                    dynamicRange: initialResult.dynamicRange,
+                }],
+            );
+            const explicitCandidate = musicItem.videoQuality
+                ? candidates.find((candidate) => candidate.key === musicItem.videoQuality)
+                : undefined;
+            const preferredCandidate = explicitCandidate
+                ?? [...candidates].sort((left, right) => getQualityRank(right) - getQualityRank(left))[0];
+            if (preferredCandidate && !preferredCandidate.source) {
+                const preferredResult = await PluginManager.callPluginDelegateMethod(
+                    pluginReference,
+                    "getMvSource",
+                    musicItem,
+                    preferredCandidate.key,
+                ).catch(() => null);
+                if (preferredResult?.url) {
+                    candidates = mergeCandidates(candidates, [{
+                        ...preferredCandidate,
+                        source: preferredResult,
+                        label: preferredResult.videoQuality || preferredCandidate.label,
+                        width: preferredResult.width || preferredCandidate.width,
+                        height: preferredResult.height || preferredCandidate.height,
+                        codec: preferredResult.codec || preferredCandidate.codec,
+                        dynamicRange: preferredResult.dynamicRange || preferredCandidate.dynamicRange,
+                    }]);
+                }
+            }
+            if (canceled) return;
+            const availablePreferred = candidates.find(
+                (candidate) => candidate.key === preferredCandidate?.key && candidate.source?.url,
+            ) ?? candidates.find((candidate) => candidate.source?.url);
+            const initialSource = availablePreferred ? toNativeSource(availablePreferred) : null;
+            if (!initialSource) throw new Error("MV source unavailable");
+
+            await trackPlayer.suspendForVideo();
+            audioSuspended = true;
+            if (canceled) {
+                restoreAudio();
+                return;
+            }
+
+            await nativePlayback.openVideo({
+                sourceId: sessionId,
+                title: [musicItem.title, musicItem.artist].filter(Boolean).join(" — "),
+                sources: [initialSource],
+                initialSourceKey: initialSource.key,
+                volume: muted ? 0 : volume,
+                surface: {
+                    bounds: getSurfaceBounds(surfaceRef.current),
+                    visible: false,
+                },
+            });
+            videoOpened = true;
+            if (speed !== 1) {
+                await nativePlayback.videoCommand({
+                    operation: "speed",
+                    sourceId: sessionId,
+                    speed,
+                });
+            }
+            if (canceled) {
+                await nativePlayback.closeVideo(sessionId);
+                restoreAudio();
+                return;
+            }
+            setNativeSessionId(sessionId);
+            setNativeOpened(true);
+            setSources([initialSource]);
+            setActiveSourceKey(initialSource.key);
+            // The runtime has accepted play, but the Win32 swap chain may not
+            // contain a decoded frame yet. Snapshot time advancing is the
+            // readiness signal that removes the loading cover.
+            setLoading(true);
+            setPlaying(true);
+
+            let nextIndex = 0;
+            const hydrateCandidate = async () => {
+                while (!canceled && nextIndex < candidates.length) {
+                    const candidate = candidates[nextIndex++];
+                    if (!candidate || candidate.source?.url) continue;
+                    const result = await PluginManager.callPluginDelegateMethod(
+                        pluginReference,
+                        "getMvSource",
+                        musicItem,
+                        candidate.key,
+                    ).catch(() => null);
+                    if (!result?.url || canceled) continue;
+                    candidate.source = result;
+                    candidate.label = result.videoQuality || candidate.label;
+                    candidate.width = result.width || candidate.width;
+                    candidate.height = result.height || candidate.height;
+                    candidate.codec = result.codec || candidate.codec;
+                    candidate.dynamicRange = result.dynamicRange || candidate.dynamicRange;
+                }
+            };
+            await Promise.all(Array.from(
+                { length: Math.min(3, candidates.length) },
+                () => hydrateCandidate(),
+            ));
+            if (canceled) return;
+            const hydratedSources = dedupeSources(candidates, initialSource.key);
+            if (hydratedSources.some((source) => source.key === initialSource.key)) {
+                await nativePlayback.updateVideoSources({
+                    sourceId: sessionId,
+                    sources: hydratedSources,
+                });
+                setSources(hydratedSources);
+            }
+        };
+
+        void openNativeVideo().catch(async (reason) => {
+            if (canceled) return;
+            await nativePlayback.closeVideo(sessionId).catch(() => undefined);
+            restoreAudio();
+            setNativeOpened(false);
+            setLoading(false);
+            setPlaying(false);
+            setError(true);
+            toast.error(reason instanceof Error ? reason.message : t("mv_player.error"));
         });
 
         return () => {
             canceled = true;
-            const sessionId = proxySessionRef.current;
-            proxySessionRef.current = null;
-            if (sessionId) void videoProxy.release(sessionId);
-        };
-    }, [musicItem, quality, retryToken]);
-
-    useEffect(() => {
-        const video = videoRef.current;
-        if (!source?.url || !video) return;
-        setLoading(true);
-        setError(false);
-        hlsRef.current?.destroy();
-        hlsRef.current = null;
-        hlsRecoveryCountRef.current = 0;
-        video.volume = volume;
-        video.muted = muted;
-        const shouldPlay = playbackIntentRef.current?.playing ?? true;
-        const playVideo = () => {
-            if (shouldPlay) {
-                void video.play().catch(() => undefined);
+            removeVideoListener();
+            if (activeSessionRef.current === sessionId) {
+                activeSessionRef.current = "";
+            }
+            if (videoOpened) {
+                void nativePlayback.closeVideo(sessionId).finally(restoreAudio);
+            } else {
+                void nativePlayback.closeVideo(sessionId);
+                restoreAudio();
             }
         };
-        if (source.isHls && Hls.isSupported()) {
-            const hls = new Hls({
-                enableWorker: true,
-                maxBufferLength: 36,
-                backBufferLength: 30,
-            });
-            hlsRef.current = hls;
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                hlsRecoveryCountRef.current = 0;
-                trackPlayer.pause();
-                playVideo();
-            });
-            hls.on(Hls.Events.FRAG_LOADED, () => {
-                hlsRecoveryCountRef.current = 0;
-            });
-            hls.on(Hls.Events.ERROR, (_event, data) => {
-                if (!data.fatal) return;
-                if (hlsRecoveryCountRef.current < 2) {
-                    hlsRecoveryCountRef.current++;
-                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                        hls.startLoad();
-                        return;
-                    }
-                    if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-                        hls.recoverMediaError();
-                        return;
-                    }
-                }
-                hls.destroy();
-                hlsRef.current = null;
-                setLoading(false);
-                setError(true);
-            });
-            hls.loadSource(source.url);
-            hls.attachMedia(video);
-        } else {
-            video.src = source.url;
-            video.load();
-            trackPlayer.pause();
-            playVideo();
-        }
-        return () => {
-            hlsRef.current?.destroy();
-            hlsRef.current = null;
-            video.pause();
-            video.removeAttribute("src");
-            video.load();
-        };
-    // Volume is applied imperatively and must not reload the source.
+    // Session settings are captured when this playback session starts; later changes use videoCommand.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [source]);
+    }, [musicItem, retryToken, sessionId, t]);
+
+    // Keep the native HWND mounted for pause, seek, source switching and menu
+    // interactions. Hiding it discards the last presented frame and exposes the
+    // black modal background, which makes every control action look like a
+    // playback failure.
+    const surfaceVisible = nativeOpened && nativeFrameReady && !error && !closeCovered;
+
+    useEffect(() => {
+        if (!nativeOpened || !nativeSessionId) return;
+        let frame = 0;
+        let disposed = false;
+        let syncVersion = 0;
+        const root = document.documentElement;
+        const clearRendererOverlay = () => {
+            delete root.dataset.nativeVideoOverlay;
+            for (const property of [
+                "--native-video-left",
+                "--native-video-top",
+                "--native-video-right",
+                "--native-video-bottom",
+                "--native-video-radius",
+                "--native-video-radius-near",
+                "--native-video-radius-mid",
+                "--native-video-radius-far",
+            ]) {
+                root.style.removeProperty(property);
+            }
+        };
+        const syncSurface = () => {
+            window.cancelAnimationFrame(frame);
+            frame = window.requestAnimationFrame(() => {
+                const version = ++syncVersion;
+                const bounds = getSurfaceBounds(surfaceRef.current);
+                const sync = async () => {
+                    if (surfaceVisible) {
+                        const radiusValue = Number.parseFloat(
+                            playerRef.current
+                                ? window.getComputedStyle(playerRef.current).borderTopLeftRadius
+                                : "0",
+                        );
+                        const radius = Math.max(0, Math.min(
+                            Number.isFinite(radiusValue) ? radiusValue : 0,
+                            bounds.width / 2,
+                            bounds.height / 2,
+                        ));
+                        root.style.setProperty("--native-video-left", `${bounds.x}px`);
+                        root.style.setProperty("--native-video-top", `${bounds.y}px`);
+                        root.style.setProperty(
+                            "--native-video-right",
+                            `${bounds.x + bounds.width}px`,
+                        );
+                        root.style.setProperty(
+                            "--native-video-bottom",
+                            `${bounds.y + bounds.height}px`,
+                        );
+                        root.style.setProperty("--native-video-radius", `${radius}px`);
+                        root.style.setProperty(
+                            "--native-video-radius-near",
+                            `${radius * 0.07612}px`,
+                        );
+                        root.style.setProperty(
+                            "--native-video-radius-mid",
+                            `${radius * 0.29289}px`,
+                        );
+                        root.style.setProperty(
+                            "--native-video-radius-far",
+                            `${radius * 0.61732}px`,
+                        );
+                        // Install the cutout before asking the main process to
+                        // show the HWND. Waiting for a renderer paint makes the
+                        // first visible compositor frame a real surface frame,
+                        // rather than the opaque modal canvas.
+                        root.dataset.nativeVideoOverlay = "true";
+                        await waitForRendererPaint();
+                        if (disposed || version !== syncVersion) return;
+                        await nativePlayback.updateVideoSurface({
+                            sourceId: nativeSessionId,
+                            bounds,
+                            visible: true,
+                        });
+                        if (disposed || version !== syncVersion) return;
+                        // The HWND was primed behind the opaque player and has a
+                        // decoded frame already. One renderer paint barrier is
+                        // enough to expose the prepared surface atomically.
+                        await waitForRendererPaint();
+                        if (disposed || version !== syncVersion) return;
+                        setNativeSurfaceRevealed(true);
+                    } else {
+                        clearRendererOverlay();
+                        setNativeSurfaceRevealed(false);
+                        await nativePlayback.updateVideoSurface({
+                            sourceId: nativeSessionId,
+                            bounds,
+                            visible: false,
+                        }).catch(() => undefined);
+                    }
+                };
+                void sync().catch(() => {
+                    if (disposed || version !== syncVersion) return;
+                    clearRendererOverlay();
+                    setNativeSurfaceRevealed(false);
+                });
+            });
+        };
+        const observer = new ResizeObserver(syncSurface);
+        if (surfaceRef.current) observer.observe(surfaceRef.current);
+        window.addEventListener("resize", syncSurface);
+        document.addEventListener("fullscreenchange", syncSurface);
+        syncSurface();
+        return () => {
+            disposed = true;
+            observer.disconnect();
+            window.removeEventListener("resize", syncSurface);
+            document.removeEventListener("fullscreenchange", syncSurface);
+            window.cancelAnimationFrame(frame);
+            clearRendererOverlay();
+        };
+    }, [nativeFrameReady, nativeOpened, nativeSessionId, surfaceVisible]);
+
+    useEffect(() => {
+        const generation = sizeProbeGenerationRef.current;
+        for (const source of sources) {
+            if (formatVideoSize(source.size) || probedSizeKeysRef.current.has(source.key)) {
+                continue;
+            }
+            probedSizeKeysRef.current.add(source.key);
+            setSourceSizeState((current) => ({ ...current, [source.key]: "loading" }));
+            void nodeRuntime.probeMediaSize(source.downloadSource).then((size) => {
+                if (!mountedRef.current || generation !== sizeProbeGenerationRef.current) return;
+                setSourceSizeState((current) => ({
+                    ...current,
+                    [source.key]: size && size > 0 ? size : "stream",
+                }));
+            }).catch(() => {
+                if (!mountedRef.current || generation !== sizeProbeGenerationRef.current) return;
+                setSourceSizeState((current) => ({ ...current, [source.key]: "unknown" }));
+            });
+        }
+    }, [sources]);
 
     const handleDownloadButton = async () => {
         if (downloadPhase === "done" && downloadedPath) {
@@ -905,71 +976,48 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
             return;
         }
         if (downloadPhase === "downloading") {
-            downloadRequestIdRef.current++;
+            downloadRequestIdRef.current += 1;
             await downloadTaskRef.current?.cancel();
             downloadTaskRef.current = null;
-            const downloadSession = downloadSessionRef.current;
-            downloadSessionRef.current = null;
-            if (downloadSession) await videoProxy.release(downloadSession).catch(() => undefined);
             setDownloadPhase("idle");
             setDownloadPercent(0);
             toast.info(t("mv_player.download_canceled"));
             return;
         }
         setQualityMenuOpen(false);
+        setSpeedMenuOpen(false);
         setDownloadMenuOpen((open) => !open);
     };
 
-    const handleDownload = async (option: PlayerQualityOption) => {
+    const handleDownload = async (source: PlayerVideoSource) => {
         const requestId = ++downloadRequestIdRef.current;
         setDownloadMenuOpen(false);
         setDownloadPhase("downloading");
         setDownloadPercent(0);
         setDownloadedPath("");
-
-        const pluginReference = getMediaPluginDelegate(musicItem);
         try {
-            const candidate = qualitySourceCacheRef.current.get(option.key)
-                ?? await PluginManager.callPluginDelegateMethod(
-                    pluginReference,
-                    "getMvSource",
-                    musicItem,
-                    option.key,
-                );
-            if (requestId !== downloadRequestIdRef.current || !mountedRef.current) return;
-            if (!candidate?.url) throw new Error("MV download source unavailable");
-            qualitySourceCacheRef.current.set(option.key, candidate);
-
-            const session = await videoProxy.register({
-                url: candidate.url,
-                headers: candidate.headers,
-                userAgent: candidate.userAgent,
-                mimeType: candidate.mimeType,
-                backupUrls: candidate.backupUrls,
-            });
-            if (requestId !== downloadRequestIdRef.current || !mountedRef.current) {
-                await videoProxy.release(session.id).catch(() => undefined);
-                return;
-            }
-            downloadSessionRef.current = session.id;
-
-            const downloadQuality = candidate.videoQuality || option.actualKey || option.key;
+            const downloadSource = source.downloadSource;
             const task = startMusicVideoDownload(
                 musicItem,
-                session.downloadUrl,
-                downloadQuality,
+                {
+                    url: source.url,
+                    headers: downloadSource.headers,
+                    userAgent: downloadSource.userAgent,
+                },
+                downloadSource.videoQuality || source.label || source.key,
                 (progress) => {
                     if (!mountedRef.current || requestId !== downloadRequestIdRef.current) return;
                     if (progress.total && progress.downloaded !== undefined) {
-                        setDownloadPercent(Math.min(100, Math.round(progress.downloaded / progress.total * 100)));
+                        setDownloadPercent(Math.min(
+                            100,
+                            Math.round(progress.downloaded / progress.total * 100),
+                        ));
                     }
                 },
             );
             downloadTaskRef.current = task;
             const filePath = await task.completion;
-            if (downloadTaskRef.current === task) {
-                downloadTaskRef.current = null;
-            }
+            if (downloadTaskRef.current === task) downloadTaskRef.current = null;
             if (mountedRef.current && requestId === downloadRequestIdRef.current) {
                 setDownloadedPath(filePath);
                 setDownloadPercent(100);
@@ -985,22 +1033,19 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                 setDownloadPhase("error");
                 toast.error(t("mv_player.download_failed"));
             }
-        } finally {
-            const downloadSession = downloadSessionRef.current;
-            if (downloadSession && requestId === downloadRequestIdRef.current) {
-                downloadSessionRef.current = null;
-                await videoProxy.release(downloadSession).catch(() => undefined);
-            }
         }
     };
 
-    const sortedQualityOptions = useMemo(() => [...qualityOptions].sort((left, right) => (
-        getQualityRank(right) - getQualityRank(left)
-    )), [qualityOptions]);
-    const activeQuality = qualityOptions.find((item) => item.key === quality)
-        ?? qualityOptions.find((item) => item.actualKey === source?.videoQuality);
-    const activeQualityKey = activeQuality?.key || quality;
-    const activeQualityLabel = getQualityLabel(activeQuality, source?.videoQuality || quality);
+    const sortedSources = useMemo(() => [...sources].sort((left, right) => {
+        const leftHeight = left.height ?? 0;
+        const rightHeight = right.height ?? 0;
+        return rightHeight - leftHeight;
+    }), [sources]);
+    const activeSource = sources.find((source) => source.key === activeSourceKey);
+    const activeQualityLabel = (activeSource?.label || activeSourceKey || "—")
+        .toLocaleUpperCase("en-US");
+    const displayLoading = loading
+        || (nativeOpened && (!nativeFrameReady || !nativeSurfaceRevealed));
     const seekProgress = duration > 0 ? currentTime / duration * 100 : 0;
     const silent = muted || volume === 0;
     const downloadButtonTitle = downloadPhase === "downloading"
@@ -1010,39 +1055,71 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
             : downloadPhase === "error"
                 ? t("mv_player.retry_download")
                 : t("mv_player.download");
+    const getSourceSizeLabel = (source: PlayerVideoSource) => {
+        const declaredSize = formatVideoSize(source.size);
+        if (declaredSize) return declaredSize;
+        const state = sourceSizeState[source.key];
+        if (typeof state === "number") return formatVideoSize(state);
+        if (state === "loading") return t("mv_player.size_loading");
+        if (state === "stream") return t("mv_player.size_stream");
+        return t("mv_player.size_unknown");
+    };
     const progressStyle = {
         "--mv-progress": `${seekProgress}%`,
-        "--mv-buffered": `${bufferedProgress}%`,
+        "--mv-buffered": `${seekProgress}%`,
     } as CSSProperties;
-    const volumeStyle = { "--mv-volume": `${silent ? 0 : volume * 100}%` } as CSSProperties;
+    const volumeStyle = {
+        "--mv-volume": `${silent ? 0 : volume * 100}%`,
+    } as CSSProperties;
 
     return (
-        <Base withBlur={false} defaultClose>
+        <Base animated={false} withBlur={false} onRequestClose={requestClose}>
             <div
                 ref={playerRef}
                 className="modal--mv-player"
                 data-fullscreen={fullscreen ? "true" : "false"}
+                data-native-surface-visible={surfaceVisible ? "true" : "false"}
+                data-closing={closing ? "true" : undefined}
+                data-exiting={exiting ? "true" : undefined}
                 data-controls-visible={controlsVisible ? "true" : "false"}
-                data-modal-layer-open={qualityMenuOpen || downloadMenuOpen ? "true" : undefined}
-                onPointerMove={handlePointerActivity}
-                onPointerDownCapture={handlePointerActivity}
+                data-modal-layer-open={
+                    qualityMenuOpen || speedMenuOpen || downloadMenuOpen ? "true" : undefined
+                }
+                onPointerMove={revealControls}
+                onPointerDownCapture={revealControls}
                 onWheel={handleWheelVolume}
                 onMouseLeave={() => {
-                    if (
-                        !playing
-                        || qualityMenuOpen
-                        || downloadMenuOpen
-                        || rangeInteractionRef.current
-                    ) return;
+                    if (!playing || qualityMenuOpen || speedMenuOpen || downloadMenuOpen) return;
                     clearControlsTimer();
                     setControlsVisible(false);
                 }}
                 onFocusCapture={revealControls}
             >
-                {artwork ? <img className="mv-player-backdrop" src={artwork} alt="" aria-hidden="true"></img> : null}
+                {musicItem.coverImg || musicItem.artwork ? (
+                    <img
+                        className="mv-player-backdrop"
+                        src={musicItem.coverImg || musicItem.artwork}
+                        alt=""
+                        aria-hidden="true"
+                    ></img>
+                ) : null}
                 <div className="mv-player-scrim"></div>
+                <div
+                    ref={closeCurtainRef}
+                    className="mv-player-close-curtain"
+                    aria-hidden="true"
+                ></div>
                 <div className="mv-player-topbar">
                     <div className="mv-player-heading">
+                        <span className="mv-player-kicker">
+                            <span
+                                className={`mv-player-status-dot${
+                                    displayLoading ? " is-loading" : error ? " is-error" : ""
+                                }`}
+                                aria-hidden="true"
+                            ></span>
+                            <span>{t("mv_player.now_playing")}</span>
+                        </span>
                         <strong title={musicItem.title}>{musicItem.title}</strong>
                         <span className="mv-player-subtitle">
                             <span title={musicItem.artist}>{musicItem.artist || musicItem.platform}</span>
@@ -1050,88 +1127,46 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                             <span className="mv-player-heading-quality">{activeQualityLabel}</span>
                         </span>
                     </div>
-                    <button
-                        type="button"
-                        className="mv-player-icon-button mv-player-close"
-                        title={t("common.close")}
-                        aria-label={t("common.close")}
-                        onClick={hideModal}
-                    >
-                        <SvgAsset iconName="x-mark"></SvgAsset>
-                    </button>
+                    <div className="mv-player-topbar-actions">
+                        <button
+                            type="button"
+                            className="mv-player-icon-button mv-player-close"
+                            title={t("common.close")}
+                            aria-label={t("common.close")}
+                            disabled={closing}
+                            onClick={requestClose}
+                        >
+                            <SvgAsset iconName="x-mark"></SvgAsset>
+                        </button>
+                    </div>
                 </div>
 
                 <div
                     className="mv-player-stage"
                     role="presentation"
-                    onClick={(event) => handleStageClick(event.detail)}
-                    onDoubleClick={handleStageDoubleClick}
+                    onClick={(event) => {
+                        if (event.detail > 1) return;
+                        if (stageClickTimerRef.current !== null) {
+                            window.clearTimeout(stageClickTimerRef.current);
+                        }
+                        stageClickTimerRef.current = window.setTimeout(() => {
+                            togglePlayback();
+                            stageClickTimerRef.current = null;
+                        }, 180);
+                    }}
+                    onDoubleClick={() => {
+                        if (stageClickTimerRef.current !== null) {
+                            window.clearTimeout(stageClickTimerRef.current);
+                            stageClickTimerRef.current = null;
+                        }
+                        toggleFullscreen();
+                    }}
                 >
-                    {source?.url ? (
-                        <video
-                            ref={videoRef}
-                            className="mv-player-video"
-                            playsInline
-                            preload="metadata"
-                            crossOrigin="anonymous"
-                            onLoadStart={() => setLoading(true)}
-                            onLoadedMetadata={(event) => {
-                                const nextDuration = event.currentTarget.duration || source.duration || 0;
-                                setDuration(nextDuration);
-                                setBufferedProgress(getBufferedPercent(event.currentTarget));
-                                const playbackIntent = playbackIntentRef.current;
-                                if (playbackIntent) {
-                                    const nextTime = Math.min(
-                                        playbackIntent.currentTime,
-                                        Number.isFinite(nextDuration) && nextDuration > 0
-                                            ? nextDuration
-                                            : playbackIntent.currentTime,
-                                    );
-                                    event.currentTarget.currentTime = nextTime;
-                                    setCurrentTime(nextTime);
-                                    playbackIntentRef.current = null;
-                                }
-                            }}
-                            onDurationChange={(event) => {
-                                setDuration(event.currentTarget.duration || 0);
-                                setBufferedProgress(getBufferedPercent(event.currentTarget));
-                            }}
-                            onProgress={(event) => setBufferedProgress(getBufferedPercent(event.currentTarget))}
-                            onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-                            onPlaying={() => {
-                                setPlaying(true);
-                                setLoading(false);
-                                setError(false);
-                                revealControls();
-                            }}
-                            onPause={() => {
-                                setPlaying(false);
-                                setControlsVisible(true);
-                            }}
-                            onWaiting={() => setLoading(true)}
-                            onCanPlay={() => setLoading(false)}
-                            onEnded={() => {
-                                setPlaying(false);
-                                setControlsVisible(true);
-                            }}
-                            onVolumeChange={(event) => {
-                                setVolume(event.currentTarget.volume);
-                                setMuted(event.currentTarget.muted);
-                            }}
-                            onError={() => {
-                                setLoading(false);
-                                setError(true);
-                                toast.error(t("mv_player.error"));
-                            }}
-                        >
-                            <track kind="captions" srcLang="en" label={t("mv_player.captions")} src="data:text/vtt,WEBVTT%0A%0A"></track>
-                        </video>
-                    ) : null}
-
-                    {loading && !error ? (
+                    <div ref={surfaceRef} className="mv-player-native-surface" aria-hidden="true"></div>
+                    {displayLoading && !error ? (
                         <div className="mv-player-state" aria-live="polite">
                             <span className="mv-player-spinner"></span>
-                            <span>{t("mv_player.loading")}</span>
+                            <strong>{t("mv_player.loading")}</strong>
                         </div>
                     ) : null}
                     {error ? (
@@ -1143,7 +1178,7 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                             </button>
                         </div>
                     ) : null}
-                    {!playing && !loading && !error ? (
+                    {!playing && !displayLoading && !error ? (
                         <button
                             type="button"
                             className="mv-player-center-play"
@@ -1166,7 +1201,10 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                         onPointerMove={(event) => {
                             if (duration <= 0) return;
                             const rect = event.currentTarget.getBoundingClientRect();
-                            const percent = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+                            const percent = Math.max(0, Math.min(
+                                1,
+                                (event.clientX - rect.left) / rect.width,
+                            ));
                             setSeekPreview({ percent: percent * 100, time: percent * duration });
                         }}
                         onPointerLeave={() => setSeekPreview(null)}
@@ -1187,12 +1225,10 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                             value={Math.min(currentTime, duration || 0)}
                             aria-label={t("mv_player.playback_progress")}
                             aria-valuetext={`${formatVideoTime(currentTime)} / ${formatVideoTime(duration)}`}
-                            onPointerDown={beginRangeInteraction}
-                            onBlur={endRangeInteraction}
                             onChange={(event) => {
                                 const nextTime = Number(event.target.value);
-                                if (videoRef.current) videoRef.current.currentTime = nextTime;
                                 setCurrentTime(nextTime);
+                                void sendVideoCommand({ operation: "seek", seconds: nextTime });
                             }}
                         ></input>
                     </label>
@@ -1204,6 +1240,7 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                                 title={playing ? t("music_bar.pause") : t("music_bar.play")}
                                 aria-label={playing ? t("music_bar.pause") : t("music_bar.play")}
                                 aria-keyshortcuts="Space K"
+                                disabled={!nativeOpened}
                                 onClick={togglePlayback}
                             >
                                 <SvgAsset iconName={playing ? "pause" : "play"}></SvgAsset>
@@ -1225,11 +1262,9 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                                         min={0}
                                         max={1}
                                         step={0.01}
-                                        value={muted ? 0 : volume}
+                                        value={silent ? 0 : volume}
                                         aria-label={t("music_bar.volume")}
-                                        aria-valuetext={`${Math.round((muted ? 0 : volume) * 100)}%`}
-                                        onPointerDown={beginRangeInteraction}
-                                        onBlur={endRangeInteraction}
+                                        aria-valuetext={`${Math.round((silent ? 0 : volume) * 100)}%`}
                                         onChange={(event) => updateVolume(Number(event.target.value))}
                                     ></input>
                                 </label>
@@ -1239,82 +1274,114 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                             </span>
                         </div>
                         <div className="mv-player-control-group mv-player-control-group--right">
+                            <div className={`mv-player-speed-picker${speedMenuOpen ? " is-open" : ""}`}>
+                                <button
+                                    type="button"
+                                    className="mv-player-icon-button mv-player-speed-trigger"
+                                    title={`${t("mv_player.playback_speed")}: ${speed}×`}
+                                    aria-label={`${t("mv_player.playback_speed")}: ${speed}×`}
+                                    aria-haspopup="menu"
+                                    aria-expanded={speedMenuOpen}
+                                    disabled={!nativeOpened}
+                                    onClick={() => {
+                                        setQualityMenuOpen(false);
+                                        setDownloadMenuOpen(false);
+                                        setSpeedMenuOpen((open) => !open);
+                                    }}
+                                >
+                                    <SvgAsset iconName="mv-speed"></SvgAsset>
+                                </button>
+                                {speedMenuOpen ? (
+                                    <div
+                                        className="mv-player-quality-menu mv-player-speed-menu"
+                                        role="menu"
+                                        aria-label={t("mv_player.playback_speed")}
+                                        onKeyDown={handleMenuNavigation}
+                                    >
+                                        {VIDEO_SPEED_PRESETS.map((preset) => (
+                                            <button
+                                                type="button"
+                                                role="menuitemradio"
+                                                aria-checked={preset === speed}
+                                                className={`mv-player-quality-option mv-player-speed-option${
+                                                    preset === speed ? " is-selected" : ""
+                                                }`}
+                                                key={preset}
+                                                onClick={() => updateSpeed(preset)}
+                                            >
+                                                <span className="mv-player-quality-option-copy">
+                                                    <strong>{preset}×</strong>
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : null}
+                            </div>
                             <div className={`mv-player-download-picker${downloadMenuOpen ? " is-open" : ""}`}>
                                 <button
                                     type="button"
-                                    className={`mv-player-icon-button mv-player-download mv-player-download--${downloadPhase}`}
+                                    className={`mv-player-icon-button mv-player-download mv-player-download--${
+                                        downloadPhase
+                                    }`}
                                     style={downloadPhase === "downloading"
-                                        ? { "--download-progress": `${downloadPercent * 3.6}deg` } as CSSProperties
+                                        ? {
+                                            "--download-progress": `${downloadPercent * 3.6}deg`,
+                                        } as CSSProperties
                                         : undefined}
                                     title={downloadButtonTitle}
                                     aria-label={downloadButtonTitle}
                                     aria-haspopup="menu"
                                     aria-expanded={downloadMenuOpen}
-                                    disabled={qualityOptions.length === 0 && downloadPhase !== "done"}
+                                    disabled={sources.length === 0 && downloadPhase !== "done"}
                                     onClick={() => void handleDownloadButton()}
                                 >
-                                    <SvgAsset iconName={downloadPhase === "done" ? "check" : "array-download-tray"}></SvgAsset>
-                                    {downloadPhase === "downloading" ? <span>{downloadPercent || "…"}</span> : null}
+                                    <SvgAsset iconName={
+                                        downloadPhase === "done" ? "check" : "array-download-tray"
+                                    }></SvgAsset>
+                                    {downloadPhase === "downloading" ? (
+                                        <span>{downloadPercent || "…"}</span>
+                                    ) : null}
                                 </button>
-                                {qualityOptions.length > 0 && downloadMenuOpen ? (
+                                {downloadMenuOpen ? (
                                     <div
                                         ref={downloadMenuRef}
                                         className="mv-player-quality-menu mv-player-download-menu"
                                         role="menu"
                                         aria-label={t("mv_player.download")}
-                                        onKeyDown={(event) => {
-                                            const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>(
-                                                "[role='menuitem']",
-                                            )];
-                                            const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
-                                            let nextIndex: number | null = null;
-                                            if (event.key === "ArrowDown") {
-                                                nextIndex = (currentIndex + 1) % items.length;
-                                            } else if (event.key === "ArrowUp") {
-                                                nextIndex = (currentIndex - 1 + items.length) % items.length;
-                                            } else if (event.key === "Home") {
-                                                nextIndex = 0;
-                                            } else if (event.key === "End") {
-                                                nextIndex = items.length - 1;
-                                            }
-                                            if (nextIndex !== null && items[nextIndex]) {
-                                                event.preventDefault();
-                                                items[nextIndex].focus();
-                                            }
-                                        }}
+                                        onKeyDown={handleMenuNavigation}
                                     >
-                                        {sortedQualityOptions.map((item) => {
-                                            const label = getQualityLabel(item, item.actualKey || item.key);
-                                            const dimensions = item.width && item.height
-                                                ? `${item.width} × ${item.height}`
-                                                : item.height ? `${item.height}p` : "";
-                                            const itemSize = formatVideoSize(item.size);
-                                            const itemSizeState = qualitySizeState[item.key];
-                                            const itemSizeLabel = itemSize
-                                                || (itemSizeState === "loading"
-                                                    ? t("mv_player.size_loading")
-                                                    : itemSizeState === "stream"
-                                                        ? t("mv_player.size_stream")
-                                                        : t("mv_player.size_unknown"));
-                                            const optionMeta = [dimensions, item.codec].filter(Boolean).join(" · ");
+                                        {sortedSources.map((source) => {
+                                            const dimensions = source.width && source.height
+                                                ? `${source.width} × ${source.height}`
+                                                : source.height ? `${source.height}p` : "";
+                                            const range = source.dynamicRange === "dolby-vision"
+                                                ? "Dolby Vision"
+                                                : source.dynamicRange === "hdr10" ? "HDR10" : "";
+                                            const optionMeta = [
+                                                dimensions,
+                                                source.codec,
+                                                range,
+                                            ].filter(Boolean).join(" · ");
+                                            const sizeLabel = getSourceSizeLabel(source);
                                             return (
                                                 <button
                                                     type="button"
                                                     role="menuitem"
-                                                    aria-label={[label, itemSizeLabel, optionMeta].filter(Boolean).join(", ")}
+                                                    aria-label={[
+                                                        source.label,
+                                                        sizeLabel,
+                                                        optionMeta,
+                                                    ].filter(Boolean).join(", ")}
                                                     className="mv-player-quality-option mv-player-download-option"
-                                                    key={item.key}
-                                                    onClick={() => void handleDownload(item)}
+                                                    key={source.key}
+                                                    onClick={() => void handleDownload(source)}
                                                 >
                                                     <span className="mv-player-quality-option-copy">
-                                                        <strong>{label}</strong>
+                                                        <strong>{source.label.toLocaleUpperCase("en-US")}</strong>
                                                         {optionMeta ? <small>{optionMeta}</small> : null}
                                                     </span>
-                                                    <span
-                                                        className="mv-player-quality-size"
-                                                        data-state={itemSize ? "ready" : itemSizeState || "unknown"}
-                                                    >
-                                                        {itemSizeLabel}
+                                                    <span className="mv-player-quality-size">
+                                                        {sizeLabel}
                                                     </span>
                                                 </button>
                                             );
@@ -1330,89 +1397,68 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                                     aria-label={`${t("mv_player.video_quality")}: ${activeQualityLabel}`}
                                     aria-haspopup="menu"
                                     aria-expanded={qualityMenuOpen}
-                                    disabled={loading || qualityOptions.length === 0}
+                                    disabled={displayLoading || sources.length < 2}
                                     onClick={() => {
+                                        setSpeedMenuOpen(false);
                                         setDownloadMenuOpen(false);
                                         setQualityMenuOpen((open) => !open);
                                     }}
                                 >
                                     <SvgAsset iconName="cog-8-tooth"></SvgAsset>
                                 </button>
-                                {qualityOptions.length > 0 && qualityMenuOpen ? (
+                                {qualityMenuOpen ? (
                                     <div
                                         ref={qualityMenuRef}
                                         className="mv-player-quality-menu"
                                         role="menu"
                                         aria-label={t("mv_player.video_quality")}
-                                        onKeyDown={(event) => {
-                                            const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>(
-                                                "[role='menuitemradio']",
-                                            )];
-                                            const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
-                                            let nextIndex: number | null = null;
-                                            if (event.key === "ArrowDown") {
-                                                nextIndex = (currentIndex + 1) % items.length;
-                                            } else if (event.key === "ArrowUp") {
-                                                nextIndex = (currentIndex - 1 + items.length) % items.length;
-                                            } else if (event.key === "Home") {
-                                                nextIndex = 0;
-                                            } else if (event.key === "End") {
-                                                nextIndex = items.length - 1;
-                                            }
-                                            if (nextIndex !== null && items[nextIndex]) {
-                                                event.preventDefault();
-                                                items[nextIndex].focus();
-                                            }
-                                        }}
+                                        onKeyDown={handleMenuNavigation}
                                     >
-                                        {sortedQualityOptions.map((item) => {
-                                            const label = getQualityLabel(item, item.actualKey || item.key);
-                                            const dimensions = item.width && item.height
-                                                ? `${item.width} × ${item.height}`
-                                                : item.height ? `${item.height}p` : "";
-                                            const selected = item.key === activeQualityKey;
-                                            const itemSize = formatVideoSize(item.size || (selected ? source?.size : undefined));
-                                            const itemSizeState = qualitySizeState[item.key];
-                                            const itemSizeLabel = itemSize
-                                                || (itemSizeState === "loading"
-                                                    ? t("mv_player.size_loading")
-                                                    : itemSizeState === "stream"
-                                                        ? t("mv_player.size_stream")
-                                                        : t("mv_player.size_unknown"));
-                                            const optionMeta = [dimensions, item.codec].filter(Boolean).join(" · ");
+                                        {sortedSources.map((source) => {
+                                            const selected = source.key === activeSourceKey;
+                                            const dimensions = source.width && source.height
+                                                ? `${source.width} × ${source.height}`
+                                                : source.height ? `${source.height}p` : "";
+                                            const range = source.dynamicRange === "dolby-vision"
+                                                ? "Dolby Vision"
+                                                : source.dynamicRange === "hdr10" ? "HDR10" : "";
+                                            const optionMeta = [
+                                                dimensions,
+                                                source.codec,
+                                                range,
+                                            ].filter(Boolean).join(" · ");
+                                            const sizeLabel = getSourceSizeLabel(source);
                                             return (
                                                 <button
                                                     type="button"
                                                     role="menuitemradio"
                                                     aria-checked={selected}
-                                                    aria-label={[label, itemSizeLabel, optionMeta].filter(Boolean).join(", ")}
                                                     className={`mv-player-quality-option${selected ? " is-selected" : ""}`}
-                                                    key={item.key}
+                                                    key={source.key}
                                                     onClick={() => {
-                                                        autoSelectHighestRef.current = false;
-                                                        if (!selected) {
-                                                            const video = videoRef.current;
-                                                            playbackIntentRef.current = {
-                                                                currentTime: video?.currentTime ?? currentTime,
-                                                                playing: video ? !video.paused : playing,
-                                                            };
-                                                            setQuality(item.key);
-                                                            setDownloadPhase("idle");
-                                                            setDownloadPercent(0);
-                                                            setDownloadedPath("");
-                                                        }
                                                         setQualityMenuOpen(false);
+                                                        if (selected || !nativeSessionId) return;
+                                                        setLoading(true);
+                                                        void nativePlayback.selectVideoSource({
+                                                            sourceId: nativeSessionId,
+                                                            sourceKey: source.key,
+                                                        }).then(() => {
+                                                            setActiveSourceKey(source.key);
+                                                            setLoading(false);
+                                                        }).catch((reason) => {
+                                                            setLoading(false);
+                                                            toast.error(reason instanceof Error
+                                                                ? reason.message
+                                                                : t("mv_player.error"));
+                                                        });
                                                     }}
                                                 >
                                                     <span className="mv-player-quality-option-copy">
-                                                        <strong>{label}</strong>
+                                                        <strong>{source.label.toLocaleUpperCase("en-US")}</strong>
                                                         {optionMeta ? <small>{optionMeta}</small> : null}
                                                     </span>
-                                                    <span
-                                                        className="mv-player-quality-size"
-                                                        data-state={itemSize ? "ready" : itemSizeState || "unknown"}
-                                                    >
-                                                        {itemSizeLabel}
+                                                    <span className="mv-player-quality-size">
+                                                        {sizeLabel}
                                                     </span>
                                                 </button>
                                             );

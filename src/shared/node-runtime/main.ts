@@ -309,6 +309,12 @@ class NodeRuntimeManager {
                 filePath: targetPath,
             }, DOWNLOAD_FILE_TIMEOUT_MS);
         });
+        ipcMain.handle("@shared/node-runtime/probe-media-size", async (event, mediaSource) => {
+            assertIpcSender(event, ["main"]);
+            return this.request("probe-media-size", {
+                mediaSource: validateMediaSource(mediaSource),
+            });
+        });
         ipcMain.handle("@shared/node-runtime/abort-download", async (event, taskId, removePartial) => {
             assertIpcSender(event, ["main"]);
             assertString(taskId, "download task id", 512);

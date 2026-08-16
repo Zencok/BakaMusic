@@ -458,6 +458,7 @@
         "now_playing": "正在播放 MV",
         "retry": "重试",
         "playback_progress": "视频播放进度",
+        "playback_speed": "播放速度",
         "quality_short": "清晰度",
         "fullscreen": "进入全屏",
         "exit_fullscreen": "退出全屏",
@@ -472,7 +473,8 @@
         "size_stream": "流媒体",
         "size_unknown": "未知大小",
         "captions": "字幕",
-        "no_source": "该歌曲没有可用 MV"
+        "no_source": "该歌曲没有可用 MV",
+        "native_active": "正在使用 libmpv 播放"
     },
     "music_detail": {
         "search_lyric": "搜索歌词",

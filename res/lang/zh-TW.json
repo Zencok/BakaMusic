@@ -458,6 +458,7 @@
         "now_playing": "正在播放 MV",
         "retry": "重試",
         "playback_progress": "影片播放進度",
+        "playback_speed": "播放速度",
         "quality_short": "畫質",
         "fullscreen": "進入全螢幕",
         "exit_fullscreen": "退出全螢幕",
@@ -469,10 +470,11 @@
         "download_complete": "MV 下載完成",
         "download_failed": "MV 下載失敗",
         "size_loading": "取得中…",
-        "size_stream": "串流媒體",
-        "size_unknown": "未知大小",
+        "size_stream": "串流",
+        "size_unknown": "大小未知",
         "captions": "字幕",
-        "no_source": "這首歌曲沒有可用 MV"
+        "no_source": "此歌曲沒有可用 MV",
+        "native_active": "正在使用 libmpv 播放"
     },
     "music_detail": {
         "search_lyric": "搜尋歌詞",

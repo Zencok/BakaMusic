@@ -380,6 +380,12 @@ function normalizeVideoSourceSize(value: unknown) {
     return Number.isFinite(numberValue) && numberValue >= 0 ? numberValue : undefined;
 }
 
+function normalizeVideoDynamicRange(value: unknown): IPlugin.VideoDynamicRange | undefined {
+    return value === "sdr" || value === "hdr10" || value === "dolby-vision"
+        ? value
+        : undefined;
+}
+
 function normalizeVideoQualityOptions(value: unknown) {
     if (!Array.isArray(value)) {
         return undefined;
@@ -404,6 +410,7 @@ function normalizeVideoQualityOptions(value: unknown) {
             size: normalizeVideoSourceSize(item.size),
             codec: stringValue("codec"),
             mimeType: stringValue("mimeType"),
+            dynamicRange: normalizeVideoDynamicRange(item.dynamicRange),
         }];
     }).slice(0, 32);
     return options.length ? options : undefined;
@@ -444,6 +451,7 @@ function normalizeVideoSourceResult(value: unknown): IPlugin.IVideoSourceResult 
         videoQuality: stringValue("videoQuality") ?? stringValue("quality"),
         mimeType: stringValue("mimeType"),
         codec: stringValue("codec"),
+        dynamicRange: normalizeVideoDynamicRange(source.dynamicRange),
         bitrate: normalizeVideoSourceNumber(source.bitrate),
         size: normalizeVideoSourceSize(source.size),
         duration: normalizeVideoSourceNumber(source.duration),

@@ -106,6 +106,14 @@ async function abortDownload(taskId: string, removePartial = true) {
     await ipcRenderer.invoke("@shared/node-runtime/abort-download", taskId, removePartial);
 }
 
+/** Probes media length inside the Node utility process, outside Chromium/IDM. */
+async function probeMediaSize(mediaSource: IMusic.IMusicSource) {
+    return await ipcRenderer.invoke(
+        "@shared/node-runtime/probe-media-size",
+        mediaSource,
+    ) as number | null;
+}
+
 async function postprocessDownloadedFile(
     filePath: string,
     payload?: IDownloadPostprocessPayload | null,
@@ -179,6 +187,7 @@ async function warmUp() {
 
 export const mod = {
     downloadFile,
+    probeMediaSize,
     abortDownload,
     postprocessDownloadedFile,
     transcodeDownloadedFile,

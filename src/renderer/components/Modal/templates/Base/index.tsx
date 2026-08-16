@@ -9,8 +9,10 @@ import { appWindowUtil } from "@shared/utils/renderer";
 
 interface IBaseModalProps {
     onDefaultClick?: () => void;
+    onRequestClose?: () => void;
     defaultClose?: boolean;
     withBlur?: boolean;
+    animated?: boolean;
     children: ReactNode;
 }
 
@@ -19,9 +21,11 @@ const baseId = "components--modal-base-container";
 function Base(props: IBaseModalProps) {
     const {
         onDefaultClick,
+        onRequestClose,
         defaultClose = false,
         children,
         withBlur = true,
+        animated = true,
     } = props;
 
     const trapCloseRef = useRef(false);
@@ -91,14 +95,22 @@ function Base(props: IBaseModalProps) {
                         appWindowUtil.setMainWindowFullScreen?.(false);
                         return;
                     }
-                    hideModal();
-                    onDefaultClick?.();
+                    if (onRequestClose) {
+                        onRequestClose();
+                    } else {
+                        hideModal();
+                        onDefaultClick?.();
+                    }
                 });
                 return;
             }
             // Escape always dismisses the top modal (matches user expectation)
-            hideModal();
-            onDefaultClick?.();
+            if (onRequestClose) {
+                onRequestClose();
+            } else {
+                hideModal();
+                onDefaultClick?.();
+            }
         };
         window.addEventListener("keydown", onKeyDown, true);
         return () => {
@@ -106,15 +118,17 @@ function Base(props: IBaseModalProps) {
             window.removeEventListener("keydown", onKeyDown, true);
             previousFocus?.focus();
         };
-    }, [onDefaultClick]);
+    }, [onDefaultClick, onRequestClose]);
 
     return (
         // The dialog itself owns pointer-based backdrop dismissal.
         // eslint-disable-next-line jsx-a11y-x/no-noninteractive-element-interactions
         <div
             id={baseId}
-            className={`components--modal-base animate__animated animate__fadeIn ${
-                withBlur ? "blur10" : ""
+            className={`components--modal-base${
+                animated ? " animate__animated animate__fadeIn" : ""
+            }${
+                withBlur ? " blur10" : ""
             }`}
             ref={dialogRef}
             role="dialog"
@@ -130,7 +144,9 @@ function Base(props: IBaseModalProps) {
             }}
             onMouseUp={(e) => {
                 if ((e.target as HTMLElement)?.id === baseId && trapCloseRef.current) {
-                    if (defaultClose) {
+                    if (onRequestClose) {
+                        onRequestClose();
+                    } else if (defaultClose) {
                         hideModal();
                     } else {
                         onDefaultClick?.();

@@ -145,7 +145,6 @@
     "get-windows": "^9.3.0",
     "gl-matrix": "^4.0.0-beta.2",
     "he": "^1.2.0",
-    "hls.js": "^1.7.0",
     "hotkeys-js": "^4.0.4",
     "https-proxy-agent": "^9.1.0",
     "i18next": "^26.3.6",
@@ -175,8 +174,7 @@
     "rimraf": "^6.1.3",
     "sharp": "^0.35.3",
     "unzipper": "^0.12.5",
-    "webdav": "^5.10.0",
-    "windows-notification-state": "^2.0.0"
+    "webdav": "^5.10.0"
   },
   "overrides": {
     "@electron/rebuild": "4.0.4",

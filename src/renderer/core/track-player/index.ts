@@ -188,6 +188,11 @@ class TrackPlayer {
 
     private pendingProgressTime: number | null = null;
 
+    private videoSuspension: {
+        musicItem: IMusic.IMusicItem | null;
+        currentTime: number;
+    } | null = null;
+
     private mediaLoadGeneration = 0;
 
     private mediaLoadAbortController: AbortController | null = null;
@@ -793,6 +798,35 @@ class TrackPlayer {
         if (this.playerState !== this.audioController.playerState) {
             this.setPlayerState(this.audioController.playerState);
         }
+    }
+
+    public async suspendForVideo() {
+        if (!this.videoSuspension) {
+            this.videoSuspension = {
+                musicItem: this.currentMusic,
+                currentTime: this.progress.currentTime,
+            };
+        }
+        this.pause();
+        await this.audioController.suspendForVideo?.();
+    }
+
+    public restoreAfterVideo() {
+        const suspension = this.videoSuspension;
+        this.videoSuspension = null;
+        if (
+            !suspension
+            || this.audioController.hasSource
+            || !suspension.musicItem
+            || !this.currentMusic
+            || !isSameMedia(suspension.musicItem, this.currentMusic)
+        ) {
+            return;
+        }
+        this.audioController.reloadTrack?.({
+            seekTo: suspension.currentTime,
+            autoPlay: false,
+        });
     }
 
     public resume() {

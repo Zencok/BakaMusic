@@ -1,13 +1,17 @@
 import {
     app,
+    BaseWindow,
     BrowserWindow,
     ipcMain,
+    screen,
     utilityProcess,
     UtilityProcess,
 } from "electron";
 import fs from "fs";
+import koffi from "koffi";
 import path from "path";
 import { supportLocalMediaType } from "@/common/constant";
+import { normalizeVideoUpstreamUrl } from "@/common/video-url";
 import type { IWindowManager } from "@/types/window-manager";
 import {
     assertBoolean,
@@ -24,6 +28,12 @@ import logger from "@shared/logger/main";
 import ServiceManager from "@shared/service-manager/main";
 import AppConfig from "@shared/app-config/main";
 import {
+    getOpaqueWindowBackground,
+    resolveThemeScheme,
+    supportsNativeAcrylic,
+    type ThemeScheme,
+} from "@shared/themepack/window-material";
+import {
     getMpvRuntimeDirectory,
     hasNativePlaybackRuntime,
 } from "./runtime-path";
@@ -31,7 +41,14 @@ import {
     INativeAudioOutputDevice,
     INativePlaybackCapabilities,
     INativePlaybackSnapshot,
+    INativeVideoOpenRequest,
+    INativeVideoSource,
+    INativeVideoSourceSelect,
+    INativeVideoSourcesUpdate,
+    INativeVideoSurfaceBounds,
+    INativeVideoSurfaceUpdate,
     NativePlaybackRuntimeCommand,
+    NativeVideoCommand,
 } from "./common";
 
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -67,9 +84,20 @@ function createPlaybackEnvironment(): NodeJS.ProcessEnv {
 }
 
 interface PendingRequest {
+    child: UtilityProcess;
     resolve: (value: unknown) => void;
     reject: (error: Error) => void;
     timer: NodeJS.Timeout;
+}
+
+interface ValidatedNativeVideoSource extends Omit<INativeVideoSource, "url" | "backupUrls"> {
+    url: string;
+    sourceType: "path" | "location";
+    backupUrls: string[];
+}
+
+interface ValidatedNativeVideoOpenRequest extends Omit<INativeVideoOpenRequest, "sources"> {
+    sources: ValidatedNativeVideoSource[];
 }
 
 function payloadBytes(value: unknown) {
@@ -198,12 +226,422 @@ function validateCommand(value: unknown): NativePlaybackRuntimeCommand {
     }
 }
 
+function validateVideoSource(value: unknown): ValidatedNativeVideoSource {
+    assertPlainObject(value, "native video source");
+    assertString(value.key, "native video source key", 64);
+    assertString(value.label, "native video source label", 256);
+    assertString(value.url, "native video source URL", 32_768);
+    const source = resolveNativeSource(normalizeVideoUpstreamUrl(value.url));
+    const backupUrls = value.backupUrls === undefined
+        ? []
+        : (() => {
+            if (!Array.isArray(value.backupUrls) || value.backupUrls.length > 4) {
+                throw new Error("Native video backup sources are invalid");
+            }
+            return value.backupUrls.map((url) => {
+                assertString(url, "native video backup source URL", 32_768);
+                return resolveNativeSource(normalizeVideoUpstreamUrl(url)).value;
+            });
+        })();
+    const optionalNumber = (name: "width" | "height") => {
+        if (value[name] === undefined) return undefined;
+        assertFiniteNumber(value[name], `native video ${name}`, 1, 32_768);
+        return value[name];
+    };
+    const dynamicRange = value.dynamicRange;
+    if (
+        dynamicRange !== undefined
+        && dynamicRange !== "sdr"
+        && dynamicRange !== "hdr10"
+        && dynamicRange !== "dolby-vision"
+    ) {
+        throw new Error("Native video dynamic range is invalid");
+    }
+    return {
+        key: value.key,
+        label: value.label,
+        url: source.value,
+        sourceType: source.sourceType,
+        backupUrls,
+        headers: validateHeaders(value.headers),
+        width: optionalNumber("width"),
+        height: optionalNumber("height"),
+        dynamicRange,
+    };
+}
+
+function validateVideoSources(value: unknown) {
+    if (!Array.isArray(value) || value.length === 0 || value.length > 32) {
+        throw new Error("Native video sources are invalid");
+    }
+    const seen = new Set<string>();
+    return value.map((entry) => {
+        const source = validateVideoSource(entry);
+        if (seen.has(source.key)) {
+            throw new Error("Native video source keys must be unique");
+        }
+        seen.add(source.key);
+        return source;
+    });
+}
+
+function validateVideoSurfaceBounds(value: unknown): INativeVideoSurfaceBounds {
+    assertPlainObject(value, "native video surface bounds");
+    assertFiniteNumber(value.x, "native video surface x", -32_768, 32_768);
+    assertFiniteNumber(value.y, "native video surface y", -32_768, 32_768);
+    assertFiniteNumber(value.width, "native video surface width", 1, 32_768);
+    assertFiniteNumber(value.height, "native video surface height", 1, 32_768);
+    return {
+        x: Math.round(value.x),
+        y: Math.round(value.y),
+        width: Math.round(value.width),
+        height: Math.round(value.height),
+    };
+}
+
+function validateVideoSurfaceUpdate(value: unknown): INativeVideoSurfaceUpdate {
+    assertPlainObject(value, "native video surface update");
+    assertIpcPayload(value, 8 * 1024);
+    assertBoolean(value.visible, "native video surface visibility");
+    return {
+        sourceId: validateSourceId(value.sourceId),
+        bounds: validateVideoSurfaceBounds(value.bounds),
+        visible: value.visible,
+    };
+}
+
+function validateVideoCommand(value: unknown): NativeVideoCommand {
+    assertPlainObject(value, "native video command");
+    assertIpcPayload(value, 8 * 1024);
+    assertString(value.operation, "native video operation", 32);
+    const sourceId = validateSourceId(value.sourceId);
+    switch (value.operation) {
+        case "play":
+        case "pause":
+            return { operation: value.operation, sourceId };
+        case "seek":
+            assertFiniteNumber(value.seconds, "native video seek time", 0, 7 * 24 * 3600);
+            return { operation: "seek", sourceId, seconds: value.seconds };
+        case "volume":
+            assertFiniteNumber(value.volume, "native video volume", 0, 1);
+            return { operation: "volume", sourceId, volume: value.volume };
+        case "speed":
+            assertFiniteNumber(value.speed, "native video speed", 0.25, 4);
+            return { operation: "speed", sourceId, speed: value.speed };
+        default:
+            throw new Error("Native video operation is not supported");
+    }
+}
+
+function validateVideoSourceSelect(value: unknown): INativeVideoSourceSelect {
+    assertPlainObject(value, "native video source selection");
+    assertIpcPayload(value, 8 * 1024);
+    assertString(value.sourceKey, "native video source key", 64);
+    return {
+        sourceId: validateSourceId(value.sourceId),
+        sourceKey: value.sourceKey,
+    };
+}
+
+function validateVideoOpenRequest(value: unknown): ValidatedNativeVideoOpenRequest {
+    assertPlainObject(value, "native video open request");
+    assertIpcPayload(value, 256 * 1024);
+    const sourceId = validateSourceId(value.sourceId);
+    assertString(value.title, "native video title", 512);
+    assertString(value.initialSourceKey, "native video initial source key", 64);
+    assertFiniteNumber(value.volume, "native video volume", 0, 1);
+    const sources = validateVideoSources(value.sources);
+    if (!sources.some((source) => source.key === value.initialSourceKey)) {
+        throw new Error("Native video initial source is missing");
+    }
+    return {
+        sourceId,
+        title: value.title,
+        sources,
+        initialSourceKey: value.initialSourceKey,
+        volume: value.volume,
+        surface: (() => {
+            assertPlainObject(value.surface, "native video surface");
+            assertBoolean(value.surface.visible, "native video surface visibility");
+            return {
+                bounds: validateVideoSurfaceBounds(value.surface.bounds),
+                visible: value.surface.visible,
+            };
+        })(),
+    };
+}
+
+function validateVideoSourcesUpdate(value: unknown): INativeVideoSourcesUpdate & {
+    sources: ValidatedNativeVideoSource[];
+} {
+    assertPlainObject(value, "native video source update");
+    assertIpcPayload(value, 256 * 1024);
+    return {
+        sourceId: validateSourceId(value.sourceId),
+        sources: validateVideoSources(value.sources),
+    };
+}
+
+function getNativeWindowId(window: BaseWindow) {
+    const handle = window.getNativeWindowHandle();
+    if (handle.length >= 8) {
+        return handle.readBigUInt64LE(0).toString();
+    }
+    if (handle.length >= 4) {
+        return String(handle.readUInt32LE(0));
+    }
+    throw new Error("Native video window handle is invalid");
+}
+
+interface VideoHostWindow {
+    destroy: () => void;
+    getNativeWindowId: () => string;
+    hide: () => void;
+    isDestroyed: () => boolean;
+    onClosed: (callback: () => void) => void;
+    setBounds: (bounds: INativeVideoSurfaceBounds) => void;
+    showInactive: () => void;
+}
+
+type NativeVideoBrowserWindow = BrowserWindow & {
+    __bakaNativeVideoOverlay?: boolean;
+    __bakaWindowMaterialPreference?: {
+        enabled: boolean;
+        scheme: ThemeScheme;
+    };
+};
+
+function setNativeVideoWindowComposition(window: BrowserWindow, active: boolean) {
+    if (process.platform !== "win32" || window.isDestroyed()) return;
+    const targetWindow = window as NativeVideoBrowserWindow;
+    if (targetWindow.__bakaNativeVideoOverlay === active) return;
+    targetWindow.__bakaNativeVideoOverlay = active;
+    if (active) {
+        // Acrylic filters every HWND below the BrowserWindow, including the
+        // libmpv popup. The renderer prepares this mode while its player canvas
+        // is still opaque, so the DWM material transition is never exposed
+        // through the video cutout.
+        try {
+            targetWindow.setBackgroundMaterial("none");
+        } catch {
+            // Per-pixel transparency remains usable if the material API is not
+            // available on the current Windows build.
+        }
+        targetWindow.setBackgroundColor("#00000000");
+        return;
+    }
+    const preference = targetWindow.__bakaWindowMaterialPreference;
+    const scheme = preference?.scheme ?? resolveThemeScheme();
+    const acrylic = Boolean(preference?.enabled && supportsNativeAcrylic());
+    try {
+        targetWindow.setBackgroundMaterial(acrylic ? "acrylic" : "none");
+    } catch {
+        // The opaque renderer fill below remains valid if DWM rejects Acrylic.
+    }
+    targetWindow.setBackgroundColor(
+        acrylic ? "#00000000" : getOpaqueWindowBackground(scheme),
+    );
+}
+
+class ElectronVideoHostWindow implements VideoHostWindow {
+    constructor(private readonly window: BaseWindow) {}
+
+    destroy() {
+        this.window.destroy();
+    }
+
+    getNativeWindowId() {
+        return getNativeWindowId(this.window);
+    }
+
+    hide() {
+        this.window.hide();
+    }
+
+    isDestroyed() {
+        return this.window.isDestroyed();
+    }
+
+    onClosed(callback: () => void) {
+        this.window.on("closed", callback);
+    }
+
+    setBounds(bounds: INativeVideoSurfaceBounds) {
+        const parent = this.window.getParentWindow();
+        if (!parent || parent.isDestroyed()) return;
+        const contentBounds = parent.getContentBounds();
+        this.window.setBounds({
+            x: contentBounds.x + bounds.x,
+            y: contentBounds.y + bounds.y,
+            width: bounds.width,
+            height: bounds.height,
+        }, false);
+    }
+
+    showInactive() {
+        this.window.showInactive();
+    }
+}
+
+interface Win32WindowApi {
+    createWindow: (...args: any[]) => number | bigint;
+    destroyWindow: (window: number | bigint) => number;
+    getModuleHandle: (name: string | null) => number | bigint;
+    setWindowPos: (
+        window: number | bigint,
+        insertAfter: number | bigint,
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+        flags: number,
+    ) => number;
+    showWindow: (window: number | bigint, command: number) => number;
+}
+
+let win32WindowApi: Win32WindowApi | null = null;
+
+function getWin32WindowApi(): Win32WindowApi {
+    if (win32WindowApi) return win32WindowApi;
+    const user32 = koffi.load("user32.dll");
+    const kernel32 = koffi.load("kernel32.dll");
+    win32WindowApi = {
+        createWindow: user32.func(
+            "uintptr_t __stdcall CreateWindowExW(uint32_t, str16, str16, uint32_t, int, int, int, int, uintptr_t, uintptr_t, uintptr_t, void *)",
+        ),
+        destroyWindow: user32.func("int __stdcall DestroyWindow(uintptr_t)"),
+        getModuleHandle: kernel32.func("uintptr_t __stdcall GetModuleHandleW(str16)"),
+        setWindowPos: user32.func(
+            "int __stdcall SetWindowPos(uintptr_t, uintptr_t, int, int, int, int, uint32_t)",
+        ),
+        showWindow: user32.func("int __stdcall ShowWindow(uintptr_t, int)"),
+    };
+    return win32WindowApi;
+}
+
+/**
+ * mpv's Win32 `wid` output is obscured by Electron's compositor when the
+ * target is an Electron BaseWindow. A separate popup HWND directly below the
+ * transparent BrowserWindow lets libmpv present D3D11 frames while Chromium
+ * paints the interactive player chrome above it.
+ */
+class Win32VideoHostWindow implements VideoHostWindow {
+    private readonly api = getWin32WindowApi();
+    private readonly parentWindow: bigint;
+    private readonly window: number | bigint;
+    private destroyed = false;
+    private closedCallback: (() => void) | null = null;
+    private bounds: INativeVideoSurfaceBounds;
+
+    constructor(
+        private readonly parent: BrowserWindow,
+        bounds: INativeVideoSurfaceBounds,
+        initiallyVisible = false,
+    ) {
+        this.bounds = bounds;
+        const parentHandle = parent.getNativeWindowHandle();
+        this.parentWindow = parentHandle.length >= 8
+            ? parentHandle.readBigUInt64LE(0)
+            : BigInt(parentHandle.readUInt32LE(0));
+        const windowStyle = 0x80000000 // WS_POPUP: independent D3D surface behind Chromium.
+            + (initiallyVisible ? 0x10000000 : 0) // WS_VISIBLE: only after the cutout is ready.
+            + 0x08000000 // WS_DISABLED: all input stays in the renderer overlay.
+            + 0x00000004; // SS_BLACKRECT
+        const extendedStyle = 0x08000000 // WS_EX_NOACTIVATE
+            | 0x00000080 // WS_EX_TOOLWINDOW: keep the surface out of Alt+Tab/taskbar.
+            | 0x00000020; // WS_EX_TRANSPARENT
+        this.window = this.api.createWindow(
+            extendedStyle,
+            "STATIC",
+            "",
+            windowStyle,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            this.api.getModuleHandle(null),
+            null,
+        );
+        if (!this.window) {
+            throw new Error("Native Win32 video surface creation failed");
+        }
+        this.setBounds(bounds, initiallyVisible);
+    }
+
+    destroy() {
+        if (this.destroyed) return;
+        this.destroyed = true;
+        this.api.destroyWindow(this.window);
+        this.closedCallback?.();
+    }
+
+    getNativeWindowId() {
+        return String(this.window);
+    }
+
+    hide() {
+        if (!this.destroyed) this.api.showWindow(this.window, 0); // SW_HIDE
+    }
+
+    isDestroyed() {
+        return this.destroyed;
+    }
+
+    onClosed(callback: () => void) {
+        this.closedCallback = callback;
+    }
+
+    setBounds(bounds: INativeVideoSurfaceBounds, show = false) {
+        if (this.destroyed) return;
+        this.bounds = bounds;
+        if (this.parent.isDestroyed()) return;
+        const contentBounds = this.parent.getContentBounds();
+        const physicalBounds = screen.dipToScreenRect(this.parent, {
+            x: contentBounds.x + bounds.x,
+            y: contentBounds.y + bounds.y,
+            width: bounds.width,
+            height: bounds.height,
+        });
+        this.api.setWindowPos(
+            this.window,
+            this.parentWindow,
+            physicalBounds.x,
+            physicalBounds.y,
+            physicalBounds.width,
+            physicalBounds.height,
+            0x0010 | (show ? 0x0040 : 0), // SWP_NOACTIVATE | optional SWP_SHOWWINDOW
+        );
+    }
+
+    showInactive() {
+        this.setBounds(this.bounds, true);
+    }
+}
+
 class NativePlaybackManager {
     private child: UtilityProcess | null = null;
     private spawnPromise: Promise<void> | null = null;
     private pending = new Map<string, PendingRequest>();
     private requestCounter = 0;
     private resourceTimer: NodeJS.Timeout | null = null;
+    private videoChild: UtilityProcess | null = null;
+    private videoWindow: VideoHostWindow | null = null;
+    private videoResourceTimer: NodeJS.Timeout | null = null;
+    private videoWindowPriming = false;
+    private videoOverlaySourceId = "";
+    private videoSourceId = "";
+    private videoSources: ValidatedNativeVideoSource[] = [];
+    private videoActiveSourceKey = "";
+    private videoActiveUrlIndex = 0;
+    private videoSpeed = 1;
+    private videoSurface: Omit<INativeVideoSurfaceUpdate, "sourceId"> | null = null;
+    private videoLastSnapshot: INativePlaybackSnapshot | null = null;
+    private videoFallbackPending = false;
+    private videoReportedError = "";
+    private videoClosedPromise: Promise<void> | null = null;
+    private resolveVideoClosed: (() => void) | null = null;
     private windowManager!: IWindowManager;
     private shuttingDown = false;
     /** 最近一次 load 的 sourceId：renderer 消失后主进程要靠它停掉遗留音频。 */
@@ -237,6 +675,34 @@ class NativePlaybackManager {
             }
             return result;
         });
+        ipcMain.handle("@shared/native-playback/open-video", async (event, value) => {
+            assertIpcSender(event, ["main"]);
+            await this.openVideo(validateVideoOpenRequest(value));
+        });
+        ipcMain.handle("@shared/native-playback/prepare-video-overlay", (event, sourceId) => {
+            assertIpcSender(event, ["main"]);
+            this.prepareVideoOverlay(validateSourceId(sourceId));
+        });
+        ipcMain.handle("@shared/native-playback/update-video-sources", (event, value) => {
+            assertIpcSender(event, ["main"]);
+            this.updateVideoSources(validateVideoSourcesUpdate(value));
+        });
+        ipcMain.handle("@shared/native-playback/select-video-source", async (event, value) => {
+            assertIpcSender(event, ["main"]);
+            await this.selectVideoSource(validateVideoSourceSelect(value));
+        });
+        ipcMain.handle("@shared/native-playback/video-command", async (event, value) => {
+            assertIpcSender(event, ["main"]);
+            await this.commandVideo(validateVideoCommand(value));
+        });
+        ipcMain.handle("@shared/native-playback/update-video-surface", (event, value) => {
+            assertIpcSender(event, ["main"]);
+            this.updateVideoSurface(validateVideoSurfaceUpdate(value));
+        });
+        ipcMain.handle("@shared/native-playback/close-video", async (event, sourceId) => {
+            assertIpcSender(event, ["main"]);
+            await this.closeVideo(validateSourceId(sourceId));
+        });
         app.on("before-quit", () => this.dispose());
     }
 
@@ -254,7 +720,18 @@ class NativePlaybackManager {
             }
         });
         webContents.on("render-process-gone", () => this.stopOrphanedPlayback());
-        browserWindow.on("closed", () => this.stopOrphanedPlayback());
+        const syncVideoSurface = () => this.syncVideoWindowBounds();
+        browserWindow.on("move", syncVideoSurface);
+        browserWindow.on("resize", syncVideoSurface);
+        browserWindow.on("restore", syncVideoSurface);
+        browserWindow.on("show", syncVideoSurface);
+        browserWindow.on("focus", syncVideoSurface);
+        browserWindow.on("hide", () => this.videoWindow?.hide());
+        browserWindow.on("minimize", () => this.videoWindow?.hide());
+        browserWindow.on("closed", () => {
+            this.stopOrphanedPlayback();
+            this.beginVideoClose();
+        });
     }
 
     private stopOrphanedPlayback() {
@@ -287,6 +764,380 @@ class NativePlaybackManager {
             logger.logError("list native audio devices failed", error instanceof Error ? error : new Error(String(error)));
         }
         return [{ id: "auto", description: "Default" }];
+    }
+
+    private createVideoWindow(request: ValidatedNativeVideoOpenRequest) {
+        const parent = this.windowManager.mainWindow;
+        if (!parent || parent.isDestroyed()) {
+            throw new Error("Main window is not available");
+        }
+        const bounds = request.surface.bounds;
+        let window: VideoHostWindow;
+        if (process.platform === "win32") {
+            window = new Win32VideoHostWindow(parent, bounds, request.surface.visible);
+        } else {
+            const contentBounds = parent.getContentBounds();
+            const baseWindow = new BaseWindow({
+                parent,
+                x: contentBounds.x + bounds.x,
+                y: contentBounds.y + bounds.y,
+                width: bounds.width,
+                height: bounds.height,
+                show: false,
+                useContentSize: true,
+                backgroundColor: "#000000",
+                title: request.title,
+                frame: false,
+                resizable: false,
+                movable: false,
+                minimizable: false,
+                maximizable: false,
+                fullscreenable: false,
+                skipTaskbar: true,
+                thickFrame: false,
+                hasShadow: false,
+                roundedCorners: false,
+            });
+            baseWindow.setIgnoreMouseEvents(true, { forward: true });
+            window = new ElectronVideoHostWindow(baseWindow);
+        }
+        window.onClosed(() => {
+            if (this.videoWindow === window) {
+                this.videoWindow = null;
+                this.videoChild?.kill();
+                if (!this.videoChild) this.finalizeVideoClose();
+            }
+        });
+        return window;
+    }
+
+    private syncVideoWindowBounds() {
+        const window = this.videoWindow;
+        const surface = this.videoSurface;
+        const parent = this.windowManager.mainWindow;
+        if (!window || window.isDestroyed() || !surface || !parent || parent.isDestroyed()) {
+            return;
+        }
+        if (
+            (!surface.visible && !this.videoWindowPriming)
+            || !parent.isVisible()
+            || parent.isMinimized()
+        ) {
+            window.hide();
+            return;
+        }
+        if (process.platform === "win32") {
+            // Usually prepared while the renderer canvas was still opaque;
+            // keep this idempotent fallback for callers that open directly.
+            setNativeVideoWindowComposition(parent, true);
+        }
+        window.setBounds(surface.bounds);
+        window.showInactive();
+    }
+
+    private async spawnVideoHost(window: VideoHostWindow) {
+        if (!hasNativePlaybackRuntime()) {
+            throw new Error("libmpv with LibreMPEG runtime is not installed");
+        }
+        const runtimeDirectory = getMpvRuntimeDirectory();
+        const child = utilityProcess.fork(
+            path.resolve(__dirname, "native_playback_host.js"),
+            [],
+            {
+                serviceName: "BakaMusic libmpv Video",
+                execArgv: ["--max-old-space-size=256"],
+                env: {
+                    ...createPlaybackEnvironment(),
+                    BAKAMUSIC_MPV_DIR: runtimeDirectory,
+                    BAKAMUSIC_MPV_WID: window.getNativeWindowId(),
+                    PATH: `${runtimeDirectory}${path.delimiter}${process.env.PATH ?? ""}`,
+                },
+                stdio: "pipe",
+            },
+        );
+        this.videoChild = child;
+        child.on("message", (message) => this.handleVideoMessage(child, message));
+        child.on("exit", (code) => {
+            if (this.videoChild !== child) return;
+            this.videoChild = null;
+            this.stopVideoResourceMonitor();
+            this.rejectPending(
+                new Error(`libmpv video runtime exited with code ${code}`),
+                child,
+            );
+            const windowToClose = this.videoWindow;
+            if (windowToClose && !windowToClose.isDestroyed()) windowToClose.destroy();
+            if (!this.videoWindow) this.finalizeVideoClose();
+        });
+        child.stderr?.on("data", (chunk: Buffer) => {
+            const text = chunk.toString("utf8").trim();
+            if (text) logger.logInfo("libmpv video runtime", text);
+        });
+        await new Promise<void>((resolve, reject) => {
+            const timer = setTimeout(
+                () => reject(new Error("libmpv video runtime startup timed out")),
+                10_000,
+            );
+            child.once("spawn", () => {
+                clearTimeout(timer);
+                resolve();
+            });
+            child.once("exit", (code) => {
+                clearTimeout(timer);
+                reject(new Error(`libmpv video runtime exited during startup (${code})`));
+            });
+        });
+        this.startVideoResourceMonitor(child);
+        return child;
+    }
+
+    private startVideoResourceMonitor(child: UtilityProcess) {
+        this.stopVideoResourceMonitor();
+        this.videoResourceTimer = setInterval(() => {
+            if (!child.pid || this.videoChild !== child) return;
+            const metric = app.getAppMetrics().find((item) => item.pid === child.pid);
+            if (metric && metric.memory.workingSetSize > MAX_RUNTIME_WORKING_SET_KB) {
+                logger.logError(
+                    "libmpv video runtime memory limit exceeded",
+                    new Error(`${metric.memory.workingSetSize} KiB`),
+                );
+                child.kill();
+            }
+        }, 5_000);
+        this.videoResourceTimer.unref();
+    }
+
+    private stopVideoResourceMonitor() {
+        if (this.videoResourceTimer) {
+            clearInterval(this.videoResourceTimer);
+            this.videoResourceTimer = null;
+        }
+    }
+
+    private getVideoSourceCommand(
+        source: ValidatedNativeVideoSource,
+        urlIndex: number,
+    ): NativePlaybackRuntimeCommand {
+        const url = urlIndex === 0 ? source.url : source.backupUrls[urlIndex - 1];
+        if (!url) throw new Error("Native video source URL is missing");
+        return {
+            operation: "load",
+            sourceId: this.videoSourceId,
+            url,
+            sourceType: source.sourceType,
+            headers: source.sourceType === "location" ? source.headers : undefined,
+        };
+    }
+
+    private async loadVideoSource(
+        source: ValidatedNativeVideoSource,
+        urlIndex: number,
+        resumeTime = 0,
+        autoPlay = true,
+    ) {
+        const child = this.videoChild;
+        if (!child) throw new Error("libmpv video runtime is not running");
+        this.videoFallbackPending = true;
+        this.videoReportedError = "";
+        try {
+            await this.requestRaw(child, "command", this.getVideoSourceCommand(source, urlIndex));
+            await this.requestRaw(child, "command", {
+                operation: "speed",
+                sourceId: this.videoSourceId,
+                speed: this.videoSpeed,
+            } satisfies NativePlaybackRuntimeCommand);
+            if (resumeTime > 0) {
+                await this.requestRaw(child, "command", {
+                    operation: "seek",
+                    sourceId: this.videoSourceId,
+                    seconds: resumeTime,
+                } satisfies NativePlaybackRuntimeCommand);
+            }
+            if (autoPlay) {
+                await this.requestRaw(child, "command", {
+                    operation: "play",
+                    sourceId: this.videoSourceId,
+                } satisfies NativePlaybackRuntimeCommand);
+            }
+            this.videoActiveSourceKey = source.key;
+            this.videoActiveUrlIndex = urlIndex;
+        } finally {
+            this.videoFallbackPending = false;
+        }
+    }
+
+    private async switchVideoSource(sourceKey: string) {
+        if (sourceKey === this.videoActiveSourceKey || this.videoFallbackPending) return;
+        const source = this.videoSources.find((item) => item.key === sourceKey);
+        if (!source) throw new Error("Native video source is unavailable");
+        const resumeTime = this.videoLastSnapshot?.currentTime ?? 0;
+        const autoPlay = this.videoLastSnapshot?.state === "playing"
+            || this.videoLastSnapshot?.state === "buffering";
+        await this.loadVideoSource(source, 0, resumeTime, autoPlay);
+    }
+
+    private async openVideo(request: ValidatedNativeVideoOpenRequest) {
+        if (this.videoSourceId) {
+            throw new Error("A native video window is already open");
+        }
+        this.prepareVideoOverlay(request.sourceId);
+        this.videoSourceId = request.sourceId;
+        this.videoSources = request.sources;
+        this.videoActiveSourceKey = request.initialSourceKey;
+        this.videoActiveUrlIndex = 0;
+        this.videoSpeed = 1;
+        this.videoWindowPriming = false;
+        this.videoSurface = request.surface;
+        this.videoLastSnapshot = null;
+        this.videoReportedError = "";
+        this.videoClosedPromise = new Promise<void>((resolve) => {
+            this.resolveVideoClosed = resolve;
+        });
+        try {
+            const window = this.createVideoWindow(request);
+            this.videoWindow = window;
+            const child = await this.spawnVideoHost(window);
+            if (process.platform === "win32") {
+                // A hidden D3D target exposes its STATIC class brush for one
+                // present when first shown. Prime the HWND behind Chromium's
+                // still-opaque player canvas so libmpv owns a populated swap
+                // chain before the renderer cuts the transparent viewport.
+                this.videoWindowPriming = true;
+                this.syncVideoWindowBounds();
+            }
+            const source = request.sources.find(
+                (item) => item.key === request.initialSourceKey,
+            ) ?? request.sources[0];
+            await this.loadVideoSource(source, 0, 0, false);
+            await this.requestRaw(child, "command", {
+                operation: "volume",
+                sourceId: request.sourceId,
+                volume: request.volume,
+            } satisfies NativePlaybackRuntimeCommand);
+            await this.requestRaw(child, "command", {
+                operation: "play",
+                sourceId: request.sourceId,
+            } satisfies NativePlaybackRuntimeCommand);
+            this.syncVideoWindowBounds();
+        } catch (error) {
+            this.beginVideoClose();
+            throw error;
+        }
+    }
+
+    private updateVideoSources(update: INativeVideoSourcesUpdate & {
+        sources: ValidatedNativeVideoSource[];
+    }) {
+        if (update.sourceId !== this.videoSourceId) {
+            throw new Error("Native video source update is stale");
+        }
+        if (!update.sources.some((source) => source.key === this.videoActiveSourceKey)) {
+            throw new Error("Native video source update omits the active source");
+        }
+        this.videoSources = update.sources;
+    }
+
+    private async selectVideoSource(selection: INativeVideoSourceSelect) {
+        if (selection.sourceId !== this.videoSourceId) {
+            throw new Error("Native video source selection is stale");
+        }
+        await this.switchVideoSource(selection.sourceKey);
+    }
+
+    private async commandVideo(command: NativeVideoCommand) {
+        if (command.sourceId !== this.videoSourceId || !this.videoChild) {
+            throw new Error("Native video command is stale");
+        }
+        await this.requestRaw(this.videoChild, "command", command);
+        if (command.operation === "speed") {
+            this.videoSpeed = command.speed;
+        }
+    }
+
+    private updateVideoSurface(update: INativeVideoSurfaceUpdate) {
+        if (update.sourceId !== this.videoSourceId) {
+            throw new Error("Native video surface update is stale");
+        }
+        this.videoSurface = {
+            bounds: update.bounds,
+            visible: update.visible,
+        };
+        this.videoWindowPriming = false;
+        this.syncVideoWindowBounds();
+    }
+
+    private beginVideoClose() {
+        const window = this.videoWindow;
+        if (window && !window.isDestroyed()) {
+            // Remove the native surface from the z-order before destroying its
+            // HWND. DWM may otherwise present the last decoded frame for one
+            // compositor tick while the renderer modal is being removed.
+            window.hide();
+            window.destroy();
+        } else this.videoWindow = null;
+        if (this.videoChild) this.videoChild.kill();
+        else this.finalizeVideoClose();
+    }
+
+    private async closeVideo(sourceId: string) {
+        if (!this.videoSourceId) {
+            this.releaseVideoOverlay(sourceId);
+            return;
+        }
+        if (sourceId !== this.videoSourceId) return;
+        const closed = this.videoClosedPromise;
+        this.beginVideoClose();
+        await closed;
+    }
+
+    private prepareVideoOverlay(sourceId: string) {
+        if (
+            (this.videoOverlaySourceId && this.videoOverlaySourceId !== sourceId)
+            || (this.videoSourceId && this.videoSourceId !== sourceId)
+        ) {
+            throw new Error("Another native video overlay is already active");
+        }
+        this.videoOverlaySourceId = sourceId;
+        const mainWindow = this.windowManager.mainWindow;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            setNativeVideoWindowComposition(mainWindow, true);
+        }
+    }
+
+    private releaseVideoOverlay(sourceId: string) {
+        if (sourceId !== this.videoOverlaySourceId) return;
+        this.videoOverlaySourceId = "";
+        const mainWindow = this.windowManager.mainWindow;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            setNativeVideoWindowComposition(mainWindow, false);
+        }
+    }
+
+    private finalizeVideoClose() {
+        const sourceId = this.videoSourceId;
+        if (!sourceId) return;
+        this.videoSourceId = "";
+        this.videoSources = [];
+        this.videoActiveSourceKey = "";
+        this.videoActiveUrlIndex = 0;
+        this.videoSpeed = 1;
+        this.videoWindowPriming = false;
+        this.videoSurface = null;
+        this.videoLastSnapshot = null;
+        this.videoFallbackPending = false;
+        this.videoReportedError = "";
+        const resolve = this.resolveVideoClosed;
+        this.resolveVideoClosed = null;
+        this.videoClosedPromise = null;
+        resolve?.();
+        this.releaseVideoOverlay(sourceId);
+        const mainWindow = this.windowManager.mainWindow;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send("@shared/native-playback/video-event", {
+                sourceId,
+                type: "closed",
+            });
+        }
     }
 
     private async ensureStarted() {
@@ -331,7 +1182,10 @@ class NativePlaybackManager {
             }
             this.child = null;
             this.stopResourceMonitor();
-            this.rejectPending(new Error(`libmpv playback runtime exited with code ${code}`));
+            this.rejectPending(
+                new Error(`libmpv playback runtime exited with code ${code}`),
+                child,
+            );
         });
         child.stderr?.on("data", (chunk: Buffer) => {
             const text = chunk.toString("utf8").trim();
@@ -392,13 +1246,55 @@ class NativePlaybackManager {
             }
             return;
         }
-        if (message.type !== "response" || typeof message.requestId !== "string") {
+        this.handleResponse(child, message);
+    }
+
+    private handleVideoMessage(child: UtilityProcess, message: any) {
+        if (this.videoChild !== child || !message || typeof message !== "object") return;
+        if (message.type === "snapshot") {
+            const snapshot = message.snapshot as INativePlaybackSnapshot;
+            const bytes = payloadBytes(snapshot);
+            if (bytes === null || bytes > MAX_RPC_BYTES || snapshot.sourceId !== this.videoSourceId) {
+                return;
+            }
+            const previousState = this.videoLastSnapshot?.state;
+            this.videoLastSnapshot = snapshot;
+            if (snapshot.state === "error" && snapshot.error && !this.videoFallbackPending) {
+                const source = this.videoSources.find(
+                    (item) => item.key === this.videoActiveSourceKey,
+                );
+                const nextUrlIndex = this.videoActiveUrlIndex + 1;
+                if (source && nextUrlIndex <= source.backupUrls.length) {
+                    const autoPlay = previousState !== "paused";
+                    void this.loadVideoSource(
+                        source,
+                        nextUrlIndex,
+                        snapshot.currentTime,
+                        autoPlay,
+                    ).catch(
+                        (error) => this.reportVideoError(
+                            error instanceof Error ? error.message : String(error),
+                        ),
+                    );
+                } else {
+                    this.reportVideoError(snapshot.error);
+                }
+                return;
+            }
+            this.sendVideoEvent({
+                sourceId: this.videoSourceId,
+                type: "snapshot",
+                snapshot,
+            });
             return;
         }
+        this.handleResponse(child, message);
+    }
+
+    private handleResponse(child: UtilityProcess, message: any) {
+        if (message?.type !== "response" || typeof message.requestId !== "string") return;
         const pending = this.pending.get(message.requestId);
-        if (!pending) {
-            return;
-        }
+        if (!pending || pending.child !== child) return;
         this.pending.delete(message.requestId);
         clearTimeout(pending.timer);
         const bytes = payloadBytes(message);
@@ -414,6 +1310,23 @@ class NativePlaybackManager {
         }
     }
 
+    private reportVideoError(error: string) {
+        if (!error || error === this.videoReportedError) return;
+        this.videoReportedError = error;
+        this.sendVideoEvent({
+            sourceId: this.videoSourceId,
+            type: "error",
+            error,
+        });
+    }
+
+    private sendVideoEvent(event: import("./common").INativeVideoEvent) {
+        const mainWindow = this.windowManager.mainWindow;
+        if (mainWindow && !mainWindow.isDestroyed() && event.sourceId) {
+            mainWindow.webContents.send("@shared/native-playback/video-event", event);
+        }
+    }
+
     private sendSnapshot(snapshot: INativePlaybackSnapshot) {
         const mainWindow = this.windowManager.mainWindow;
         if (mainWindow && !mainWindow.isDestroyed()) {
@@ -421,12 +1334,13 @@ class NativePlaybackManager {
         }
     }
 
-    private rejectPending(error: Error) {
-        for (const pending of this.pending.values()) {
+    private rejectPending(error: Error, child?: UtilityProcess) {
+        for (const [requestId, pending] of this.pending) {
+            if (child && pending.child !== child) continue;
             clearTimeout(pending.timer);
             pending.reject(error);
+            this.pending.delete(requestId);
         }
-        this.pending.clear();
     }
 
     private requestRaw(child: UtilityProcess, operation: string, payload: unknown) {
@@ -443,11 +1357,11 @@ class NativePlaybackManager {
             const timer = setTimeout(() => {
                 this.pending.delete(requestId);
                 reject(new Error(`libmpv playback request timed out: ${operation}`));
-                if (this.child === child) {
+                if (this.child === child || this.videoChild === child) {
                     child.kill();
                 }
             }, REQUEST_TIMEOUT_MS);
-            this.pending.set(requestId, { resolve, reject, timer });
+            this.pending.set(requestId, { child, resolve, reject, timer });
             child.postMessage(message);
         });
     }
@@ -463,9 +1377,11 @@ class NativePlaybackManager {
     private dispose() {
         this.shuttingDown = true;
         this.stopResourceMonitor();
+        this.stopVideoResourceMonitor();
         this.rejectPending(new Error("libmpv playback runtime disposed"));
         this.child?.kill();
         this.child = null;
+        this.beginVideoClose();
     }
 }
 

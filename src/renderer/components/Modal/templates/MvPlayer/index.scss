@@ -1,22 +1,35 @@
 #components--modal-base-container > .modal--mv-player {
+  // Cinema Slate system: 8px spacing rhythm, charcoal canvas, and one theme
+  // accent. Chromium controls stay quiet so the video remains the hero.
   --mv-accent: color-mix(in srgb, var(--primaryColor, #ff4d8d) 76%, #fff 8%);
+  --mv-ink: #f7f8fa;
+  --mv-muted: rgba(247, 248, 250, 0.62);
+  --mv-subtle: rgba(247, 248, 250, 0.42);
+  --mv-control-surface: rgba(13, 16, 21, 0.78);
+  --mv-control-border: rgba(255, 255, 255, 0.14);
   position: relative;
   isolation: isolate;
   flex: 0 0 auto;
   box-sizing: border-box;
-  width: min(1180px, calc(100vw - 48px), calc((100vh - 48px) * 16 / 9));
+  width: min(1240px, calc(100vw - 48px), calc((100vh - 48px) * 16 / 9));
   min-width: 320px;
   aspect-ratio: 16 / 9;
   overflow: hidden;
   color: #fff;
   border: 0;
-  border-radius: 18px;
-  background: #050505 !important;
+  border-radius: 20px;
+  background: #090b0f !important;
   box-shadow:
     0 34px 96px rgba(0, 0, 0, 0.56),
     0 0 0 1px rgba(255, 255, 255, 0.1);
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
+  transition: opacity 90ms ease-out;
+
+  &[data-exiting="true"] {
+    opacity: 0;
+    pointer-events: none;
+  }
 
   &[data-fullscreen="true"],
   &:fullscreen {
@@ -32,6 +45,97 @@
     border-radius: 0;
     box-shadow: none;
   }
+}
+
+@mixin native-video-rounded-cutout {
+  clip-path: polygon(
+    evenodd,
+    0 0,
+    100% 0,
+    100% 100%,
+    0 100%,
+    0 0,
+    calc(var(--native-video-left) + var(--native-video-radius)) var(--native-video-top),
+    calc(var(--native-video-left) + var(--native-video-radius-far)) calc(var(--native-video-top) + var(--native-video-radius-near)),
+    calc(var(--native-video-left) + var(--native-video-radius-mid)) calc(var(--native-video-top) + var(--native-video-radius-mid)),
+    calc(var(--native-video-left) + var(--native-video-radius-near)) calc(var(--native-video-top) + var(--native-video-radius-far)),
+    var(--native-video-left) calc(var(--native-video-top) + var(--native-video-radius)),
+    var(--native-video-left) calc(var(--native-video-bottom) - var(--native-video-radius)),
+    calc(var(--native-video-left) + var(--native-video-radius-near)) calc(var(--native-video-bottom) - var(--native-video-radius-far)),
+    calc(var(--native-video-left) + var(--native-video-radius-mid)) calc(var(--native-video-bottom) - var(--native-video-radius-mid)),
+    calc(var(--native-video-left) + var(--native-video-radius-far)) calc(var(--native-video-bottom) - var(--native-video-radius-near)),
+    calc(var(--native-video-left) + var(--native-video-radius)) var(--native-video-bottom),
+    calc(var(--native-video-right) - var(--native-video-radius)) var(--native-video-bottom),
+    calc(var(--native-video-right) - var(--native-video-radius-far)) calc(var(--native-video-bottom) - var(--native-video-radius-near)),
+    calc(var(--native-video-right) - var(--native-video-radius-mid)) calc(var(--native-video-bottom) - var(--native-video-radius-mid)),
+    calc(var(--native-video-right) - var(--native-video-radius-near)) calc(var(--native-video-bottom) - var(--native-video-radius-far)),
+    var(--native-video-right) calc(var(--native-video-bottom) - var(--native-video-radius)),
+    var(--native-video-right) calc(var(--native-video-top) + var(--native-video-radius)),
+    calc(var(--native-video-right) - var(--native-video-radius-near)) calc(var(--native-video-top) + var(--native-video-radius-far)),
+    calc(var(--native-video-right) - var(--native-video-radius-mid)) calc(var(--native-video-top) + var(--native-video-radius-mid)),
+    calc(var(--native-video-right) - var(--native-video-radius-far)) calc(var(--native-video-top) + var(--native-video-radius-near)),
+    calc(var(--native-video-right) - var(--native-video-radius)) var(--native-video-top),
+    calc(var(--native-video-left) + var(--native-video-radius)) var(--native-video-top)
+  );
+}
+
+// On Windows libmpv renders into a real popup HWND immediately below the
+// transparent Electron window. Cut a radius-aware hole through the application
+// and modal mask, then keep this dialog's Chromium controls above the video.
+html[data-native-video-overlay="true"] {
+  &,
+  & body,
+  & #root {
+    background: transparent !important;
+    background-color: transparent !important;
+  }
+
+  & .app-container {
+    @include native-video-rounded-cutout;
+  }
+
+  & .components--modal-base {
+    background: transparent !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+
+    &::before {
+      content: "";
+      position: absolute;
+      z-index: 0;
+      inset: 0;
+      background: var(--appOverlayMask);
+      @include native-video-rounded-cutout;
+      pointer-events: none;
+    }
+  }
+
+  & #components--modal-base-container:has(> .modal--mv-player) {
+    background: transparent !important;
+  }
+
+  & #components--modal-base-container > .modal--mv-player[data-native-surface-visible="true"] {
+    z-index: 1;
+    background: transparent !important;
+
+    & .mv-player-backdrop,
+    & .mv-player-scrim {
+      display: none;
+    }
+  }
+}
+
+// The Base modal owns a full-window backdrop-filter even when `withBlur` is
+// false. A native HWND is composited behind that element, so waiting for the
+// root dataset to flip leaves the first decoded frames blurred (and can keep
+// the whole video blurred if the dataset update races a compositor tick).
+// Disable the Base filter as soon as this specific modal is mounted. Keep the
+// same mask from the opening frame; once the native cutout is active, the
+// radius-aware pseudo-element above replaces it with an equivalent mask.
+#components--modal-base-container:has(> .modal--mv-player) {
+  background: var(--appOverlayMask) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
 .mv-player-backdrop,
@@ -55,6 +159,28 @@
   background: rgba(0, 0, 0, 0.46);
 }
 
+.mv-player-close-curtain {
+  position: absolute;
+  z-index: 30;
+  inset: 0;
+  background: #090b0f;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 70ms ease-out;
+}
+
+.modal--mv-player[data-closing="true"] .mv-player-close-curtain {
+  opacity: 1;
+}
+
+#components--modal-base-container > .modal--mv-player[data-native-surface-visible="true"] {
+  & .mv-player-backdrop,
+  & .mv-player-scrim {
+    visibility: hidden;
+    opacity: 0;
+  }
+}
+
 .mv-player-topbar {
   position: absolute;
   z-index: 8;
@@ -63,9 +189,9 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  padding: 22px 24px 68px;
+  padding: 22px 24px 86px;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0));
+  background: linear-gradient(180deg, rgba(4, 6, 9, 0.88), rgba(4, 6, 9, 0.38) 48%, transparent);
   transition: opacity 180ms ease, transform 180ms ease;
 
   & > * {
@@ -77,8 +203,20 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
   text-shadow: 0 2px 16px rgba(0, 0, 0, 0.8);
+
+  & .mv-player-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: rgba(247, 248, 250, 0.58);
+    font-size: 0.62rem;
+    font-weight: 760;
+    letter-spacing: 0.14em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
 
   & strong {
     max-width: min(72vw, 760px);
@@ -92,13 +230,40 @@
   }
 }
 
+.mv-player-status-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #7ee2ae;
+  box-shadow: 0 0 0 3px rgba(126, 226, 174, 0.14);
+
+  &.is-loading {
+    background: #f0bd68;
+    box-shadow: 0 0 0 3px rgba(240, 189, 104, 0.14);
+    animation: mv-player-status-pulse 1.2s ease-in-out infinite;
+  }
+
+  &.is-error {
+    background: #ff7890;
+    box-shadow: 0 0 0 3px rgba(255, 120, 144, 0.14);
+  }
+}
+
+.mv-player-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+}
+
 .mv-player-subtitle {
   max-width: min(64vw, 640px);
   display: flex;
   align-items: center;
   gap: 6px;
   overflow: hidden;
-  color: rgba(255, 255, 255, 0.62);
+  color: var(--mv-muted);
   font-size: 0.76rem;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -132,14 +297,13 @@
   cursor: default;
 }
 
-.mv-player-video {
-  position: relative;
+.mv-player-native-surface {
+  position: absolute;
   z-index: 1;
   display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: rgba(0, 0, 0, 0.28);
+  inset: 0;
+  background: transparent;
+  pointer-events: none;
 }
 
 .mv-player-state {
@@ -150,10 +314,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 13px;
+  gap: 10px;
   padding: 24px;
-  color: rgba(255, 255, 255, 0.72);
-  background: rgba(0, 0, 0, 0.22);
+  color: var(--mv-muted);
+  background: rgba(9, 11, 15, 0.94);
   text-align: center;
   pointer-events: none;
 
@@ -162,10 +326,21 @@
     padding: 0 17px;
     color: #fff;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 9px;
-    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.09);
     pointer-events: auto;
   }
+}
+
+.mv-player-state strong {
+  color: var(--mv-ink);
+  font-size: 0.88rem;
+  font-weight: 680;
+}
+
+.mv-player-state small {
+  color: var(--mv-subtle);
+  font-size: 0.68rem;
 }
 
 .mv-player-spinner {
@@ -198,18 +373,18 @@
 .mv-player-center-play {
   position: absolute;
   z-index: 5;
-  width: 68px;
-  height: 68px;
+  width: 78px;
+  height: 78px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.36);
   border-radius: 50%;
-  background: rgba(7, 7, 7, 0.5);
-  box-shadow: 0 16px 46px rgba(0, 0, 0, 0.34);
-  backdrop-filter: blur(16px) saturate(120%);
+  background: rgba(10, 13, 18, 0.66);
+  box-shadow: 0 16px 46px rgba(0, 0, 0, 0.34), 0 0 0 8px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(18px) saturate(120%);
   transition: transform 150ms ease, background-color 150ms ease;
 
   & svg {
@@ -233,8 +408,8 @@
   position: absolute;
   z-index: 9;
   inset: auto 0 0;
-  padding: 72px 0 16px;
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.5) 48%, transparent);
+  padding: 82px 18px 18px;
+  background: linear-gradient(0deg, rgba(4, 6, 9, 0.96), rgba(4, 6, 9, 0.68) 45%, transparent);
   transition: opacity 180ms ease, transform 180ms ease;
 }
 
@@ -242,7 +417,7 @@
   cursor: none;
 
   & .mv-player-stage,
-  & .mv-player-video {
+  & .mv-player-native-surface {
     cursor: none;
   }
 
@@ -348,10 +523,10 @@
 }
 
 .mv-player-control-row {
-  min-height: 44px;
+  min-height: 48px;
   justify-content: space-between;
   gap: 16px;
-  padding: 0 16px;
+  padding: 0 2px;
 }
 
 .mv-player-control-group {
@@ -361,6 +536,26 @@
   &--right {
     position: relative;
     flex: 0 0 auto;
+  }
+}
+
+.mv-player-control-row .mv-player-icon-button {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+
+  &:hover {
+    color: var(--mv-ink);
+    border-color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  &[aria-expanded="true"] {
+    color: color-mix(in srgb, var(--mv-accent) 78%, #fff);
+    border-color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
   }
 }
 
@@ -374,12 +569,12 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  color: rgba(255, 255, 255, 0.88);
-  border: 0;
+  color: rgba(247, 248, 250, 0.84);
+  border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
   cursor: pointer;
-  transition: color 120ms ease, background-color 120ms ease, transform 120ms ease;
+  transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease, transform 120ms ease;
 
   & svg {
     width: 20px;
@@ -387,8 +582,9 @@
   }
 
   &:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.11);
+    color: var(--mv-ink);
+    border-color: var(--mv-control-border);
+    background: var(--mv-control-surface);
   }
 
   &:active {
@@ -412,10 +608,33 @@
 }
 
 .mv-player-close {
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.28);
+  background: rgba(9, 11, 15, 0.56);
   backdrop-filter: blur(12px);
+}
+
+[data-ui-style="flat"] #components--modal-base-container > .modal--mv-player .mv-player-close {
+  width: 38px;
+  height: 34px;
+  color: rgba(247, 248, 250, 0.88) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  border-radius: 7px !important;
+  background: rgba(15, 18, 23, 0.88) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+
+  &:hover {
+    color: #fff !important;
+    border-color: transparent !important;
+    background: #c42b3c !important;
+  }
+
+  &:active {
+    background: #a92332 !important;
+  }
 }
 
 .mv-player-volume-control {
@@ -461,9 +680,17 @@
 }
 
 .mv-player-quality-picker,
+.mv-player-speed-picker,
 .mv-player-download-picker {
-  position: static;
   flex: 0 0 auto;
+}
+
+.mv-player-speed-picker {
+  position: relative;
+}
+
+.mv-player-speed-trigger {
+  width: 40px;
 }
 
 .mv-player-quality-trigger {
@@ -502,11 +729,60 @@
   overflow: auto;
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 9px;
-  background: rgba(14, 14, 16, 0.96);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(24px) saturate(120%);
+  border-radius: 12px;
+  background: rgba(15, 18, 24, 0.98);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.52), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(18px) saturate(120%);
   animation: mv-player-menu-in 140ms ease-out;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(247, 248, 250, 0.3) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    margin: 7px 2px;
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    min-height: 34px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: rgba(247, 248, 250, 0.26);
+    background-clip: padding-box;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--mv-accent) 72%, #fff 28%);
+    background-clip: padding-box;
+  }
+
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+.mv-player-speed-menu {
+  right: auto;
+  left: 0;
+  width: 112px;
+}
+
+.mv-player-download-menu {
+  right: 132px;
+}
+
+.mv-player-quality-option.mv-player-speed-option {
+  min-height: 36px;
+  grid-template-columns: minmax(0, 1fr);
+  text-align: center;
+
+  & .mv-player-quality-option-copy {
+    align-items: center;
+  }
 }
 
 .mv-player-quality-option {
@@ -520,19 +796,21 @@
   padding: 4px 7px;
   color: #fff;
   border: 0;
-  border-radius: 8px;
+  border-radius: 7px;
   background: transparent;
   text-align: left;
   cursor: pointer;
 
   &:hover,
   &:focus-visible {
-    background: rgba(255, 255, 255, 0.09);
+    background: color-mix(in srgb, var(--mv-accent) 14%, rgba(255, 255, 255, 0.05));
     outline: none;
   }
 
   &.is-selected {
-    background: rgba(255, 255, 255, 0.12);
+    color: var(--mv-ink);
+    background: color-mix(in srgb, var(--mv-accent) 18%, rgba(255, 255, 255, 0.08));
+    box-shadow: none;
   }
 
 }
@@ -618,6 +896,10 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes mv-player-status-pulse {
+  50% { opacity: 0.42; }
+}
+
 @media (max-width: 700px), (max-height: 500px) {
   .components--modal-base {
     padding: 10px;
@@ -657,7 +939,7 @@
   }
 
   .mv-player-topbar {
-    padding: 14px 14px 54px;
+    padding: 14px 14px 64px;
   }
 
   .mv-player-heading strong {
@@ -686,6 +968,15 @@
   .mv-player-quality-menu {
     right: 38px;
   }
+
+  .mv-player-speed-menu {
+    right: auto;
+    left: 0;
+  }
+
+  .mv-player-download-menu {
+    right: 118px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -694,11 +985,17 @@
   .mv-player-icon-button,
   .mv-player-center-play,
   .mv-player-volume-control,
-  .mv-player-volume {
+  .mv-player-volume,
+  .mv-player-close-curtain,
+  #components--modal-base-container > .modal--mv-player {
     transition: none;
   }
 
   .mv-player-quality-menu {
+    animation: none;
+  }
+
+  .mv-player-status-dot.is-loading {
     animation: none;
   }
 }

@@ -941,9 +941,7 @@ async function run() {
                     url: `${resourceOrigin}/lx-audio/flac/lx-smoke-song`,
                     quality: "flac",
                 },
-                fallbackSource: {
-                    url: "https://base-smoke.invalid/320k",
-                },
+                fallbackSource: null,
                 unsupportedSource: null,
                 missingTrackQualitySource: {
                     url: `${resourceOrigin}/lx-audio/master/lx-smoke-song`,

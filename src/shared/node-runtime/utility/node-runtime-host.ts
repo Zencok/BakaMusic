@@ -23,6 +23,63 @@ interface RuntimeRequest {
 
 const parentPort = process.parentPort;
 
+async function probeMediaSize(mediaSource: IMusic.IMusicSource) {
+    const mediaUrl = mediaSource.url;
+    if (!mediaUrl) throw new Error("Media URL is missing");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15_000);
+    const baseHeaders = new Headers(mediaSource.headers ?? {});
+    if (mediaSource.userAgent) baseHeaders.set("user-agent", mediaSource.userAgent);
+
+    const parseSize = (response: Response) => {
+        const contentType = response.headers.get("content-type") ?? "";
+        if (/mpegurl/i.test(contentType) || /\.m3u8(?:$|[?#])/i.test(response.url)) {
+            return null;
+        }
+        const contentRange = response.headers.get("content-range");
+        const rangeMatch = contentRange?.match(/\/([0-9]+)$/);
+        if (rangeMatch) {
+            const size = Number(rangeMatch[1]);
+            if (Number.isSafeInteger(size) && size > 0) return size;
+        }
+        const contentLength = Number(response.headers.get("content-length"));
+        return Number.isSafeInteger(contentLength) && contentLength > 0
+            ? contentLength
+            : null;
+    };
+
+    try {
+        try {
+            const response = await fetch(mediaUrl, {
+                method: "HEAD",
+                headers: baseHeaders,
+                redirect: "follow",
+                signal: controller.signal,
+            });
+            if (response.ok) {
+                const size = parseSize(response);
+                if (size !== null) return size;
+            }
+        } catch {
+            // Servers commonly reject HEAD; the one-byte range below is the fallback.
+        }
+
+        const rangeHeaders = new Headers(baseHeaders);
+        rangeHeaders.set("range", "bytes=0-0");
+        const response = await fetch(mediaUrl, {
+            method: "GET",
+            headers: rangeHeaders,
+            redirect: "follow",
+            signal: controller.signal,
+        });
+        const size = response.ok ? parseSize(response) : null;
+        await response.body?.cancel().catch(() => undefined);
+        return size;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 function respond(requestId: string, result?: unknown, error?: unknown) {
     const normalized = error instanceof Error ? error : error ? new Error(String(error)) : null;
     parentPort.postMessage({
@@ -51,6 +108,8 @@ async function handleRequest(request: RuntimeRequest) {
                     state,
                 }),
             );
+        case "probe-media-size":
+            return probeMediaSize(payload.mediaSource);
         case "abort-download":
             return abortDownload(payload.taskId, payload.removePartial);
         case "postprocess-download":

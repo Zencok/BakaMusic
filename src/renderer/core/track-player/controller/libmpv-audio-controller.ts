@@ -290,6 +290,21 @@ class LibmpvAudioController extends ControllerBase implements IAudioController {
         return true;
     }
 
+    async suspendForVideo() {
+        const oldSourceId = this.sourceId;
+        this.sourceGeneration += 1;
+        this.sourceId = "";
+        this.sourceAssigned = false;
+        this.sourceLoaded = false;
+        this.playRequested = false;
+        this.pendingSeek = null;
+        this.playerState = PlayerState.Paused;
+        navigator.mediaSession.playbackState = "paused";
+        await this.stopNativeSource(oldSourceId).catch((error) => {
+            logger.logInfo("libmpv audio suspension finished with an error", error);
+        });
+    }
+
     play() {
         this.playRequested = true;
         if (this.sourceLoaded) {

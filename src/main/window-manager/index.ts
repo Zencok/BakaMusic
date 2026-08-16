@@ -217,9 +217,17 @@ class WindowManager implements IWindowManager {
                 navigateOnDragDrop: false,
             },
             frame: false,
-            // DWM Acrylic owns backdrop translucency. Keep the BrowserWindow
-            // non-layered so the resizable main window remains stable on 24H2.
+            // Start from the theme surface defaults; Windows is overridden
+            // below because the libmpv overlay requires a layered window.
             ...getInitialWindowSurfaceOptions(),
+            // Native libmpv video is a popup HWND immediately below this window.
+            // Per-pixel transparency lets its frames show through the player
+            // viewport while Chromium keeps the controls on top.
+            ...(process.platform === "win32" ? {
+                transparent: true,
+                backgroundColor: "#00000000",
+                backgroundMaterial: "none" as const,
+            } : {}),
             // Required for true OS fullscreen (F11 on music detail).
             fullscreenable: true,
             icon: nativeImage.createFromPath(getResourcePath(ResourceName.LOGO_IMAGE)),

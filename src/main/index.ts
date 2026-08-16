@@ -51,7 +51,6 @@ import {
 import NodeRuntimeManager from "@shared/node-runtime/main";
 import { setupBackupMain } from "@shared/backup/main";
 import NativePlaybackManager from "@shared/native-playback/main";
-import VideoProxyManager from "@shared/video-proxy/main";
 
 registerThemeProtocolScheme();
 
@@ -157,7 +156,6 @@ app.whenReady().then(async () => {
     setupBackupMain();
     NodeRuntimeManager.setup(windowManager);
     NativePlaybackManager.setup(windowManager);
-    VideoProxyManager.setup(windowManager);
     PluginManager.setup(windowManager);
     TrayManager.setup(windowManager);
     shortCut.setup().then(voidCallback);

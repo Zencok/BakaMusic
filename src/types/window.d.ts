@@ -3,7 +3,6 @@ interface Window {
     /** 获取本地字体 */
     queryLocalFonts: () => Promise<FontData[]>;
     "@shared/native-playback": import("@shared/native-playback/type").IMod;
-    "@shared/video-proxy": import("@shared/video-proxy/type").IMod;
 }
 
 

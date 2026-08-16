@@ -19,6 +19,8 @@ declare namespace IPlugin {
    * 音频播放继续使用 IMediaSourceResult；视频单独建模，避免把分辨率
    * （例如 1080p）误当成音频音质键。响应仍然只允许可结构化克隆的数据。
    */
+  export type VideoDynamicRange = "sdr" | "hdr10" | "dolby-vision";
+
   export interface IVideoQualityOption {
     /** 插件下一次 getMvSource 调用使用的稳定键。 */
     key: string;
@@ -31,6 +33,8 @@ declare namespace IPlugin {
     size?: number | string;
     codec?: string;
     mimeType?: string;
+    /** 色彩/动态范围；Dolby Vision Profile 5 需要专用渲染链。 */
+    dynamicRange?: VideoDynamicRange;
   }
 
   export interface IVideoSourceResult {
@@ -42,6 +46,8 @@ declare namespace IPlugin {
     videoQuality?: string;
     mimeType?: string;
     codec?: string;
+    /** 色彩/动态范围；用于宿主选择兼容的播放后端。 */
+    dynamicRange?: VideoDynamicRange;
     bitrate?: number;
     /** 当前源对应的文件大小（字节或格式化文本）。 */
     size?: number | string;

@@ -73,3 +73,61 @@ export interface INativeAudioOutputDevice {
     id: string;
     description: string;
 }
+
+export interface INativeVideoSource {
+    key: string;
+    label: string;
+    url: string;
+    backupUrls?: string[];
+    headers?: Record<string, string>;
+    width?: number;
+    height?: number;
+    dynamicRange?: IPlugin.VideoDynamicRange;
+}
+
+export interface INativeVideoSurfaceBounds {
+    /** CSS-pixel offset from the main BrowserWindow content area. */
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+export interface INativeVideoSurfaceUpdate {
+    sourceId: string;
+    bounds: INativeVideoSurfaceBounds;
+    visible: boolean;
+}
+
+export type NativeVideoCommand =
+    | { operation: "play"; sourceId: string }
+    | { operation: "pause"; sourceId: string }
+    | { operation: "seek"; sourceId: string; seconds: number }
+    | { operation: "volume"; sourceId: string; volume: number }
+    | { operation: "speed"; sourceId: string; speed: number };
+
+export interface INativeVideoSourceSelect {
+    sourceId: string;
+    sourceKey: string;
+}
+
+export interface INativeVideoOpenRequest {
+    sourceId: string;
+    title: string;
+    sources: INativeVideoSource[];
+    initialSourceKey: string;
+    volume: number;
+    surface: Omit<INativeVideoSurfaceUpdate, "sourceId">;
+}
+
+export interface INativeVideoSourcesUpdate {
+    sourceId: string;
+    sources: INativeVideoSource[];
+}
+
+export interface INativeVideoEvent {
+    sourceId: string;
+    type: "closed" | "error" | "snapshot";
+    error?: string;
+    snapshot?: INativePlaybackSnapshot;
+}
