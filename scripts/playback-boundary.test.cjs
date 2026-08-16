@@ -341,6 +341,9 @@ function testAudioDeviceLossContract() {
     assert.match(nativeHost, /function isAudioDeviceFailure\(errorCode: number\)/);
     assert.match(nativeHost, /lastAudioOutputError/);
     assert.match(nativeHost, /message\.prefix\?\.startsWith\("ao\/"\)/);
+    assert.match(nativeHost, /WASAPI_ERROR_CODE\.test\(audioOutputError\)/);
+    assert.match(nativeHost, /next === audioExclusiveEnabled/);
+    assert.match(nativeHost, /nextAudioDevice !== currentAudioDevice/);
     assert.match(
         nativeHost,
         /lastErrorKind = isAudioDeviceFailure\(endFile\.error\)\s*\?\s*"audio-device"\s*:\s*"playback";/,
@@ -370,7 +373,9 @@ function testAudioDeviceLossContract() {
     assert.ok(onErrorBlock.length > 0);
     assert.match(onErrorBlock, /type === ErrorReason\.AudioDeviceUnavailable/);
     assert.match(trackPlayer, /AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED/);
+    assert.match(trackPlayer, /AUDCLNT_E_ENDPOINT_CREATE_FAILED/);
     assert.match(trackPlayer, /"playMusic\.wasapiExclusive": false/);
+    assert.match(trackPlayer, /!shouldDisableExclusive\s*&&\s*now - this\.audioDeviceReloadAt/);
     // 设备错误必须在 emit 之前 return，否则仍会走 playError=skip 分支。
     assert.ok(
         onErrorBlock.indexOf("handleAudioDeviceLoss") <

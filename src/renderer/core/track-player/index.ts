@@ -54,7 +54,9 @@ const PROGRESS_PERSIST_INTERVAL_MS = 3_000;
 
 /** 同一次设备拔出会同时产生错误和列表变化，这段时间内只处理一次。 */
 const AUDIO_DEVICE_LOSS_GUARD_MS = 5_000;
-const WASAPI_BUFFER_ALIGNMENT_ERROR = /AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED/i;
+/** 独占格式/端点协商失败后改用共享模式，避免同一音源反复重载。 */
+const WASAPI_EXCLUSIVE_INIT_ERROR =
+    /AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED|AUDCLNT_E_ENDPOINT_CREATE_FAILED/i;
 
 const {
     musicQueueStore,
@@ -1090,7 +1092,7 @@ class TrackPlayer {
         const reasonMessage = reason instanceof Error ? reason.message : String(reason ?? "");
         const shouldDisableExclusive = cause === "error"
             && AppConfig.getConfig("playMusic.wasapiExclusive")
-            && WASAPI_BUFFER_ALIGNMENT_ERROR.test(reasonMessage);
+            && WASAPI_EXCLUSIVE_INIT_ERROR.test(reasonMessage);
 
         if (cause === "removed") {
             if (duplicated) {
@@ -1109,13 +1111,17 @@ class TrackPlayer {
         });
 
         if (shouldDisableExclusive) {
-            logger.logInfo("WASAPI exclusive mode disabled after buffer alignment failure");
+            logger.logInfo("WASAPI exclusive mode disabled after audio initialization failure");
             await this.setWasapiExclusive(false);
             await AppConfig.setConfig({ "playMusic.wasapiExclusive": false });
         }
 
-        // 回落之后如果还是打不开设备，就不再重试，避免重载风暴
-        if (now - this.audioDeviceReloadAt < AUDIO_DEVICE_LOSS_GUARD_MS) {
+        // 回落之后如果还是打不开设备，就不再重试，避免重载风暴。
+        // 但独占刚被关闭时输出模式已变更，必须允许这一次共享模式重载。
+        if (
+            !shouldDisableExclusive
+            && now - this.audioDeviceReloadAt < AUDIO_DEVICE_LOSS_GUARD_MS
+        ) {
             this.setPlayerState(PlayerState.Paused);
             return;
         }

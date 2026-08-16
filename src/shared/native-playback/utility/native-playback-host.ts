@@ -52,6 +52,7 @@ const MPV_END_FILE_REASON_EOF = 0;
 const MPV_END_FILE_REASON_ERROR = 4;
 const MPV_ERROR_PROPERTY_UNAVAILABLE = -10;
 const MPV_ERROR_AO_INIT_FAILED = -14;
+const WASAPI_ERROR_CODE = /AUDCLNT_E_[A-Z0-9_]+/i;
 /** Audio output devices are re-read at most this often while a source is loaded. */
 const DEVICE_PROBE_INTERVAL = 1000;
 
@@ -193,6 +194,7 @@ checkMpv(api.initialize(player), "libmpv core initialization");
 checkMpv(api.requestLogMessages(player, "warn"), "libmpv log subscription");
 
 let currentAudioDevice = "auto";
+let audioExclusiveEnabled = wasapiExclusiveRequested;
 
 function getStringProperty(name: string) {
     const value = api.getPropertyString(player, name);
@@ -449,7 +451,17 @@ function processEvents() {
                 mpvEventLogMessageType,
             ) as MpvEventLogMessage;
             if (message.prefix?.startsWith("ao/") && message.text) {
-                lastAudioOutputError = message.text.trim().slice(0, 1024);
+                const audioOutputError = message.text.trim().slice(0, 1024);
+                // WASAPI normally follows the useful HRESULT with the generic
+                // "Received failure from audio thread" line. Keep the HRESULT
+                // so renderer-side exclusive-mode recovery can identify it.
+                if (
+                    !lastAudioOutputError
+                    || WASAPI_ERROR_CODE.test(audioOutputError)
+                    || !WASAPI_ERROR_CODE.test(lastAudioOutputError)
+                ) {
+                    lastAudioOutputError = audioOutputError;
+                }
                 if (
                     lastErrorKind === "audio-device"
                     && lastError
@@ -550,8 +562,12 @@ function applyAudioExclusive(enabled: boolean) {
         return;
     }
     const next = !!enabled;
+    if (next === audioExclusiveEnabled) {
+        return;
+    }
     // Property is supported after initialize; re-set device so WASAPI reopens.
     setProperty("audio-exclusive", next ? "yes" : "no");
+    audioExclusiveEnabled = next;
     setProperty("audio-device", currentAudioDevice || "auto");
 }
 
@@ -623,10 +639,14 @@ function handleCommand(command: NativePlaybackRuntimeCommand) {
             loopEnabled = command.enabled;
             endedPending = false;
             break;
-        case "output-device":
-            currentAudioDevice = command.deviceId || "auto";
-            setProperty("audio-device", currentAudioDevice);
+        case "output-device": {
+            const nextAudioDevice = command.deviceId || "auto";
+            if (nextAudioDevice !== currentAudioDevice) {
+                currentAudioDevice = nextAudioDevice;
+                setProperty("audio-device", currentAudioDevice);
+            }
             break;
+        }
         case "audio-exclusive":
             applyAudioExclusive(command.enabled);
             break;
