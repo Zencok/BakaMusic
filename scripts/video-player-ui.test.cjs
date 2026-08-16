@@ -65,6 +65,10 @@ assert.match(player, /toLocaleUpperCase\("en-US"\)/);
 assert.doesNotMatch(player, /optionMeta \|\| "—"/);
 assert.match(player, /getBufferedPercent/);
 assert.match(player, /handleWheelVolume/);
+assert.match(player, /rangeInteractionRef/);
+assert.match(player, /onPointerMove=\{handlePointerActivity\}/);
+assert.match(player, /revealControlsRef\.current\(\)/);
+assert.match(player, /syncElementFullscreen[\s\S]*?setMainWindowFullScreen\?\.\(true\)/);
 assert.match(player, /supportedVideoQualities/);
 assert.match(player, /probeProxyVideoSize/);
 assert.match(player, /content-range/);
@@ -94,7 +98,14 @@ assert.match(playerStyles, /right:\s*43px/);
 assert.doesNotMatch(playerStyles, /0 0 0 1\.5px rgba\(5, 5, 5/);
 assert.match(playerStyles, /mv-player-seek-preview/);
 assert.match(playerStyles, /mv-player-volume-control/);
+assert.match(playerStyles, /\.mv-player-stage\s*\{[\s\S]*?cursor:\s*default/);
+assert.match(playerStyles, /data-controls-visible="false"[\s\S]*?\.mv-player-stage,[\s\S]*?cursor:\s*none/);
+assert.match(playerStyles, /\.mv-player-progress,[\s\S]*?cursor:\s*pointer/);
 assert.match(playerStyles, /\.mv-player-controls\s*\{[\s\S]*padding:\s*72px 0 16px/);
+
+const utilsMain = read("src/shared/utils/main.ts");
+assert.match(utilsMain, /powerSaveBlocker\.start\("prevent-display-sleep"\)/);
+assert.match(utilsMain, /setImmersiveSessionEffects\(true\)/);
 
 const baseModal = read("src/renderer/components/Modal/templates/Base/index.tsx");
 assert.match(baseModal, /if \(document\.fullscreenElement\)/);

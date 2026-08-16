@@ -185,6 +185,9 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
     const playbackIntentRef = useRef<{ currentTime: number; playing: boolean } | null>(null);
     const fullscreenRef = useRef(false);
     const fullscreenRequestedRef = useRef(false);
+    const keyboardNavigationRef = useRef(false);
+    const rangeInteractionRef = useRef(false);
+    const revealControlsRef = useRef<() => void>(() => undefined);
     const previousVolumeRef = useRef(0.82);
     const mountedRef = useRef(true);
     const artwork = musicItem.coverImg || musicItem.artwork;
@@ -236,16 +239,40 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
         clearControlsTimer();
         setControlsVisible(true);
         const activeElement = document.activeElement;
-        const hasKeyboardFocus = activeElement instanceof HTMLElement
+        const hasKeyboardFocus = keyboardNavigationRef.current
+            && activeElement instanceof HTMLElement
             && Boolean(playerRef.current?.contains(activeElement))
             && activeElement.matches(":focus-visible");
-        if (playing && !qualityMenuOpen && !downloadMenuOpen && !hasKeyboardFocus) {
+        if (
+            playing
+            && !qualityMenuOpen
+            && !downloadMenuOpen
+            && !rangeInteractionRef.current
+            && !hasKeyboardFocus
+        ) {
             controlsTimerRef.current = window.setTimeout(() => {
                 setControlsVisible(false);
                 controlsTimerRef.current = null;
             }, CONTROLS_IDLE_MS);
         }
     }, [clearControlsTimer, downloadMenuOpen, playing, qualityMenuOpen]);
+
+    const handlePointerActivity = useCallback(() => {
+        keyboardNavigationRef.current = false;
+        revealControls();
+    }, [revealControls]);
+
+    const beginRangeInteraction = useCallback(() => {
+        rangeInteractionRef.current = true;
+        clearControlsTimer();
+        setControlsVisible(true);
+    }, [clearControlsTimer]);
+
+    const endRangeInteraction = useCallback(() => {
+        if (!rangeInteractionRef.current) return;
+        rangeInteractionRef.current = false;
+        revealControls();
+    }, [revealControls]);
 
     const togglePlayback = useCallback(() => {
         const video = videoRef.current;
@@ -264,15 +291,15 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
         }
         appWindowUtil.setMainWindowFullScreen?.(false);
         setFullscreenState(false);
-        setControlsVisible(true);
-    }, [setFullscreenState]);
+        revealControls();
+    }, [revealControls, setFullscreenState]);
 
     const enterFullscreen = useCallback(() => {
         const player = playerRef.current;
         if (!player) return;
         fullscreenRequestedRef.current = true;
         setFullscreenState(true);
-        setControlsVisible(true);
+        revealControls();
 
         // BrowserWindow fullscreen removes the native window chrome. The element
         // fullscreen request then promotes only the player into Chromium's top
@@ -282,7 +309,7 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
             // Native fullscreen plus data-fullscreen CSS remains a complete
             // fallback on platforms that reject the element request.
         });
-    }, [setFullscreenState]);
+    }, [revealControls, setFullscreenState]);
 
     const toggleFullscreen = useCallback(() => {
         if (fullscreenRef.current || document.fullscreenElement === playerRef.current) {
@@ -330,6 +357,7 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
         const direction = Math.sign(event.deltaY || event.deltaX);
         if (direction === 0) return;
         event.preventDefault();
+        keyboardNavigationRef.current = false;
         updateVolume((muted ? 0 : volume) - direction * 0.05);
         revealControls();
     }, [muted, revealControls, updateVolume, volume]);
@@ -383,10 +411,28 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
     }, [clearControlsTimer, playing, revealControls]);
 
     useEffect(() => {
+        const finishRangeInteraction = () => endRangeInteraction();
+        window.addEventListener("pointerup", finishRangeInteraction, true);
+        window.addEventListener("pointercancel", finishRangeInteraction, true);
+        return () => {
+            window.removeEventListener("pointerup", finishRangeInteraction, true);
+            window.removeEventListener("pointercancel", finishRangeInteraction, true);
+        };
+    }, [endRangeInteraction]);
+
+    useEffect(() => {
+        revealControlsRef.current = revealControls;
+    }, [revealControls]);
+
+    useEffect(() => {
         const player = playerRef.current;
         const syncElementFullscreen = () => {
             const elementFullscreen = document.fullscreenElement === player;
             if (elementFullscreen) {
+                // Route element fullscreen through the same main-process path as
+                // F11. Besides window chrome, that path owns display sleep blocking.
+                fullscreenRequestedRef.current = true;
+                appWindowUtil.setMainWindowFullScreen?.(true);
                 setFullscreenState(true);
             } else if (fullscreenRequestedRef.current) {
                 // Escape exits the Chromium top layer first. Mirror that change
@@ -395,19 +441,22 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                 appWindowUtil.setMainWindowFullScreen?.(false);
                 setFullscreenState(false);
             }
-            setControlsVisible(true);
+            revealControlsRef.current();
         };
         const unsubscribe = appWindowUtil.onMainWindowFullScreenChanged?.((enabled) => {
             const next = Boolean(enabled);
             setFullscreenState(next);
-            setControlsVisible(true);
+            revealControlsRef.current();
             if (!next && document.fullscreenElement === player) {
                 fullscreenRequestedRef.current = false;
                 void document.exitFullscreen().catch(() => undefined);
             }
         });
         void appWindowUtil.isMainWindowFullScreen?.().then((enabled) => {
-            if (mountedRef.current && enabled) setFullscreenState(true);
+            if (mountedRef.current && enabled) {
+                setFullscreenState(true);
+                revealControlsRef.current();
+            }
         });
         document.addEventListener("fullscreenchange", syncElementFullscreen);
         return () => {
@@ -449,6 +498,7 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
 
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
+            keyboardNavigationRef.current = true;
             const target = event.target;
             const key = event.key.toLocaleLowerCase();
             if ((qualityMenuOpen || downloadMenuOpen) && key === "escape") {
@@ -974,10 +1024,16 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                 data-fullscreen={fullscreen ? "true" : "false"}
                 data-controls-visible={controlsVisible ? "true" : "false"}
                 data-modal-layer-open={qualityMenuOpen || downloadMenuOpen ? "true" : undefined}
-                onMouseMove={revealControls}
+                onPointerMove={handlePointerActivity}
+                onPointerDownCapture={handlePointerActivity}
                 onWheel={handleWheelVolume}
                 onMouseLeave={() => {
-                    if (!playing || qualityMenuOpen || downloadMenuOpen) return;
+                    if (
+                        !playing
+                        || qualityMenuOpen
+                        || downloadMenuOpen
+                        || rangeInteractionRef.current
+                    ) return;
                     clearControlsTimer();
                     setControlsVisible(false);
                 }}
@@ -1092,6 +1148,7 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                             type="button"
                             className="mv-player-center-play"
                             aria-label={t("music_bar.play")}
+                            aria-keyshortcuts="Space K"
                             onClick={(event) => {
                                 event.stopPropagation();
                                 togglePlayback();
@@ -1129,6 +1186,9 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                             step={0.1}
                             value={Math.min(currentTime, duration || 0)}
                             aria-label={t("mv_player.playback_progress")}
+                            aria-valuetext={`${formatVideoTime(currentTime)} / ${formatVideoTime(duration)}`}
+                            onPointerDown={beginRangeInteraction}
+                            onBlur={endRangeInteraction}
                             onChange={(event) => {
                                 const nextTime = Number(event.target.value);
                                 if (videoRef.current) videoRef.current.currentTime = nextTime;
@@ -1143,6 +1203,7 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                                 className="mv-player-icon-button mv-player-transport"
                                 title={playing ? t("music_bar.pause") : t("music_bar.play")}
                                 aria-label={playing ? t("music_bar.pause") : t("music_bar.play")}
+                                aria-keyshortcuts="Space K"
                                 onClick={togglePlayback}
                             >
                                 <SvgAsset iconName={playing ? "pause" : "play"}></SvgAsset>
@@ -1153,6 +1214,7 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                                     className="mv-player-icon-button"
                                     title={silent ? t("music_bar.unmute") : t("music_bar.mute")}
                                     aria-label={silent ? t("music_bar.unmute") : t("music_bar.mute")}
+                                    aria-keyshortcuts="M"
                                     onClick={toggleMuted}
                                 >
                                     <SvgAsset iconName={silent ? "speaker-x-mark" : "speaker-wave"}></SvgAsset>
@@ -1165,6 +1227,9 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                                         step={0.01}
                                         value={muted ? 0 : volume}
                                         aria-label={t("music_bar.volume")}
+                                        aria-valuetext={`${Math.round((muted ? 0 : volume) * 100)}%`}
+                                        onPointerDown={beginRangeInteraction}
+                                        onBlur={endRangeInteraction}
                                         onChange={(event) => updateVolume(Number(event.target.value))}
                                     ></input>
                                 </label>
@@ -1360,6 +1425,7 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                                 className="mv-player-icon-button"
                                 title={fullscreen ? t("mv_player.exit_fullscreen") : t("mv_player.fullscreen")}
                                 aria-label={fullscreen ? t("mv_player.exit_fullscreen") : t("mv_player.fullscreen")}
+                                aria-keyshortcuts="F"
                                 onClick={toggleFullscreen}
                             >
                                 <SvgAsset iconName={fullscreen ? "arrows-pointing-in" : "arrows-pointing-out"}></SvgAsset>

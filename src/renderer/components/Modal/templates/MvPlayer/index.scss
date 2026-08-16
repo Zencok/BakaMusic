@@ -129,7 +129,7 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  cursor: pointer;
+  cursor: default;
 }
 
 .mv-player-video {
@@ -240,6 +240,11 @@
 
 .modal--mv-player[data-controls-visible="false"] {
   cursor: none;
+
+  & .mv-player-stage,
+  & .mv-player-video {
+    cursor: none;
+  }
 
   & .mv-player-controls {
     opacity: 0;
