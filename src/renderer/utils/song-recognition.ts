@@ -16,6 +16,7 @@ export interface RecognizeMatch {
     musicItem: IMusic.IMusicItem;
     confidence: number;
     platform: string;
+    hydrated?: boolean;
 }
 
 interface CaptureResult {
@@ -181,6 +182,10 @@ function pickString(...values: unknown[]) {
     return "";
 }
 
+function isKugouPlatform(platform: string) {
+    return /酷狗|kugou/i.test(platform) || platform.trim().toLocaleLowerCase() === "kg";
+}
+
 async function hydrateRecognizeMatch(
     match: RecognizeMatch,
     plugin: IPlugin.IPluginDelegate,
@@ -251,7 +256,27 @@ async function hydrateRecognizeMatch(
         ...match,
         musicItem,
         platform: plugin.platform,
+        hydrated: true,
     };
+}
+
+/** Fetch full quality metadata and pre-resolve a source for the selected row. */
+export async function prepareRecognizeMatchForPlayback(
+    match: RecognizeMatch,
+): Promise<RecognizeMatch> {
+    if (match.hydrated) {
+        return match;
+    }
+    const delegate = getMediaPluginDelegate(match.musicItem);
+    const plugin = isKugouPlatform(match.platform)
+        ? PluginManager.getKugouPlugin()
+        : undefined;
+    const resolvedPlugin = plugin
+        ?? (delegate.hash ? PluginManager.getPluginByHash(delegate.hash) : undefined)
+        ?? PluginManager.getPluginByPlatform(match.platform);
+    return resolvedPlugin
+        ? hydrateRecognizeMatch(match, resolvedPlugin)
+        : match;
 }
 
 export async function recognizeSystemAudio(): Promise<RecognizeMatch[]> {
@@ -296,12 +321,7 @@ export async function recognizeSystemAudio(): Promise<RecognizeMatch[]> {
     // row at once causes a burst of short-lived URL requests and noisy plugin
     // errors.  Remaining rows are hydrated lazily when the user selects one.
     const bestMatch = orderedMatches[0];
-    const delegate = getMediaPluginDelegate(bestMatch.musicItem);
-    const plugin = (delegate.hash ? PluginManager.getPluginByHash(delegate.hash) : undefined)
-        ?? PluginManager.getPluginByPlatform(bestMatch.platform);
-    const hydratedBest = plugin
-        ? await hydrateRecognizeMatch(bestMatch, plugin)
-        : bestMatch;
+    const hydratedBest = await prepareRecognizeMatchForPlayback(bestMatch);
     return [hydratedBest, ...orderedMatches.slice(1)];
 }
 

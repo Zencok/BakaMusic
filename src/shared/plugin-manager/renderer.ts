@@ -241,6 +241,20 @@ function getPluginByPlatform(platform: string) {
     return delegatePluginsStore.getValue().find((item) => item.platform === platform);
 }
 
+function isKugouPlatform(platform?: string) {
+    return typeof platform === "string"
+        && (/酷狗|kugou/i.test(platform) || platform.trim().toLocaleLowerCase() === "kg");
+}
+
+/** The installed KG platform plugin is the single metadata/playback base. */
+function getKugouPlugin() {
+    return getSortedSupportedPlugin("getMusicInfo").find((plugin) =>
+        isKugouPlatform(plugin.platform),
+    ) ?? delegatePluginsStore.getValue().find((plugin) =>
+        isKugouPlatform(plugin.platform),
+    );
+}
+
 function isSupportFeatureMethod(platform: string, featureMethod: keyof IPlugin.IPluginInstanceMethods) {
     if (!platform) {
         return false;
@@ -307,6 +321,7 @@ const PluginManager = {
     getSortedSearchablePlugins,
     getPluginByHash,
     getPluginByPlatform,
+    getKugouPlugin,
     isSupportFeatureMethod,
     getPluginPrimaryKey,
     getLxQualityOverride,

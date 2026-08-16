@@ -70,7 +70,62 @@ const KUGOU_RECOGNIZE_MID = createHash("md5")
     .digest("hex");
 
 function isKugouPlatform(platform: string) {
-    return /酷狗|kugou/i.test(platform);
+    return /酷狗|kugou/i.test(platform) || platform.trim().toLocaleLowerCase() === "kg";
+}
+
+function hasQualitySize(value: unknown) {
+    if (typeof value === "number") {
+        return Number.isFinite(value) && value > 0;
+    }
+    return typeof value === "string" && value.trim().length > 0;
+}
+
+function getQualitySize(value: Record<string, unknown>) {
+    return value.size
+        ?? value.filesize
+        ?? value.fileSize
+        ?? value.size_bytes;
+}
+
+/** Recognition returns hashes first; KG details are needed to fill sizes. */
+function hasCompleteKugouQualityMetadata(value: unknown) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return false;
+    }
+    const entries = Object.values(value as Record<string, unknown>);
+    return entries.length > 0 && entries.every((entry) =>
+        !!entry
+        && typeof entry === "object"
+        && !Array.isArray(entry)
+        && hasQualitySize(getQualitySize(entry as Record<string, unknown>)),
+    );
+}
+
+/** Normalize common KG quality-size field names for the renderer metadata UI. */
+function normalizeKugouQualityMetadata(value: unknown) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return value;
+    }
+    const source = value as Record<string, unknown>;
+    const rawQualities = source.qualities ?? source.qualitys;
+    if (!rawQualities || typeof rawQualities !== "object" || Array.isArray(rawQualities)) {
+        return value;
+    }
+    const qualities = Object.fromEntries(Object.entries(rawQualities).map(([quality, entry]) => {
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+            return [quality, entry];
+        }
+        const normalizedEntry = entry as Record<string, unknown>;
+        const size = getQualitySize(normalizedEntry);
+        return [quality, {
+            ...normalizedEntry,
+            ...(normalizedEntry.size == null && size != null ? { size } : {}),
+        }];
+    }));
+    return {
+        ...source,
+        qualities,
+    };
 }
 
 function normalizeRecognizeCover(...values: unknown[]) {
@@ -553,11 +608,24 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
             return null;
         }
         try {
+            // The KG plugin treats any non-empty `qualities` object as already
+            // hydrated and returns it unchanged. Recognition only has hashes
+            // at this point, so remove the skeleton map to force the plugin's
+            // detail/quality endpoint and preserve size metadata.
+            const shouldRefreshKugouQualities = isKugouPlatform(this.plugin.name)
+                && musicItem.qualities
+                && !hasCompleteKugouQualityMetadata(musicItem.qualities);
+            const requestItem = shouldRefreshKugouQualities
+                ? { ...musicItem, qualities: undefined }
+                : musicItem;
             const result = await this.plugin.instance.getMusicInfo(
-                resetMediaItem(musicItem, undefined, true),
+                resetMediaItem(requestItem, undefined, true),
             );
-            return result
-                ? this.plugin.applyMediaQualityOverride(result)
+            const normalizedResult = result
+                ? normalizeKugouQualityMetadata(result)
+                : null;
+            return normalizedResult
+                ? this.plugin.applyMediaQualityOverride(normalizedResult)
                 : null;
         } catch {
             // devLog('error', '获取音乐详情失败', e, e?.message);

@@ -177,6 +177,10 @@ const managerSource = read("src/shared/plugin-manager/main/lx-plugin-manager.ts"
 const hostSource = read("src/shared/plugin-manager/utility/lx-plugin-host.ts");
 const methodsSource = read("src/shared/plugin-manager/main/plugin-methods.ts");
 const rendererSource = read("src/shared/plugin-manager/renderer.ts");
+const recognitionSource = read("src/renderer/utils/song-recognition.ts");
+const recognitionModalSource = read(
+    "src/renderer/components/Modal/templates/SongRecognition/index.tsx",
+);
 const sectionSource = read(
     "src/renderer/pages/main-page/views/plugin-manager-view/components/lx-plugin-section/index.tsx",
 );
@@ -210,8 +214,14 @@ assert.match(
 assert.match(methodsSource, /getLxMusicQualityKeys\(musicItem, lxQualityKeys, true\)/);
 assert.match(managerSource, /getActiveLxPluginForSource/);
 assert.match(rendererSource, /getActiveLxPluginForSource/);
+assert.match(rendererSource, /getKugouPlugin/);
 assert.doesNotMatch(managerSource, /source !== "kg"/);
 assert.match(methodsSource, /!result\?\.url && !hasLxSource/);
+assert.match(methodsSource, /shouldRefreshKugouQualities/);
+assert.match(methodsSource, /qualities: undefined/);
+assert.match(recognitionSource, /prepareRecognizeMatchForPlayback/);
+assert.match(recognitionSource, /PluginManager\.getKugouPlugin\(\)/);
+assert.match(recognitionModalSource, /await prepareRecognizeMatchForPlayback\(match\)/);
 
 const extensionlessUrl = new URL("https://source.example.com/api/script/lx?key=fixture");
 assert.equal(extensionlessUrl.protocol, "https:");

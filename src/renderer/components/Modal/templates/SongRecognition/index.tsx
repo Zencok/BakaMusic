@@ -8,6 +8,7 @@ import trackPlayer from "@renderer/core/track-player";
 import MusicSheet from "@renderer/core/music-sheet";
 import {
     cancelRecognizeSystemAudio,
+    prepareRecognizeMatchForPlayback,
     recognizeSystemAudio,
     RECOGNIZE_MAX_SECONDS,
     type RecognizeMatch,
@@ -22,6 +23,7 @@ export default function SongRecognition() {
     const [seconds, setSeconds] = useState(0);
     const [matches, setMatches] = useState<RecognizeMatch[]>([]);
     const [error, setError] = useState("");
+    const [preparingMatchKey, setPreparingMatchKey] = useState<string | null>(null);
     const [, setFavoriteTick] = useState(0);
     const available = PluginManager.getSortedSupportedPlugin("recognize");
 
@@ -71,9 +73,22 @@ export default function SongRecognition() {
         setStatus("idle");
     }
 
-    function playMatch(match: RecognizeMatch) {
-        void trackPlayer.playMusic(match.musicItem);
-        hideModal();
+    async function playMatch(match: RecognizeMatch) {
+        const matchKey = `${match.platform}:${match.musicItem.id}`;
+        if (preparingMatchKey) return;
+        setPreparingMatchKey(matchKey);
+        try {
+            const preparedMatch = await prepareRecognizeMatchForPlayback(match);
+            setMatches((currentMatches) => currentMatches.map((item) =>
+                `${item.platform}:${item.musicItem.id}` === matchKey
+                    ? preparedMatch
+                    : item,
+            ));
+            await trackPlayer.playMusic(preparedMatch.musicItem);
+            hideModal();
+        } finally {
+            setPreparingMatchKey(null);
+        }
     }
 
     async function toggleFavorite(match: RecognizeMatch) {
@@ -135,6 +150,8 @@ export default function SongRecognition() {
                         <ul>
                             {matches.map((match, index) => {
                                 const favorite = MusicSheet.frontend.isFavoriteMusic(match.musicItem);
+                                const matchKey = `${match.platform}:${match.musicItem.id}`;
+                                const preparing = preparingMatchKey === matchKey;
                                 return (
                                     <li key={`${match.platform}-${match.musicItem.id}-${index}`}>
                                         <div className="song-recognition-confidence">
@@ -152,8 +169,8 @@ export default function SongRecognition() {
                                             <small>{match.platform}</small>
                                         </div>
                                         <div className="song-recognition-actions">
-                                            <button type="button" title={t("song_recognition.play")} aria-label={t("song_recognition.play")} onClick={() => playMatch(match)}>
-                                                <SvgAsset iconName="play" size={16}></SvgAsset>
+                                            <button type="button" disabled={preparingMatchKey !== null} title={t("song_recognition.play")} aria-label={t("song_recognition.play")} onClick={() => void playMatch(match)}>
+                                                <SvgAsset iconName={preparing ? "rolling-1s" : "play"} size={16}></SvgAsset>
                                             </button>
                                             <button type="button" className={favorite ? "is-favorite" : ""} title={favorite ? t("song_recognition.unfavorite") : t("song_recognition.favorite")} aria-label={favorite ? t("song_recognition.unfavorite") : t("song_recognition.favorite")} onClick={() => void toggleFavorite(match)}>
                                                 <SvgAsset iconName="heart" size={16}></SvgAsset>
