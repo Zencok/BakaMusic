@@ -20,6 +20,7 @@ import { isModalOpen } from "@/renderer/components/Modal";
 import { isContextMenuOpen } from "@/renderer/components/ContextMenu";
 import { isQualitySelectPopoverOpen } from "@/renderer/components/QualitySelectPopover";
 import { getCurrentPanel } from "@/renderer/components/Panel";
+import normalizeArtworkDisplaySrc from "@/renderer/utils/normalize-artwork-display-src";
 
 export const isMusicDetailShown = musicDetailShownStore.getValue;
 export const useMusicDetailShown = musicDetailShownStore.useValue;
@@ -413,7 +414,20 @@ function MusicDetail() {
         };
     }, [applyImmersiveFullScreen, musicDetailShown, toggleImmersiveFullScreen]);
 
-    const artwork = musicItem?.coverImg || musicItem?.artwork || albumImg;
+    const rawArtwork = musicItem?.coverImg || musicItem?.artwork || albumImg;
+    const [artwork, setArtwork] = useState(rawArtwork);
+    useEffect(() => {
+        let canceled = false;
+        setArtwork(rawArtwork);
+        void normalizeArtworkDisplaySrc(rawArtwork).then((nextArtwork) => {
+            if (!canceled) {
+                setArtwork(nextArtwork ?? rawArtwork);
+            }
+        });
+        return () => {
+            canceled = true;
+        };
+    }, [rawArtwork]);
     const qualityLabel = quality ? (qualityText[quality] || quality).replace(/^.*?\s/, "") : null;
     const title = musicItem?.title || t("media.unknown_title");
     const subtitle = [musicItem?.artist || t("media.unknown_artist"), musicItem?.album]
@@ -473,6 +487,7 @@ function MusicDetail() {
                                     className="music-detail-info-artwork"
                                     onError={setFallbackAlbum}
                                     src={artwork}
+                                    referrerPolicy="no-referrer"
                                 ></img>
                                 <div className="music-detail-info-copy">
                                     <div className="music-detail-info-title" title={title}>
@@ -553,6 +568,7 @@ function MusicDetail() {
                                                 className="music-detail-vinyl-artwork"
                                                 onError={setFallbackAlbum}
                                                 src={artwork}
+                                                referrerPolicy="no-referrer"
                                             ></img>
                                             <div className="music-detail-vinyl-label-shine"></div>
                                         </div>
@@ -565,6 +581,7 @@ function MusicDetail() {
                                     className="music-detail-artwork"
                                     onError={setFallbackAlbum}
                                     src={artwork}
+                                    referrerPolicy="no-referrer"
                                 ></img>
                             )}
                         </div>

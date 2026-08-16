@@ -57,7 +57,17 @@ function testSessionAndNavigationPolicy() {
     assert.match(productionPolicy, /base-uri 'none'/);
     assert.match(source, /setPermissionCheckHandler\(\(\) => false\)/);
     assert.match(source, /setPermissionRequestHandler/);
-    assert.match(source, /callback\(false\)/);
+    assert.match(source, /permission === "display-capture"/);
+    assert.match(source, /permission === "media"/);
+    assert.match(source, /mediaTypes\.length === 0/);
+    assert.match(source, /displayMediaOwnerId === requester\.id/);
+    assert.match(source, /details\.isMainFrame/);
+    assert.match(source, /callback\(allowDisplayCapture\)/);
+    assert.match(source, /setDisplayMediaRequestHandler/);
+    assert.match(source, /request\.userGesture/);
+    assert.match(source, /frame\.parent !== null/);
+    assert.match(source, /audio: "loopback"/);
+    assert.match(source, /callback\(\{\}\)/);
     assert.match(source, /onHeadersReceived/);
     assert.match(source, /setWindowOpenHandler/);
     assert.match(source, /action: "deny"/);

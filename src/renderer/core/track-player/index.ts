@@ -1016,6 +1016,10 @@ class TrackPlayer {
                 return false;
             }
 
+            if (typeof mediaSource.quality === "string" && mediaSource.quality.trim()) {
+                realQuality = mediaSource.quality as IMusic.IQualityKey;
+            }
+
             // 切歌期间 progressStore 仍是上一首的进度（resetProgress 只在 setTrack
             // 里发生）。此时若在新歌缓冲中切音质，会把新歌 seek 到上一首的位置，
             // 所以只有当前 source 真的已载入时才沿用进度。
@@ -1341,6 +1345,9 @@ class TrackPlayer {
                     continue;
                 }
                 realQuality = quality;
+                if (typeof mediaSource.quality === "string" && mediaSource.quality.trim()) {
+                    realQuality = mediaSource.quality as IMusic.IQualityKey;
+                }
                 break;
             } catch (error) {
                 if (signal.aborted) {

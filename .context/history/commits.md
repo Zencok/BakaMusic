@@ -439,3 +439,14 @@ pending
 - **Bug**: Nested local-music lists could use a different scroll surface from their virtualized rows and collide with the glass music bar.
 - **Files**: 9 files
 - **Tests**: Not run (Git-only commit workflow)
+
+## 2026-08-16T16:26:15.380+08:00 — feat(video): add production MV playback and downloads
+
+- **Context-Id**: bc7af7af-8b89-475f-b578-ba195350e9c4
+- **Decision**: Model video playback separately from audio quality
+- **Decision**: Proxy remote video sources through a validated local session
+- **Decision**: Only present verified qualities and start at the highest real option
+- **Decision**: Use independent sessions for quality-selectable downloads
+- **Bug**: Duplicate requested qualities could resolve to one source, and default playback started at 1080P instead of the highest verified quality.
+- **Files**: 43 files
+- **Tests**: npm exec tsc -- --noEmit; npm exec eslint -- ./src; npm test; npm exec sass (MV player SCSS)

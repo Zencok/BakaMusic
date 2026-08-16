@@ -5,6 +5,7 @@ import SvgAsset from "@/renderer/components/SvgAsset";
 import { isQualitySelectPopoverOpen } from "@/renderer/components/QualitySelectPopover";
 import { isContextMenuOpen } from "@/renderer/components/ContextMenu";
 import { useTranslation } from "react-i18next";
+import { appWindowUtil } from "@shared/utils/renderer";
 
 interface IBaseModalProps {
     onDefaultClick?: () => void;
@@ -68,12 +69,33 @@ function Base(props: IBaseModalProps) {
             if (event.code !== "Escape") {
                 return;
             }
+            // Let an open, modal-local flyout consume Escape before the dialog.
+            if (dialogRef.current?.querySelector("[data-modal-layer-open='true']")) {
+                return;
+            }
+            // Let media element fullscreen leave before considering modal
+            // dismissal. The MV player owns a real Fullscreen API element, so
+            // Escape is handled by Chromium first and the modal stays open.
+            if (document.fullscreenElement) {
+                return;
+            }
             // Higher layers first
             if (isQualitySelectPopoverOpen() || isContextMenuOpen()) {
                 return;
             }
             event.preventDefault();
             event.stopImmediatePropagation();
+            if (typeof appWindowUtil.isMainWindowFullScreen === "function") {
+                void appWindowUtil.isMainWindowFullScreen().then((isFullscreen) => {
+                    if (isFullscreen) {
+                        appWindowUtil.setMainWindowFullScreen?.(false);
+                        return;
+                    }
+                    hideModal();
+                    onDefaultClick?.();
+                });
+                return;
+            }
             // Escape always dismisses the top modal (matches user expectation)
             hideModal();
             onDefaultClick?.();

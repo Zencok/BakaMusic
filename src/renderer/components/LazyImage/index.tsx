@@ -28,6 +28,7 @@ export default function LazyImage(props: ILazyImageProps) {
         releaseWhenHidden = true,
         loading = "lazy",
         decoding = "async",
+        referrerPolicy = "no-referrer",
         alt = "",
         ...restProps
     } = props;
@@ -86,6 +87,7 @@ export default function LazyImage(props: ILazyImageProps) {
             src={displaySrc}
             loading={loading}
             decoding={decoding}
+            referrerPolicy={referrerPolicy}
         ></img>
     );
 }

@@ -60,6 +60,8 @@ import { getPlayCount } from "@/renderer/core/listening-statistics";
 import CurrentMusicLocator from "../CurrentMusicLocator";
 import { trashLocalMusicFiles } from "@/renderer/core/local-music";
 import { getDragAutoScrollDelta } from "./drag-auto-scroll";
+import { canPlayMusicVideo } from "@/renderer/utils/music-video";
+import MusicVideoBadge from "../MusicVideoBadge";
 
 interface IMusicListProps {
     /** 音乐列表 */
@@ -432,6 +434,14 @@ export function showMusicContextMenu(
                             toast.warn(i18n.t("music_list_context_menu.share_music_failed"));
                         }
                     })();
+                },
+            },
+            {
+                title: i18n.t("music_list_context_menu.play_mv"),
+                icon: "picture-in-picture-line",
+                show: canPlayMusicVideo(musicItem),
+                onClick() {
+                    showModal("MvPlayer", { musicItem });
                 },
             },
             {
@@ -1277,6 +1287,7 @@ function MusicListComponent(props: IMusicListProps) {
                                                 <div className="music-list-title" title={musicItem.title}>
                                                     {musicItem.title}
                                                 </div>
+                                                <MusicVideoBadge musicItem={musicItem}></MusicVideoBadge>
                                                 <IfTruthy condition={isPlaying}>
                                                     <span className="music-list-playing-indicator">
                                                         <SvgAsset iconName="motion-play" size={14}></SvgAsset>

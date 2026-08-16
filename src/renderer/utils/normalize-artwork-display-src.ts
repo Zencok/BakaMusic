@@ -3,6 +3,18 @@ const MAX_ARTWORK_ANALYSIS_SIZE = 256;
 const MAX_ARTWORK_OUTPUT_SIZE = 256;
 const artworkNormalizeCache = new Map<string, Promise<string> | string>();
 
+function needsNoReferrerCanvasCopy(src: string) {
+    try {
+        const hostname = new URL(src).hostname.toLowerCase();
+        return hostname === "hdslb.com"
+            || hostname.endsWith(".hdslb.com")
+            || hostname === "biliimg.com"
+            || hostname.endsWith(".biliimg.com");
+    } catch {
+        return false;
+    }
+}
+
 export function getArtworkCacheKey(src?: string | null) {
     if (!src) {
         return "";
@@ -46,6 +58,10 @@ function loadImage(src: string) {
     return new Promise<HTMLImageElement>((resolve, reject) => {
         const image = new Image();
         image.decoding = "async";
+        if (/^https?:\/\//i.test(src)) {
+            image.crossOrigin = "anonymous";
+            image.referrerPolicy = "no-referrer";
+        }
         image.onload = () => resolve(image);
         image.onerror = reject;
         image.src = src;
@@ -53,9 +69,10 @@ function loadImage(src: string) {
 }
 
 export default async function normalizeArtworkDisplaySrc(src?: string) {
+    const copyRemoteArtwork = !!src && needsNoReferrerCanvasCopy(src);
     if (
         !src ||
-        !src.startsWith("data:image/") ||
+        (!src.startsWith("data:image/") && !copyRemoteArtwork) ||
         src.startsWith("data:image/svg+xml")
     ) {
         return src;
@@ -149,7 +166,8 @@ export default async function normalizeArtworkDisplaySrc(src?: string) {
                 minX === 0 &&
                 minY === 0 &&
                 maxX === analysisWidth - 1 &&
-                maxY === analysisHeight - 1
+                maxY === analysisHeight - 1 &&
+                !copyRemoteArtwork
             ) {
                 return src;
             }

@@ -48,6 +48,10 @@ const validAudioExtSet = new Set([
     ".m4s",
 ]);
 
+const MAX_VIDEO_SOURCE_URL_LENGTH = 8192;
+const MAX_VIDEO_SOURCE_HEADERS = 64;
+const MAX_VIDEO_SOURCE_HEADER_LENGTH = 8192;
+
 const localLyricSidecarExtensions = [
     ".ttml", ".TTML",
     ".xml", ".XML",
@@ -340,6 +344,115 @@ function getSourceAudioExt(url?: string, visited = new Set<string>()): string | 
     }
 
     return null;
+}
+
+function normalizeVideoSourceHeaders(value: unknown) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return undefined;
+    }
+    const entries = Object.entries(value).flatMap(([key, headerValue]) => {
+        if (
+            !key.trim()
+            || key.length > 256
+            || typeof headerValue !== "string"
+            || headerValue.length > MAX_VIDEO_SOURCE_HEADER_LENGTH
+        ) {
+            return [];
+        }
+        return [[key, headerValue] as const];
+    }).slice(0, MAX_VIDEO_SOURCE_HEADERS);
+    return entries.length ? Object.fromEntries(entries) : undefined;
+}
+
+function normalizeVideoSourceNumber(value: unknown) {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) && numberValue >= 0
+        ? numberValue
+        : undefined;
+}
+
+function normalizeVideoSourceSize(value: unknown) {
+    if (typeof value === "string") {
+        const normalized = value.trim();
+        return normalized.length > 0 && normalized.length <= 128 ? normalized : undefined;
+    }
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) && numberValue >= 0 ? numberValue : undefined;
+}
+
+function normalizeVideoQualityOptions(value: unknown) {
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+    const seen = new Set<string>();
+    const options = value.flatMap((entry) => {
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
+        const item = entry as Record<string, unknown>;
+        const key = typeof item.key === "string" ? item.key.trim() : "";
+        if (!key || key.length > 64 || seen.has(key)) return [];
+        seen.add(key);
+        const stringValue = (name: string, maxLength = 128) =>
+            typeof item[name] === "string" && item[name].length <= maxLength
+                ? item[name].trim()
+                : undefined;
+        return [{
+            key,
+            label: stringValue("label"),
+            width: normalizeVideoSourceNumber(item.width),
+            height: normalizeVideoSourceNumber(item.height),
+            bitrate: normalizeVideoSourceNumber(item.bitrate),
+            size: normalizeVideoSourceSize(item.size),
+            codec: stringValue("codec"),
+            mimeType: stringValue("mimeType"),
+        }];
+    }).slice(0, 32);
+    return options.length ? options : undefined;
+}
+
+function normalizeVideoSourceResult(value: unknown): IPlugin.IVideoSourceResult | null {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return null;
+    }
+    const source = value as Record<string, unknown>;
+    const url = typeof source.url === "string" ? source.url.trim() : "";
+    if (!url || url.length > MAX_VIDEO_SOURCE_URL_LENGTH) {
+        return null;
+    }
+    const stringValue = (key: string, maxLength = 256) =>
+        typeof source[key] === "string" && source[key].length <= maxLength
+            ? source[key]
+            : undefined;
+    const backupUrls = Array.isArray(source.backupUrls)
+        ? source.backupUrls.flatMap((item) => {
+            if (typeof item !== "string" || item.length > MAX_VIDEO_SOURCE_URL_LENGTH) {
+                return [];
+            }
+            try {
+                const parsed = new URL(item);
+                return parsed.protocol === "http:" || parsed.protocol === "https:"
+                    ? [parsed.toString()]
+                    : [];
+            } catch {
+                return [];
+            }
+        }).slice(0, 4)
+        : undefined;
+    return {
+        url,
+        headers: normalizeVideoSourceHeaders(source.headers),
+        userAgent: stringValue("userAgent", MAX_VIDEO_SOURCE_HEADER_LENGTH),
+        videoQuality: stringValue("videoQuality") ?? stringValue("quality"),
+        mimeType: stringValue("mimeType"),
+        codec: stringValue("codec"),
+        bitrate: normalizeVideoSourceNumber(source.bitrate),
+        size: normalizeVideoSourceSize(source.size),
+        duration: normalizeVideoSourceNumber(source.duration),
+        width: normalizeVideoSourceNumber(source.width),
+        height: normalizeVideoSourceNumber(source.height),
+        availableVideoQualities: normalizeVideoQualityOptions(source.availableVideoQualities),
+        backupUrls,
+        expiresAt: normalizeVideoSourceNumber(source.expiresAt),
+    };
 }
 
 function normalizeLyricText(text: string) {

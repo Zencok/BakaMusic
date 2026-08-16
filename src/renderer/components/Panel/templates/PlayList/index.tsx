@@ -11,6 +11,7 @@ import Empty from "@/renderer/components/Empty";
 import LazyImage from "@/renderer/components/LazyImage";
 import MusicDownloaded from "@/renderer/components/MusicDownloaded";
 import MusicFavorite from "@/renderer/components/MusicFavorite";
+import MusicVideoBadge from "@/renderer/components/MusicVideoBadge";
 import { showMusicContextMenu } from "@/renderer/components/MusicList";
 import SvgAsset from "@/renderer/components/SvgAsset";
 import trackPlayer from "@renderer/core/track-player";
@@ -416,8 +417,11 @@ function PlayListMusicItemView(props: IPlayListMusicItemProps) {
                 ></PlaylistArtwork>
             </div>
             <div className="playlist--track-main">
-                <div className="playlist--track-title" title={musicItem.title}>
-                    {musicItem.title ?? "-"}
+                <div className="playlist--track-title-row">
+                    <div className="playlist--track-title" title={musicItem.title}>
+                        {musicItem.title ?? "-"}
+                    </div>
+                    <MusicVideoBadge musicItem={musicItem} compact></MusicVideoBadge>
                 </div>
                 <div className="playlist--track-meta">
                     <span className="playlist--artist" title={musicItem.artist}>

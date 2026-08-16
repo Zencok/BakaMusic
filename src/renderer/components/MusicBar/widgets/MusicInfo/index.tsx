@@ -10,6 +10,7 @@ import { useCurrentMusic, useProgress } from "@renderer/core/track-player/hooks"
 import { hidePanel } from "@renderer/components/Panel";
 import { useEffect, useState } from "react";
 import normalizeArtworkDisplaySrc from "@/renderer/utils/normalize-artwork-display-src";
+import MusicVideoBadge from "@/renderer/components/MusicVideoBadge";
 
 function StableArtwork(props: {
     src?: string;
@@ -34,21 +35,23 @@ function StableArtwork(props: {
     }, [rawSrc]);
 
     return (
-        <span
+        <img
             className="music-cover"
             aria-hidden="true"
+            alt=""
+            draggable={false}
             title={props.title}
+            src={displaySrc}
+            referrerPolicy="no-referrer"
             style={{
-                all: "unset",
                 position: "absolute",
                 inset: 0,
                 display: "block",
-                backgroundImage: `url("${displaySrc}")`,
-                backgroundPosition: "center center",
-                backgroundRepeat: "no-repeat",
-                backgroundSize: "cover",
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
             }}
-        ></span>
+        ></img>
     );
 }
 
@@ -133,6 +136,7 @@ export default function MusicInfo() {
                     >
                         {musicItem.title}
                     </span>
+                    <MusicVideoBadge musicItem={musicItem} compact></MusicVideoBadge>
                     {musicItem.platform ? (
                         <Tag fill style={{ fontSize: "0.76rem" }}>
                             {musicItem.platform}

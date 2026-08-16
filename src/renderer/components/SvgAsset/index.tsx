@@ -4,6 +4,8 @@ export type SvgAssetIconNames =
     | "album"
     | "app-mark"
     | "array-download-tray"
+    | "arrows-pointing-in"
+    | "arrows-pointing-out"
     | "arrow-left-end-on-rectangle"
     | "arrow-path"
     | "cd"

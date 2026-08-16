@@ -24,6 +24,8 @@ import {
     MAX_PITCH_SEMITONES,
     MIN_PITCH_SEMITONES,
 } from "@renderer/core/track-player/controller/pitch-shifter";
+import { showModal } from "@renderer/components/Modal";
+import { canPlayMusicVideo } from "@/renderer/utils/music-video";
 
 export default function Extra() {
     const { t } = useTranslation();
@@ -37,6 +39,7 @@ export default function Extra() {
             </div>
             <div className="music-extra-group music-extra-tools">
                 <VolumeBtn></VolumeBtn>
+                <MvBtn></MvBtn>
                 <CommentBtn></CommentBtn>
                 <button
                     type="button"
@@ -56,6 +59,31 @@ export default function Extra() {
                 </button>
             </div>
         </div>
+    );
+}
+
+function MvBtn() {
+    const currentMusic = useCurrentMusic();
+    const { t } = useTranslation();
+
+    if (!canPlayMusicVideo(currentMusic)) {
+        return null;
+    }
+
+    return (
+        <button
+            type="button"
+            className="extra-btn mv-btn"
+            title={t("music_bar.play_mv")}
+            aria-label={t("music_bar.play_mv")}
+            onClick={() => {
+                if (currentMusic) {
+                    showModal("MvPlayer", { musicItem: currentMusic });
+                }
+            }}
+        >
+            <SvgAsset iconName="picture-in-picture-line"></SvgAsset>
+        </button>
     );
 }
 

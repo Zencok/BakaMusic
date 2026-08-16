@@ -479,8 +479,8 @@ async function downloadMusicImpl(
             if (mediaSource?.url) {
                 realQuality = quality;
                 // Prefer plugin-reported quality when present.
-                if (mediaSource.quality) {
-                    realQuality = mediaSource.quality;
+                if (typeof mediaSource.quality === "string" && mediaSource.quality.trim()) {
+                    realQuality = mediaSource.quality as IMusic.IQualityKey;
                 }
                 break;
             }

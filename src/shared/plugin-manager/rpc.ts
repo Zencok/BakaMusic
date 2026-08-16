@@ -1,6 +1,7 @@
 export const pluginMethodNames = [
     "search",
     "getMediaSource",
+    "getMvSource",
     "getMusicInfo",
     "getLyric",
     "getAlbumInfo",

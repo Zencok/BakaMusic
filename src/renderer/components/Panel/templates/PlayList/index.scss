@@ -493,7 +493,15 @@ html[data-ui-style="flat"]
     flex: 1;
 }
 
+.playlist--track-title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
 .playlist--track-title {
+    min-width: 0;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;

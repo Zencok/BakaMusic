@@ -423,7 +423,7 @@ async function invokePlugin(payload: unknown) {
     const invoke = () => Promise.resolve(
         (method as (...values: unknown[]) => unknown).apply(hosted.instance, args),
     );
-    if (request.method !== "getMediaSource") {
+    if (!["getMediaSource", "getMvSource"].includes(request.method)) {
         return await invoke();
     }
     const context = {

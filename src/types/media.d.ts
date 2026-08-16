@@ -55,6 +55,14 @@ declare namespace IMusic {
     artwork?: string;
     /** 默认音源 */
     url?: string;
+    /** MV 标识；网易云等平台通常直接返回数字 ID。 */
+    mv?: string | number;
+    /** 视频媒体标识（汽水等视频型插件使用）。 */
+    videoId?: string | number;
+    /** 视频媒体条目标记。 */
+    is_video?: boolean;
+    /** 视频分辨率/档位。 */
+    videoQuality?: string;
     // todo: 格式化
     /** 歌词URL */
     lrc?: string;

@@ -80,6 +80,8 @@ export function validateMediaContentType(contentType: string | null) {
         normalized.startsWith("audio/")
         || normalized === "video/mp4"
         || normalized === "video/ogg"
+        || normalized === "video/mp2t"
+        || normalized === "video/webm"
         || allowedApplicationTypes.has(normalized)
     ) {
         return;
@@ -213,6 +215,15 @@ export function detectMediaExtension(bytes: Uint8Array): string | null {
         || hasIsoBox(bytes, "moof")
     ) {
         return ".m4a";
+    }
+    if (
+        bytes[0] === 0x47
+        && (bytes.length < 189 || bytes[188] === 0x47)
+    ) {
+        return ".ts";
+    }
+    if (startsWith(bytes, [0x1a, 0x45, 0xdf, 0xa3])) {
+        return ".webm";
     }
     if (startsWith(bytes, [
         0x30, 0x26, 0xb2, 0x75, 0x8e, 0x66, 0xcf, 0x11,

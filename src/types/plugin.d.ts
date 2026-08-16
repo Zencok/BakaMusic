@@ -13,6 +13,49 @@ declare namespace IPlugin {
     cek?: string;
   }
 
+  /**
+   * MV/视频播放源。
+   *
+   * 音频播放继续使用 IMediaSourceResult；视频单独建模，避免把分辨率
+   * （例如 1080p）误当成音频音质键。响应仍然只允许可结构化克隆的数据。
+   */
+  export interface IVideoQualityOption {
+    /** 插件下一次 getMvSource 调用使用的稳定键。 */
+    key: string;
+    /** 面向用户的分辨率/编码标签。 */
+    label?: string;
+    width?: number;
+    height?: number;
+    bitrate?: number;
+    /** 预估或服务端返回的文件大小（字节或格式化文本）。 */
+    size?: number | string;
+    codec?: string;
+    mimeType?: string;
+  }
+
+  export interface IVideoSourceResult {
+    /** 视频地址；宿主会在交给播放器前再次校验。 */
+    url?: string;
+    headers?: Record<string, string>;
+    userAgent?: string;
+    /** 平台返回的分辨率/档位，例如 720p、1080p。 */
+    videoQuality?: string;
+    mimeType?: string;
+    codec?: string;
+    bitrate?: number;
+    /** 当前源对应的文件大小（字节或格式化文本）。 */
+    size?: number | string;
+    duration?: number;
+    width?: number;
+    height?: number;
+    /** 首次解析时由平台返回的真实可用档位；不应填入猜测的档位。 */
+    availableVideoQualities?: IVideoQualityOption[];
+    /** 当 CDN 主地址不可用时按顺序尝试的备用地址。 */
+    backupUrls?: string[];
+    /** URL 过期时间（Unix ms），供播放器决定是否重新解析。 */
+    expiresAt?: number;
+  }
+
   export interface ISearchResult<T extends IMedia.SupportMediaType> {
     isEnd?: boolean;
     data: IMedia.SupportMediaItem[T][];
@@ -92,6 +135,8 @@ declare namespace IPlugin {
     supportedSearchType?: ICommon.SupportMediaType[];
     /** 插件可提供的播放音质 */
     supportedQualities?: IMusic.IQualityKey[];
+    /** 插件可请求的 MV/视频分辨率，例如 720p、1080p。 */
+    supportedVideoQualities?: string[];
     /** 插件缓存控制 */
     cacheControl?: "cache" | "no-cache" | "no-store";
     /** 插件作者 */
@@ -107,6 +152,11 @@ declare namespace IPlugin {
       musicItem: IMusic.IMusicItemPartial,
       quality: IMusic.IQualityKey
     ) => Promise<IMediaSourceResult | null>;
+    /** 获取歌曲关联的 MV/视频播放源。 */
+    getMvSource?: (
+      musicItem: IMusic.IMusicItemPartial,
+      videoQuality?: string,
+    ) => Promise<IVideoSourceResult | null>;
     /** 根据主键去查询歌曲信息 */
     getMusicInfo?: (
       musicBase: IMedia.IMediaBase
