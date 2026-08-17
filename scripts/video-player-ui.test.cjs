@@ -24,6 +24,10 @@ assert.match(player, /nativePlayback\.updateVideoSources/);
 assert.match(player, /nativePlayback\.selectVideoSource/);
 assert.match(player, /nativePlayback\.videoCommand/);
 assert.match(player, /nativePlayback\.updateVideoSurface/);
+assert.match(player, /const left = Math\.round\(rect\.left\)/);
+assert.match(player, /const right = Math\.round\(rect\.right\)/);
+assert.match(player, /const width = Math\.max\(1, right - left\)/);
+assert.match(player, /borderRadius/);
 assert.match(player, /VIDEO_SPEED_PRESETS/);
 assert.match(player, /VIDEO_SPEED_PRESETS = \[2, 1\.5, 1\.25, 1, 0\.75, 0\.5\]/);
 assert.match(player, /mv-player-speed-trigger[\s\S]*?iconName="mv-speed"/);
@@ -63,6 +67,15 @@ assert.doesNotMatch(player, /hls\.js|\bHls\b/);
 assert.doesNotMatch(player, /videoProxy/);
 assert.match(player, /startMusicVideoDownload/);
 assert.match(player, /mv-player-download-picker/);
+assert.match(player, /className="mv-player-stage"[\s\S]*?onWheel=\{handleWheelVolume\}/);
+assert.match(player, /showWheelVolume\(nextVolume\)/);
+assert.match(player, /mv-player-volume-indicator/);
+assert.match(player, /setWheelVolumeVisible\(false\)/);
+assert.match(player, /!wheelVolumeVisible/);
+assert.doesNotMatch(
+    player,
+    /data-controls-visible=\{controlsVisible[\s\S]*?onWheel=\{handleWheelVolume\}[\s\S]*?className="mv-player-stage"/,
+);
 
 const nativeMain = read("src/shared/native-playback/main.ts");
 assert.match(nativeMain, /@shared\/native-playback\/open-video/);
@@ -81,6 +94,9 @@ assert.match(nativeMain, /private videoWindowPriming = false/);
 assert.match(nativeMain, /this\.videoWindowPriming = true;[\s\S]*?this\.syncVideoWindowBounds\(\)/);
 assert.match(nativeMain, /optional SWP_SHOWWINDOW/);
 assert.match(nativeMain, /screen\.dipToScreenRect/);
+assert.match(nativeMain, /CreateRoundRectRgn/);
+assert.match(nativeMain, /SetWindowRgn/);
+assert.match(nativeMain, /bounds\.borderRadius/);
 assert.doesNotMatch(nativeMain, /0x40000000 \/\/ WS_CHILD/);
 assert.match(nativeMain, /BAKAMUSIC_MPV_WID/);
 assert.match(nativeMain, /frame: false/);
@@ -148,8 +164,12 @@ assert.match(playerStyles, /\.mv-player-control-row \.mv-player-icon-button[\s\S
 assert.match(playerStyles, /\.mv-player-control-row \.mv-player-icon-button[\s\S]*?&:hover[\s\S]*?background:\s*transparent !important/);
 assert.match(playerStyles, /\[aria-expanded="true"\][\s\S]*?var\(--mv-accent\)/);
 assert.match(playerStyles, /\.mv-player-native-surface\s*\{[\s\S]*?inset:\s*0;/);
+assert.match(playerStyles, /data-native-surface-visible="true"[\s\S]*?box-shadow:\s*none/);
 assert.match(playerStyles, /\.mv-player-topbar[\s\S]*?linear-gradient/);
 assert.match(playerStyles, /\.mv-player-controls[\s\S]*?linear-gradient/);
+assert.match(playerStyles, /\.mv-player-volume-indicator[\s\S]*?\[data-visible="true"\]/);
+assert.match(playerStyles, /\.mv-player-volume-indicator[\s\S]*?grid-template-columns:\s*24px 1px 42px/);
+assert.match(playerStyles, /\.mv-player-volume-indicator[\s\S]*?grid-row:\s*1/);
 assert.doesNotMatch(playerStyles, /inset:\s*74px 0 84px/);
 assert.doesNotMatch(playerStyles, /inset:\s*58px 0 72px/);
 assert.doesNotMatch(playerStyles, /data-fullscreen[^\n]*data-controls-visible/);

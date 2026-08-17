@@ -291,11 +291,13 @@ function validateVideoSurfaceBounds(value: unknown): INativeVideoSurfaceBounds {
     assertFiniteNumber(value.y, "native video surface y", -32_768, 32_768);
     assertFiniteNumber(value.width, "native video surface width", 1, 32_768);
     assertFiniteNumber(value.height, "native video surface height", 1, 32_768);
+    assertFiniteNumber(value.borderRadius, "native video surface border radius", 0, 16_384);
     return {
         x: Math.round(value.x),
         y: Math.round(value.y),
         width: Math.round(value.width),
         height: Math.round(value.height),
+        borderRadius: Math.round(value.borderRadius),
     };
 }
 
@@ -484,7 +486,16 @@ class ElectronVideoHostWindow implements VideoHostWindow {
 }
 
 interface Win32WindowApi {
+    createRoundRectRegion: (
+        left: number,
+        top: number,
+        right: number,
+        bottom: number,
+        ellipseWidth: number,
+        ellipseHeight: number,
+    ) => number | bigint;
     createWindow: (...args: any[]) => number | bigint;
+    deleteObject: (object: number | bigint) => number;
     destroyWindow: (window: number | bigint) => number;
     getModuleHandle: (name: string | null) => number | bigint;
     setWindowPos: (
@@ -496,6 +507,11 @@ interface Win32WindowApi {
         height: number,
         flags: number,
     ) => number;
+    setWindowRegion: (
+        window: number | bigint,
+        region: number | bigint,
+        redraw: number,
+    ) => number;
     showWindow: (window: number | bigint, command: number) => number;
 }
 
@@ -505,14 +521,22 @@ function getWin32WindowApi(): Win32WindowApi {
     if (win32WindowApi) return win32WindowApi;
     const user32 = koffi.load("user32.dll");
     const kernel32 = koffi.load("kernel32.dll");
+    const gdi32 = koffi.load("gdi32.dll");
     win32WindowApi = {
+        createRoundRectRegion: gdi32.func(
+            "uintptr_t __stdcall CreateRoundRectRgn(int, int, int, int, int, int)",
+        ),
         createWindow: user32.func(
             "uintptr_t __stdcall CreateWindowExW(uint32_t, str16, str16, uint32_t, int, int, int, int, uintptr_t, uintptr_t, uintptr_t, void *)",
         ),
+        deleteObject: gdi32.func("int __stdcall DeleteObject(uintptr_t)"),
         destroyWindow: user32.func("int __stdcall DestroyWindow(uintptr_t)"),
         getModuleHandle: kernel32.func("uintptr_t __stdcall GetModuleHandleW(str16)"),
         setWindowPos: user32.func(
             "int __stdcall SetWindowPos(uintptr_t, uintptr_t, int, int, int, int, uint32_t)",
+        ),
+        setWindowRegion: user32.func(
+            "int __stdcall SetWindowRgn(uintptr_t, uintptr_t, int)",
         ),
         showWindow: user32.func("int __stdcall ShowWindow(uintptr_t, int)"),
     };
@@ -613,6 +637,24 @@ class Win32VideoHostWindow implements VideoHostWindow {
             physicalBounds.height,
             0x0010 | (show ? 0x0040 : 0), // SWP_NOACTIVATE | optional SWP_SHOWWINDOW
         );
+        const scale = physicalBounds.width / bounds.width;
+        const radius = Math.max(0, Math.round(bounds.borderRadius * scale));
+        if (radius === 0) {
+            this.api.setWindowRegion(this.window, 0, 1);
+            return;
+        }
+        const region = this.api.createRoundRectRegion(
+            0,
+            0,
+            physicalBounds.width,
+            physicalBounds.height,
+            radius * 2,
+            radius * 2,
+        );
+        if (!region) return;
+        if (!this.api.setWindowRegion(this.window, region, 1)) {
+            this.api.deleteObject(region);
+        }
     }
 
     showInactive() {

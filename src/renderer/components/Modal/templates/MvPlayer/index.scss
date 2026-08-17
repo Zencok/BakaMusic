@@ -19,9 +19,7 @@
   border: 0;
   border-radius: 20px;
   background: #090b0f !important;
-  box-shadow:
-    0 34px 96px rgba(0, 0, 0, 0.56),
-    0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 34px 96px rgba(0, 0, 0, 0.56);
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
   transition: opacity 90ms ease-out;
@@ -117,6 +115,7 @@ html[data-native-video-overlay="true"] {
   & #components--modal-base-container > .modal--mv-player[data-native-surface-visible="true"] {
     z-index: 1;
     background: transparent !important;
+    box-shadow: none;
 
     & .mv-player-backdrop,
     & .mv-player-scrim {
@@ -368,6 +367,62 @@ html[data-native-video-overlay="true"] {
   background: rgba(255, 79, 109, 0.76);
   font-size: 1.2rem;
   font-weight: 820;
+}
+
+.mv-player-volume-indicator {
+  position: absolute;
+  z-index: 6;
+  width: 120px;
+  height: 56px;
+  display: grid;
+  grid-template-columns: 24px 1px 42px;
+  align-items: center;
+  justify-content: center;
+  column-gap: 8px;
+  box-sizing: border-box;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 8px;
+  background: rgba(9, 11, 15, 0.82);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.32);
+  -webkit-backdrop-filter: blur(12px) saturate(115%);
+  backdrop-filter: blur(12px) saturate(115%);
+  opacity: 0;
+  transform: translateY(2px) scale(0.98);
+  transition: opacity 120ms ease, transform 120ms ease;
+  pointer-events: none;
+
+  &[data-visible="true"] {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  &::before {
+    content: "";
+    grid-row: 1;
+    grid-column: 2;
+    width: 1px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.16);
+  }
+
+  & svg {
+    grid-row: 1;
+    grid-column: 1;
+    width: 24px;
+    height: 24px;
+  }
+
+  & strong {
+    grid-row: 1;
+    grid-column: 3;
+    min-width: 0;
+    font-size: 1rem;
+    font-weight: 680;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    text-align: center;
+  }
 }
 
 .mv-player-center-play {
@@ -984,6 +1039,7 @@ html[data-native-video-overlay="true"] {
   .mv-player-controls,
   .mv-player-icon-button,
   .mv-player-center-play,
+  .mv-player-volume-indicator,
   .mv-player-volume-control,
   .mv-player-volume,
   .mv-player-close-curtain,

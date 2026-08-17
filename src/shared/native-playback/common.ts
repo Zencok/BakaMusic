@@ -91,6 +91,7 @@ export interface INativeVideoSurfaceBounds {
     y: number;
     width: number;
     height: number;
+    borderRadius: number;
 }
 
 export interface INativeVideoSurfaceUpdate {

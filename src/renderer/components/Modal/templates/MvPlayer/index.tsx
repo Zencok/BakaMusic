@@ -227,13 +227,36 @@ function formatVideoSize(value: number | string | undefined) {
     return `${size >= 100 || index === 0 ? size.toFixed(0) : size.toFixed(1)}${units[index]}`;
 }
 
-function getSurfaceBounds(element: HTMLElement | null): INativeVideoSurfaceBounds {
+function getSurfaceBounds(
+    element: HTMLElement | null,
+    player: HTMLElement | null,
+): INativeVideoSurfaceBounds {
     const rect = element?.getBoundingClientRect();
+    if (!rect) {
+        return { x: 0, y: 0, width: 1, height: 1, borderRadius: 0 };
+    }
+    // Use one rounded coordinate system for both the HWND and the renderer
+    // cutout. Rounding width/height independently can shift the far edges.
+    const left = Math.round(rect.left);
+    const top = Math.round(rect.top);
+    const right = Math.round(rect.right);
+    const bottom = Math.round(rect.bottom);
+    const width = Math.max(1, right - left);
+    const height = Math.max(1, bottom - top);
+    const radiusValue = Number.parseFloat(
+        player ? window.getComputedStyle(player).borderTopLeftRadius : "0",
+    );
+    const borderRadius = Math.max(0, Math.min(
+        Number.isFinite(radiusValue) ? radiusValue : 0,
+        width / 2,
+        height / 2,
+    ));
     return {
-        x: Math.round(rect?.left ?? 0),
-        y: Math.round(rect?.top ?? 0),
-        width: Math.max(1, Math.round(rect?.width ?? 1)),
-        height: Math.max(1, Math.round(rect?.height ?? 1)),
+        x: left,
+        y: top,
+        width,
+        height,
+        borderRadius,
     };
 }
 
@@ -302,11 +325,13 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
     const fullscreenRequestedRef = useRef(false);
     const controlsTimerRef = useRef<number | null>(null);
     const stageClickTimerRef = useRef<number | null>(null);
+    const wheelVolumeTimerRef = useRef<number | null>(null);
     const sessionBase = useRef(
         `video-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
     ).current;
     const activeSessionRef = useRef("");
     const previousVolumeRef = useRef(Math.max(trackPlayer.volume, 0.82));
+    const currentVolumeRef = useRef(trackPlayer.isMute ? 0 : trackPlayer.volume);
     const [retryToken, setRetryToken] = useState(0);
     const sessionId = `${sessionBase}-${retryToken}`;
     const [nativeSessionId, setNativeSessionId] = useState("");
@@ -336,6 +361,8 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
     const [downloadedPath, setDownloadedPath] = useState("");
     const [sourceSizeState, setSourceSizeState] = useState<Record<string, SourceSizeState>>({});
     const [seekPreview, setSeekPreview] = useState<{ percent: number; time: number } | null>(null);
+    const [wheelVolume, setWheelVolume] = useState(0);
+    const [wheelVolumeVisible, setWheelVolumeVisible] = useState(false);
 
     const clearControlsTimer = useCallback(() => {
         if (controlsTimerRef.current !== null) {
@@ -378,10 +405,23 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
     const updateVolume = useCallback((nextValue: number) => {
         const nextVolume = Math.max(0, Math.min(1, nextValue));
         if (nextVolume > 0) previousVolumeRef.current = nextVolume;
+        currentVolumeRef.current = nextVolume;
         setVolume(nextVolume);
         setMuted(nextVolume === 0);
         void sendVideoCommand({ operation: "volume", volume: nextVolume }).catch(() => undefined);
     }, [sendVideoCommand]);
+
+    const showWheelVolume = useCallback((nextVolume: number) => {
+        if (wheelVolumeTimerRef.current !== null) {
+            window.clearTimeout(wheelVolumeTimerRef.current);
+        }
+        setWheelVolume(nextVolume);
+        setWheelVolumeVisible(true);
+        wheelVolumeTimerRef.current = window.setTimeout(() => {
+            setWheelVolumeVisible(false);
+            wheelVolumeTimerRef.current = null;
+        }, 900);
+    }, []);
 
     const toggleMuted = useCallback(() => {
         if (muted || volume === 0) {
@@ -453,7 +493,7 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
             if (sourceId) {
                 await nativePlayback.updateVideoSurface({
                     sourceId,
-                    bounds: getSurfaceBounds(surfaceRef.current),
+                    bounds: getSurfaceBounds(surfaceRef.current, playerRef.current),
                     visible: false,
                 }).catch(() => undefined);
                 // Hiding the HWND is the visual boundary. Runtime teardown can
@@ -470,9 +510,22 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
     const handleWheelVolume = useCallback((event: ReactWheelEvent<HTMLDivElement>) => {
         if (qualityMenuOpen || speedMenuOpen || downloadMenuOpen) return;
         event.preventDefault();
-        updateVolume((muted ? 0 : volume) + (event.deltaY < 0 ? 0.05 : -0.05));
+        if (event.deltaY === 0) return;
+        const nextVolume = Math.max(0, Math.min(
+            1,
+            currentVolumeRef.current + (event.deltaY < 0 ? 0.05 : -0.05),
+        ));
+        updateVolume(nextVolume);
+        showWheelVolume(nextVolume);
         revealControls();
-    }, [downloadMenuOpen, muted, qualityMenuOpen, revealControls, speedMenuOpen, updateVolume, volume]);
+    }, [
+        downloadMenuOpen,
+        qualityMenuOpen,
+        revealControls,
+        showWheelVolume,
+        speedMenuOpen,
+        updateVolume,
+    ]);
 
     useEffect(() => {
         const onFullscreenChange = () => {
@@ -566,6 +619,9 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
             clearControlsTimer();
             if (stageClickTimerRef.current !== null) {
                 window.clearTimeout(stageClickTimerRef.current);
+            }
+            if (wheelVolumeTimerRef.current !== null) {
+                window.clearTimeout(wheelVolumeTimerRef.current);
             }
             if (fullscreenRequestedRef.current) {
                 fullscreenRequestedRef.current = false;
@@ -741,7 +797,7 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                 initialSourceKey: initialSource.key,
                 volume: muted ? 0 : volume,
                 surface: {
-                    bounds: getSurfaceBounds(surfaceRef.current),
+                    bounds: getSurfaceBounds(surfaceRef.current, playerRef.current),
                     visible: false,
                 },
             });
@@ -862,19 +918,16 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
             window.cancelAnimationFrame(frame);
             frame = window.requestAnimationFrame(() => {
                 const version = ++syncVersion;
-                const bounds = getSurfaceBounds(surfaceRef.current);
+                const bounds = getSurfaceBounds(surfaceRef.current, playerRef.current);
                 const sync = async () => {
                     if (surfaceVisible) {
-                        const radiusValue = Number.parseFloat(
-                            playerRef.current
-                                ? window.getComputedStyle(playerRef.current).borderTopLeftRadius
-                                : "0",
-                        );
-                        const radius = Math.max(0, Math.min(
-                            Number.isFinite(radiusValue) ? radiusValue : 0,
-                            bounds.width / 2,
-                            bounds.height / 2,
-                        ));
+                        const clipRadius = bounds.borderRadius > 0
+                            ? Math.min(
+                                bounds.borderRadius + 1,
+                                bounds.width / 2,
+                                bounds.height / 2,
+                            )
+                            : 0;
                         root.style.setProperty("--native-video-left", `${bounds.x}px`);
                         root.style.setProperty("--native-video-top", `${bounds.y}px`);
                         root.style.setProperty(
@@ -885,18 +938,18 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                             "--native-video-bottom",
                             `${bounds.y + bounds.height}px`,
                         );
-                        root.style.setProperty("--native-video-radius", `${radius}px`);
+                        root.style.setProperty("--native-video-radius", `${clipRadius}px`);
                         root.style.setProperty(
                             "--native-video-radius-near",
-                            `${radius * 0.07612}px`,
+                            `${clipRadius * 0.07612}px`,
                         );
                         root.style.setProperty(
                             "--native-video-radius-mid",
-                            `${radius * 0.29289}px`,
+                            `${clipRadius * 0.29289}px`,
                         );
                         root.style.setProperty(
                             "--native-video-radius-far",
-                            `${radius * 0.61732}px`,
+                            `${clipRadius * 0.61732}px`,
                         );
                         // Install the cutout before asking the main process to
                         // show the HWND. Waiting for a renderer paint makes the
@@ -1087,7 +1140,6 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                 }
                 onPointerMove={revealControls}
                 onPointerDownCapture={revealControls}
-                onWheel={handleWheelVolume}
                 onMouseLeave={() => {
                     if (!playing || qualityMenuOpen || speedMenuOpen || downloadMenuOpen) return;
                     clearControlsTimer();
@@ -1144,6 +1196,7 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                 <div
                     className="mv-player-stage"
                     role="presentation"
+                    onWheel={handleWheelVolume}
                     onClick={(event) => {
                         if (event.detail > 1) return;
                         if (stageClickTimerRef.current !== null) {
@@ -1178,7 +1231,20 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                             </button>
                         </div>
                     ) : null}
-                    {!playing && !displayLoading && !error ? (
+                    <output
+                        className="mv-player-volume-indicator"
+                        data-visible={wheelVolumeVisible ? "true" : "false"}
+                        aria-hidden={wheelVolumeVisible ? undefined : "true"}
+                        aria-label={!wheelVolumeVisible
+                            ? undefined
+                            : `${t("music_bar.volume")}: ${Math.round(wheelVolume * 100)}%`}
+                    >
+                        <SvgAsset
+                            iconName={wheelVolume === 0 ? "speaker-x-mark" : "speaker-wave"}
+                        ></SvgAsset>
+                        <strong>{Math.round((wheelVolume ?? 0) * 100)}%</strong>
+                    </output>
+                    {!playing && !displayLoading && !error && !wheelVolumeVisible ? (
                         <button
                             type="button"
                             className="mv-player-center-play"
