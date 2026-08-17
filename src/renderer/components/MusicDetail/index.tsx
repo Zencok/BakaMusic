@@ -21,6 +21,8 @@ import { isContextMenuOpen } from "@/renderer/components/ContextMenu";
 import { isQualitySelectPopoverOpen } from "@/renderer/components/QualitySelectPopover";
 import { getCurrentPanel } from "@/renderer/components/Panel";
 import normalizeArtworkDisplaySrc from "@/renderer/utils/normalize-artwork-display-src";
+import useAppConfig from "@/hooks/useAppConfig";
+import ClassicAmlLDetail from "./widgets/ClassicAmlLDetail";
 
 export const isMusicDetailShown = musicDetailShownStore.getValue;
 export const useMusicDetailShown = musicDetailShownStore.useValue;
@@ -51,6 +53,7 @@ function MusicDetail() {
     const [storedCoverStyle] = useUserPreference("musicDetailCoverStyle");
     const [storedVinylTonearm] = useUserPreference("musicDetailVinylTonearm");
     const [storedTonearmReach] = useUserPreference("musicDetailVinylTonearmReach");
+    const classicAmllPlaybackDetail = useAppConfig("normal.classicAmllPlaybackDetail") === true;
     const [lyricPlayerReady, setLyricPlayerReady] = useState(false);
     const { t } = useTranslation();
     const isFullscreenRef = useRef(false);
@@ -439,7 +442,6 @@ function MusicDetail() {
             ? storedVinylTonearm
             : "none";
     const tonearmReach = storedTonearmReach === "inner" ? "inner" : "outer";
-
     return (
         <AnimatedDiv
             showIf={musicDetailShown}
@@ -451,6 +453,7 @@ function MusicDetail() {
             data-immersive-busy={isImmersiveBusy ? "true" : "false"}
             data-immersive-phase={immersivePhase}
             data-cursor-hidden={isFullscreenCursorHidden ? "true" : "false"}
+            data-playback-detail={classicAmllPlaybackDetail ? "classic-amll" : "default"}
             style={
                 {
                     // Component-owned artwork input, inherited by the backdrop
@@ -466,135 +469,159 @@ function MusicDetail() {
                 setLyricPlayerReady(true);
             }}
         >
-            <div className="music-detail-background"></div>
-            <div className="music-detail-overlay"></div>
+            {classicAmllPlaybackDetail ? (
+                <ClassicAmlLDetail
+                    active={musicDetailShown}
+                    playerReady={lyricPlayerReady}
+                    artwork={artwork}
+                    title={title}
+                    artist={musicItem?.artist || t("media.unknown_artist")}
+                    album={musicItem?.album}
+                    qualityLabel={qualityLabel}
+                    onClose={() => musicDetailShownStore.setValue(false)}
+                ></ClassicAmlLDetail>
+            ) : (
+                <>
+                    <div className="music-detail-background"></div>
+                    <div className="music-detail-overlay"></div>
 
-            <div className="music-detail-shell">
-                <div className="music-detail-topbar-slot">
-                    <div className="music-detail-topbar">
-                        <div className="music-detail-topbar-left">
-                            <RoundButton
-                                iconName="chevron-double-down"
-                                title={t("music_bar.close_music_detail_page")}
-                                onClick={() => {
-                                    musicDetailShownStore.setValue(false);
-                                }}
-                            ></RoundButton>
+                    <div className="music-detail-shell">
+                        <div className="music-detail-topbar-slot">
+                            <div className="music-detail-topbar">
+                                <div className="music-detail-topbar-left">
+                                    <RoundButton
+                                        iconName="chevron-double-down"
+                                        title={t("music_bar.close_music_detail_page")}
+                                        onClick={() => {
+                                            musicDetailShownStore.setValue(false);
+                                        }}
+                                    ></RoundButton>
 
-                            <div className="music-detail-info-bar">
-                                <img
-                                    alt={title}
-                                    className="music-detail-info-artwork"
-                                    onError={setFallbackAlbum}
-                                    src={artwork}
-                                    referrerPolicy="no-referrer"
-                                ></img>
-                                <div className="music-detail-info-copy">
-                                    <div className="music-detail-info-title" title={title}>
-                                        {title}
-                                    </div>
-                                    <div className="music-detail-info-meta-row">
-                                        <div className="music-detail-info-subtitle" title={subtitle}>
-                                            {subtitle}
+                                    <div className="music-detail-info-bar">
+                                        <img
+                                            alt={title}
+                                            className="music-detail-info-artwork"
+                                            onError={setFallbackAlbum}
+                                            src={artwork}
+                                            referrerPolicy="no-referrer"
+                                        ></img>
+                                        <div className="music-detail-info-copy">
+                                            <div className="music-detail-info-title" title={title}>
+                                                {title}
+                                            </div>
+                                            <div className="music-detail-info-meta-row">
+                                                <div
+                                                    className="music-detail-info-subtitle"
+                                                    title={subtitle}
+                                                >
+                                                    {subtitle}
+                                                </div>
+                                                {musicItem?.platform ? (
+                                                    <div className="music-detail-info-badge">
+                                                        {musicItem.platform}
+                                                    </div>
+                                                ) : null}
+                                                {qualityLabel ? (
+                                                    <div className="music-detail-info-badge music-detail-info-badge--strong">
+                                                        {qualityLabel}
+                                                    </div>
+                                                ) : null}
+                                            </div>
                                         </div>
-                                        {musicItem?.platform ? (
-                                            <div className="music-detail-info-badge">
-                                                {musicItem.platform}
-                                            </div>
-                                        ) : null}
-                                        {qualityLabel ? (
-                                            <div className="music-detail-info-badge music-detail-info-badge--strong">
-                                                {qualityLabel}
-                                            </div>
-                                        ) : null}
                                     </div>
+                                </div>
+
+                                <div className="music-detail-topbar-right">
+                                    <RoundButton
+                                        iconName="minus"
+                                        title={t("app_header.minimize")}
+                                        onClick={() => {
+                                            appWindowUtil.minMainWindow();
+                                        }}
+                                    ></RoundButton>
+                                    <RoundButton
+                                        iconName="square"
+                                        title=""
+                                        onClick={() => {
+                                            appWindowUtil.toggleMainWindowMaximize();
+                                        }}
+                                    ></RoundButton>
+                                    <RoundButton
+                                        iconName="x-mark"
+                                        title={t("app_header.exit")}
+                                        onClick={() => {
+                                            const closeBehavior = AppConfig.getConfig(
+                                                "normal.closeBehavior",
+                                            );
+                                            if (closeBehavior === "minimize") {
+                                                appWindowUtil.minMainWindow(true);
+                                            } else {
+                                                appUtil.exitApp();
+                                            }
+                                        }}
+                                    ></RoundButton>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="music-detail-topbar-right">
-                            <RoundButton
-                                iconName="minus"
-                                title={t("app_header.minimize")}
-                                onClick={() => {
-                                    appWindowUtil.minMainWindow();
-                                }}
-                            ></RoundButton>
-                            <RoundButton
-                                iconName="square"
-                                title=""
-                                onClick={() => {
-                                    appWindowUtil.toggleMainWindowMaximize();
-                                }}
-                            ></RoundButton>
-                            <RoundButton
-                                iconName="x-mark"
-                                title={t("app_header.exit")}
-                                onClick={() => {
-                                    const closeBehavior = AppConfig.getConfig("normal.closeBehavior");
-                                    if (closeBehavior === "minimize") {
-                                        appWindowUtil.minMainWindow(true);
-                                    } else {
-                                        appUtil.exitApp();
-                                    }
-                                }}
-                            ></RoundButton>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="music-detail-content">
-                    <div className="music-detail-primary-column">
-                        <div
-                            className="music-detail-primary-stage"
-                            data-cover-style={coverStyle}
-                        >
-                            {coverStyle === "vinyl" ? (
+                        <div className="music-detail-content">
+                            <div className="music-detail-primary-column">
                                 <div
-                                    className="music-detail-vinyl-player"
-                                    data-playing={playerState === PlayerState.Playing}
+                                    className="music-detail-primary-stage"
+                                    data-cover-style={coverStyle}
                                 >
-                                    {vinylTonearm === "glass" ? (
-                                        <GlassVinylTonearm reach={tonearmReach}></GlassVinylTonearm>
-                                    ) : null}
-                                    {vinylTonearm === "classic" ? (
-                                        <ClassicVinylTonearm reach={tonearmReach}></ClassicVinylTonearm>
-                                    ) : null}
-                                    <div className="music-detail-vinyl-cover">
-                                        <div className="music-detail-vinyl-record"></div>
-                                        <div className="music-detail-vinyl-label">
-                                            <img
-                                                alt={title}
-                                                className="music-detail-vinyl-artwork"
-                                                onError={setFallbackAlbum}
-                                                src={artwork}
-                                                referrerPolicy="no-referrer"
-                                            ></img>
-                                            <div className="music-detail-vinyl-label-shine"></div>
+                                    {coverStyle === "vinyl" ? (
+                                        <div
+                                            className="music-detail-vinyl-player"
+                                            data-playing={playerState === PlayerState.Playing}
+                                        >
+                                            {vinylTonearm === "glass" ? (
+                                                <GlassVinylTonearm
+                                                    reach={tonearmReach}
+                                                ></GlassVinylTonearm>
+                                            ) : null}
+                                            {vinylTonearm === "classic" ? (
+                                                <ClassicVinylTonearm
+                                                    reach={tonearmReach}
+                                                ></ClassicVinylTonearm>
+                                            ) : null}
+                                            <div className="music-detail-vinyl-cover">
+                                                <div className="music-detail-vinyl-record"></div>
+                                                <div className="music-detail-vinyl-label">
+                                                    <img
+                                                        alt={title}
+                                                        className="music-detail-vinyl-artwork"
+                                                        onError={setFallbackAlbum}
+                                                        src={artwork}
+                                                        referrerPolicy="no-referrer"
+                                                    ></img>
+                                                    <div className="music-detail-vinyl-label-shine"></div>
+                                                </div>
+                                                <div className="music-detail-vinyl-center-hole"></div>
+                                            </div>
                                         </div>
-                                        <div className="music-detail-vinyl-center-hole"></div>
-                                    </div>
+                                    ) : (
+                                        <img
+                                            alt={title}
+                                            className="music-detail-artwork"
+                                            onError={setFallbackAlbum}
+                                            src={artwork}
+                                            referrerPolicy="no-referrer"
+                                        ></img>
+                                    )}
                                 </div>
-                            ) : (
-                                <img
-                                    alt={title}
-                                    className="music-detail-artwork"
-                                    onError={setFallbackAlbum}
-                                    src={artwork}
-                                    referrerPolicy="no-referrer"
-                                ></img>
-                            )}
+                            </div>
+
+                            <div className="music-detail-lyric-column">
+                                <Lyric
+                                    active={musicDetailShown}
+                                    playerReady={lyricPlayerReady}
+                                ></Lyric>
+                            </div>
                         </div>
                     </div>
-
-                    <div className="music-detail-lyric-column">
-                        <Lyric
-                            active={musicDetailShown}
-                            playerReady={lyricPlayerReady}
-                        ></Lyric>
-                    </div>
-                </div>
-            </div>
+                </>
+            )}
         </AnimatedDiv>
     );
 }

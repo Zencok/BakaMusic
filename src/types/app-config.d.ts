@@ -11,6 +11,8 @@ interface _IAppConfig {
     "normal.uiStyle": "glass" | "flat";
     /** 进入播放详情页时自动隐藏底栏（悬停再显示；玻璃/扁平均生效） */
     "normal.detailAutoHideMusicBar": boolean;
+    /** 使用 AMLL 风格播放详情页（不受玻璃/扁平界面风格影响） */
+    "normal.classicAmllPlaybackDetail": boolean;
 
     /** 歌单内搜索区分大小写 */
     "playMusic.caseSensitiveInSearch": boolean;

@@ -1,0 +1,655 @@
+.music-detail--container[data-playback-detail="classic-amll"] {
+    color: #fff !important;
+    background: #222 !important;
+
+    .classic-amll-lyric .music-detail-lyric-panel {
+        padding: 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+}
+
+.classic-amll-layout {
+    --classic-amll-max-width: min(50vh, 38vw);
+
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: grid;
+    grid-template-rows: minmax(30px, 0.45fr) auto auto 3fr 0fr 0.3fr;
+    grid-template-columns: 0.45fr 0.55fr 0fr;
+    gap: 8px;
+    overflow: hidden;
+    isolation: isolate;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+    -webkit-app-region: drag;
+}
+
+.classic-amll-background {
+    position: absolute;
+    inset: 0;
+    z-index: -3;
+    overflow: hidden;
+    isolation: isolate;
+    background:
+        linear-gradient(132deg, rgba(27, 88, 111, 0.86) 0%, transparent 43%),
+        linear-gradient(224deg, rgba(119, 50, 85, 0.72) 0%, transparent 46%),
+        linear-gradient(18deg, #15181f 0%, #33304a 52%, #172a34 100%);
+
+    &::before {
+        content: "";
+        position: absolute;
+        inset: -24%;
+        z-index: 0;
+        background:
+            linear-gradient(108deg, transparent 22%, rgba(47, 132, 143, 0.58) 43%, transparent 64%),
+            linear-gradient(252deg, transparent 28%, rgba(158, 70, 105, 0.46) 48%, transparent 69%);
+        filter: blur(64px) saturate(125%);
+        opacity: 0.82;
+        transform: translate3d(-3%, -2%, 0) rotate(-7deg) scale(1.16);
+        animation: classic-amll-fallback-flow 18s ease-in-out infinite alternate;
+    }
+
+    &::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+        background:
+            radial-gradient(118% 118% at 50% 47%, transparent 54%, rgba(3, 5, 8, 0.34) 88%, rgba(2, 3, 6, 0.58) 100%),
+            linear-gradient(180deg, rgba(8, 10, 15, 0.12), rgba(5, 7, 10, 0.28));
+    }
+
+    > canvas {
+        position: absolute;
+        inset: 0;
+        width: 100% !important;
+        height: 100% !important;
+        display: block;
+        opacity: 0;
+        transition: opacity 650ms ease;
+    }
+
+    &[data-renderer-ready="true"] > canvas {
+        opacity: 1;
+    }
+}
+
+@keyframes classic-amll-fallback-flow {
+    from {
+        transform: translate3d(-3%, -2%, 0) rotate(-7deg) scale(1.16);
+    }
+
+    to {
+        transform: translate3d(4%, 3%, 0) rotate(7deg) scale(1.22);
+    }
+}
+
+.classic-amll-window-controls {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 5;
+    width: 100%;
+    height: 32px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: stretch;
+    -webkit-app-region: drag;
+
+    > button {
+        width: 46px;
+        border: 0;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        background: transparent;
+        opacity: 1;
+        transition:
+            opacity 300ms ease-in-out,
+            background-color 250ms ease,
+            color 250ms ease;
+        transform: translateY(-0.45px);
+        -webkit-app-region: no-drag;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        &:last-child:hover {
+            background: #c42b1c;
+        }
+
+        svg {
+            width: 15px !important;
+            height: 15px !important;
+        }
+    }
+
+    &[data-hidden="true"] > button {
+        opacity: 0;
+        pointer-events: none;
+    }
+}
+
+.classic-amll-drag-area {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: center;
+    margin: 2vh;
+    position: relative;
+    width: 50px;
+    height: 25px;
+    mix-blend-mode: plus-lighter;
+    -webkit-app-region: no-drag;
+}
+
+.classic-amll-control-thumb {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 50px;
+    height: 8px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    color: #000;
+    background: rgba(255, 255, 255, 0.18);
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition:
+        width 280ms cubic-bezier(0.25, 1, 0.5, 1),
+        height 280ms cubic-bezier(0.25, 1, 0.5, 1),
+        left 280ms cubic-bezier(0.25, 1, 0.5, 1),
+        border-radius 280ms ease,
+        transform 160ms ease,
+        background-color 180ms ease;
+
+    > span {
+        position: absolute;
+        left: 5px;
+        top: 50%;
+        width: 15px;
+        height: 2px;
+        border-radius: 10px;
+        background: #000;
+        opacity: 0;
+        transform-origin: center;
+        transition: opacity 160ms ease, transform 280ms cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    &:hover,
+    &:focus-visible {
+        left: 12.5px;
+        width: 25px;
+        height: 25px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.3);
+
+        > span {
+            opacity: 1;
+        }
+
+        > span:first-child {
+            transform: translateY(-50%) rotate(45deg);
+        }
+
+        > span:last-child {
+            transform: translateY(-50%) rotate(-45deg);
+        }
+    }
+
+    &:active {
+        transform: translateY(-50%) scale(0.9);
+    }
+}
+
+.classic-amll-cover-frame {
+    grid-column: 1;
+    grid-row: 3;
+    place-self: center;
+    position: relative;
+    width: var(--classic-amll-max-width);
+    height: var(--classic-amll-max-width);
+    aspect-ratio: 1 / 1;
+    -webkit-app-region: no-drag;
+}
+
+.classic-amll-cover {
+    --classic-amll-cover-shadow-y: 1em;
+    --classic-amll-cover-shadow-blur: 1.2em;
+
+    display: block;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    object-position: center;
+    border-radius: max(2%, 0.7vh);
+    filter: drop-shadow(
+        rgba(0, 0, 0, 0.19)
+        0
+        var(--classic-amll-cover-shadow-y)
+        var(--classic-amll-cover-shadow-blur)
+    );
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.classic-amll-controls {
+    grid-column: 1;
+    grid-row: 4;
+    justify-self: center;
+    position: relative;
+    width: var(--classic-amll-max-width);
+    min-width: 0;
+    min-height: 0;
+    margin-top: calc(1.75em - 8px);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    mix-blend-mode: plus-lighter;
+    -webkit-app-region: no-drag;
+}
+
+.classic-amll-music-info {
+    display: flex;
+    min-width: 0;
+    color: #fff;
+    font-size: max(2vh, 1em);
+}
+
+.classic-amll-music-copy {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    line-height: 1.25em;
+}
+
+.classic-amll-music-title,
+.classic-amll-music-artist,
+.classic-amll-music-album {
+    min-width: 0;
+    white-space: nowrap;
+    letter-spacing: 0.4px;
+}
+
+.classic-amll-marquee {
+    overflow: hidden;
+    mask-image: linear-gradient(to right, #000 95%, transparent);
+
+    > div {
+        width: max-content;
+    }
+
+    &.classic-amll-marquee--animating {
+        mask-image: linear-gradient(
+            to left,
+            transparent,
+            #000 5%,
+            #000 95%,
+            transparent
+        );
+    }
+}
+
+.classic-amll-music-title {
+    cursor: text;
+    user-select: text;
+    opacity: 0.9;
+    font-weight: 500;
+    mix-blend-mode: normal;
+}
+
+.classic-amll-music-artist,
+.classic-amll-music-album {
+    text-align: center;
+    opacity: 0.45;
+    font-weight: 400;
+}
+
+.classic-amll-menu-button {
+    width: 3.5vh;
+    height: 3.5vh;
+    aspect-ratio: 1 / 1;
+    align-self: center;
+    margin-left: 16px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.14);
+    }
+
+    svg {
+        width: 72% !important;
+        height: auto !important;
+    }
+}
+
+.classic-amll-progress {
+    position: relative;
+}
+
+.classic-amll-slider {
+    min-width: 0;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: stretch;
+    color: #fff;
+    touch-action: none;
+}
+
+.classic-amll-slider-track {
+    flex: 1;
+    width: 100%;
+    height: 20px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.15);
+    clip-path: inset(6px 0 round 100px);
+    cursor: pointer;
+    transform: translateZ(0);
+    transition: clip-path 280ms ease-out;
+
+    &:hover,
+    &:focus-visible,
+    &[data-dragging="true"] {
+        clip-path: inset(0 round 100px);
+    }
+
+    &[aria-disabled="true"] {
+        cursor: default;
+        opacity: 0.55;
+    }
+}
+
+.classic-amll-slider-fill {
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    opacity: 0.4;
+    transform-origin: left center;
+}
+
+.classic-amll-progress-labels {
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    opacity: 0.5;
+    font-size: max(1.2vh, 0.8em);
+    font-weight: 500;
+
+    > * {
+        flex: 1;
+    }
+
+    > :nth-child(2) {
+        flex: 0;
+    }
+
+    > :last-child {
+        text-align: right;
+    }
+}
+
+.classic-amll-quality-tag {
+    position: relative;
+    min-width: 0;
+    padding: 2px 0.52em 2px 0.1em;
+    display: flex;
+    align-items: center;
+    color: #fff;
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.018em;
+    transform: scale(1.4);
+
+    &::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-image-source: url("data:image/svg+xml,%3Csvg%20width%3D%2236%22%20height%3D%2236%22%20viewBox%3D%220%200%2036%2036%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M19.5%200C25.573%200%2028.6095%200%2030.8862%201.27504C32.4953%202.17617%2033.8238%203.50471%2034.725%205.11379C36%207.39054%2036%2010.427%2036%2016.5V19.5C36%2025.573%2036%2028.6095%2034.725%2030.8862C33.8238%2032.4953%2032.4953%2033.8238%2030.8862%2034.725C28.6095%2036%2025.573%2036%2019.5%2036H16.5C10.427%2036%207.39054%2036%205.11379%2034.725C3.50471%2033.8238%202.17617%2032.4953%201.27504%2030.8862C0%2028.6095%200%2025.573%200%2019.5L0%2016.5C0%2010.427%200%207.39054%201.27504%205.11379C2.17617%203.50471%203.50471%202.17617%205.11379%201.27504C7.39054%200%2010.427%200%2016.5%200L19.5%200Z%22%20fill%3D%22white%22%2F%3E%3C%2Fsvg%3E");
+        border-image-slice: 15 fill;
+        border-image-width: 8.5px;
+        opacity: 0.2;
+    }
+}
+
+.classic-amll-quality-tag:empty {
+    visibility: hidden;
+}
+
+.classic-amll-playing-state {
+    display: none;
+}
+
+.classic-amll-duration-toggle {
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    color: inherit;
+    font: inherit;
+    text-align: right;
+    background: transparent;
+    cursor: pointer;
+    user-select: none;
+}
+
+@keyframes classic-amll-media-pressed {
+    0% {
+        transform: scale(1);
+    }
+
+    20% {
+        transform: scale(0.85);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.classic-amll-transport {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.classic-amll-media-button {
+    width: 18%;
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: transparent;
+    transition: background-color 300ms ease;
+
+    &:hover,
+    &:active {
+        background: rgba(255, 255, 255, 0.13);
+    }
+
+    > svg {
+        width: 32px;
+        height: 32px;
+        transform: scale(3);
+        transform-origin: center;
+        transition: transform 500ms ease;
+    }
+
+    &:nth-child(3) > svg {
+        width: 38px;
+        height: 38px;
+        transform: scale(2);
+    }
+
+    &[data-animating="true"] > svg {
+        animation: classic-amll-media-pressed 700ms;
+    }
+}
+
+.classic-amll-volume {
+    margin-left: -12px;
+    margin-right: -8px;
+}
+
+.classic-amll-volume-low {
+    width: 32px;
+    height: 40px;
+    flex: 0 0 32px;
+    color: #fff;
+    opacity: 0.5;
+}
+
+.classic-amll-volume-high {
+    width: 43px;
+    height: 40px;
+    flex: 0 0 43px;
+    opacity: 0.5;
+}
+
+.classic-amll-lyric {
+    grid-column: 2;
+    grid-row: 2 / 5;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    padding-right: 15%;
+    overflow: hidden;
+    contain: paint;
+    mix-blend-mode: plus-lighter;
+    mask-image: linear-gradient(transparent, #000 10%, #000 90%, transparent);
+    -webkit-app-region: no-drag;
+
+    .music-detail-lyric-stage {
+        border-radius: 0;
+    }
+
+    .apple-music-lyric-player .amll-lyric-player {
+        color: #fff;
+        mix-blend-mode: plus-lighter;
+        contain: strict;
+    }
+
+    .apple-music-lyric-player .amll-lyric-player.dom {
+        --amll-lp-line-width-aspect: 0.8;
+        --amll-lp-line-padding-x: 1em;
+        --amll-lp-bg-line-scale: 0.7;
+    }
+}
+
+@media screen and (max-width: 1600px), screen and (max-height: 1000px) {
+    .classic-amll-layout {
+        --classic-amll-max-width: min(45vh, 38vw);
+    }
+
+    .classic-amll-lyric {
+        padding-right: 8%;
+    }
+}
+
+@media screen and (max-height: 1080px) {
+    .classic-amll-quality-tag {
+        transform: scale(1);
+    }
+
+    .classic-amll-media-button > svg {
+        transform: scale(2);
+    }
+
+    .classic-amll-media-button:nth-child(3) > svg {
+        transform: scale(1.1);
+    }
+}
+
+@media screen and (max-height: 768px) {
+    .classic-amll-layout {
+        grid-template-rows: minmax(30px, 0.45fr) auto auto 3fr 0fr 0.2fr;
+        gap: 2px;
+        font-size: 0.8em;
+    }
+
+    .classic-amll-media-button > svg {
+        transform: scale(1.5);
+    }
+
+    .classic-amll-media-button:nth-child(3) > svg {
+        transform: scale(0.8);
+    }
+
+    .classic-amll-progress-labels {
+        margin-top: 0;
+    }
+
+    .classic-amll-quality-tag {
+        transform: scale(0.5);
+    }
+}
+
+@media screen and (max-width: 1000px) {
+    .classic-amll-menu-button {
+        width: max(2em, min(5vw, 4vh));
+    }
+}
+
+@media screen and (max-width: 760px) {
+    .classic-amll-layout {
+        --classic-amll-max-width: min(42vh, 37vw);
+        grid-template-columns: 0.46fr 0.54fr 0fr;
+    }
+
+    .classic-amll-window-controls > button {
+        width: 40px;
+    }
+
+    .classic-amll-lyric {
+        padding-right: 4%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .classic-amll-control-thumb,
+    .classic-amll-slider-track,
+    .classic-amll-media-button,
+    .classic-amll-media-button > svg {
+        transition: none;
+    }
+
+    .classic-amll-media-button[data-animating="true"] > svg {
+        animation: none;
+    }
+
+    .classic-amll-background::before {
+        animation: none;
+    }
+
+    .classic-amll-background > canvas {
+        transition: none;
+    }
+}

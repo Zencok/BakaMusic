@@ -77,3 +77,21 @@ declare module "@amll-core/lyric-player/dom/index" {
     dispose(): void;
   }
 }
+
+declare module "@amll-core/bg-render/mesh-renderer/index" {
+  export class MeshGradientRenderer {
+    constructor(canvas: HTMLCanvasElement);
+    setRenderScale(scale: number): void;
+    setFlowSpeed(speed: number): void;
+    setStaticMode(enable: boolean): void;
+    setFPS(fps: number): void;
+    pause(): void;
+    resume(): void;
+    setHasLyric(hasLyric: boolean): void;
+    setAlbum(
+      albumSource: string | HTMLImageElement | HTMLVideoElement,
+      isVideo?: boolean,
+    ): Promise<void>;
+    dispose(): void;
+  }
+}

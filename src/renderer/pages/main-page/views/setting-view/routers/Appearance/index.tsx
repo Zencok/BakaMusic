@@ -22,6 +22,14 @@ export default function Appearance() {
                 description={t("settings.group.interface_desc")}
             >
                 <UiStyleSettingItem></UiStyleSettingItem>
+                <CheckBoxSettingItem
+                    label={t("settings.normal.classic_amll_playback_detail")}
+                    keyPath="normal.classicAmllPlaybackDetail"
+                ></CheckBoxSettingItem>
+                <CheckBoxSettingItem
+                    label={t("settings.normal.detail_auto_hide_music_bar")}
+                    keyPath="normal.detailAutoHideMusicBar"
+                ></CheckBoxSettingItem>
                 <ListBoxSettingItem
                     label={t("settings.normal.languages")}
                     keyPath="normal.language"
@@ -38,10 +46,6 @@ export default function Appearance() {
                     }}
                     options={allLangs}
                 ></ListBoxSettingItem>
-                <CheckBoxSettingItem
-                    label={t("settings.normal.detail_auto_hide_music_bar")}
-                    keyPath="normal.detailAutoHideMusicBar"
-                ></CheckBoxSettingItem>
             </SettingGroup>
 
             <SettingGroup

@@ -55,9 +55,16 @@ type MusicDetailVinylTonearmReach = "outer" | "inner";
 interface ILyricProps {
     active: boolean;
     playerReady: boolean;
+    classicAmll?: boolean;
+    alignPosition?: number;
 }
 
-export default function Lyric({ active, playerReady }: ILyricProps) {
+export default function Lyric({
+    active,
+    playerReady,
+    classicAmll = false,
+    alignPosition = 0.42,
+}: ILyricProps) {
     const currentMusic = useCurrentMusic();
     // 只订阅 parser 与加载态：逐字歌词会每个 tick 换一次 currentLyricStore 的
     // 对象，而本面板在详情页关闭后依然挂载（keepMounted）。
@@ -127,39 +134,43 @@ export default function Lyric({ active, playerReady }: ILyricProps) {
 
     return (
         <div className="music-detail-lyric-panel">
-            <div className="music-detail-lyric-toolbar">
-                <div className="music-detail-lyric-toolbar-title">
-                    <SvgAsset iconName="lyric"></SvgAsset>
-                    <span>{t("media.media_type_lyric")}</span>
-                </div>
-                <div className="music-detail-lyric-toolbar-actions">
-                    <div
-                        className="music-detail-lyric-toolbar-button"
-                        data-active={!!showTranslation && (lyricParser?.hasTranslation ?? false)}
-                        data-disabled={!lyricParser?.hasTranslation}
-                        role="button"
-                        title={t("music_detail.translation")}
-                        onClick={() => {
-                            if (lyricParser?.hasTranslation) {
-                                AppConfig.setConfig({
-                                    "lyric.showTranslation": !showTranslation,
-                                });
+            {!classicAmll ? (
+                <div className="music-detail-lyric-toolbar">
+                    <div className="music-detail-lyric-toolbar-title">
+                        <SvgAsset iconName="lyric"></SvgAsset>
+                        <span>{t("media.media_type_lyric")}</span>
+                    </div>
+                    <div className="music-detail-lyric-toolbar-actions">
+                        <div
+                            className="music-detail-lyric-toolbar-button"
+                            data-active={
+                                !!showTranslation && (lyricParser?.hasTranslation ?? false)
                             }
-                        }}
-                    >
-                        <SvgAsset iconName="language"></SvgAsset>
+                            data-disabled={!lyricParser?.hasTranslation}
+                            role="button"
+                            title={t("music_detail.translation")}
+                            onClick={() => {
+                                if (lyricParser?.hasTranslation) {
+                                    AppConfig.setConfig({
+                                        "lyric.showTranslation": !showTranslation,
+                                    });
+                                }
+                            }}
+                        >
+                            <SvgAsset iconName="language"></SvgAsset>
+                        </div>
+                        <div
+                            className="music-detail-lyric-toolbar-button"
+                            role="button"
+                            title={t("music_detail.search_lyric")}
+                            onClick={openSearchLyric}
+                        >
+                            <SvgAsset iconName="magnifying-glass"></SvgAsset>
+                        </div>
+                        <CoverStyleSelector></CoverStyleSelector>
                     </div>
-                    <div
-                        className="music-detail-lyric-toolbar-button"
-                        role="button"
-                        title={t("music_detail.search_lyric")}
-                        onClick={openSearchLyric}
-                    >
-                        <SvgAsset iconName="magnifying-glass"></SvgAsset>
-                    </div>
-                    <CoverStyleSelector></CoverStyleSelector>
                 </div>
-            </div>
+            ) : null}
 
             <div
                 className="music-detail-lyric-stage"
@@ -179,11 +190,13 @@ export default function Lyric({ active, playerReady }: ILyricProps) {
                         currentTimeMs={currentTimeMs}
                         playing={playerState === PlayerState.Playing}
                         speed={speed}
-                        fontSize={displayFontSize || "clamp(28px, 2.8vw, 48px)"}
+                        fontSize={classicAmll
+                            ? "max(max(5vh, 2.5vw), 14px)"
+                            : displayFontSize || "clamp(28px, 2.8vw, 48px)"}
                         textColor="#ffffff"
                         hoverBackgroundColor="rgba(255,255,255,0.04)"
                         alignAnchor="center"
-                        alignPosition={0.42}
+                        alignPosition={alignPosition}
                         enableBlur
                         enableScale
                         enableSpring

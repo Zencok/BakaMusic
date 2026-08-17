@@ -166,6 +166,8 @@ export default function MusicBar() {
     const musicDetailShown = musicDetailShownStore.useValue();
     // Default true: pure detail stage; settings can keep bar always visible (glass + flat)
     const detailAutoHideMusicBar = useAppConfig("normal.detailAutoHideMusicBar") !== false;
+    const classicAmllPlaybackDetail =
+        useAppConfig("normal.classicAmllPlaybackDetail") === true;
     const [musicBarStyle, setMusicBarStyle] = useState<MusicBarPaletteStyle>(
         DEFAULT_MUSIC_BAR_STYLES.light,
     );
@@ -298,6 +300,10 @@ export default function MusicBar() {
             }
         }, 320);
     };
+
+    if (musicDetailShown && classicAmllPlaybackDetail) {
+        return null;
+    }
 
     return (
         <div

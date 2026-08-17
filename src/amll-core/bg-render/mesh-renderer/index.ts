@@ -1052,25 +1052,11 @@ export class MeshGradientRenderer extends BaseRenderer {
 			this.tickHandle = requestAnimationFrame(this.onTickBinded);
 	}
 
-	// private supportTextureFloat = true;
-
 	constructor(canvas: HTMLCanvasElement) {
 		super(canvas);
 
 		const gl = canvas.getContext("webgl", { antialias: true });
 		if (!gl) throw new Error("WebGL not supported");
-		if (!gl.getExtension("EXT_color_buffer_float"))
-			console.warn("EXT_color_buffer_float not supported");
-		if (!gl.getExtension("EXT_float_blend")) {
-			console.warn("EXT_float_blend not supported");
-			// this.supportTextureFloat = false;
-		}
-		if (!gl.getExtension("OES_texture_float_linear"))
-			console.warn("OES_texture_float_linear not supported");
-		if (!gl.getExtension("OES_texture_float")) {
-			// this.supportTextureFloat = false;
-			console.warn("OES_texture_float not supported");
-		}
 
 		this.gl = gl;
 		gl.enable(gl.BLEND);

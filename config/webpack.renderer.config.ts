@@ -20,6 +20,11 @@ const rendererRules: NonNullable<Configuration["module"]>["rules"] = [
             filename: "audio-worklets/[name].[contenthash][ext]",
         },
     },
+    {
+        test: /\.glsl$/,
+        resourceQuery: /raw/,
+        type: "asset/source",
+    },
     ...sourceRules,
     {
         test: /\.module\.css$/,

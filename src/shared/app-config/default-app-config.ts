@@ -51,6 +51,7 @@ const _defaultAppConfig: IAppConfig =  {
     "normal.language": "zh-CN",
     "normal.uiStyle": "glass",
     "normal.detailAutoHideMusicBar": false,
+    "normal.classicAmllPlaybackDetail": false,
     "private.lyricWindowSize": {
         width: 940,
         height: 180,
