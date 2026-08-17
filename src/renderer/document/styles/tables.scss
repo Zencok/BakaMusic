@@ -55,6 +55,11 @@ table {
     }
 }
 
+// Toast must stay above modal backdrops and modal-local popovers.
+.Toastify__toast-container {
+    --toastify-z-index: 10030;
+}
+
 // Toast组件位置调整
 .Toastify__toast-container--top-right {
     top: calc(var(--appHeaderHeight) + 1rem);

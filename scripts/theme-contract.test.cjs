@@ -46,6 +46,22 @@ const globalStyleEntrySource = fs.readFileSync(path.join(
     __dirname,
     "../src/renderer/document/styles/index.scss",
 ), "utf8");
+const toastStyleSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/document/styles/tables.scss",
+), "utf8");
+const modalBaseStyleSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/Modal/templates/Base/index.scss",
+), "utf8");
+const qualitySelectStyleSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/QualitySelectPopover/index.scss",
+), "utf8");
+const contextMenuStyleSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/ContextMenu/index.scss",
+), "utf8");
 const windowMaterialSource = fs.readFileSync(path.join(
     __dirname,
     "../src/shared/themepack/window-material.ts",
@@ -266,6 +282,41 @@ assert.doesNotMatch(
     /\.music-list-container:not\(\[data-surface-mode="header-only"\]\)\s*\{[^}]*backdrop-filter:\s*var\(--appGlassFilter\)/,
 );
 assert.match(globalStyleEntrySource, /@use '\.\/default-acrylic\.scss';/);
+
+const readZIndex = (source, pattern, layerName) => {
+    const match = source.match(pattern);
+    assert.ok(match, `${layerName} must declare an explicit z-index`);
+    return Number(match[1]);
+};
+const modalZIndex = readZIndex(
+    modalBaseStyleSource,
+    /\.components--modal-base\s*\{[\s\S]*?z-index:\s*(\d+)/,
+    "modal",
+);
+const qualitySelectZIndex = readZIndex(
+    qualitySelectStyleSource,
+    /\.quality-select-popover-layer\s*\{[\s\S]*?z-index:\s*(\d+)/,
+    "quality select popover",
+);
+const toastZIndex = readZIndex(
+    toastStyleSource,
+    /\.Toastify__toast-container\s*\{[\s\S]*?--toastify-z-index:\s*(\d+)/,
+    "toast container",
+);
+const contextMenuZIndex = readZIndex(
+    contextMenuStyleSource,
+    /\.context-menu--single-column-container\s*\{[\s\S]*?z-index:\s*(\d+)/,
+    "context menu",
+);
+assert.ok(toastZIndex > modalZIndex, "toasts must render above modal backdrops");
+assert.ok(
+    toastZIndex > qualitySelectZIndex,
+    "toasts must render above modal-local popovers",
+);
+assert.ok(
+    toastZIndex < contextMenuZIndex,
+    "context menus must remain the top interactive overlay",
+);
 assert.match(windowMaterialSource, /WINDOWS_ACRYLIC_MIN_BUILD\s*=\s*22621/);
 assert.match(windowMaterialSource, /ACRYLIC_TINT_DARK/);
 assert.match(windowMaterialSource, /getInitialWindowSurfaceOptions/);
