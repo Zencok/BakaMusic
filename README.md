@@ -8,187 +8,86 @@
 
 **无广告、无内置在线音源、由插件扩展。**
 
-BakaMusic 是基于 Electron、React 和 TypeScript 的跨平台桌面音乐播放器，提供播放、歌词、歌单、本地音乐、下载与主题框架；在线搜索与媒体来源由用户安装的插件提供。
+BakaMusic 是基于 Electron、React 和 TypeScript 的跨平台桌面音乐播放器。应用覆盖在线音乐、本地媒体、MV、逐字歌词、下载与主题定制，并通过插件连接用户选择的内容服务。
 
-## 目录
+## 功能亮点
 
-- [功能](#功能)
-- [截图](#截图)
-- [下载](#下载)
-- [插件](#插件)
-- [V2 主题包](#v2-主题包)
-- [播放引擎](#播放引擎)
-- [歌词体系](#歌词体系)
-- [本地开发](#本地开发)
-- [架构](#架构)
-- [第三方与许可](#第三方与许可)
+- **两套播放详情页**：可在经典沉浸式唱片界面与 AMLL 风格双栏界面间切换，支持动态背景、逐字歌词、全屏和完整播放控制。
+- **统一原生播放核心**：音频与 MV 均由 `libmpv + LibreMPEG` 播放，广泛兼容本地音乐与视频格式，并支持远程 HTTP、HLS、自定义请求头和多档画质。
+- **杜比与高动态范围**：支持 Dolby Atmos 等空间音频档位、AC-4/AC-3 等环绕声媒体，以及 Dolby Vision、HDR10 MV 的识别与原生渲染链路。
+- **全平台 MV**：Windows、macOS 和 Linux 均支持 MV 播放、清晰度切换、倍速、全屏及下载；音频与视频状态可同步到 Windows SMTC、macOS MediaPlayer 和 Linux MPRIS2。
+- **双插件生态**：支持功能完整的 BakaMusic 插件，并可导入 LX 音源脚本作为播放接口；插件可扩展搜索、歌单、榜单、歌词、音质、MV、分享和听歌识曲。
+- **完整歌词体验**：支持 TTML、LRC、YRC、QRC、ESLRC 等格式，以及逐字、翻译、罗马音、Ruby 注音、背景人声、对唱、桌面歌词和迷你模式。
+- **本地库与下载**：提供本地媒体扫描、专辑/艺术家/文件夹浏览、断点续传、批量任务、标签与封面写入、歌词保存和可选下载后转码。
+- **个性化与数据管理**：提供玻璃/扁平界面、自动跟随系统的浅色/深色默认主题、V2 主题包、歌单与听歌统计、WebDAV 备份，以及简体中文、繁体中文和 English。
 
-## 功能
+> Dolby Vision、HDR10、Dolby Atmos 等能力取决于媒体源、操作系统、显示/音频设备及其驱动支持。
 
-| 功能 | 说明 |
+## 界面
+
+| 主页 | 排行榜 |
 |---|---|
-| 插件化音源 | 扩展搜索、播放、歌词、专辑、榜单和歌单导入 |
-| 多格式歌词 | TTML、LRC、LRC A2、YRC、QRC、ESLRC、LYL、LYS、LQE，支持逐字、翻译、音译及独立桌面歌词窗口 |
-| 多窗口 | 主窗口、桌面歌词和紧凑迷你模式同步工作 |
-| 播放与音质 | libmpv＋LibreMPEG 统一播放、输出设备、HLS 及插件声明的多档音质 |
-| 本地音乐 | MP3/FLAC/ALAC/APE/DSF/DFF/TAK/TTA/WavPack 等格式的扫描、监听和分类浏览 |
-| 下载管理 | 并发任务、暂停/续传、完整性校验、元数据与歌词写入 |
-| 歌单与统计 | 本地/收藏歌单、备份恢复、最近播放和收听统计 |
-| V2 主题 | 语义 Token、受控本地资源和沙箱动态背景 |
-| 多语言 | 简体中文、繁体中文、English |
+| ![主页](./.imgs/home.png) | ![排行榜](./.imgs/toplist.png) |
 
-## 截图
-
-| 主页 | 播放详情 |
+| 经典播放详情 | AMLL 播放详情 |
 |---|---|
-| ![主页](./.imgs/home.png) | ![播放详情](./.imgs/player.png) |
+| ![经典播放详情](./.imgs/player.png) | ![AMLL 播放详情](./.imgs/amll-player.png) |
+
+| 插件管理与 LX 播放接口 | 听歌识曲 |
+|---|---|
+| ![插件管理与 LX 播放接口](./.imgs/plugins.png) | ![听歌识曲](./.imgs/song-recognition.png) |
+
+| 本地音乐 | 下载管理 |
+|---|---|
+| ![本地音乐](./.imgs/local-music.png) | ![下载管理](./.imgs/downloads.png) |
 
 | 推荐歌单 | 主题市场 |
 |---|---|
 | ![推荐歌单](./.imgs/playlist.png) | ![主题市场](./.imgs/theme-market.png) |
 
-| 设置 | 多窗口联动 |
+| 设置 | 深色界面 |
 |---|---|
-| ![设置](./.imgs/settings.png) | ![多窗口联动](./.imgs/showcase.png) |
+| ![设置](./.imgs/settings.png) | ![深色界面](./.imgs/darkmode.png) |
+
+<p align="center">
+  <img src="./.imgs/showcase.png" alt="主窗口、桌面歌词与迷你模式" />
+</p>
 
 ## 下载
 
-从 [GitHub Releases](https://github.com/Zencok/BakaMusic/releases) 获取发布包：
+从 [GitHub Releases](https://github.com/Zencok/BakaMusic/releases) 下载正式版本。
 
-| 平台 | 产物 |
+| 平台 | 发布包 |
 |---|---|
-| Windows x64 | 离线 NSIS / NSIS Web / Portable ZIP |
+| Windows x64 | NSIS 离线安装包 / NSIS Web / Portable ZIP |
 | macOS x64、arm64 | DMG |
 | Linux amd64、arm64 | DEB / AppImage |
 
-NSIS Web 仅包含联网安装引导程序，安装时从同一 GitHub Release 下载对应的
-`.nsis.7z` 完整载荷；离线 NSIS、Portable ZIP、DMG、DEB 和 AppImage 均直接携带
-完整应用。每个完整应用载荷都包含播放核心所需的 mpv 运行时；NSIS Web 只延迟
-下载整个应用载荷，mpv 不再拆分为独立下载项。
+完整发布包已包含对应平台的 libmpv 媒体运行时，无需单独安装播放组件。
 
-NSIS Web 默认复用应用更新源的首个 GitHub 加速前缀。构建时可通过
-`NSIS_WEB_GITHUB_ACCELERATOR` 指定其他前缀；将其设为空字符串则生成 GitHub
-直连地址。离线 NSIS 的内容和下载方式不受该变量影响。
+## 插件与主题
 
-## 插件
+BakaMusic 不附带在线音源。插件在独立受控进程中运行，网络、存储和媒体能力由应用边界统一管理。
 
-插件接口延续 MusicFree 生态的数据模型，可提供搜索、媒体地址、歌词、专辑/歌单、艺人、榜单、推荐和导入能力。插件在独立受控进程中运行，网络与存储能力经过宿主边界。
+- 插件开发：[`docs/plugin-development.md`](docs/plugin-development.md)
+- 插件类型契约：[`src/types/plugin.d.ts`](src/types/plugin.d.ts)
+- 主题包仓库：[BakaThemePacks](https://github.com/Toskysun/BakaThemePacks)
+- V2 主题契约：[`src/shared/themepack/contract.ts`](src/shared/themepack/contract.ts)
 
-- 当前契约：[`src/types/plugin.d.ts`](src/types/plugin.d.ts)
-- 参考文档：[MusicFree 插件开发文档](https://musicfree.catcat.work/plugin/introduction.html)
+V2 主题包使用 `bakamusic-theme@2` 规范，由 `config.json`、`index.css` 及可选的 `imgs/`、`iframes/` 资源组成。主题负责视觉，布局和交互由客户端保持一致。
 
-## V2 主题包
-
-BakaMusic 接受 `bakamusic-theme@2` 主题。主题至少包含 `config.json` 和 `index.css`，可选资源位于 `imgs/`，动态背景位于 `iframes/`：
-
-```text
-my-theme/
-├── config.json
-├── index.css
-├── imgs/
-└── iframes/app.html
-```
-
-最小配置和 Token：
-
-```json
-{
-  "spec": "bakamusic-theme@2",
-  "name": "示例主题",
-  "author": "someone",
-  "version": "2.1.0",
-  "preview": "@/imgs/preview.jpg",
-  "description": "一句话描述",
-  "tags": ["暗色"],
-  "scheme": "dark"
-}
-```
-
-```css
-:root {
-  --theme-primary: #5ee2d4;
-  --theme-bg: #151718;
-  --theme-text: #f5f7f8;
-  --theme-scheme: dark;
-}
-```
-
-`index.css` 只能包含一个 `:root` Token 块；布局、层级和行为由客户端管理。完整允许字段和 Token 以 [`src/shared/themepack/contract.ts`](src/shared/themepack/contract.ts) 为准。
-
-## 播放引擎
-
-所有本地与远程媒体均由 `libmpv + LibreMPEG` 解封装、解码和输出，不创建 Chromium `Audio`/WebAudio 播放链。QMC 与 CENC 媒体先经各自的流式解密层，再将明文媒体交给 libmpv；HLS、普通 HTTP 媒体以及自定义请求头由 libmpv 直接处理。
-
-## 歌词体系
-
-远程歌词由插件的 `getLyric` 接口或歌词 URL 获取；本地歌词来自音频文件的内嵌标签，或音频同目录下同名的侧车歌词文件。两类来源最终进入同一个 `LyricParser`：
-
-- 可识别的主流格式优先使用 [`@applemusic-like-lyrics/lyric`](https://www.npmjs.com/package/@applemusic-like-lyrics/lyric) 解析；
-- TTML 直接使用 [`@applemusic-like-lyrics/ttml`](https://www.npmjs.com/package/@applemusic-like-lyrics/ttml)，保留元数据、逐字音译、Ruby 注音、背景人声和对唱信息；
-- 旧插件的混合时间戳、网易 JSON 行及纯文本继续由兼容解析逻辑处理。
-
-本地侧车歌词采用“音频文件名 + 歌词扩展名”的方式关联，例如：
-
-```text
-晴天.flac
-晴天.ttml
-```
-
-支持 `.ttml`、`.xml`、`.lqe`、`.lys`、`.yrc`、`.qrc`、`.alrc`、`.eslrc`、`.lyl`、`.lrc` 和 `.txt`。同一首歌曲存在多个侧车文件时，优先使用信息表达能力更完整的格式；侧车歌词优先于音频内嵌歌词。AMLL 各格式能力与 API 参见 [AMLL 歌词格式文档](https://amll.dev/guides/lyric/quickstart)。
+未安装自定义主题时，内置默认主题会在浅色和深色两套配色间自动跟随系统设置切换，目前不支持手动选择默认主题的明暗模式。
 
 ## 本地开发
 
-要求：Node.js `24.15.0`（见 `.node-version`）及 npm。
+要求 Node.js `24.15.0`（见 `.node-version`）及 npm。
 
 ```bash
 npm install
 npm start
 ```
 
-### 媒体运行时
-
-mpv、LibreMPEG 和 AC-4 运行时不需要本地编译；开发和打包命令会从 [`MpvLibre Runtime`](https://github.com/Zencok/mpv-libre-runtime/releases) 下载当前平台的已验证归档，校验 SHA-256 后放入 `res/.runtime/`。安装器使用归档中的 FFmpeg 工具验证 LibreMPEG/AC-4 能力，随后剔除应用不调用的 `ffmpeg`、`ffprobe` 命令行程序，最终安装包仅保留 libmpv 运行所需文件和许可证。
-
-当前固定 release、源码提交和各平台摘要以 [`scripts/media-runtime-manifest.json`](scripts/media-runtime-manifest.json) 为准。支持 Windows x64、macOS x64/arm64、Linux x64/arm64；归档按平台和架构选择，不能跨系统或 CPU 混用。运行时版本通过 GitHub Actions 定期检查并以 PR 更新，应用构建只消费清单中固定的不可变 URL 和摘要。
-
-### Native 模块（qmc2 / ence / taglib）
-
-与 mpv 运行时同构：私有仓 [`baka-native`](https://github.com/Zencok/baka-native) 的 CI 按平台预编译 N-API 模块（TagLib 在 native 构建时解析 GitHub `releases/latest` 并静态链接），发布 `native-*` release。
-
-**开发者（本仓库已预置）：**
-
-- 多平台二进制在 [`res/.service/native/prebuilt/`](res/.service/native/prebuilt/)（仅供贡献者调试，**不是**面向普通用户的分发方式）
-- `npm run native:install` 会把当前平台的 prebuilt 拷到 `res/.service/native/*.node`
-- 清单：[`scripts/native-modules-manifest.json`](scripts/native-modules-manifest.json)
-
-**CI / 发版：**
-
-- 可用清单从 private release 下载并校验 SHA-256（需 `NATIVE_REPO_TOKEN`）
-- 更新清单：`npm run native:update-manifest` 或 Actions `native-update` workflow
-- 音轨标签读写走 `taglib.node`；具体 TagLib 版本以清单字段与 `npm run smoke:native` 为准
-
-Windows 安装器由 Forge 调用 electron-builder 的 NSIS target 生成，NSIS 工具链会按依赖自动准备。
-
-### 常用命令
-
-| 命令 | 用途 |
-|---|---|
-| `npm run dev` | 带 Electron Inspector 启动 |
-| `npm run runtime:install:dev` | 下载并校验当前平台的开发运行时 |
-| `npm run lint` | ESLint 自动修复 `src/` |
-| `npm exec tsc -- --noEmit --pretty false` | TypeScript 校验 |
-| `npm test` | 运行聚合回归测试 |
-| `npm run package` | 构建 unpacked 应用 |
-| `npm run smoke:package` | 校验 ASAR/fuses、三窗口、插件/主题和后台服务 |
-| `npm run native:install` | 按清单安装预构建 `qmc2`/`ence`/`taglib` |
-| `npm run native:update-manifest` | 将清单钉到完整的 `baka-native` release |
-| `npm run smoke:native` | 在 Electron ABI 下加载 `qmc2`、`ence`、`taglib` |
-| `npm run build:native` | 可选：从本地 `native/` 源码重建（维护者回退） |
-| `npm run make` | 生成当前平台的 Forge 产物（Windows 为离线/Web NSIS，macOS 为 DMG，Linux 为 DEB/AppImage） |
-| `npm run sbom -- --output-file SBOM.cdx.json` | 生成可复现 CycloneDX 1.6 SBOM |
-| `npm run clean` | 删除 `.webpack/`、`out/`、`tmp/` |
-
-### 提交前验证
+提交前运行：
 
 ```bash
 npm exec tsc -- --noEmit --pretty false
@@ -196,39 +95,33 @@ npm exec eslint -- ./src
 npm test
 ```
 
-窗口、IPC、服务、native 或打包相关变更再执行：
+涉及窗口、preload、IPC、服务、native 或打包的变更还需运行：
 
 ```bash
 npm run package
 npm run smoke:package
 ```
 
-Windows 本地安装器示例：
-
-```powershell
-npm run make -- --platform=win32 --arch=x64
-```
+更多脚本与仓库边界见 [`AGENTS.md`](AGENTS.md)，版本变化见 [`changelog.md`](changelog.md)。
 
 ## 架构
 
 ```text
-src/main/               Electron 主进程
-src/preload/            contextBridge 边界
+src/main/               Electron 主进程与系统能力
+src/preload/            contextBridge 安全边界
 src/renderer/           主窗口 React 应用
 src/renderer-lrc/       桌面歌词窗口
 src/renderer-minimode/  迷你模式窗口
-src/shared/             跨进程配置、插件、IPC、主题、服务
-src/renderer/core/      播放、下载、歌单、本地音乐、统计、备份
-src/webworkers/         utilityProcess 下载与文件监听实现
-src/amll-core/          完整 AMLL 上游同步区
-res/                    语言、图标、后台服务和 native 运行时
+src/shared/             跨进程契约与能力模块
+src/webworkers/         utilityProcess 后台任务
+src/amll-core/          AMLL 上游同步区
+res/                    语言、服务与运行时资源
 ```
 
-Renderer 关闭 Node integration，通过不同权限的 preload 调用主进程。插件、下载/监听任务和本地代理服务运行在独立 `utilityProcess`；生产包启用 ASAR 完整性与 Electron fuses。
+Renderer 默认关闭 Node integration，并通过最小化 preload 接口调用主进程；插件、下载、文件任务及媒体服务运行在隔离进程中。生产包启用 ASAR 完整性与 Electron fuses。
 
 ## 第三方与许可
 
-- `src/amll-core/` 基于 [applemusic-like-lyrics](https://github.com/amll-dev/applemusic-like-lyrics) Core，并作为完整上游同步边界保留。
-- 歌词格式解析使用 [`@applemusic-like-lyrics/lyric`](https://www.npmjs.com/package/@applemusic-like-lyrics/lyric) 与 [`@applemusic-like-lyrics/ttml`](https://www.npmjs.com/package/@applemusic-like-lyrics/ttml)，两者均来自 AMLL 上游并采用 `AGPL-3.0-only`。
-- BakaMusic 不附带在线音源或媒体内容。插件、数据来源和内容使用由其提供者与使用者负责，请遵守所在地区法律、服务条款与版权规则。
-- 软件按现状提供，详见 [AGPL-3.0-only](LICENSE)。
+- `src/amll-core/` 基于 [applemusic-like-lyrics](https://github.com/amll-dev/applemusic-like-lyrics)，并保留完整上游同步边界。
+- BakaMusic 不提供在线音源或媒体内容。插件、数据来源及内容使用由其提供者与使用者负责，请遵守所在地区法律、服务条款与版权规则。
+- 软件按现状提供，采用 [AGPL-3.0-only](LICENSE) 许可。

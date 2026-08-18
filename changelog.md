@@ -2,6 +2,191 @@
 
 本文件根据 [GitHub Releases](https://github.com/Zencok/BakaMusic/releases) 整理，发布日期采用 GitHub Release 的 UTC 日期，并按版本从新到旧排列。
 
+## [v1.8.4](https://github.com/Zencok/BakaMusic/releases/tag/v1.8.4) - 2026-08-18
+
+- 新增跨平台系统媒体控制：Windows SMTC、macOS MediaPlayer 与 Linux MPRIS2 均可显示曲目信息、封面、播放状态和进度。
+- 系统媒体面板可控制播放、暂停、停止、切歌和进度跳转，并与应用内音频及 MV 状态保持同步。
+- 更新 Windows、macOS x64/arm64、Linux x64/arm64 的 native 模块与打包冒烟覆盖。
+
+**版本差异：** [v1.8.3...v1.8.4](https://github.com/Zencok/BakaMusic/compare/v1.8.3...v1.8.4)
+
+## [v1.8.3](https://github.com/Zencok/BakaMusic/releases/tag/v1.8.3) - 2026-08-17
+
+- MV 播放器新增独立音量提示，滚轮调节时无需唤出底部控制栏。
+- Windows 原生视频表面跟随播放器圆角与窗口尺寸裁剪，修复画面边缘溢出。
+- 提升全局提示层级，避免 Toast 被模态框遮挡。
+
+**版本差异：** [v1.8.2...v1.8.3](https://github.com/Zencok/BakaMusic/compare/v1.8.2...v1.8.3)
+
+## [v1.8.2](https://github.com/Zencok/BakaMusic/releases/tag/v1.8.2) - 2026-08-17
+
+- 新增可选的 AMLL 风格播放详情页，与原有经典沉浸式详情页共同提供两套播放界面。
+- 新界面采用左侧封面与控制、右侧动态歌词的双栏布局，支持进度、音量、循环、随机和窗口操作。
+- 接入基于封面的 AMLL Mesh Gradient 动态背景，并补充 CSP、缓存、回退和响应式适配。
+
+**版本差异：** [v1.8.1...v1.8.2](https://github.com/Zencok/BakaMusic/compare/v1.8.1...v1.8.2)
+
+## [v1.8.1](https://github.com/Zencok/BakaMusic/releases/tag/v1.8.1) - 2026-08-16
+
+- MV 播放从 Chromium `<video>` 迁移至随应用发布的原生 libmpv 宿主，统一远程视频解码、请求头和播放状态。
+- 保留清晰度切换、倍速、音量、进度、全屏和下载，并在切换视频或画质时保持位置与播放状态。
+- 优化原生视频首帧交接、窗口生命周期和 Acrylic 合成，减少灰屏、闪烁及背景突变。
+- WASAPI 独占端点协商失败时自动回退共享输出，改善 Luna、AC-4 等音源启动稳定性。
+
+**版本差异：** [v1.8.0...v1.8.1](https://github.com/Zencok/BakaMusic/compare/v1.8.0...v1.8.1)
+
+## [v1.8.0](https://github.com/Zencok/BakaMusic/releases/tag/v1.8.0) - 2026-08-16
+
+- 新增 LX 音源脚本兼容层，可从本地或 HTTPS 地址导入播放接口，并绑定至现有 BakaMusic 平台插件。
+- 重构插件管理工作区，集中展示启用状态、平台覆盖、当前播放接口、LX 音源选择和调用诊断日志。
+- 新增听歌识曲，可采集系统音频并通过插件识别，结果支持播放、收藏和加入歌单。
+- 新增跨平台 MV 播放与下载界面，支持画质探测、切换、倍速、进度、滚轮音量、键盘操作、全屏和下载管理。
+- 推荐歌单、搜索与排行榜在进入详情和返回时保留来源、筛选及滚动位置。
+- 修复本地音乐专辑、歌手和文件夹详情中的嵌套列表滚动。
+
+**版本差异：** [v1.7.1...v1.8.0](https://github.com/Zencok/BakaMusic/compare/v1.7.1...v1.8.0)
+
+## [v1.7.1](https://github.com/Zencok/BakaMusic/releases/tag/v1.7.1) - 2026-08-15
+
+- 导入歌单后新增预览页，展示封面、平台、标题、作者、歌曲数量和简介，并可进入标准详情页检查曲目。
+- 扩展插件歌单导入协议，在兼容旧歌曲数组返回值的同时支持完整歌单对象。
+- 下载后音频探测与转码迁移到原生 N-API 工作线程，并根据 CPU 与内存自适应并发。
+
+**版本差异：** [v1.7.0...v1.7.1](https://github.com/Zencok/BakaMusic/compare/v1.7.0...v1.7.1)
+
+## [v1.7.0](https://github.com/Zencok/BakaMusic/releases/tag/v1.7.0) - 2026-08-14
+
+- 重构推荐歌单和排行榜，统一来源导航、筛选、响应式布局与无障碍交互。
+- 推荐歌单会按插件随机选择初始分类，并在详情返回时恢复当前标签与页面状态。
+- 简化通过 ID 播放、歌单导入和歌词搜索等插件选择弹窗。
+- 下载后转码进入有界异步队列，网络任务不再被音频后处理阻塞。
+- 播放栏根据封面生成浅色/深色 OKLCH 配色，并校验文字与强调色对比度。
+
+**版本差异：** [v1.6.1...v1.7.0](https://github.com/Zencok/BakaMusic/compare/v1.6.1...v1.7.0)
+
+## [v1.6.1](https://github.com/Zencok/BakaMusic/releases/tag/v1.6.1) - 2026-08-13
+
+- 歌单备份统一为 v3，保留插件曲目 ID 的数字/字符串类型，避免恢复后逐字歌词失效。
+- 修复整行及逐词歌词中的括号双人段、跨行和声、罗马音与翻译配对。
+- 新增可选下载后转码：有损音频转 MP3、无损音频转 FLAC，AC-4/AC-3 等环绕声编码保持原文件。
+- Electron 升级至 43.4.0，更新 libmpv/LibreMPEG/libplacebo 运行时和全平台 native 预构建。
+- 修复 Windows NSIS 并行打包文件锁及运行时下载未读取系统代理的问题。
+
+**版本差异：** [v1.6.0...v1.6.1](https://github.com/Zencok/BakaMusic/compare/v1.6.0...v1.6.1)
+
+## [v1.6.0](https://github.com/Zencok/BakaMusic/releases/tag/v1.6.0) - 2026-08-09
+
+- 歌单备份格式升级至 v3，保留插件曲目 ID 的原始标量类型，并兼容恢复 v2 数据。
+- 修复顶部搜索框文字与输入光标被裁切的问题。
+
+**版本差异：** [v1.5.9...v1.6.0](https://github.com/Zencok/BakaMusic/compare/v1.5.9...v1.6.0)
+
+## [v1.5.9](https://github.com/Zencok/BakaMusic/releases/tag/v1.5.9) - 2026-08-02
+
+- 下载标签新增封面兼容模式，将封面规范化为适合车机和硬件播放器的 sRGB JPEG，同时可选择保留原图。
+- 修复无歌词歌曲的下载后处理与标签写入。
+- 当前输出设备拔出时回退至默认设备，并按设置暂停或继续播放；设备重新接入后恢复用户选择。
+- 侧栏分组和歌单加入支持 reduced-motion 的展开/收起动画，并稳定沉浸式全屏调度。
+
+**版本差异：** [v1.5.8...v1.5.9](https://github.com/Zencok/BakaMusic/compare/v1.5.8...v1.5.9)
+
+## [v1.5.8](https://github.com/Zencok/BakaMusic/releases/tag/v1.5.8) - 2026-07-26
+
+- 沉浸式全屏改用幕布阶段编排，隐藏系统全屏切换跳变；全屏歌词舞台进一步弱化界面框架。
+- 修复离线曲目重试、缓冲中切换音质、旧 libmpv 会话残留及数字/字符串媒体 ID 混用导致的队列问题。
+- 修复 LRC offset 与 TTML 罗马音错位，使主详情、桌面歌词和迷你模式时间轴一致。
+- 下载错误按任务限制自动重试，本地大库扫描使用独立长超时，避免中断其他下载任务。
+- 修复插件用户变量和窗口位置配置未持久化，并加固插件元数据与结构化克隆负载边界。
+- 加固主窗口重建、退出流程与插件宿主异常恢复，优化列表、歌词面板和搜索性能。
+
+**版本差异：** [v1.5.7...v1.5.8](https://github.com/Zencok/BakaMusic/compare/v1.5.7...v1.5.8)
+
+## [v1.5.7](https://github.com/Zencok/BakaMusic/releases/tag/v1.5.7) - 2026-07-24
+
+- 放大播放时间、侧栏文字和图标，并调整侧栏宽度，改善高频操作可读性。
+- 支持全局 F11；播放详情使用自底栏展开的过渡，并优化沉浸式全屏动画与窗口拖拽。
+- 下载改用原生 TagLib 写入标签，统一插件、歌词、封面和扩展名解析链路。
+- 补齐跨平台 TagLib 预构建、清单、安装与回归测试。
+
+**版本差异：** [v1.5.6...v1.5.7](https://github.com/Zencok/BakaMusic/compare/v1.5.6...v1.5.7)
+
+## [v1.5.6](https://github.com/Zencok/BakaMusic/releases/tag/v1.5.6) - 2026-07-23
+
+- Windows 新增 WASAPI 独占模式，并由 libmpv 枚举和切换输出设备。
+- 音质体系新增 Dolby、Atmos 等空间音频档位，保留独立 Master 档位。
+- 关闭 libmpv 外部文件自动加载，歌词和封面继续由 BakaMusic 统一管理。
+- 优化 AMLL 手动滚动，并支持点击歌词行跳转播放位置。
+
+**版本差异：** [v1.5.5...v1.5.6](https://github.com/Zencok/BakaMusic/compare/v1.5.5...v1.5.6)
+
+## [v1.5.5](https://github.com/Zencok/BakaMusic/releases/tag/v1.5.5) - 2026-07-23
+
+- 接入公开发布的 mpv LibreMPEG 运行时，将本地与远程媒体统一迁移至 libmpv 播放链。
+- 扩展本地无损格式覆盖至 DSF、DFF 等，并支持独立播放速度、半音级变调和输出设备选择。
+- 加固本地扫描、内嵌歌词与封面处理，本地曲目可安全移入回收站。
+- 以 AMLL lyric/TTML 包统一远程和本地歌词解析，保留 TTML 元数据、注音、背景人声及对唱信息。
+- 支持将关联歌词写入本地媒体，并统一本地库、歌单、下载、统计和主题的宽松搜索。
+- 新增 Windows NSIS Web 与 Linux AppImage 发布目标。
+
+**版本差异：** [v1.5.4...v1.5.5](https://github.com/Zencok/BakaMusic/compare/v1.5.4...v1.5.5)
+
+## [v1.5.4](https://github.com/Zencok/BakaMusic/releases/tag/v1.5.4) - 2026-07-23
+
+- 修复 Windows 11 24H2 下 Electron 透明窗口与系统 Acrylic 叠加造成的背景闪烁。
+- 优化歌曲列表滚动期间的悬停反馈与合成性能。
+- 调整玻璃播放栏进度条边距和时间字号，避免内容贴近圆角并改善可读性。
+
+**版本差异：** [v1.5.3...v1.5.4](https://github.com/Zencok/BakaMusic/compare/v1.5.3...v1.5.4)
+
+## [v1.5.3](https://github.com/Zencok/BakaMusic/releases/tag/v1.5.3) - 2026-07-23
+
+- 虚拟歌曲列表改用固定定位与动画帧调度，改善快速滚动时的错位和重绘。
+- 主题初始化改为幂等，路由切换时保留 CSS 和背景 iframe，减少闪白或闪黑。
+- 修复关闭播放详情后原生拖拽区域残留导致下层控件无法点击。
+
+**版本差异：** [v1.5.2...v1.5.3](https://github.com/Zencok/BakaMusic/compare/v1.5.2...v1.5.3)
+
+## [v1.5.2](https://github.com/Zencok/BakaMusic/releases/tag/v1.5.2) - 2026-07-23
+
+- 重做品牌化崩溃恢复页，提供重置、反馈和可展开诊断信息。
+- 加固歌单备份恢复，兼容缺失标题和数值型插件曲目 ID，并恢复默认收藏歌单标题。
+- 歌词解析新增对唱/双人声部识别，桌面歌词支持按声部分侧对齐。
+- 修复桌面歌词在特定宽度下异常换行的问题。
+
+**版本差异：** [v1.5.1...v1.5.2](https://github.com/Zencok/BakaMusic/compare/v1.5.1...v1.5.2)
+
+## [v1.5.1](https://github.com/Zencok/BakaMusic/releases/tag/v1.5.1) - 2026-07-23
+
+- 内置主题在支持的 Windows 11 版本启用系统 Acrylic，其他平台和旧系统保持不透明背景。
+- 新增固定悬浮的 Liquid Glass 播放栏，重排封面、控制区、时间线和功能入口，并升级封面取色算法。
+- 重做播放队列，保留虚拟列表、拖拽、选择和定位当前歌曲能力。
+- 优化播放详情初始化和重复打开性能，修复设置页偏移与顶栏拖拽。
+- 恢复本地/WebDAV 歌单备份，完善下载进度和已移动文件的记录清理。
+
+**版本差异：** [v1.5.0...v1.5.1](https://github.com/Zencok/BakaMusic/compare/v1.5.0...v1.5.1)
+
+## [v1.5.0](https://github.com/Zencok/BakaMusic/releases/tag/v1.5.0) - 2026-07-19
+
+- 重构 Electron、React、Forge、IPC、配置、数据库和 utilityProcess 架构，加固 renderer、插件、下载与本地文件边界。
+- 修复本地和加密媒体播放，授权文件使用支持 Range 的本地协议，QMC/CENC 等解密链保持流式播放与 seek。
+- 完善沉浸式全屏会话：阻止显示器休眠、自动隐藏鼠标，并临时收起桌面歌词和迷你模式。
+- 修复歌词恢复、桌面歌词锁定和迷你窗口关闭流程；歌词导出支持逐字、翻译、罗马音和命名模板。
+- 下载新增可配置文件名模板；设置页、启动加载壳和系统明暗主题跟随完成重构。
+- 列表新增定位当前歌曲；右键菜单支持媒体身份、分享及跳转艺人/专辑。
+- 更新检查和 Release 下载支持 GitHub 加速回退，并补充安全、性能、迁移、native 与打包回归。
+
+**版本差异：** [v1.4.0...v1.5.0](https://github.com/Zencok/BakaMusic/compare/v1.4.0...v1.5.0)
+
+## [v1.4.0](https://github.com/Zencok/BakaMusic/releases/tag/v1.4.0) - 2026-07-17
+
+- 播放详情页支持 F11 沉浸式全屏，Windows 无边框窗口在原生全屏失败时可回退铺满当前显示器。
+- 统一“通过 ID 播放”和“导入歌单”的插件输入面板，并记忆各入口上次选择的插件。
+- 听歌统计新增真实播放时长，列表补充音质、大小和平台信息。
+- 主题市场新增搜索，桌面歌词可识别无边框视频全屏并自动让位。
+- 优化扁平模式歌单详情的表面、圆角和阴影层级。
+
+**版本差异：** [v1.3.9...v1.4.0](https://github.com/Zencok/BakaMusic/compare/v1.3.9...v1.4.0)
+
 ## v1.3.9 - 2026-07-17
 
 - 将 Electron 升级至 43.1.1 Stable，运行时同步升级至 Chromium 150.0.7871.114、Node.js 24.18.0 与 V8 15.0.245.15。

@@ -115,10 +115,11 @@ plugins
 
 undefinedelectron-log-preload.js
 
-# Markdown files (except README and changelog)
+# Markdown files (except repository documentation allowlisted below)
 *.md
 AGENTS.md
 CLAUDE.md
 UPSTREAM.md
 !README.md
 !changelog.md
+!docs/plugin-development.md
