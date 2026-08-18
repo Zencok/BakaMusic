@@ -186,6 +186,53 @@ function testPlaybackBoundaryIntegration() {
     assert.match(nativeMain, /validateHeaders/);
     assert.doesNotMatch(nativeMain, /runFfprobe|native-playback\/probe/);
     assert.match(nativeMain, /MAX_RUNTIME_WORKING_SET_KB/);
+    assert.match(nativeMain, /systemMediaControls\.setPlaybackSnapshot\(snapshot\)/);
+    assert.match(nativeMain, /systemMediaControls\.beginVideo\(/);
+    assert.match(nativeMain, /systemMediaControls\.setVideoPlaybackSnapshot\(snapshot\)/);
+    assert.match(nativeMain, /systemMediaControls\.endVideo\(\)/);
+    assert.match(nativeMain, /this\.commandVideo\(command\)/);
+    assert.match(nativeMain, /messageBus\.sendCommand\("ResumePlayback"\)/);
+    assert.match(nativeMain, /messageBus\.sendCommand\("PausePlayback"\)/);
+    assert.match(nativeMain, /messageBus\.sendCommand\("SeekPlayback", event\.position\)/);
+
+    const systemMediaControls = read(
+        "src/shared/native-playback/system-media-controls.ts",
+    );
+    assert.match(systemMediaControls, /window\.getNativeWindowHandle\(\)/);
+    assert.match(systemMediaControls, /\.service", "native", "smtc\.node"/);
+    assert.match(systemMediaControls, /binding\.initialize/);
+    assert.match(systemMediaControls, /binding\.update/);
+    assert.match(systemMediaControls, /mediaType: "music" \| "video"/);
+    assert.match(systemMediaControls, /nextEnabled: descriptor\.nextEnabled/);
+    assert.match(systemMediaControls, /previousEnabled: descriptor\.previousEnabled/);
+    assert.match(systemMediaControls, /resetMedia\(\)/);
+    assert.match(systemMediaControls, /this\.sessionActive = true/);
+    assert.match(systemMediaControls, /\["win32", "darwin", "linux"\]/);
+    assert.match(
+        systemMediaControls,
+        /process\.platform === "linux"\s*\? createMprisBinding\(\)/,
+    );
+
+    const messageBusTypes = read("src/shared/message-bus/type.d.ts");
+    assert.match(messageBusTypes, /ResumePlayback: void/);
+    assert.match(messageBusTypes, /PausePlayback: void/);
+    assert.match(messageBusTypes, /SeekPlayback: number/);
+    assert.match(messageBusTypes, /SetPlaybackVolume: number/);
+    assert.match(messageBusTypes, /SetPlaybackRate: number/);
+
+    const rendererBootstrap = read("src/renderer/document/bootstrap.ts");
+    assert.match(rendererBootstrap, /onCommand\("ResumePlayback"/);
+    assert.match(rendererBootstrap, /onCommand\("PausePlayback"/);
+    assert.match(rendererBootstrap, /onCommand\("SeekPlayback"/);
+    assert.match(rendererBootstrap, /onCommand\("SetPlaybackVolume"/);
+    assert.match(rendererBootstrap, /onCommand\("SetPlaybackRate"/);
+
+    const mainEntry = read("src/main/index.ts");
+    assert.match(mainEntry, /app\.setAppUserModelId\(WINDOWS_APP_USER_MODEL_ID\)/);
+    assert.match(mainEntry, /WINDOWS_APP_USER_MODEL_ID = "com\.zencok\.bakamusic"/);
+
+    const forgeConfig = read("forge.config.ts");
+    assert.match(forgeConfig, /appId: "com\.zencok\.bakamusic"/);
 
     const nativeHost = read(
         "src/shared/native-playback/utility/native-playback-host.ts",
@@ -307,7 +354,9 @@ function testPlaybackRecoveryContract() {
     // renderer 重新导航/崩溃后主进程要停掉遗留的 libmpv source。
     const nativePlayback = read("src/shared/native-playback/main.ts");
     assert.match(nativePlayback, /private activeSourceId = ""/);
-    assert.match(nativePlayback, /private stopOrphanedPlayback\(\)/);
+    assert.match(nativePlayback, /private stopOrphanedMedia\(\)/);
+    assert.match(nativePlayback, /systemMediaControls\.resetMedia\(\)/);
+    assert.match(nativePlayback, /this\.beginVideoClose\(\)/);
     assert.match(nativePlayback, /webContents\.on\("did-start-navigation"/);
     assert.match(nativePlayback, /webContents\.on\("render-process-gone"/);
     assert.match(nativePlayback, /operation: "stop", sourceId/);

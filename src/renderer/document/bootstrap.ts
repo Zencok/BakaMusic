@@ -182,6 +182,27 @@ function setupCommandAndEvents() {
             trackPlayer.resume();
         }
     });
+    messageBus.onCommand("ResumePlayback", () => {
+        trackPlayer.resume();
+    });
+    messageBus.onCommand("PausePlayback", () => {
+        trackPlayer.pause();
+    });
+    messageBus.onCommand("SeekPlayback", (seconds) => {
+        if (Number.isFinite(seconds) && seconds >= 0) {
+            trackPlayer.seekTo(seconds);
+        }
+    });
+    messageBus.onCommand("SetPlaybackVolume", (volume) => {
+        if (Number.isFinite(volume)) {
+            trackPlayer.setVolume(Math.min(1, Math.max(0, volume)));
+        }
+    });
+    messageBus.onCommand("SetPlaybackRate", (rate) => {
+        if (Number.isFinite(rate)) {
+            trackPlayer.setSpeed(Math.min(4, Math.max(0.25, rate)));
+        }
+    });
     messageBus.onCommand("SetRepeatMode", (mode) => {
         trackPlayer.setRepeatMode(mode);
     });

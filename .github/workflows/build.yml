@@ -31,6 +31,8 @@ jobs:
         run: npm exec tsc -- --noEmit
       - name: Lint
         run: npm exec eslint -- ./src
+      - name: Linux MPRIS integration
+        run: npm run test:system-media-controls
 
   build:
     needs: validate-source
@@ -233,6 +235,9 @@ jobs:
       - name: Build macOS DMG
         if: matrix.platform == 'macos'
         run: npm run make -- --arch="${{ matrix.arch }}"
+      - name: Verify macOS ASAR, fuses, and media controls addon
+        if: matrix.platform == 'macos'
+        run: node scripts/package-security-smoke.cjs
       - name: Stage macOS artifact
         if: matrix.platform == 'macos'
         shell: bash
@@ -267,6 +272,9 @@ jobs:
       - name: Build Linux package
         if: matrix.platform == 'linux'
         run: npm run make -- --arch="${{ matrix.arch }}"
+      - name: Verify Linux ASAR, fuses, and MPRIS runtime
+        if: matrix.platform == 'linux'
+        run: node scripts/package-security-smoke.cjs
       - name: Stage Linux artifacts
         if: matrix.platform == 'linux'
         shell: bash

@@ -29,6 +29,16 @@ export interface IAppState {
 export interface ICommand {
   /** 切换播放器状态 */
   TogglePlayerState: void;
+  /** 明确恢复播放（系统媒体控件使用，避免 toggle 状态竞态） */
+  ResumePlayback: void;
+  /** 明确暂停播放（系统媒体控件使用，避免 toggle 状态竞态） */
+  PausePlayback: void;
+  /** 跳转到指定播放位置（秒） */
+  SeekPlayback: number;
+  /** 设置绝对音量（0-1） */
+  SetPlaybackVolume: number;
+  /** 设置播放倍率 */
+  SetPlaybackRate: number;
   /** 切换上一首歌 */
   SkipToPrevious: void;
   /** 切换下一首歌 */

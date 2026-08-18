@@ -31,9 +31,17 @@ const nativeDir = path.resolve(readOption(
 ));
 const expectedArch = readOption("--arch", process.arch);
 const expectedPlatform = readOption("--platform", process.platform);
+const manifestModules = JSON.parse(fs.readFileSync(
+    path.join(root, "scripts", "native-modules-manifest.json"),
+    "utf8",
+)).modules || ["qmc2", "ence", "taglib", "transcode"];
+const defaultModules = new Set(manifestModules);
+if (process.platform === "win32" || process.platform === "darwin") {
+    defaultModules.add("smtc");
+}
 const modules = readOption(
     "--modules",
-    process.env.REQUIRED_NATIVE_MODULES || "qmc2,ence,taglib,transcode",
+    process.env.REQUIRED_NATIVE_MODULES || [...defaultModules].join(","),
 ).split(",").map((name) => name.trim()).filter(Boolean);
 
 assert.equal(process.arch, expectedArch, `runtime arch mismatch: ${process.arch}`);
@@ -46,6 +54,7 @@ const requiredExports = {
     ence: ["createDecoder", "getInfo", "getHeader", "decrypt", "destroyDecoder"],
     taglib: ["readTags", "writeTags"],
     transcode: ["probeMp4AudioCodec", "probeAudioCodec", "transcode"],
+    smtc: ["isSupported", "initialize", "update", "clear", "dispose"],
 };
 
 let taglibVersion = null;
@@ -64,6 +73,35 @@ for (const moduleName of modules) {
     if (moduleName === "taglib" && typeof nativeModule.taglibVersion === "string") {
         taglibVersion = nativeModule.taglibVersion;
         assert.match(taglibVersion, /^\d+\.\d+(\.\d+)?$/, "taglibVersion format");
+    }
+    if (moduleName === "smtc") {
+        assert.equal(
+            nativeModule.isSupported(),
+            process.platform === "win32" || process.platform === "darwin",
+            "native media controls platform support mismatch",
+        );
+        if (process.platform === "darwin") {
+            nativeModule.initialize(Buffer.alloc(0), () => undefined);
+            nativeModule.update({
+                mediaType: "music",
+                title: "BakaMusic native smoke",
+                artist: "BakaMusic",
+                album: "System Media Controls",
+                artwork: "",
+                appMediaId: "native-smoke:darwin",
+                state: "paused",
+                position: 1,
+                duration: 2,
+                playbackRate: 1,
+                volume: 0.5,
+                repeatMode: "queue-repeat",
+                nextEnabled: true,
+                previousEnabled: true,
+                updateMetadata: true,
+            });
+            nativeModule.clear();
+            nativeModule.dispose();
+        }
     }
 }
 

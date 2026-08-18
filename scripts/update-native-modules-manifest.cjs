@@ -20,7 +20,7 @@ const requiredTargets = [
     "linux-x64",
     "linux-arm64",
 ];
-const requiredModules = ["qmc2", "ence", "taglib", "transcode"];
+const requiredModules = ["qmc2", "ence", "taglib", "transcode", "smtc"];
 
 function assert(condition, message) {
     if (!condition) {

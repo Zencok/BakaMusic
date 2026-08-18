@@ -4,6 +4,12 @@ import fs from "fs";
 import path from "path";
 import { setAutoFreeze } from "immer";
 
+const WINDOWS_APP_USER_MODEL_ID = "com.zencok.bakamusic";
+
+if (process.platform === "win32") {
+    app.setAppUserModelId(WINDOWS_APP_USER_MODEL_ID);
+}
+
 // Suppress Chromium GPU "Check failed: false" errors (non-fatal, Electron 25 known issue)
 app.commandLine.appendSwitch("log-level", "3");
 

@@ -61,6 +61,8 @@ export type NativePlaybackRuntimeCommand =
 export interface INativePlaybackCapabilities {
     available: boolean;
     engine: "libmpv";
+    systemMediaControls?: boolean;
+    systemMediaControlsActive?: boolean;
     version?: string;
     clientApiVersion?: string;
     mediaBackend?: string;
@@ -115,6 +117,10 @@ export interface INativeVideoSourceSelect {
 export interface INativeVideoOpenRequest {
     sourceId: string;
     title: string;
+    artist: string;
+    album: string;
+    artwork: string;
+    appMediaId: string;
     sources: INativeVideoSource[];
     initialSourceKey: string;
     volume: number;

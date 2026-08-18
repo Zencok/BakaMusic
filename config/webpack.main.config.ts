@@ -35,5 +35,6 @@ export const mainConfig: Configuration = {
         sharp: "commonjs2 sharp",
         "get-windows": "commonjs2 get-windows",
         koffi: "commonjs2 koffi",
+        "@particle/dbus-next": "commonjs2 @particle/dbus-next",
     },
 };

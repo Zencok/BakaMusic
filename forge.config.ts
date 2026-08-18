@@ -217,6 +217,7 @@ const config: ForgeConfig = {
             "sharp",
             "get-windows",
             "koffi",
+            "@particle/dbus-next",
         ]),
         // Keep fuses last: they are flipped after the app copy and before code signing.
         createFusesPlugin({

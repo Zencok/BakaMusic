@@ -26,7 +26,15 @@ const prebuiltRoot = path.join(outDir, "prebuilt");
 const cacheDir = path.join(root, "artifacts", "native-modules-cache");
 const platformKey = `${process.platform}-${process.arch}`;
 const MAX_REDIRECTS = 5;
-const DEFAULT_MODULES = ["qmc2", "ence", "taglib", "transcode"];
+const DEFAULT_MODULES = ["qmc2", "ence", "taglib", "transcode", "smtc"];
+
+function requiredModules(manifest) {
+    const modules = new Set(manifest.modules || DEFAULT_MODULES);
+    if (process.platform === "win32" || process.platform === "darwin") {
+        modules.add("smtc");
+    }
+    return [...modules];
+}
 
 function log(message) {
     console.log(`[native-install] ${message}`);
@@ -359,8 +367,7 @@ function warnElectronMismatch(manifest) {
     }
 }
 
-async function installFromManifest(manifest) {
-    const modules = manifest.modules || DEFAULT_MODULES;
+async function installFromManifest(manifest, modules) {
     const artifact = manifest.platforms?.[platformKey];
     if (!artifact) {
         throw new Error(`No native artifact for ${platformKey} in manifest`);
@@ -425,7 +432,7 @@ async function main() {
         || process.env.NATIVE_MODULES_LOCAL_ONLY === "1";
 
     const manifest = loadManifest();
-    const modules = manifest.modules || DEFAULT_MODULES;
+    const modules = requiredModules(manifest);
 
     if (forceSource) {
         if (!canSourceBuild()) {
@@ -453,7 +460,7 @@ async function main() {
 
     if (manifest.complete === true && artifact && !localOnly) {
         try {
-            await installFromManifest(manifest);
+            await installFromManifest(manifest, modules);
             return;
         } catch (error) {
             console.warn(`[native-install] manifest install failed: ${error.message}`);

@@ -5,6 +5,7 @@ const {
     FuseV1Options,
     getCurrentFuseWire,
 } = require("@electron/fuses");
+const { listPackage } = require("@electron/asar");
 
 const root = path.resolve(__dirname, "..");
 const platform = process.platform;
@@ -33,6 +34,21 @@ async function run() {
         false,
         "loose resources/app source tree must not be packaged",
     );
+    if (platform === "linux") {
+        const asarEntries = new Set(listPackage(
+            path.join(resourcesPath, "app.asar"),
+        ).map((entry) => entry.replaceAll("\\", "/")));
+        for (const entry of [
+            "/node_modules/@particle/dbus-next/index.js",
+            "/node_modules/event-stream/index.js",
+            "/node_modules/xml2js/lib/parser.js",
+        ]) {
+            assert.ok(
+                asarEntries.has(entry),
+                `packaged Linux MPRIS dependency is missing: ${entry}`,
+            );
+        }
+    }
     const mediaRuntimeRoot = path.join(
         resourcesPath,
         "res",
@@ -73,6 +89,20 @@ async function run() {
         fs.existsSync(transcodeAddon),
         "packaged native transcode addon is missing",
     );
+
+    if (platform === "win32" || platform === "darwin") {
+        const systemMediaControlsAddon = path.join(
+            resourcesPath,
+            "res",
+            ".service",
+            "native",
+            "smtc.node",
+        );
+        assert.ok(
+            fs.existsSync(systemMediaControlsAddon),
+            "packaged native system media controls addon is missing",
+        );
+    }
 
     if (platform === "win32" && arch === "x64") {
         const koffiAddon = path.join(

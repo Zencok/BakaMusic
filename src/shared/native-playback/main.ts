@@ -27,6 +27,7 @@ import { parseLocalMediaUrl } from "@shared/local-media/common";
 import logger from "@shared/logger/main";
 import ServiceManager from "@shared/service-manager/main";
 import AppConfig from "@shared/app-config/main";
+import messageBus from "@shared/message-bus/main";
 import {
     getOpaqueWindowBackground,
     resolveThemeScheme,
@@ -50,6 +51,7 @@ import {
     NativePlaybackRuntimeCommand,
     NativeVideoCommand,
 } from "./common";
+import systemMediaControls, { type SystemMediaAction } from "./system-media-controls";
 
 const REQUEST_TIMEOUT_MS = 20_000;
 const MAX_PENDING_REQUESTS = 32;
@@ -350,6 +352,10 @@ function validateVideoOpenRequest(value: unknown): ValidatedNativeVideoOpenReque
     assertIpcPayload(value, 256 * 1024);
     const sourceId = validateSourceId(value.sourceId);
     assertString(value.title, "native video title", 512);
+    assertString(value.artist, "native video artist", 512, true);
+    assertString(value.album, "native video album", 512, true);
+    assertString(value.artwork, "native video artwork", 32_768, true);
+    assertString(value.appMediaId, "native video media id", 512);
     assertString(value.initialSourceKey, "native video initial source key", 64);
     assertFiniteNumber(value.volume, "native video volume", 0, 1);
     const sources = validateVideoSources(value.sources);
@@ -359,6 +365,10 @@ function validateVideoOpenRequest(value: unknown): ValidatedNativeVideoOpenReque
     return {
         sourceId,
         title: value.title,
+        artist: value.artist,
+        album: value.album,
+        artwork: value.artwork,
+        appMediaId: value.appMediaId,
         sources,
         initialSourceKey: value.initialSourceKey,
         volume: value.volume,
@@ -691,9 +701,26 @@ class NativePlaybackManager {
 
     setup(windowManager: IWindowManager) {
         this.windowManager = windowManager;
+        messageBus.onAppStateChange((_state, patch) => {
+            if ("musicItem" in patch) {
+                systemMediaControls.setMusicItem(patch.musicItem ?? null);
+            }
+            if ("repeatMode" in patch && patch.repeatMode) {
+                systemMediaControls.setRepeatMode(patch.repeatMode);
+            }
+        });
         windowManager.on("WindowCreated", (data) => {
             if (data.windowName !== "main") {
                 return;
+            }
+            systemMediaControls.attachWindow(
+                data.browserWindow,
+                (event) => this.handleSystemMediaAction(event),
+            );
+            systemMediaControls.setMusicItem(messageBus.getAppState().musicItem ?? null);
+            const repeatMode = messageBus.getAppState().repeatMode;
+            if (repeatMode) {
+                systemMediaControls.setRepeatMode(repeatMode);
             }
             this.observeMainWindowLifecycle(data.browserWindow);
         });
@@ -758,10 +785,10 @@ class NativePlaybackManager {
         const { webContents } = browserWindow;
         webContents.on("did-start-navigation", (details) => {
             if (details.isMainFrame && !details.isSameDocument) {
-                this.stopOrphanedPlayback();
+                this.stopOrphanedMedia();
             }
         });
-        webContents.on("render-process-gone", () => this.stopOrphanedPlayback());
+        webContents.on("render-process-gone", () => this.stopOrphanedMedia());
         const syncVideoSurface = () => this.syncVideoWindowBounds();
         browserWindow.on("move", syncVideoSurface);
         browserWindow.on("resize", syncVideoSurface);
@@ -771,12 +798,113 @@ class NativePlaybackManager {
         browserWindow.on("hide", () => this.videoWindow?.hide());
         browserWindow.on("minimize", () => this.videoWindow?.hide());
         browserWindow.on("closed", () => {
-            this.stopOrphanedPlayback();
-            this.beginVideoClose();
+            this.stopOrphanedMedia();
+            systemMediaControls.dispose();
         });
     }
 
-    private stopOrphanedPlayback() {
+    private handleSystemMediaAction(event: SystemMediaAction) {
+        if (event.action === "raise") {
+            this.windowManager.showMainWindow();
+            return;
+        }
+        if (event.action === "quit") {
+            app.quit();
+            return;
+        }
+        if (event.action === "repeat") {
+            messageBus.sendCommand("SetRepeatMode", event.mode);
+            return;
+        }
+        if (this.videoSourceId) {
+            if (!this.videoChild) {
+                return;
+            }
+            let command: NativeVideoCommand | null = null;
+            if (event.action === "seek") {
+                command = {
+                    operation: "seek" as const,
+                    sourceId: this.videoSourceId,
+                    seconds: event.position,
+                };
+            } else if (event.action === "volume") {
+                command = {
+                    operation: "volume" as const,
+                    sourceId: this.videoSourceId,
+                    volume: event.volume,
+                };
+            } else if (event.action === "rate") {
+                command = {
+                    operation: "speed" as const,
+                    sourceId: this.videoSourceId,
+                    speed: event.rate,
+                };
+            } else if (event.action === "play" || event.action === "pause") {
+                command = {
+                    operation: event.action,
+                    sourceId: this.videoSourceId,
+                };
+            }
+            if (event.action === "stop") {
+                void this.stopVideoFromSystemControls();
+                return;
+            }
+            if (command) {
+                void this.commandVideo(command).catch((error) => {
+                    logger.logError(
+                        "System media controls video command failed",
+                        error instanceof Error ? error : new Error(String(error)),
+                    );
+                });
+            }
+            return;
+        }
+        switch (event.action) {
+            case "play":
+                messageBus.sendCommand("ResumePlayback");
+                break;
+            case "pause":
+                messageBus.sendCommand("PausePlayback");
+                break;
+            case "stop":
+                messageBus.sendCommand("PausePlayback");
+                messageBus.sendCommand("SeekPlayback", 0);
+                break;
+            case "next":
+                messageBus.sendCommand("SkipToNext");
+                break;
+            case "previous":
+                messageBus.sendCommand("SkipToPrevious");
+                break;
+            case "seek":
+                messageBus.sendCommand("SeekPlayback", event.position);
+                break;
+            case "volume":
+                messageBus.sendCommand("SetPlaybackVolume", event.volume);
+                break;
+            case "rate":
+                messageBus.sendCommand("SetPlaybackRate", event.rate);
+                break;
+        }
+    }
+
+    private async stopVideoFromSystemControls() {
+        const sourceId = this.videoSourceId;
+        if (!sourceId || !this.videoChild) return;
+        try {
+            await this.commandVideo({ operation: "pause", sourceId });
+            await this.commandVideo({ operation: "seek", sourceId, seconds: 0 });
+        } catch (error) {
+            logger.logError(
+                "System media controls video stop failed",
+                error instanceof Error ? error : new Error(String(error)),
+            );
+        }
+    }
+
+    private stopOrphanedMedia() {
+        systemMediaControls.resetMedia();
+        this.beginVideoClose();
         const sourceId = this.activeSourceId;
         if (!sourceId || !this.child?.pid) {
             return;
@@ -788,9 +916,22 @@ class NativePlaybackManager {
 
     private async getCapabilities(): Promise<INativePlaybackCapabilities> {
         if (!hasNativePlaybackRuntime()) {
-            return { available: false, engine: "libmpv" };
+            return {
+                available: false,
+                engine: "libmpv",
+                systemMediaControls: systemMediaControls.available,
+                systemMediaControlsActive: systemMediaControls.active,
+            };
         }
-        return this.request("capabilities", null) as Promise<INativePlaybackCapabilities>;
+        const capabilities = await this.request(
+            "capabilities",
+            null,
+        ) as INativePlaybackCapabilities;
+        return {
+            ...capabilities,
+            systemMediaControls: systemMediaControls.available,
+            systemMediaControlsActive: systemMediaControls.active,
+        };
     }
 
     private async listAudioDevices(): Promise<INativeAudioOutputDevice[]> {
@@ -1032,6 +1173,13 @@ class NativePlaybackManager {
         this.videoSurface = request.surface;
         this.videoLastSnapshot = null;
         this.videoReportedError = "";
+        systemMediaControls.beginVideo({
+            title: request.title,
+            artist: request.artist,
+            album: request.album,
+            artwork: request.artwork,
+            appMediaId: request.appMediaId,
+        });
         this.videoClosedPromise = new Promise<void>((resolve) => {
             this.resolveVideoClosed = resolve;
         });
@@ -1168,6 +1316,7 @@ class NativePlaybackManager {
         this.videoLastSnapshot = null;
         this.videoFallbackPending = false;
         this.videoReportedError = "";
+        systemMediaControls.endVideo();
         const resolve = this.resolveVideoClosed;
         this.resolveVideoClosed = null;
         this.videoClosedPromise = null;
@@ -1319,10 +1468,12 @@ class NativePlaybackManager {
                         ),
                     );
                 } else {
+                    systemMediaControls.setVideoPlaybackSnapshot(snapshot);
                     this.reportVideoError(snapshot.error);
                 }
                 return;
             }
+            systemMediaControls.setVideoPlaybackSnapshot(snapshot);
             this.sendVideoEvent({
                 sourceId: this.videoSourceId,
                 type: "snapshot",
@@ -1355,6 +1506,15 @@ class NativePlaybackManager {
     private reportVideoError(error: string) {
         if (!error || error === this.videoReportedError) return;
         this.videoReportedError = error;
+        systemMediaControls.setVideoPlaybackSnapshot({
+            sourceId: this.videoSourceId,
+            state: "error",
+            currentTime: this.videoLastSnapshot?.currentTime ?? 0,
+            duration: this.videoLastSnapshot?.duration ?? 0,
+            volume: this.videoLastSnapshot?.volume ?? 0,
+            speed: this.videoLastSnapshot?.speed ?? this.videoSpeed,
+            error,
+        });
         this.sendVideoEvent({
             sourceId: this.videoSourceId,
             type: "error",
@@ -1370,6 +1530,9 @@ class NativePlaybackManager {
     }
 
     private sendSnapshot(snapshot: INativePlaybackSnapshot) {
+        if (snapshot.sourceId === this.activeSourceId) {
+            systemMediaControls.setPlaybackSnapshot(snapshot);
+        }
         const mainWindow = this.windowManager.mainWindow;
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send("@shared/native-playback/snapshot", snapshot);
@@ -1418,6 +1581,7 @@ class NativePlaybackManager {
 
     private dispose() {
         this.shuttingDown = true;
+        systemMediaControls.dispose();
         this.stopResourceMonitor();
         this.stopVideoResourceMonitor();
         this.rejectPending(new Error("libmpv playback runtime disposed"));

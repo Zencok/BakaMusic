@@ -790,7 +790,17 @@ async function run() {
         })()`, "theme boundary");
         const nativePlaybackState = await mainSession.evaluate(`(async () => {
             const bridge = window["@shared/native-playback"];
-            const capabilities = await bridge.getCapabilities();
+            window["@shared/message-bus/main"].syncAppState({
+                musicItem: {
+                    id: "package-smoke-smtc",
+                    platform: "package-smoke",
+                    title: "BakaMusic SMTC Smoke",
+                    artist: "BakaMusic",
+                    album: "Package Verification",
+                    artwork: ${JSON.stringify(`${resourceOrigin}/pixel.png`)},
+                },
+            });
+            const initialCapabilities = await bridge.getCapabilities();
             const sources = [
                 ["wav", ${JSON.stringify(localMediaPath)}, false],
                 ["alac", ${JSON.stringify(alacMediaPath)}, false],
@@ -838,11 +848,74 @@ async function run() {
                 results[name] = await reachedPlaying;
                 await bridge.command({ operation: "stop", sourceId });
             }
+            const videoSourceId = "package-smoke-video";
+            const videoReachedPlaying = new Promise((resolve) => {
+                const timer = setTimeout(() => {
+                    cleanup();
+                    resolve(false);
+                }, 15_000);
+                const cleanup = bridge.onVideoEvent((event) => {
+                    if (event.sourceId !== videoSourceId || event.type !== "snapshot") return;
+                    if (event.snapshot?.state === "playing") {
+                        clearTimeout(timer);
+                        cleanup();
+                        resolve(true);
+                    } else if (event.snapshot?.state === "error") {
+                        clearTimeout(timer);
+                        cleanup();
+                        resolve(false);
+                    }
+                });
+            });
+            await bridge.openVideo({
+                sourceId: videoSourceId,
+                title: "BakaMusic Video SMTC Smoke",
+                artist: "BakaMusic",
+                album: "Package Verification",
+                artwork: ${JSON.stringify(`${resourceOrigin}/pixel.png`)},
+                appMediaId: "video:package-smoke:smtc",
+                sources: [{
+                    key: "smoke",
+                    label: "Smoke",
+                    url: window["@shared/utils"].fs.addFileScheme(
+                        ${JSON.stringify(localMediaPath)},
+                    ),
+                }],
+                initialSourceKey: "smoke",
+                volume: 0,
+                surface: {
+                    bounds: { x: 0, y: 0, width: 64, height: 64, borderRadius: 0 },
+                    visible: false,
+                },
+            });
+            const videoPlaying = await videoReachedPlaying;
+            const videoCapabilities = await bridge.getCapabilities();
+            await bridge.videoCommand({
+                operation: "pause",
+                sourceId: videoSourceId,
+            });
+            await bridge.videoCommand({
+                operation: "seek",
+                sourceId: videoSourceId,
+                seconds: 0,
+            });
+            await bridge.videoCommand({
+                operation: "play",
+                sourceId: videoSourceId,
+            });
+            await bridge.closeVideo(videoSourceId);
+            const finalCapabilities = await bridge.getCapabilities();
+            window["@shared/message-bus/main"].syncAppState({ musicItem: null });
             return {
-                available: capabilities.available,
-                clientApiVersion: capabilities.clientApiVersion,
-                mediaBackend: capabilities.mediaBackend,
-                engine: capabilities.engine,
+                available: initialCapabilities.available,
+                systemMediaControls: initialCapabilities.systemMediaControls,
+                systemMediaControlsActive: finalCapabilities.systemMediaControlsActive,
+                videoPlaying,
+                videoSystemMediaControlsActive: videoCapabilities.systemMediaControlsActive,
+                audioSystemMediaControlsRestored: finalCapabilities.systemMediaControlsActive,
+                clientApiVersion: initialCapabilities.clientApiVersion,
+                mediaBackend: initialCapabilities.mediaBackend,
+                engine: initialCapabilities.engine,
                 playing: results,
             };
         })()`, "libmpv + LibreMPEG AC-4 playback boundary");
@@ -923,6 +996,11 @@ async function run() {
             trashFileBridge: "function",
             nativePlaybackState: {
                 available: true,
+                systemMediaControls: process.platform === "win32",
+                systemMediaControlsActive: process.platform === "win32",
+                videoPlaying: true,
+                videoSystemMediaControlsActive: process.platform === "win32",
+                audioSystemMediaControlsRestored: process.platform === "win32",
                 clientApiVersion: "2.5",
                 mediaBackend: "librempeg",
                 engine: "libmpv",

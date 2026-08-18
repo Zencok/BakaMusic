@@ -12,6 +12,7 @@ async function main() {
         "sharp",
         "get-windows",
         "koffi",
+        "@particle/dbus-next",
     ]);
     plugin.init(projectRoot);
 
@@ -74,6 +75,9 @@ async function main() {
     assert.equal(ignore("/node_modules/nopt/lib/nopt-lib.js"), false);
     assert.equal(ignore("/node_modules/semver/index.js"), false);
     assert.equal(ignore("/node_modules/koffi/index.cjs"), false);
+    assert.equal(ignore("/node_modules/@particle/dbus-next/index.js"), false);
+    assert.equal(ignore("/node_modules/event-stream/index.js"), false);
+    assert.equal(ignore("/node_modules/xml2js/lib/parser.js"), false);
     assert.equal(
         ignore("/node_modules/@koromix/koffi-win32-x64/win32_x64/koffi.node"),
         process.platform === "win32" && process.arch === "x64" ? false : true,

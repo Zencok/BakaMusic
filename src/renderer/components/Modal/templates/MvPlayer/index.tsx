@@ -792,7 +792,13 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
 
             await nativePlayback.openVideo({
                 sourceId: sessionId,
-                title: [musicItem.title, musicItem.artist].filter(Boolean).join(" — "),
+                title: musicItem.title,
+                artist: musicItem.artist,
+                album: musicItem.album ?? "",
+                artwork: musicItem.artwork ?? musicItem.coverImg ?? "",
+                appMediaId: `video:${musicItem.platform}:${
+                    musicItem.videoId ?? musicItem.mv ?? musicItem.id
+                }`,
                 sources: [initialSource],
                 initialSourceKey: initialSource.key,
                 volume: muted ? 0 : volume,
