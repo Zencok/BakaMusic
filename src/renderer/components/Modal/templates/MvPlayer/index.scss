@@ -206,11 +206,11 @@ html[data-native-video-overlay="true"] {
   text-shadow: 0 2px 16px rgba(0, 0, 0, 0.8);
 
   & .mv-player-kicker {
+    position: relative;
     display: inline-flex;
     align-items: center;
-    gap: 7px;
     color: rgba(247, 248, 250, 0.58);
-    font-size: 0.62rem;
+    font-size: 0.72rem;
     font-weight: 760;
     letter-spacing: 0.14em;
     line-height: 1;
@@ -220,7 +220,7 @@ html[data-native-video-overlay="true"] {
   & strong {
     max-width: min(72vw, 760px);
     overflow: hidden;
-    font-size: 1.05rem;
+    font-size: 1.25rem;
     font-weight: 720;
     line-height: 1.28;
     letter-spacing: -0.018em;
@@ -230,6 +230,11 @@ html[data-native-video-overlay="true"] {
 }
 
 .mv-player-status-dot {
+  position: absolute;
+  right: 100%;
+  margin-right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 6px;
   height: 6px;
   flex: 0 0 auto;
@@ -263,7 +268,7 @@ html[data-native-video-overlay="true"] {
   gap: 6px;
   overflow: hidden;
   color: var(--mv-muted);
-  font-size: 0.76rem;
+  font-size: 0.85rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 
@@ -582,6 +587,7 @@ html[data-native-video-overlay="true"] {
   justify-content: space-between;
   gap: 16px;
   padding: 0 2px;
+  transform: translateY(6px);
 }
 
 .mv-player-control-group {
@@ -723,9 +729,12 @@ html[data-native-video-overlay="true"] {
 .mv-player-time {
   margin-left: 7px;
   color: rgba(255, 255, 255, 0.68);
-  font-size: 0.72rem;
+  font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
 
   & i {
     padding: 0 3px;
@@ -738,6 +747,8 @@ html[data-native-video-overlay="true"] {
 .mv-player-speed-picker,
 .mv-player-download-picker {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
 }
 
 .mv-player-speed-picker {
