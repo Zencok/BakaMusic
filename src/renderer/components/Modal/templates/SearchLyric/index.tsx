@@ -9,6 +9,7 @@ import SearchResult from "./searchResult";
 import { useTranslation } from "react-i18next";
 import PluginManager from "@shared/plugin-manager/renderer";
 import { RequestStateCode } from "@/common/constant";
+import useHorizontalWheel from "@/hooks/useHorizontalWheel";
 
 interface IProps {
     defaultTitle?: string;
@@ -21,6 +22,7 @@ export default function SearchLyric(props: IProps) {
 
     const [inputSearch, setInputSearch] = useState(defaultTitle ?? "");
     const [selectedPlatformIndex, setSelectedPlatformIndex] = useState(0);
+    const handlePlatformWheel = useHorizontalWheel<HTMLDivElement>();
 
     const searchLyric = useSearchLyric();
     const searchResults = searchResultStore.useValue();
@@ -82,6 +84,7 @@ export default function SearchLyric(props: IProps) {
                         <Tab.List
                             className="search-lyric-platform-rail"
                             aria-label={t("discovery_pages.source")}
+                            onWheel={handlePlatformWheel}
                         >
                             {availablePlugins.map((plugin) => (
                                 <Tab

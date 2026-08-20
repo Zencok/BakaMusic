@@ -1,5 +1,6 @@
 import { useState } from "react";
 import useMounted from "@/hooks/useMounted";
+import useHorizontalWheel from "@/hooks/useHorizontalWheel";
 import NoPlugin from "@/renderer/components/NoPlugin";
 import SvgAsset from "@/renderer/components/SvgAsset";
 import type { SvgAssetIconNames } from "@/renderer/components/SvgAsset";
@@ -82,6 +83,7 @@ export default function PluginInputPanel(props: IPluginInputPanelProps) {
     const [loading, setLoading] = useState(false);
     const [submitError, setSubmitError] = useState("");
     const isMounted = useMounted();
+    const handlePlatformWheel = useHorizontalWheel<HTMLDivElement>();
     const selectedPlugin = plugins.find((plugin) => plugin.hash === selectedPluginHash)
         ?? plugins[0];
     const normalizedInput = inputText.trim();
@@ -139,6 +141,7 @@ export default function PluginInputPanel(props: IPluginInputPanelProps) {
                                     aria-label={selectLabel}
                                     className="plugin-input-plugin-rail"
                                     role="group"
+                                    onWheel={handlePlatformWheel}
                                 >
                                     {plugins.map((plugin) => {
                                         const selected = plugin.hash === selectedPlugin?.hash;

@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import "./index.scss";
+import useHorizontalWheel from "@/hooks/useHorizontalWheel";
 
 interface IDiscoverySourceSwitcherProps {
     label: string;
@@ -37,6 +38,7 @@ function getRailTabs(rail: HTMLElement) {
 
 export default function DiscoverySourceSwitcher(props: IDiscoverySourceSwitcherProps) {
     const { label, plugins } = props;
+    const handlePlatformWheel = useHorizontalWheel<HTMLDivElement>();
     // 用 state 承接 ref：子组件的 layout effect 早于父级 host ref 挂载，
     // 只有回调 ref 触发的重渲染能保证首帧拿到真实节点
     const [rail, setRail] = useState<HTMLElement | null>(null);
@@ -47,6 +49,7 @@ export default function DiscoverySourceSwitcher(props: IDiscoverySourceSwitcherP
                 ref={setRail}
                 className="discovery-source-rail"
                 aria-label={label}
+                onWheel={handlePlatformWheel}
             >
                 {({ selectedIndex }) => (
                     <DiscoverySourceRail

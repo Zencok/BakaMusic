@@ -14,6 +14,7 @@ import SvgAsset, { SvgAssetIconNames } from "@/renderer/components/SvgAsset";
 import useSearch from "./hooks/useSearch";
 import usePageScrollPosition from "../../hooks/usePageScrollPosition";
 import "./index.scss";
+import useHorizontalWheel from "@/hooks/useHorizontalWheel";
 
 const mediaTypeIconMap = {
     music: "musical-note",
@@ -44,6 +45,7 @@ export default function SearchView() {
         useState<IPlugin.IPluginDelegate | null>(
             history.state?.usr?.plugin ?? null,
         );
+    const handlePlatformWheel = useHorizontalWheel<HTMLDivElement>();
     const currentMediaType = supportedMediaType[selectedIndex] ?? "music";
     const searchablePlugins = useMemo(() => {
         if (!plugins.length) {
@@ -149,6 +151,7 @@ export default function SearchView() {
                             className="search-platform-rail"
                             role="group"
                             aria-label={t("discovery_pages.source")}
+                            onWheel={handlePlatformWheel}
                         >
                             {searchablePlugins.map((plugin) => (
                                 <button
