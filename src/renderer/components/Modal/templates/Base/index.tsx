@@ -10,6 +10,7 @@ import { appWindowUtil } from "@shared/utils/renderer";
 interface IBaseModalProps {
     onDefaultClick?: () => void;
     onRequestClose?: () => void;
+    initialFocusRef?: { readonly current: HTMLElement | null };
     defaultClose?: boolean;
     withBlur?: boolean;
     animated?: boolean;
@@ -22,6 +23,7 @@ function Base(props: IBaseModalProps) {
     const {
         onDefaultClick,
         onRequestClose,
+        initialFocusRef,
         defaultClose = false,
         children,
         withBlur = true,
@@ -38,6 +40,11 @@ function Base(props: IBaseModalProps) {
             : null;
         const focusTimer = requestAnimationFrame(() => {
             const dialog = dialogRef.current;
+            const initialFocus = initialFocusRef?.current;
+            if (initialFocus && dialog?.contains(initialFocus) && !initialFocus.hasAttribute("disabled")) {
+                initialFocus.focus();
+                return;
+            }
             const firstFocusable = dialog?.querySelector<HTMLElement>(
                 "button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), "
                 + "textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
@@ -118,7 +125,7 @@ function Base(props: IBaseModalProps) {
             window.removeEventListener("keydown", onKeyDown, true);
             previousFocus?.focus();
         };
-    }, [onDefaultClick, onRequestClose]);
+    }, [initialFocusRef, onDefaultClick, onRequestClose]);
 
     return (
         // The dialog itself owns pointer-based backdrop dismissal.

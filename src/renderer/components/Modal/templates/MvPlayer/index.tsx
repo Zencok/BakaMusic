@@ -614,8 +614,6 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
 
     useEffect(() => {
         mountedRef.current = true;
-        // 自动聚焦播放器容器，防止焦点默认落到关闭按钮上，导致空格键触发关闭
-        playerRef.current?.focus();
         return () => {
             mountedRef.current = false;
             downloadRequestIdRef.current = Number.MAX_SAFE_INTEGER;
@@ -1137,7 +1135,12 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
     } as CSSProperties;
 
     return (
-        <Base animated={false} withBlur={false} onRequestClose={requestClose}>
+        <Base
+            animated={false}
+            withBlur={false}
+            onRequestClose={requestClose}
+            initialFocusRef={playerRef}
+        >
             <div
                 ref={playerRef}
                 className="modal--mv-player"

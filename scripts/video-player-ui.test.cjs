@@ -57,7 +57,7 @@ assert.match(player, /setCloseCovered\(true\)[\s\S]*?nativePlayback\.closeVideo/
 assert.match(player, /setExiting\(true\)/);
 assert.match(player, /await waitForRendererPaint\(\)/);
 assert.match(player, /visible: false/);
-assert.match(player, /<Base animated=\{false\} withBlur=\{false\} onRequestClose=\{requestClose\}>/);
+assert.match(player, /<Base[\s\S]*?initialFocusRef=\{playerRef\}[\s\S]*?>/);
 assert.doesNotMatch(player, /native_active/);
 assert.doesNotMatch(player, /<kbd>SPACE<\/kbd>/);
 assert.doesNotMatch(player, /surfaceVisible = nativeOpened\s*&& playing/);
@@ -113,6 +113,8 @@ assert.match(nativeMain, /window\.hide\(\);[\s\S]*?window\.destroy\(\);/);
 
 const baseModal = read("src/renderer/components/Modal/templates/Base/index.tsx");
 assert.match(baseModal, /onRequestClose\?:/);
+assert.match(baseModal, /initialFocusRef\?:/);
+assert.match(baseModal, /initialFocusRef\?\.current/);
 assert.match(baseModal, /if \(onRequestClose\)/);
 
 const videoUrl = read("src/common/video-url.ts");
