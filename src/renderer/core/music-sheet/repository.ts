@@ -435,7 +435,10 @@ export async function clearSheet(sheetId: string) {
 }
 
 export async function starMusicSheet(sheet: IMedia.IMediaBase) {
-    const newSheets = [...starredMusicSheets, sheet];
+    const newSheets = [
+        ...starredMusicSheets.filter((item) => !isSameMedia(item, sheet)),
+        sheet,
+    ];
     await setUserPreferenceIDB("starredMusicSheets", newSheets);
     starredMusicSheets = newSheets;
 }

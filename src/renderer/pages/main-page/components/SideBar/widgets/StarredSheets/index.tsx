@@ -45,12 +45,27 @@ export default function StarredSheets() {
                             currentPlatform === item.platform
                                             )
                                         ) {
-                                            // 如果不是相同歌单
-                                            navigate(`/main/musicsheet/${item.platform}/${item.id}`, {
-                                                state: {
-                                                    sheetItem: item,
-                                                },
-                                            });
+                                            const favoriteType = item.$$favoriteType;
+                                            if (favoriteType === "album") {
+                                                navigate(`/main/album/${item.platform}/${item.id}`, {
+                                                    state: {
+                                                        albumItem: item,
+                                                    },
+                                                });
+                                            } else if (favoriteType === "toplist") {
+                                                navigate(`/main/toplist-detail/${item.platform}`, {
+                                                    state: {
+                                                        toplist: item,
+                                                    },
+                                                });
+                                            } else {
+                                                // 旧收藏项和远程歌单继续走歌单详情。
+                                                navigate(`/main/musicsheet/${item.platform}/${item.id}`, {
+                                                    state: {
+                                                        sheetItem: item,
+                                                    },
+                                                });
+                                            }
                                         }
                                     }}
                                     onContextMenu={(e) => {

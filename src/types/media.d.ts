@@ -20,6 +20,8 @@ declare namespace IMedia {
   interface IMediaBase extends IUnique {
     /** 媒体来源平台，如本地等 */
     platform: string;
+    /** 收藏入口类型，用于恢复到正确的详情页。 */
+    $$favoriteType?: "sheet" | "album" | "toplist";
     [k: string | number | symbol]: any;
   }
 }

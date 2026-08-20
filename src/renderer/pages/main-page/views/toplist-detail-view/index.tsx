@@ -1,6 +1,7 @@
 import useTopListDetail from "./hooks/useTopListDetail";
 import { useParams } from "react-router-dom";
 import MusicSheetlikeView from "@/renderer/components/MusicSheetlikeView";
+import MusicSheetFavoriteOption from "@/renderer/components/MusicSheetFavoriteOption";
 
 export default function TopListDetailView() {
     const params = useParams();
@@ -22,6 +23,12 @@ export default function TopListDetailView() {
                 musicList={topListDetail?.musicList ?? []}
                 state={state}
                 onLoadMore={loadMore}
+                options={topListDetail ? (
+                    <MusicSheetFavoriteOption
+                        musicSheet={topListDetail}
+                        type="toplist"
+                    ></MusicSheetFavoriteOption>
+                ) : null}
             />
         </div>
     );

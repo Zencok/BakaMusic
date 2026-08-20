@@ -2,6 +2,7 @@ import MusicSheetlikeView from "@/renderer/components/MusicSheetlikeView";
 import { useParams } from "react-router-dom";
 import { useMemo } from "react";
 import useAlbumDetail from "./hooks/useAlbumDetail";
+import MusicSheetFavoriteOption from "@/renderer/components/MusicSheetFavoriteOption";
 
 export default function AlbumView() {
     const params = useParams();
@@ -27,6 +28,12 @@ export default function AlbumView() {
                 musicList={musicList}
                 onLoadMore={getAlbumDetail}
                 state={requestState}
+                options={displayAlbumItem.id ? (
+                    <MusicSheetFavoriteOption
+                        musicSheet={displayAlbumItem}
+                        type="album"
+                    ></MusicSheetFavoriteOption>
+                ) : null}
             ></MusicSheetlikeView>
         </div>
     );
