@@ -103,7 +103,9 @@ html[data-native-video-overlay="true"] {
       position: absolute;
       z-index: 0;
       inset: 0;
-      background: var(--appOverlayMask);
+      background: transparent;
+      -webkit-backdrop-filter: blur(1px);
+      backdrop-filter: blur(1px);
       @include native-video-rounded-cutout;
       pointer-events: none;
     }
@@ -111,6 +113,8 @@ html[data-native-video-overlay="true"] {
 
   & #components--modal-base-container:has(> .modal--mv-player) {
     background: transparent !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
   }
 
   & #components--modal-base-container > .modal--mv-player[data-native-surface-visible="true"] {
@@ -125,17 +129,13 @@ html[data-native-video-overlay="true"] {
   }
 }
 
-// The Base modal owns a full-window backdrop-filter even when `withBlur` is
-// false. A native HWND is composited behind that element, so waiting for the
-// root dataset to flip leaves the first decoded frames blurred (and can keep
-// the whole video blurred if the dataset update races a compositor tick).
-// Disable the Base filter as soon as this specific modal is mounted. Keep the
-// same mask from the opening frame; once the native cutout is active, the
-// radius-aware pseudo-element above replaces it with an equivalent mask.
+// Keep the application background at its existing opacity while the player is
+// open. Once the native cutout is active, the pseudo-element above carries the
+// same blur around the video surface without filtering the decoded frames.
 #components--modal-base-container:has(> .modal--mv-player) {
-  background: var(--appOverlayMask) !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
+  background: transparent !important;
+  -webkit-backdrop-filter: blur(1px) !important;
+  backdrop-filter: blur(1px) !important;
 }
 
 .mv-player-backdrop,
