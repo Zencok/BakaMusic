@@ -14,6 +14,11 @@ import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import AppConfig from "@shared/app-config/main";
 import {
+    minimizeMainWindowWithNativeAnimation,
+    restoreMainWindowWithNativeAnimation,
+    toggleMainWindowMaximizeWithNativeAnimation,
+} from "@shared/window-effects/main";
+import {
     assertBoolean,
     assertFiniteNumber,
     assertIpcPayload,
@@ -877,10 +882,12 @@ class Utils {
             const mainWindow = this.windowManager.mainWindow;
             if (mainWindow) {
                 if (skipTaskBar) {
-                    mainWindow.hide();
-                    mainWindow.setSkipTaskbar(true);
+                    // Keep the native minimized state so Windows can render its
+                    // minimize/restore transition. Hiding the window directly
+                    // makes it disappear without any system animation.
+                    minimizeMainWindowWithNativeAnimation(mainWindow, true);
                 } else {
-                    mainWindow.minimize();
+                    minimizeMainWindowWithNativeAnimation(mainWindow);
                 }
             }
         });
@@ -1006,11 +1013,7 @@ class Utils {
             const mainWindow = this.windowManager.mainWindow;
 
             if (mainWindow) {
-                if (mainWindow.isMaximized()) {
-                    mainWindow.unmaximize();
-                } else {
-                    mainWindow.maximize();
-                }
+                toggleMainWindowMaximizeWithNativeAnimation(mainWindow);
             }
         });
 
@@ -1051,10 +1054,14 @@ class Utils {
             }
 
             if (mainWindow.isMinimized() || !mainWindow.isVisible()) {
-                mainWindow.show();
+                if (mainWindow.isMinimized()) {
+                    restoreMainWindowWithNativeAnimation(mainWindow);
+                } else {
+                    mainWindow.show();
+                }
+                mainWindow.setSkipTaskbar(false);
             } else {
-                mainWindow.hide();
-                mainWindow.setSkipTaskbar(true);
+                minimizeMainWindowWithNativeAnimation(mainWindow, true);
             }
         });
 
