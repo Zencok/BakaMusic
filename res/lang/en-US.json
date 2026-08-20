@@ -485,6 +485,8 @@
         "lyric_ctx_download_success": "Download Successful",
         "lyric_ctx_download_fail": "Download Failed",
         "lyric_ctx_set_font_size": "Set Font Size",
+        "lyric_ctx_set_offset": "Lyric Offset",
+        "lyric_ctx_offset_reset": "Reset",
         "link_media_lyric": "Link Lyric",
         "media_lyric_linked": "Lyric Linked: ",
         "unlink_media_lyric": "Clear Lyric Link",

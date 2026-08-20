@@ -485,6 +485,8 @@
         "lyric_ctx_download_success": "下載成功",
         "lyric_ctx_download_fail": "下載失敗",
         "lyric_ctx_set_font_size": "設置字體大小",
+        "lyric_ctx_set_offset": "歌詞偏移",
+        "lyric_ctx_offset_reset": "重設",
         "link_media_lyric": "鏈接歌詞",
         "media_lyric_linked": "已鏈接歌詞：",
         "unlink_media_lyric": "清除歌詞關聯",

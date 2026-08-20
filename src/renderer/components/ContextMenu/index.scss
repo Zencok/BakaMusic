@@ -1,3 +1,11 @@
+.global-menu-dismiss-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 999998;
+  background: transparent;
+  -webkit-app-region: no-drag !important;
+}
+
 .context-menu--single-column-container {
   position: fixed;
   overflow-y: auto;

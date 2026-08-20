@@ -2,6 +2,7 @@ import { CurrentTime, ErrorReason, ICurrentLyric, PlayerEvents } from "./enum";
 import shuffle from "lodash.shuffle";
 import {
     addSortProperty,
+    getMediaPrimaryKey,
     getInternalData,
     getQualityOrder,
     isSameMedia,
@@ -51,6 +52,13 @@ import {
 import { shouldPersistPlaybackProgress } from "./progress-persistence";
 
 const PROGRESS_PERSIST_INTERVAL_MS = 3_000;
+const MAX_LYRIC_OFFSET_SECONDS = 3_600;
+
+function normalizeLyricOffset(value: unknown) {
+    return typeof value === "number" && Number.isFinite(value)
+        ? Math.max(-MAX_LYRIC_OFFSET_SECONDS, Math.min(MAX_LYRIC_OFFSET_SECONDS, value))
+        : 0;
+}
 
 /** 同一次设备拔出会同时产生错误和列表变化，这段时间内只处理一次。 */
 const AUDIO_DEVICE_LOSS_GUARD_MS = 5_000;
@@ -793,6 +801,39 @@ class TrackPlayer {
         }
     }
 
+    /** 设置当前歌曲的歌词偏移，并保存到该媒体的偏好中。正数表示歌词提前。 */
+    public setLyricOffset(offsetSeconds: number) {
+        const musicItem = this.currentMusic;
+        const parser = this.lyric?.parser;
+        if (!musicItem || !parser) {
+            return false;
+        }
+
+        const offset = normalizeLyricOffset(offsetSeconds);
+        // The user-facing offset follows MusicFree's convention: negative delays
+        // lyrics and positive values advance them. The parser stores the actual
+        // timeline shift, so its sign is inverted here.
+        const parserOffset = -offset;
+        if (Math.abs(parser.getTimeOffset() - parserOffset) < 0.0001) {
+            return true;
+        }
+
+        parser.setTimeOffset(parserOffset);
+        const offsetMap = getUserPreference("lyricOffset") ?? {};
+        const mediaKey = getMediaPrimaryKey(musicItem);
+        const nextOffsetMap = {
+            ...offsetMap,
+            [mediaKey]: offset,
+        };
+        setUserPreference("lyricOffset", nextOffsetMap);
+
+        // Recalculate the active line immediately so all lyric views update before
+        // the next audio progress tick arrives.
+        this.syncCurrentLyric(this.progress.currentTime);
+        this.ee.emit(PlayerEvents.LyricChanged, parser);
+        return true;
+    }
+
     public pause() {
         this.audioController.pause();
         if (this.playerState !== this.audioController.playerState) {
@@ -1299,6 +1340,9 @@ class TrackPlayer {
                 format: lyricSource.format,
                 translation: lyricSource.translation,
                 romanization: lyricSource.romanization,
+                timeOffset: -normalizeLyricOffset(
+                    getUserPreference("lyricOffset")?.[getMediaPrimaryKey(currentMusic)],
+                ),
             });
 
             this.setCurrentLyric({
@@ -1510,6 +1554,7 @@ class TrackPlayer {
         if (
             prevLrc?.index !== active.lineIndex ||
             prevWord?.index !== active.wordIndex ||
+            Math.abs((this.lyric.lineProgress ?? 0) - active.lineProgress) > 0.02 ||
             Math.abs((this.lyric.wordProgress ?? 0) - active.wordProgress) > 0.02
         ) {
             this.setCurrentLyric({

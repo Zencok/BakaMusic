@@ -23,6 +23,13 @@ export interface IContextMenuItem {
 
 type ContextMenuPlacement = "auto" | "bottom-end" | "bottom-start";
 
+interface IContextMenuBoundary {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+}
+
 interface IContextMenuData {
     /** 菜单 */
     menuItems?: IContextMenuItem[];
@@ -32,6 +39,8 @@ interface IContextMenuData {
     y: number;
     /** 相对锚点的展开方向 */
     placement?: ContextMenuPlacement;
+    /** 菜单需要保持在内的视口区域 */
+    boundary?: IContextMenuBoundary;
     /** 设置子目录 */
     setSubMenu?: (
         subMenu?: Omit<IContextMenuData, "setSubMenu">,
@@ -60,7 +69,7 @@ export function showContextMenu(
 export function showCustomContextMenu(
     contextMenuData: Pick<
         IContextMenuData,
-    "x" | "y" | "width" | "height" | "component"
+        "boundary" | "component" | "height" | "placement" | "width" | "x" | "y"
     >,
 ) {
     contextMenuDataStore.setValue(contextMenuData);
@@ -231,17 +240,21 @@ export function ContextMenuComponent() {
         height,
         component,
         placement = "auto",
+        boundary,
     } = contextMenuData ?? {};
     const [subMenuData, setSubMenuData] = useState<IContextMenuData | null>(null);
 
-    const [actualX, actualY, actualMaxHeight] = useMemo(() => {
+    const [actualX, actualY, actualMaxHeight, actualWidth] = useMemo(() => {
         if (x === undefined || y === undefined) {
-            return [-1000, -1000, menuContainerMaxHeight] as [number, number, number];
+            return [-1000, -1000, menuContainerMaxHeight, menuItemWidth] as [
+                number,
+                number,
+                number,
+                number,
+            ];
         }
-        const isLeft = x < window.innerWidth / 2 ? 0 : 1;
-        const isTop = y < window.innerHeight / 2 ? 0 : 2;
         const visibleMenuItems = menuItems ?? [];
-    
+
         const containerHeight = Math.min(
             component
                 ? height ?? menuItemHeight
@@ -255,57 +268,60 @@ export function ContextMenuComponent() {
         );
 
         const containerWidth = width ?? menuItemWidth;
+        const bounds = {
+            top: Math.max(offset, boundary?.top ?? offset),
+            right: Math.min(
+                window.innerWidth - offset,
+                boundary?.right ?? window.innerWidth - offset,
+            ),
+            bottom: Math.min(
+                window.innerHeight - offset,
+                boundary?.bottom ?? window.innerHeight - offset,
+            ),
+            left: Math.max(offset, boundary?.left ?? offset),
+        };
+        const availableWidth = Math.max(0, bounds.right - bounds.left);
+        const availableHeight = Math.max(
+            menuItemHeight + menuItemHeight / 2,
+            bounds.bottom - bounds.top,
+        );
+        const renderedWidth = Math.min(containerWidth, availableWidth);
+        const renderedHeight = Math.min(containerHeight, availableHeight);
+        const clampX = (value: number) => Math.max(
+            bounds.left,
+            Math.min(bounds.right - renderedWidth, value),
+        );
+        const clampY = (value: number) => Math.max(
+            bounds.top,
+            Math.min(bounds.bottom - renderedHeight, value),
+        );
 
         if (placement !== "auto") {
             const desiredX = placement === "bottom-end"
                 ? x - containerWidth
                 : x;
-            const actualPlacementX = Math.max(
-                offset,
-                Math.min(window.innerWidth - containerWidth - offset, desiredX),
-            );
-            const actualPlacementY = Math.max(54, y + offset);
-            const availableHeight = Math.max(
-                menuItemHeight + menuItemHeight / 2,
-                window.innerHeight - 64 - actualPlacementY,
-            );
 
             return [
-                actualPlacementX,
-                actualPlacementY,
-                Math.min(containerHeight, availableHeight),
-            ] as [number, number, number];
+                clampX(desiredX),
+                clampY(y + offset),
+                renderedHeight,
+                renderedWidth,
+            ] as [number, number, number, number];
         }
 
-        switch (isLeft + isTop) {
-            case 0: // 左上角
-                return [x + offset, y + offset, menuContainerMaxHeight];
-            case 1: // 右上角
-                return [
-                    x - containerWidth - offset,
-                    y + offset,
-                    menuContainerMaxHeight,
-                ];
-            case 2: // 左下角
-                return [
-                    x + offset,
-                    y - offset - containerHeight,
-                    menuContainerMaxHeight,
-                ];
-            case 3: // 右下角
-                return [
-                    x - containerWidth - offset,
-                    y - offset - containerHeight,
-                    menuContainerMaxHeight,
-                ];
-        }
-
+        const desiredX = x + offset + renderedWidth <= bounds.right
+            ? x + offset
+            : x - offset - renderedWidth;
+        const desiredY = y + offset + renderedHeight <= bounds.bottom
+            ? y + offset
+            : y - offset - renderedHeight;
         return [
-            x + offset,
-            y + offset,
-            menuContainerMaxHeight,
-        ] as [number, number, number];
-    }, [component, height, menuItems, placement, width, x, y]);
+            clampX(desiredX),
+            clampY(desiredY),
+            renderedHeight,
+            renderedWidth,
+        ] as [number, number, number, number];
+    }, [boundary, component, height, menuItems, placement, width, x, y]);
 
     useEffect(() => {
         const contextClickListener = () => {
@@ -344,50 +360,69 @@ export function ContextMenuComponent() {
 
 
     return (
-        <If condition={contextMenuData !== null && !component}>
-            <If.Truthy>
-                {contextMenuData ? (
-                    <SingleColumnContextMenuComponent
-                        menuItems={menuItems ?? []}
-                        maxHeight={actualMaxHeight}
-                        x={actualX}
-                        y={actualY}
-                        setSubMenu={(data, menuItem) => {
-                            setSubMenuData(
-                                data
-                                    ? {
-                                        ...data,
-                                        onItemClick(value) {
-                                            menuItem?.onClick?.(value);
-                                        },
-                                    }
-                                    : null,
-                            );
-                        }}
-                    ></SingleColumnContextMenuComponent>
-                ) : null}
-                {subMenuData ? (
-                    <SingleColumnContextMenuComponent
-                        menuItems={subMenuData.menuItems ?? []}
-                        x={subMenuData.x}
-                        y={subMenuData.y}
-                        onItemClick={subMenuData.onItemClick}
-                    ></SingleColumnContextMenuComponent>
-                ) : null}
-            </If.Truthy>
-            <If.Falsy>
+        <>
+            {contextMenuData ? (
                 <div
-                    className="context-menu--single-column-container shadow backdrop-color"
-                    style={{
-                        width: width ?? menuItemWidth,
-                        top: actualY,
-                        left: actualX,
-                        maxHeight: menuContainerMaxHeight,
+                    className="global-menu-dismiss-layer"
+                    aria-hidden="true"
+                    onPointerDown={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        hideContextMenu();
                     }}
-                >
-                    {component}
-                </div>
-            </If.Falsy>
-        </If>
+                    onContextMenu={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        hideContextMenu();
+                    }}
+                ></div>
+            ) : null}
+            <If condition={contextMenuData !== null && !component}>
+                <If.Truthy>
+                    {contextMenuData ? (
+                        <SingleColumnContextMenuComponent
+                            menuItems={menuItems ?? []}
+                            maxHeight={actualMaxHeight}
+                            x={actualX}
+                            y={actualY}
+                            setSubMenu={(data, menuItem) => {
+                                setSubMenuData(
+                                    data
+                                        ? {
+                                            ...data,
+                                            onItemClick(value) {
+                                                menuItem?.onClick?.(value);
+                                            },
+                                        }
+                                        : null,
+                                );
+                            }}
+                        ></SingleColumnContextMenuComponent>
+                    ) : null}
+                    {subMenuData ? (
+                        <SingleColumnContextMenuComponent
+                            menuItems={subMenuData.menuItems ?? []}
+                            x={subMenuData.x}
+                            y={subMenuData.y}
+                            onItemClick={subMenuData.onItemClick}
+                        ></SingleColumnContextMenuComponent>
+                    ) : null}
+                </If.Truthy>
+                <If.Falsy>
+                    <div
+                        className="context-menu--single-column-container shadow backdrop-color"
+                        style={{
+                            width: actualWidth,
+                            top: actualY,
+                            left: actualX,
+                            maxHeight: actualMaxHeight,
+                        }}
+                        role="menu"
+                    >
+                        {component}
+                    </div>
+                </If.Falsy>
+            </If>
+        </>
     );
 }

@@ -76,6 +76,10 @@ export default function Lyric({
     const [fontSize, setFontSize] = useState<string | null>(
         getUserPreference("inlineLyricFontSize"),
     );
+    const [lyricOffsetMap] = useUserPreference("lyricOffset");
+    const currentLyricOffset = currentMusic
+        ? lyricOffsetMap?.[getMediaPrimaryKey(currentMusic)]
+        : undefined;
     const showTranslation = useAppConfig("lyric.showTranslation");
     const showRomanization = useAppConfig("lyric.showRomanization");
     const { t } = useTranslation();
@@ -85,11 +89,14 @@ export default function Lyric({
             return [];
         }
 
+        // The parser instance is stable while setTimeOffset mutates its timeline.
+        // Reading the active preference makes that mutation invalidate this memo.
+        void currentLyricOffset;
         return mapLyricLinesToAml(lyricParser.getLyricItems(), {
             includeTranslation: !!showTranslation && lyricParser.hasTranslation,
             includeRomanization: !!showRomanization && lyricParser.hasRomanization,
         });
-    }, [lyricParser, showRomanization, showTranslation]);
+    }, [currentLyricOffset, lyricParser, showRomanization, showTranslation]);
 
     // 面板保持挂载，但启动恢复后可能仍处于初始 "loading" 态：仅在此状态补拉一次。
     // `{}` 表示"已加载但没有歌词"，那种情况不能循环拉取。
@@ -109,12 +116,22 @@ export default function Lyric({
         });
     }, [currentMusic]);
 
-    const openContextMenu = useCallback((x: number, y: number) => {
+    const openContextMenu = useCallback((
+        x: number,
+        y: number,
+        boundary: Pick<DOMRect, "bottom" | "left" | "right" | "top">,
+    ) => {
         showCustomContextMenu({
             x,
             y,
             width: 244,
-            height: currentMusic && isLocalMusic(currentMusic) ? 366 : 328,
+            height: currentMusic && isLocalMusic(currentMusic) ? 420 : 382,
+            boundary: {
+                top: boundary.top,
+                right: boundary.right,
+                bottom: boundary.bottom,
+                left: boundary.left,
+            },
             component: (
                 <LyricContextMenu
                     lyricParser={lyricParser}
@@ -176,7 +193,11 @@ export default function Lyric({
                 className="music-detail-lyric-stage"
                 onContextMenu={(event) => {
                     event.preventDefault();
-                    openContextMenu(event.clientX, event.clientY);
+                    openContextMenu(
+                        event.clientX,
+                        event.clientY,
+                        event.currentTarget.getBoundingClientRect(),
+                    );
                 }}
             >
                 {isLyricLoading ? (
@@ -190,9 +211,11 @@ export default function Lyric({
                         currentTimeMs={currentTimeMs}
                         playing={playerState === PlayerState.Playing}
                         speed={speed}
-                        fontSize={classicAmll
-                            ? "max(max(5vh, 2.5vw), 14px)"
-                            : displayFontSize || "clamp(28px, 2.8vw, 48px)"}
+                        fontSize={displayFontSize
+                            ? `${displayFontSize}px`
+                            : classicAmll
+                                ? "max(max(5vh, 2.5vw), 14px)"
+                                : "clamp(28px, 2.8vw, 48px)"}
                         textColor="#ffffff"
                         hoverBackgroundColor="rgba(255,255,255,0.04)"
                         alignAnchor="center"
@@ -441,6 +464,23 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
         && !!lyricParser
         && !!localMusicPath
         && isLocalMusic(currentMusic);
+    const [lyricOffset, setLyricOffset] = useState(() => {
+        const storedOffset = getUserPreference("lyricOffset")?.[
+            currentMusic ? getMediaPrimaryKey(currentMusic) : "invalid@invalid"
+        ];
+        return typeof storedOffset === "number" && Number.isFinite(storedOffset)
+            ? storedOffset
+            : 0;
+    });
+
+    useEffect(() => {
+        const storedOffset = getUserPreference("lyricOffset")?.[
+            currentMusic ? getMediaPrimaryKey(currentMusic) : "invalid@invalid"
+        ];
+        setLyricOffset(typeof storedOffset === "number" && Number.isFinite(storedOffset)
+            ? storedOffset
+            : 0);
+    }, [currentMusic, lyricParser]);
 
     useEffect(() => {
         let cancelled = false;
@@ -470,6 +510,16 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
 
         setUserPreference("inlineLyricFontSize", `${numericValue}`);
         setLyricFontSize(`${numericValue}`);
+    }
+
+    function changeLyricOffset(delta: number) {
+        if (!lyricParser) {
+            return;
+        }
+        const nextOffset = Number((-lyricParser.getTimeOffset() + delta).toFixed(1));
+        if (trackPlayer.setLyricOffset(nextOffset)) {
+            setLyricOffset(nextOffset);
+        }
     }
 
     async function downloadLyric(fileType: "lrc" | "txt") {
@@ -642,6 +692,53 @@ function LyricContextMenu({ lyricParser, setLyricFontSize }: ILyricContextMenuPr
                 >
                     <SvgAsset iconName="font-size-larger"></SvgAsset>
                 </div>
+            </div>
+            <div className="divider"></div>
+            <div className="lyric-ctx-menu--set-font-title">
+                {t("music_detail.lyric_ctx_set_offset")}
+            </div>
+            <div
+                className="lyric-ctx-menu--font-container lyric-ctx-menu--offset-container"
+                data-disabled={!lyricParser}
+                onClick={(event) => event.stopPropagation()}
+            >
+                <button
+                    type="button"
+                    className="lyric-offset-button"
+                    disabled={!lyricParser}
+                    aria-label="-0.2s"
+                    onClick={() => changeLyricOffset(-0.2)}
+                >
+                    <SvgAsset iconName="chevron-left"></SvgAsset>
+                    <span>-0.2s</span>
+                </button>
+                <button
+                    type="button"
+                    className="lyric-offset-button lyric-offset-reset"
+                    disabled={!lyricParser}
+                    aria-label={t("music_detail.lyric_ctx_offset_reset")}
+                    title={t("music_detail.lyric_ctx_offset_reset")}
+                    onClick={() => {
+                        if (lyricParser) {
+                            if (trackPlayer.setLyricOffset(0)) {
+                                setLyricOffset(0);
+                            }
+                        }
+                    }}
+                >
+                    <SvgAsset iconName="arrow-path"></SvgAsset>
+                    <span>{`${lyricOffset > 0 ? "+" : ""}${lyricOffset.toFixed(1)}s`}</span>
+                </button>
+                <button
+                    type="button"
+                    className="lyric-offset-button"
+                    disabled={!lyricParser}
+                    aria-label="+0.2s"
+                    onClick={() => changeLyricOffset(0.2)}
+                >
+                    <SvgAsset iconName="chevron-right"></SvgAsset>
+                    <span>+0.2s</span>
+                </button>
             </div>
             <div className="divider"></div>
             <div

@@ -29,6 +29,8 @@ interface IOptions {
     format?: ILyric.LyricFormat;
     translation?: string;
     romanization?: string;
+    /** 用户为当前歌曲设置的额外时间偏移（秒，正数表示歌词延后）。 */
+    timeOffset?: number;
 }
 
 interface IParsedLyricContent {
@@ -2934,6 +2936,7 @@ export default class LyricParser {
     private lrcItems: Array<IParsedLrcItem>;
     private searchableLrcItems: Array<IParsedLrcItem>;
     private lastSearchIndex = 0;
+    private timeOffset = 0;
 
     public hasTranslation = false;
     public hasRomanization = false;
@@ -2998,6 +3001,32 @@ export default class LyricParser {
 
         this.hasRomanization = inheritRepeatedLineRomanization(this.lrcItems)
             || this.hasRomanization;
+
+        this.setTimeOffset(options?.timeOffset ?? 0);
+    }
+
+    /** 当前歌曲的额外歌词偏移（秒，正数表示歌词延后）。 */
+    getTimeOffset() {
+        return this.timeOffset;
+    }
+
+    /**
+     * 平移行、逐字和罗马音时间轴。
+     * 解析得到的 [offset:] 已经在 parseAll 中应用，这里只处理用户设置的额外偏移。
+     */
+    setTimeOffset(offsetSeconds: number) {
+        const normalizedOffset = Number.isFinite(offsetSeconds)
+            ? Math.max(-3600, Math.min(3600, offsetSeconds))
+            : 0;
+        const delta = normalizedOffset - this.timeOffset;
+        if (Math.abs(delta) < 0.0001) {
+            return false;
+        }
+
+        shiftLyricItemsTime(this.lrcItems, delta);
+        this.timeOffset = normalizedOffset;
+        this.lastSearchIndex = 0;
+        return true;
     }
 
     /** 统一解析入口 */

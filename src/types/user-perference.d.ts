@@ -5,6 +5,8 @@ declare namespace IUserPreference {
     /** 当前进度 */
     currentMusic: IMusic.IMusicItem;
     currentProgress: number;
+    /** 按媒体主键保存的歌词偏移（秒，正数表示歌词提前） */
+    lyricOffset: Record<string, number>;
     currentQuality: IMusic.IQualityKey;
     /** 当前音量 */
     volume: number;

@@ -268,6 +268,24 @@ function parse(raw, format) {
     assert.equal(parser.getPosition(14), null);
 }
 
+// 用户偏移必须同时作用于行级和逐字时间轴，并且反复调整按绝对值计算。
+{
+    const parser = new LyricParser(
+        "[00:01.000]<00:01.000>Hello <00:01.500>world<00:02.000>",
+        { format: "lrc-a2", timeOffset: 0.4 },
+    );
+    let [line] = parser.getLyricItems();
+    assert.equal(line.time, 1.4);
+    assert.equal(line.words[0].startTime, 1.4);
+    assert.equal(parser.getTimeOffset(), 0.4);
+
+    parser.setTimeOffset(-0.2);
+    [line] = parser.getLyricItems();
+    assert.ok(Math.abs(line.time - 0.8) < 1e-6);
+    assert.ok(Math.abs(line.words[0].startTime - 0.8) < 1e-6);
+    assert.equal(parser.getTimeOffset(), -0.2);
+}
+
 // TTML 罗马音按过滤前的行下标配对：空文本行会被 convertAmlLyricLines 丢掉，
 // 用过滤后的数组位置会让后面每行都拿到前一行的音译。
 {
