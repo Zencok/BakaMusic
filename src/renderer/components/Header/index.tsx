@@ -1,7 +1,7 @@
 import SvgAsset from "../SvgAsset";
 import "./index.scss";
 import { showModal } from "../Modal";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useMatch, useNavigate } from "react-router-dom";
 import { useRef, useState } from "react";
 import HeaderNavigator from "./widgets/Navigator";
 import MusicDetail from "../MusicDetail";
@@ -16,6 +16,8 @@ import { musicDetailShownStore } from "@renderer/components/MusicDetail/store";
 
 export default function AppHeader() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const searchRouteMatch = useMatch("/main/search/:query");
     const inputRef = useRef<HTMLInputElement>(null);
     const [showSearchHistory, setShowSearchHistory] = useState(false);
     const isHistoryFocusRef = useRef(false);
@@ -36,7 +38,9 @@ export default function AppHeader() {
     }
 
     function search(keyword: string) {
-        navigate(`/main/search/${encodeURIComponent(keyword)}`);
+        navigate(`/main/search/${encodeURIComponent(keyword)}`, {
+            state: searchRouteMatch ? location.state : undefined,
+        });
         musicDetailShownStore.setValue(false);
         addSearchHistory(keyword);
         setShowSearchHistory(false);
