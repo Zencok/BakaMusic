@@ -73,6 +73,7 @@ const rendererWritableConfigKeys = new Set<keyof IAppConfig>([
     "download.fileNamingPreset",
     "download.fileNamingCustom",
     "download.fileNamingMaxLength",
+    "download.fileNamingBatchIndexFormat",
     "download.transcodeMode",
     "download.transcodeMp3Bitrate",
     "plugin.autoUpdatePlugin",
@@ -151,6 +152,7 @@ const enumConfigValues = new Map<keyof IAppConfig, ReadonlySet<string>>([
         "artist-album-title",
         "title-artist-quality",
     ])],
+    ["download.fileNamingBatchIndexFormat", new Set(["none", "1", "01", "001", "0001"])],
     ["backup.resumeBehavior", new Set(["append", "overwrite"])],
 ]);
 

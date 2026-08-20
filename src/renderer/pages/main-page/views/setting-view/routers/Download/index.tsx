@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
 import {
     DEFAULT_FILE_NAMING_CONFIG,
+    FILE_NAMING_BATCH_INDEX_FORMATS,
     FILE_NAMING_PRESETS,
     getPresetTemplate,
     previewFilename,
@@ -180,6 +181,9 @@ function FileNamingSettingGroup() {
     const fileNamingCustom = useAppConfig("download.fileNamingCustom")
         ?? DEFAULT_FILE_NAMING_CONFIG.custom
         ?? "{title}-{artist}";
+    const fileNamingBatchIndexFormat = useAppConfig(
+        "download.fileNamingBatchIndexFormat",
+    ) ?? DEFAULT_FILE_NAMING_CONFIG.batchIndexFormat;
 
     const [customDraft, setCustomDraft] = useState(fileNamingCustom);
     const [customError, setCustomError] = useState<string | null>(null);
@@ -206,8 +210,10 @@ function FileNamingSettingGroup() {
         if (!validation.valid) {
             return null;
         }
-        return previewFilename(activeTemplate);
-    }, [activeTemplate]);
+        return previewFilename(activeTemplate, {
+            batchIndexFormat: fileNamingBatchIndexFormat,
+        });
+    }, [activeTemplate, fileNamingBatchIndexFormat]);
 
     const commitCustomTemplate = () => {
         const next = customDraft.trim();
@@ -289,6 +295,16 @@ function FileNamingSettingGroup() {
                     </div>
                 </div>
             )}
+
+            <ListBoxSettingItem
+                keyPath="download.fileNamingBatchIndexFormat"
+                options={[...FILE_NAMING_BATCH_INDEX_FORMATS]}
+                label={t("settings.download.file_naming_batch_index")}
+                renderItem={(item) => item === "none"
+                    ? t("settings.download.file_naming_batch_index_none")
+                    : item}
+                toolTip={t("settings.download.file_naming_batch_index_tip")}
+            ></ListBoxSettingItem>
 
             <div className="setting-row setting-view--download-file-naming-preview">
                 <div className="label-container">

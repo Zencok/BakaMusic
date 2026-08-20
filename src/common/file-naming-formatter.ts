@@ -5,6 +5,17 @@
 
 export type FileNamingType = "preset" | "custom";
 
+export const FILE_NAMING_BATCH_INDEX_FORMATS = [
+    "none",
+    "1",
+    "01",
+    "001",
+    "0001",
+] as const;
+
+export type FileNamingBatchIndexFormat =
+    typeof FILE_NAMING_BATCH_INDEX_FORMATS[number];
+
 export type FileNamingPreset =
     | "title-artist"
     | "artist-title"
@@ -20,6 +31,7 @@ export interface IFileNamingTemplateVariables {
     quality?: string;
     platform: string;
     id: string;
+    index?: string;
 }
 
 export interface IFileNamingConfig {
@@ -28,6 +40,7 @@ export interface IFileNamingConfig {
     custom?: string;
     maxLength: number;
     keepExtension: boolean;
+    batchIndexFormat?: FileNamingBatchIndexFormat;
 }
 
 export interface IFormatFilenameOptions {
@@ -63,6 +76,7 @@ export const TEMPLATE_VARIABLES = {
     "{quality}": "var_quality",
     "{platform}": "var_platform",
     "{id}": "var_id",
+    "{index}": "var_index",
 } as const;
 
 export const DEFAULT_FILE_NAMING_CONFIG: IFileNamingConfig = {
@@ -71,6 +85,7 @@ export const DEFAULT_FILE_NAMING_CONFIG: IFileNamingConfig = {
     custom: "{title}-{artist}",
     maxLength: 200,
     keepExtension: true,
+    batchIndexFormat: "none",
 };
 
 const INVALID_FILENAME_CHARS = /[/|\\?*"<>:]+/g;
@@ -90,6 +105,8 @@ export function escapeFilenameCharacter(value?: string | null): string {
 export function createTemplateVariables(
     musicItem: Pick<IMusic.IMusicItem, "title" | "artist" | "album" | "platform" | "id">,
     quality?: string,
+    batchIndex?: number,
+    batchIndexFormat: FileNamingBatchIndexFormat = "none",
 ): IFileNamingTemplateVariables {
     return {
         title: musicItem.title?.trim() || "Unknown",
@@ -99,7 +116,38 @@ export function createTemplateVariables(
         quality: quality === undefined ? "" : (quality.trim() || "Unknown"),
         platform: musicItem.platform?.trim() || "Unknown",
         id: musicItem.id != null ? String(musicItem.id) : "",
+        index: formatBatchIndex(batchIndex, batchIndexFormat),
     };
+}
+
+export function isFileNamingBatchIndexFormat(
+    value: unknown,
+): value is FileNamingBatchIndexFormat {
+    return FILE_NAMING_BATCH_INDEX_FORMATS.includes(
+        value as FileNamingBatchIndexFormat,
+    );
+}
+
+export function formatBatchIndex(
+    batchIndex: number | undefined,
+    format: FileNamingBatchIndexFormat,
+): string {
+    if (
+        format === "none"
+        || !Number.isInteger(batchIndex)
+        || (batchIndex ?? 0) < 1
+    ) {
+        return "";
+    }
+
+    return String(batchIndex).padStart(format.length, "0");
+}
+
+function addAutomaticBatchIndex(template: string, formattedIndex?: string): string {
+    if (!formattedIndex || template.includes("{index}")) {
+        return template;
+    }
+    return `{index} - ${template}`;
 }
 
 function replaceTemplateVariables(
@@ -265,12 +313,18 @@ export function generateFileNameFromConfig(
     musicItem: Pick<IMusic.IMusicItem, "title" | "artist" | "album" | "platform" | "id">,
     config: IFileNamingConfig,
     quality?: string,
+    batchIndex?: number,
 ): IFormatFilenameResult {
     const template = resolveFileNamingTemplate(config);
-    const variables = createTemplateVariables(musicItem, quality);
+    const variables = createTemplateVariables(
+        musicItem,
+        quality,
+        batchIndex,
+        config.batchIndexFormat ?? DEFAULT_FILE_NAMING_CONFIG.batchIndexFormat ?? "none",
+    );
 
     return formatFilename({
-        template,
+        template: addAutomaticBatchIndex(template, variables.index),
         variables,
         maxLength: config.maxLength,
         keepExtension: config.keepExtension,
@@ -280,7 +334,9 @@ export function generateFileNameFromConfig(
 /** Sample preview for settings UI */
 export function previewFilename(
     template: string,
-    options?: Pick<IFormatFilenameOptions, "maxLength">,
+    options?: Pick<IFormatFilenameOptions, "maxLength"> & {
+        batchIndexFormat?: FileNamingBatchIndexFormat;
+    },
 ): string {
     const sampleVariables: IFileNamingTemplateVariables = {
         title: "烟火里的尘埃",
@@ -289,10 +345,11 @@ export function previewFilename(
         quality: "320k",
         platform: "QQ音乐",
         id: "204422126",
+        index: formatBatchIndex(1, options?.batchIndexFormat ?? "none"),
     };
 
     return formatFilename({
-        template,
+        template: addAutomaticBatchIndex(template, sampleVariables.index),
         variables: sampleVariables,
         maxLength: options?.maxLength ?? 200,
         keepExtension: true,
@@ -307,6 +364,7 @@ export function buildDownloadFileBaseName(
     musicItem: Pick<IMusic.IMusicItem, "title" | "artist" | "album" | "platform" | "id">,
     config: Partial<IFileNamingConfig> | null | undefined,
     quality?: string,
+    batchIndex?: number,
 ): string {
     const resolved: IFileNamingConfig = {
         type: config?.type === "custom" ? "custom" : "preset",
@@ -319,9 +377,12 @@ export function buildDownloadFileBaseName(
                 ? config.maxLength
                 : DEFAULT_FILE_NAMING_CONFIG.maxLength,
         keepExtension: config?.keepExtension ?? DEFAULT_FILE_NAMING_CONFIG.keepExtension,
+        batchIndexFormat: isFileNamingBatchIndexFormat(config?.batchIndexFormat)
+            ? config.batchIndexFormat
+            : DEFAULT_FILE_NAMING_CONFIG.batchIndexFormat,
     };
 
-    const result = generateFileNameFromConfig(musicItem, resolved, quality);
+    const result = generateFileNameFromConfig(musicItem, resolved, quality, batchIndex);
     if (result.filename) {
         return result.filename;
     }

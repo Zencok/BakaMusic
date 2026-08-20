@@ -47,6 +47,7 @@ assert.match(mainSource, /grantPathAccess\(directory, true\)/);
 assert.match(mainSource, /"download\.fileNamingType"/);
 assert.match(mainSource, /"download\.fileNamingPreset"/);
 assert.match(mainSource, /"download\.fileNamingCustom"/);
+assert.match(mainSource, /"download\.fileNamingBatchIndexFormat"/);
 assert.match(mainSource, /"download\.coverImageMode"/);
 assert.match(mainSource, /new Set\(\["compatible-jpeg", "original"\]\)/);
 assert.match(mainSource, /"playMusic\.wasapiExclusive"/);
@@ -81,6 +82,7 @@ const defaultConfigSource = fs.readFileSync(path.join(
 ), "utf8");
 assert.match(defaultConfigSource, /"download\.fileNamingType": "preset"/);
 assert.match(defaultConfigSource, /"download\.fileNamingPreset": "title-artist"/);
+assert.match(defaultConfigSource, /"download\.fileNamingBatchIndexFormat": "none"/);
 assert.match(defaultConfigSource, /"download\.coverImageMode": "compatible-jpeg"/);
 
 const rendererSource = fs.readFileSync(path.join(

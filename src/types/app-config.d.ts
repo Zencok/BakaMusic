@@ -121,6 +121,8 @@ interface _IAppConfig {
     "download.fileNamingCustom": string;
     /** 下载文件名最大长度（不含扩展名时的主体上限） */
     "download.fileNamingMaxLength": number;
+    /** 批量下载文件名前的序号格式；none 表示关闭 */
+    "download.fileNamingBatchIndexFormat": "none" | "1" | "01" | "001" | "0001";
     /**
      * 下载后自动转码 MP4/M4A 容器。
      * `auto` 按容器内实际编码决定：无损转 FLAC、有损转 MP3；

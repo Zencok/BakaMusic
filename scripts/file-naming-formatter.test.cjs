@@ -7,6 +7,7 @@ const {
     previewFilename,
     validateTemplate,
     getPresetTemplate,
+    formatBatchIndex,
 } = require("../src/common/file-naming-formatter.ts");
 
 const music = {
@@ -89,6 +90,29 @@ assert.equal(
 
 assert.equal(getPresetTemplate("artist-album-title"), "{artist}-{album}-{title}");
 assert.ok(previewFilename("{artist} - {title}").includes(" - "));
+
+// Batch numbering supports unpadded and zero-padded formats, and is added to
+// the front of a template when the template does not explicitly place {index}.
+assert.equal(formatBatchIndex(7, "1"), "7");
+assert.equal(formatBatchIndex(7, "01"), "07");
+assert.equal(formatBatchIndex(7, "001"), "007");
+assert.equal(formatBatchIndex(7, "0001"), "0007");
+assert.equal(
+    buildDownloadFileBaseName(music, {
+        type: "preset",
+        preset: "title",
+        batchIndexFormat: "001",
+    }, undefined, 7),
+    "007 - 烟火里的尘埃",
+);
+assert.equal(
+    buildDownloadFileBaseName(music, {
+        type: "custom",
+        custom: "{artist}-{index}-{title}",
+        batchIndexFormat: "01",
+    }, undefined, 7),
+    "郁欢-07-烟火里的尘埃",
+);
 
 assert.equal(
     generateFileNameFromConfig(music, {

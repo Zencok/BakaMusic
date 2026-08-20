@@ -65,6 +65,7 @@ export interface IDownloadTaskSnapshot {
 interface IDownloadTaskControl {
     musicItem: IMusic.IMusicItem;
     preferredQuality?: IMusic.IQualityKey;
+    batchIndex?: number;
     runId: number;
     /** 运行时崩溃后自动重排的次数，用于封顶避免无限重试。 */
     recoveryCount: number;
@@ -293,6 +294,7 @@ async function runTask(taskControl: IDownloadTaskControl, runId: number) {
             taskId,
             taskControl.musicItem,
             taskControl.preferredQuality,
+            taskControl.batchIndex,
             () => taskControls.get(taskId)?.runId !== runId,
             () => taskControl.release?.(),
             (stateData) => handleTaskState(taskControl, runId, stateData),
@@ -332,7 +334,11 @@ async function startDownload(
 
     const candidates = Array.isArray(musicItems) ? musicItems : [musicItems];
     const seenTaskIds = new Set<string>();
-    const validMusicItems = candidates.filter((musicItem) => {
+    const isBatch = Array.isArray(musicItems) && candidates.length > 1;
+    const validEntries = candidates.map((musicItem, index) => ({
+        musicItem,
+        batchIndex: index + 1,
+    })).filter(({ musicItem }) => {
         const taskId = getMediaPrimaryKey(musicItem);
         const isValid = !seenTaskIds.has(taskId)
             && !isDownloaded(musicItem)
@@ -341,15 +347,22 @@ async function startDownload(
         seenTaskIds.add(taskId);
         return isValid;
     });
+    const validMusicItems = validEntries.map(({ musicItem }) => musicItem);
 
     if (!validMusicItems.length) {
         return;
     }
 
     downloadingMusicStore.setValue((previous) => [...previous, ...validMusicItems]);
-    validMusicItems.forEach((musicItem) => {
+    validEntries.forEach(({ musicItem, batchIndex }) => {
         const taskId = getMediaPrimaryKey(musicItem);
-        const taskControl = { musicItem, preferredQuality, runId: 0, recoveryCount: 0 };
+        const taskControl = {
+            musicItem,
+            preferredQuality,
+            batchIndex: isBatch ? batchIndex : undefined,
+            runId: 0,
+            recoveryCount: 0,
+        };
         taskControls.set(taskId, taskControl);
         queueTask(taskControl);
     });
@@ -437,6 +450,7 @@ async function downloadMusicImpl(
     taskId: string,
     musicItem: IMusic.IMusicItem,
     preferredQuality: IMusic.IQualityKey | undefined,
+    batchIndex: number | undefined,
     isCancelled: () => boolean,
     onDownloadComplete: () => void,
     onStateChange: IOnStateChangeFunc,
@@ -527,8 +541,11 @@ async function downloadMusicImpl(
                 maxLength: AppConfig.getConfig("download.fileNamingMaxLength")
                     ?? DEFAULT_FILE_NAMING_CONFIG.maxLength,
                 keepExtension: true,
+                batchIndexFormat: AppConfig.getConfig("download.fileNamingBatchIndexFormat")
+                    ?? DEFAULT_FILE_NAMING_CONFIG.batchIndexFormat,
             },
             realQuality,
+            batchIndex,
         );
         const downloadPath = resolveFilePath(downloadBasePath, `./${fileName}.${ext}`);
 
