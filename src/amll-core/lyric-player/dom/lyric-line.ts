@@ -42,8 +42,10 @@ function generateFadeGradient(
 	bright = "rgba(0,0,0,var(--bright-mask-alpha, 1.0))",
 	dark = "rgba(0,0,0,var(--dark-mask-alpha, 1.0))",
 ): [string, number] {
-	const totalAspect = 2 + width + padding;
-	const widthInTotal = width / totalAspect;
+	const safeWidth = Number.isFinite(width) ? width : 0;
+	const safePadding = Number.isFinite(padding) ? padding : 0;
+	const totalAspect = 2 + safeWidth + safePadding;
+	const widthInTotal = safeWidth / totalAspect;
 	const leftPos = (1 - widthInTotal) / 2;
 	return [
 		`linear-gradient(to right,${bright} ${leftPos * 100}%,${dark} ${
@@ -664,9 +666,12 @@ export class LyricLineEl extends LyricLineBase {
 		for (const word of this.splittedWords) {
 			const el = word.mainElement;
 			if (el) {
-				word.padding = Number.parseFloat(getComputedStyle(el).paddingLeft);
-				word.width = el.clientWidth - word.padding * 2;
-				word.height = el.clientHeight - word.padding * 2;
+				const padding = Number.parseFloat(getComputedStyle(el).paddingLeft);
+				word.padding = Number.isFinite(padding) ? Math.max(0, padding) : 0;
+				const width = Number.isFinite(el.clientWidth) ? el.clientWidth : 0;
+				const height = Number.isFinite(el.clientHeight) ? el.clientHeight : 0;
+				word.width = Math.max(0, width - word.padding * 2);
+				word.height = Math.max(0, height - word.padding * 2);
 			} else {
 				word.width = 0;
 				word.height = 0;
@@ -728,16 +733,28 @@ export class LyricLineEl extends LyricLineBase {
 	private generateWebAnimationBasedMaskImage() {
 		// 因为歌词行有可能比行内单词的结束时间早，有可能导致过渡动画提早停止出现瑕疵
 		// 所以要以单词的结束时间为准
-		const totalFadeDuration =
+		const lineStartTime = Number.isFinite(this.lyricLine.startTime)
+			? this.lyricLine.startTime
+			: 0;
+		const lineEndTime = Number.isFinite(this.lyricLine.endTime)
+			? this.lyricLine.endTime
+			: lineStartTime;
+		const totalFadeDuration = Math.max(
+			0,
 			Math.max(
-				0,
-				...this.splittedWords.map((w) => w.endTime),
-				this.lyricLine.endTime,
-			) - this.lyricLine.startTime;
+				...this.splittedWords.map((w) =>
+					Number.isFinite(w.endTime) ? w.endTime : lineEndTime),
+				lineEndTime,
+			) - lineStartTime,
+		);
+		const timelineDuration = totalFadeDuration > 0 ? totalFadeDuration : 1;
 		this.splittedWords.forEach((word, i) => {
 			const wordEl = word.mainElement;
 			if (wordEl) {
-				const fadeWidth = word.height * this.lyricPlayer.getWordFadeWidth();
+				const fadeScale = this.lyricPlayer.getWordFadeWidth();
+				const fadeWidth = word.height * (
+					Number.isFinite(fadeScale) ? Math.max(0.0001, fadeScale) : 0.0001
+				);
 				const [maskImage, totalAspect] = generateFadeGradient(
 					fadeWidth / (word.width + word.padding * 2),
 				);
@@ -759,7 +776,8 @@ export class LyricLineEl extends LyricLineBase {
 					this.splittedWords.slice(0, i).reduce((a, b) => a + b.width, 0) +
 					(this.splittedWords[0] ? fadeWidth : 0);
 				const minOffset = -(word.width + word.padding * 2 + fadeWidth);
-				const clampOffset = (x: number) => clamp(x, minOffset, 0);
+				const clampOffset = (x: number) =>
+					Number.isFinite(x) ? clamp(x, minOffset, 0) : 0;
 				let curPos = -widthBeforeSelf - word.width - word.padding - fadeWidth;
 				let timeOffset = 0;
 				const frames: Keyframe[] = [];
@@ -769,9 +787,11 @@ export class LyricLineEl extends LyricLineBase {
 					// 此处如果添加过渡函数，会导致单词时序不准确，所以不添加
 					// const easing = "cubic-bezier(.33,.12,.83,.9)";
 					const moveOffset = curPos - lastPos;
-					const time = clamp01(timeOffset);
+					const time = Number.isFinite(timeOffset)
+						? clamp01(timeOffset)
+						: lastTime;
 					const duration = time - lastTime;
-					const d = Math.abs(duration / moveOffset);
+					const d = moveOffset !== 0 ? Math.abs(duration / moveOffset) : 0;
 					// 因为有可能会和之前的动画有边界
 					if (curPos > minOffset && lastPos < minOffset) {
 						const staticTime = Math.abs(lastPos - minOffset) * d;
@@ -803,19 +823,23 @@ export class LyricLineEl extends LyricLineBase {
 				pushFrame();
 				let lastTimeStamp = 0;
 				this.splittedWords.forEach((otherWord, j) => {
+					const otherStartTime = Number.isFinite(otherWord.startTime)
+						? otherWord.startTime
+						: lineStartTime;
+					const otherEndTime = Number.isFinite(otherWord.endTime)
+						? Math.max(otherWord.endTime, otherStartTime)
+						: otherStartTime;
 					// 停顿
 					{
-						const curTimeStamp = otherWord.startTime - this.lyricLine.startTime;
+						const curTimeStamp = otherStartTime - lineStartTime;
 						const staticDuration = curTimeStamp - lastTimeStamp;
-						timeOffset += staticDuration / totalFadeDuration;
+						timeOffset += staticDuration / timelineDuration;
 						if (staticDuration > 0) pushFrame();
 						lastTimeStamp = curTimeStamp;
 					}
 					// 移动
 					{
-						const fadeDuration = clampPositive(
-							otherWord.endTime - otherWord.startTime,
-						);
+						const fadeDuration = otherEndTime - otherStartTime;
 						const rubySegments = this.getRubySegments(otherWord);
 						const rubyCharCount = rubySegments.reduce(
 							(total, ruby) => total + ruby.word.length,
@@ -827,18 +851,18 @@ export class LyricLineEl extends LyricLineBase {
 							for (const ruby of rubySegments) {
 								const rubyStartTime = Number.isFinite(ruby.startTime)
 									? ruby.startTime
-									: otherWord.startTime;
+									: otherStartTime;
 								const rubyEndTime = Number.isFinite(ruby.endTime)
 									? ruby.endTime
-									: otherWord.endTime;
-								const rubyStart = Math.max(rubyStartTime, otherWord.startTime);
+									: otherEndTime;
+								const rubyStart = Math.max(rubyStartTime, otherStartTime);
 								const rubyEnd = Math.min(
 									Math.max(rubyEndTime, rubyStart),
-									otherWord.endTime,
+									otherEndTime,
 								);
-								const rubyStartStamp = rubyStart - this.lyricLine.startTime;
+								const rubyStartStamp = rubyStart - lineStartTime;
 								const rubyStaticDuration = rubyStartStamp - lastTimeStamp;
-								timeOffset += rubyStaticDuration / totalFadeDuration;
+								timeOffset += rubyStaticDuration / timelineDuration;
 								if (rubyStaticDuration > 0) pushFrame();
 								lastTimeStamp = rubyStartStamp;
 								const rubyDuration = clampPositive(rubyEnd - rubyStart);
@@ -848,7 +872,7 @@ export class LyricLineEl extends LyricLineBase {
 									rubyCharIndex < ruby.word.length;
 									rubyCharIndex++
 								) {
-									timeOffset += perCharDuration / totalFadeDuration;
+									timeOffset += perCharDuration / timelineDuration;
 									curPos += widthPerChar;
 									if (j === 0 && charIndex === 0) {
 										curPos += fadeWidth * 1.5;
@@ -865,11 +889,11 @@ export class LyricLineEl extends LyricLineBase {
 								}
 							}
 							const wordEndStamp = Math.max(
-								otherWord.endTime - this.lyricLine.startTime,
+								otherEndTime - lineStartTime,
 								lastTimeStamp,
 							);
 							const wordTailDuration = wordEndStamp - lastTimeStamp;
-							timeOffset += wordTailDuration / totalFadeDuration;
+							timeOffset += wordTailDuration / timelineDuration;
 							if (wordTailDuration > 0) pushFrame();
 							lastTimeStamp = wordEndStamp;
 						} else {
@@ -881,7 +905,7 @@ export class LyricLineEl extends LyricLineBase {
 								segmentIndex < segmentCount;
 								segmentIndex++
 							) {
-								timeOffset += segmentDuration / totalFadeDuration;
+								timeOffset += segmentDuration / timelineDuration;
 								curPos += segmentWidth;
 								if (j === 0 && segmentIndex === 0) {
 									curPos += fadeWidth * 1.5;

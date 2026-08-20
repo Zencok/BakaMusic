@@ -64,9 +64,18 @@ const amllDomPlayerSource = fs.readFileSync(path.join(
     __dirname,
     "../src/amll-core/lyric-player/dom/index.ts",
 ), "utf8");
+const amllLyricLineSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/amll-core/lyric-player/dom/lyric-line.ts",
+), "utf8");
 assert.match(amllDomPlayerSource, /calcLayout\(true, true\)/);
 assert.doesNotMatch(amllDomPlayerSource, /setLineClickEnabled/);
 assert.doesNotMatch(amllDomPlayerSource, /dataset\.clickable/);
+// ResizeObserver can report a line while its computed padding/size is transient;
+// mask keyframes must never receive NaN dimensions or timeline divisions.
+assert.match(amllLyricLineSource, /Number\.isFinite\(padding\)/);
+assert.match(amllLyricLineSource, /const timelineDuration = totalFadeDuration > 0/);
+assert.match(amllLyricLineSource, /moveOffset !== 0 \? Math\.abs\(duration \/ moveOffset\) : 0/);
 
 const amllScrollSource = fs.readFileSync(path.join(
     __dirname,

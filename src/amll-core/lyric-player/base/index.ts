@@ -300,7 +300,7 @@ export abstract class LyricPlayerBase
 	 * @param value 需要设置的渐变宽度，单位以歌词行的主文字字体大小的倍数为单位，默认为 0.5
 	 */
 	setWordFadeWidth(value = 0.5): void {
-		this.wordFadeWidth = Math.max(0.0001, value);
+		this.wordFadeWidth = Number.isFinite(value) ? Math.max(0.0001, value) : 0.5;
 	}
 
 	/**
