@@ -447,7 +447,6 @@ function MusicDetail() {
             showIf={musicDetailShown}
             keepMounted
             className="music-detail--container"
-            aria-hidden={!musicDetailShown}
             inert={!musicDetailShown}
             data-fullscreen={isFullscreen ? "true" : "false"}
             data-immersive-busy={isImmersiveBusy ? "true" : "false"}

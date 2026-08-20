@@ -154,7 +154,7 @@ assert.doesNotMatch(
 );
 assert.match(
     musicDetailStyles,
-    /&\[aria-hidden="true"\][\s\S]*?-webkit-app-region:\s*no-drag/,
+    /&\[inert\][\s\S]*?-webkit-app-region:\s*no-drag/,
 );
 assert.match(
     musicDetailStyles,

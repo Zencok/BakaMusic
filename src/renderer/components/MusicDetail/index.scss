@@ -46,7 +46,7 @@
     // hidden — and exit fill ends at visibility:hidden so the layer cannot steal
     // title-bar drags after close.
     &.music-detail--exit,
-    &[aria-hidden="true"] {
+    &[inert] {
         -webkit-app-region: no-drag !important;
 
         &,
