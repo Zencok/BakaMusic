@@ -130,8 +130,21 @@ assert.match(
     musicDetailStyles,
     /\[data-fullscreen="true"\]\[data-cursor-hidden="true"\][\s\S]*?cursor: none !important;/,
 );
-// Topbar fades without layout collapse; cover is transform-only.
+// Fullscreen removes the hidden topbar from layout so cover and lyrics use the
+// whole page center; the slot stays mounted for veil/restore choreography.
 assert.match(musicDetailStyles, /\.music-detail-topbar-slot/);
+assert.match(
+    musicDetailStyles,
+    /\[data-fullscreen="true"\][\s\S]*?\.music-detail-topbar-slot\s*\{[\s\S]*?position:\s*absolute;/,
+);
+assert.match(
+    musicDetailStyles,
+    /\[data-fullscreen="true"\][\s\S]*?\.music-detail-shell\s*\{[\s\S]*?gap:\s*0;[\s\S]*?padding-top:\s*32px;/,
+);
+assert.match(
+    musicDetailStyles,
+    /\[data-fullscreen="true"\][\s\S]*?\.music-detail-lyric-column\s*\{[\s\S]*?padding-bottom:\s*0;/,
+);
 assert.match(musicDetailStyles, /--md-cover-rest-scale/);
 assert.match(musicDetailStyles, /--md-dur-cover/);
 assert.doesNotMatch(

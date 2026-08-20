@@ -390,6 +390,16 @@ pending
 - **Files**: 14 files
 - **Tests**: npm exec tsc -- --noEmit; npm exec eslint -- ./src; npm test
 
+## 2026-08-20T22:07:07+08:00 — feat(music-detail): add AMLL controls and center fullscreen layout
+
+- **Context-Id**: 2b05f3ba-012d-491f-95c7-01520a44eb15
+- **Decision**: Add direct playback controls to classic AMLL detail
+- **Decision**: Center the shared classic playback page in fullscreen
+- **Decision**: Model AMLL lyric visibility and responsive controls explicitly
+- **Decision**: Use localized labels and semantic controls
+- **Files**: 11 files
+- **Tests**: Not run (Git-only commit workflow)
+
 ## 2026-07-27T00:45:34.408+08:00 — fix(playback): stop skip loop when the output device disappears
 
 - **Context-Id**: 82b55143-5f3a-4805-8ddd-8487991a0265
@@ -450,3 +460,11 @@ pending
 - **Bug**: Duplicate requested qualities could resolve to one source, and default playback started at 1080P instead of the highest verified quality.
 - **Files**: 43 files
 - **Tests**: npm exec tsc -- --noEmit; npm exec eslint -- ./src; npm test; npm exec sass (MV player SCSS)
+
+## 2026-08-20T19:12:00+08:00 — fix(favorites): preserve album and toplist details
+
+- **Context-Id**: 01a01edb-c654-7538-9f27-cdae636f14f6
+- **Decision**: Record favorite media type and route starred entries by type
+- **Bug**: Favorited albums reopened as playlists and showed 0 tracks.
+- **Files**: 7 files
+- **Tests**: npm exec tsc -- --noEmit; npm exec eslint -- ./src; npm test

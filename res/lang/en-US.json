@@ -509,7 +509,12 @@
         "cover_style_tonearm_glass": "Glass",
         "cover_style_tonearm_reach": "Drop Point",
         "cover_style_tonearm_reach_outer": "Outer",
-        "cover_style_tonearm_reach_inner": "Inner"
+        "cover_style_tonearm_reach_inner": "Inner",
+        "amll_more_actions": "More actions",
+        "amll_show_lyric": "Show lyrics",
+        "amll_hide_lyric": "Hide lyrics",
+        "amll_favorite": "Favorite",
+        "amll_unfavorite": "Remove from favorites"
     },
     "bottom_loading_state": {
         "reached_end": "~~~ End ~~~",

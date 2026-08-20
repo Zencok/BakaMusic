@@ -3,12 +3,26 @@ import { MeshGradientRenderer } from "@amll-core/bg-render/mesh-renderer/index";
 import { isPlaybackActive, RepeatMode } from "@/common/constant";
 import { secondsToDuration } from "@/common/time-util";
 import SvgAsset from "@/renderer/components/SvgAsset";
-import { getCurrentPanel, hidePanel, showPanel } from "@/renderer/components/Panel";
+import { showMusicContextMenu } from "@/renderer/components/MusicList";
+import {
+    getCurrentPanel,
+    hidePanel,
+    showPanel,
+    useCurrentPanelType,
+} from "@/renderer/components/Panel";
+import { showQualitySelectPopover } from "@/renderer/components/QualitySelectPopover";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
+import {
+    getQualityDisplayText,
+    resolveMusicQualityChoices,
+} from "@/renderer/utils/music-quality";
+import MusicSheet from "@renderer/core/music-sheet";
 import trackPlayer from "@renderer/core/track-player";
 import {
+    useCurrentMusic,
     usePlayerState,
     useProgress,
+    useQuality,
     useRepeatMode,
     useVolume,
 } from "@renderer/core/track-player/hooks";
@@ -24,16 +38,21 @@ import {
     type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "react-toastify";
 import Lyric from "../Lyric";
 import {
+    ClassicLosslessIcon,
+    ClassicLyricsIcon,
     ClassicNextIcon,
     ClassicPauseIcon,
     ClassicPlayIcon,
+    ClassicPlaylistIcon,
     ClassicPreviousIcon,
     ClassicRepeatIcon,
     ClassicShuffleIcon,
     ClassicSpeakerHighIcon,
     ClassicSpeakerLowIcon,
+    ClassicStarIcon,
 } from "./icons";
 
 interface IClassicAmlLDetailProps {
@@ -432,9 +451,11 @@ function ClassicMediaButton({
     active,
     onClick,
 }: IClassicMediaButtonProps) {
+    const buttonRef = useRef<HTMLButtonElement>(null);
     const [animating, setAnimating] = useState(false);
     return (
         <button
+            ref={buttonRef}
             type="button"
             className="classic-amll-media-button"
             data-active={active ? "true" : "false"}
@@ -442,8 +463,18 @@ function ClassicMediaButton({
             title={label}
             aria-label={label}
             onClick={() => {
-                setAnimating(false);
-                requestAnimationFrame(() => setAnimating(true));
+                if (animating) {
+                    // 连点时把正在跑的 CSS 动画直接拨回起点，
+                    // 而不是先摘掉再挂上——后者中间会空一帧
+                    const icon = buttonRef.current?.querySelector("svg");
+                    for (const animation of icon?.getAnimations() ?? []) {
+                        if (animation instanceof CSSAnimation) {
+                            animation.currentTime = 0;
+                        }
+                    }
+                } else {
+                    setAnimating(true);
+                }
                 onClick();
             }}
             onAnimationEnd={() => setAnimating(false)}
@@ -457,15 +488,8 @@ function ClassicMusicInfo({ album, artist, title }: Pick<
     IClassicAmlLDetailProps,
     "album" | "artist" | "title"
 >) {
+    const currentMusic = useCurrentMusic();
     const { t } = useTranslation();
-
-    const toggleQueue = () => {
-        if (getCurrentPanel()?.type === "PlayList") {
-            hidePanel();
-        } else {
-            showPanel("PlayList", { coverHeader: true });
-        }
-    };
 
     return (
         <div className="classic-amll-music-info">
@@ -485,9 +509,16 @@ function ClassicMusicInfo({ album, artist, title }: Pick<
             <button
                 type="button"
                 className="classic-amll-menu-button"
-                title={t("media.playlist")}
-                aria-label={t("media.playlist")}
-                onClick={toggleQueue}
+                disabled={!currentMusic}
+                title={t("music_detail.amll_more_actions")}
+                aria-label={t("music_detail.amll_more_actions")}
+                onClick={(event) => {
+                    if (!currentMusic) {
+                        return;
+                    }
+                    const anchor = event.currentTarget.getBoundingClientRect();
+                    showMusicContextMenu(currentMusic, anchor.left, anchor.bottom);
+                }}
             >
                 <SvgAsset iconName="ellipsis-horizontal"></SvgAsset>
             </button>
@@ -495,9 +526,94 @@ function ClassicMusicInfo({ album, artist, title }: Pick<
     );
 }
 
+/** 上游用无损波形图标标记这些音质档位 */
+const losslessQualityKeys = new Set<IMusic.IQualityKey>([
+    "flac",
+    "flac24bit",
+    "hires",
+    "vinyl",
+    "master",
+]);
+
+function ClassicQualityTag({ qualityLabel }: { qualityLabel: string }) {
+    const currentMusic = useCurrentMusic();
+    const quality = useQuality();
+    const { t } = useTranslation();
+    const [isResolving, setIsResolving] = useState(false);
+    const lossless = quality ? losslessQualityKeys.has(quality) : false;
+
+    return (
+        <button
+            type="button"
+            className="classic-amll-quality-tag"
+            data-lossless={lossless ? "true" : "false"}
+            title={quality
+                ? getQualityDisplayText(quality, t)
+                : t("music_bar.choose_music_quality")}
+            aria-label={t("music_bar.choose_music_quality")}
+            onClick={async (event) => {
+                if (!currentMusic || isResolving) {
+                    return;
+                }
+
+                const musicAtClick = currentMusic;
+                const anchor = event.currentTarget;
+                setIsResolving(true);
+                try {
+                    const { choices } = await resolveMusicQualityChoices(musicAtClick, t);
+
+                    // 解析音质期间可能已经切歌
+                    if (!trackPlayer.isCurrentMusic(musicAtClick)) {
+                        return;
+                    }
+
+                    if (!choices.length) {
+                        toast.warn(t("music_bar.no_music_quality_available"));
+                        return;
+                    }
+
+                    const currentQuality = trackPlayer.currentQuality;
+                    const defaultValue = choices.some((choice) => choice.value === currentQuality)
+                        ? currentQuality
+                        : choices[0].value;
+
+                    showQualitySelectPopover({
+                        title: t("music_bar.choose_music_quality"),
+                        defaultValue,
+                        choices,
+                        anchor,
+                        async onSelect(value) {
+                            if (!trackPlayer.isCurrentMusic(musicAtClick)) {
+                                toast.warn(
+                                    t("music_bar.current_quality_not_available_for_current_music"),
+                                );
+                                return;
+                            }
+                            const success = await trackPlayer.setQuality(value);
+                            if (!success) {
+                                toast.warn(
+                                    t("music_bar.current_quality_not_available_for_current_music"),
+                                );
+                            }
+                        },
+                    });
+                } catch {
+                    toast.warn(t("music_bar.no_music_quality_available"));
+                } finally {
+                    setIsResolving(false);
+                }
+            }}
+        >
+            {lossless ? (
+                <ClassicLosslessIcon className="classic-amll-quality-tag-icon"></ClassicLosslessIcon>
+            ) : null}
+            <span className="classic-amll-quality-tag-text">{qualityLabel}</span>
+        </button>
+    );
+}
+
 function ClassicProgress({ qualityLabel }: Pick<IClassicAmlLDetailProps, "qualityLabel">) {
     const { currentTime, duration } = useProgress();
-    const playerState = usePlayerState();
     const [showRemaining, setShowRemaining] = useState(false);
     const { t } = useTranslation();
     const canSeek = Number.isFinite(duration) && duration > 0;
@@ -517,7 +633,13 @@ function ClassicProgress({ qualityLabel }: Pick<IClassicAmlLDetailProps, "qualit
             ></ClassicSlider>
             <div className="classic-amll-progress-labels">
                 <span>{secondsToDuration(Math.max(0, currentTime || 0))}</span>
-                <span className="classic-amll-quality-tag">{qualityLabel ?? ""}</span>
+                {/* 独立的 flex 槽位：标签自身保留内容宽度，否则 flex-basis 0 会把
+                    音质标签压成一条竖线，和文字叠在一起 */}
+                <div className="classic-amll-quality-slot">
+                    {qualityLabel ? (
+                        <ClassicQualityTag qualityLabel={qualityLabel}></ClassicQualityTag>
+                    ) : null}
+                </div>
                 <button
                     type="button"
                     className="classic-amll-duration-toggle"
@@ -530,7 +652,6 @@ function ClassicProgress({ qualityLabel }: Pick<IClassicAmlLDetailProps, "qualit
                         : "--:--"}
                 </button>
             </div>
-            <span className="classic-amll-playing-state" data-playing={isPlaybackActive(playerState)}></span>
         </div>
     );
 }
@@ -540,6 +661,12 @@ function ClassicTransport() {
     const repeatMode = useRepeatMode();
     const { t } = useTranslation();
     const playing = isPlaybackActive(playerState);
+    // 上游的循环按钮有三个视觉态：Off 用 repeat.svg（不高亮）、All 用 repeat-active.svg、
+    // One 用 repeat-one-active.svg；随机按钮只有开/关两态。BakaMusic 的三种模式互斥，
+    // 因此这样投影才能把上游的每个视觉态都用上：
+    //   Queue   -> 随机不高亮、循环 All
+    //   Loop    -> 随机不高亮、循环 One
+    //   Shuffle -> 随机高亮、循环回到不高亮的 Off 外观
     const shuffleActive = repeatMode === RepeatMode.Shuffle;
     const repeatActive = repeatMode !== RepeatMode.Shuffle;
     const repeatOne = repeatMode === RepeatMode.Loop;
@@ -612,6 +739,110 @@ function ClassicVolume() {
             afterIcon={<ClassicSpeakerHighIcon className="classic-amll-volume-high"></ClassicSpeakerHighIcon>}
             onChange={(nextVolume) => trackPlayer.setVolume(nextVolume)}
         ></ClassicSlider>
+    );
+}
+
+interface IClassicToggleButtonProps {
+    label: string;
+    active: boolean;
+    disabled?: boolean;
+    children: ReactNode;
+    onClick: () => void;
+}
+
+function ClassicToggleButton({
+    label,
+    active,
+    disabled = false,
+    children,
+    onClick,
+}: IClassicToggleButtonProps) {
+    return (
+        <button
+            type="button"
+            className="classic-amll-toggle-button"
+            data-active={active ? "true" : "false"}
+            disabled={disabled}
+            aria-pressed={active}
+            title={label}
+            aria-label={label}
+            onClick={onClick}
+        >
+            {children}
+        </button>
+    );
+}
+
+interface IClassicBottomControlsProps {
+    lyricVisible: boolean;
+    onToggleLyricVisible: () => void;
+}
+
+/** 无曲目时的占位主键，避免收藏 hook 每次渲染都拿到新的对象身份 */
+const emptyFavoriteTarget = { platform: "", id: "" } as IMusic.IMusicItem;
+
+function ClassicBottomControls({
+    lyricVisible,
+    onToggleLyricVisible,
+}: IClassicBottomControlsProps) {
+    const currentMusic = useCurrentMusic();
+    const panelType = useCurrentPanelType();
+    const { t } = useTranslation();
+    const playlistOpened = panelType === "PlayList";
+
+    // 队列面板独立于当前曲目存在，收藏按钮则必须有曲目才有意义
+    const isFavorite = MusicSheet.frontend.useMusicIsFavorite(
+        currentMusic ?? emptyFavoriteTarget,
+    );
+    const favorited = !!currentMusic && isFavorite;
+
+    // DOM 顺序与视觉顺序保持一致（左侧收藏、右侧歌词与队列），
+    // 让 Tab 焦点顺序不至于和布局相反
+    return (
+        <div className="classic-amll-bottom-controls">
+            <ClassicToggleButton
+                label={favorited
+                    ? t("music_detail.amll_unfavorite")
+                    : t("music_detail.amll_favorite")}
+                active={favorited}
+                disabled={!currentMusic}
+                onClick={() => {
+                    if (!currentMusic) {
+                        return;
+                    }
+                    if (favorited) {
+                        void MusicSheet.frontend.removeMusicFromFavorite(currentMusic);
+                    } else {
+                        void MusicSheet.frontend.addMusicToFavorite(currentMusic);
+                    }
+                }}
+            >
+                <ClassicStarIcon active={favorited}></ClassicStarIcon>
+            </ClassicToggleButton>
+            <div className="classic-amll-bottom-controls-spacer"></div>
+            <ClassicToggleButton
+                label={lyricVisible
+                    ? t("music_detail.amll_hide_lyric")
+                    : t("music_detail.amll_show_lyric")}
+                active={lyricVisible}
+                onClick={onToggleLyricVisible}
+            >
+                <ClassicLyricsIcon active={lyricVisible}></ClassicLyricsIcon>
+            </ClassicToggleButton>
+            <ClassicToggleButton
+                label={t("media.playlist")}
+                active={playlistOpened}
+                onClick={() => {
+                    if (getCurrentPanel()?.type === "PlayList") {
+                        hidePanel();
+                    } else {
+                        showPanel("PlayList", { coverHeader: true });
+                    }
+                }}
+            >
+                <ClassicPlaylistIcon active={playlistOpened}></ClassicPlaylistIcon>
+            </ClassicToggleButton>
+        </div>
     );
 }
 
@@ -688,6 +919,7 @@ export default function ClassicAmlLDetail({
     const layoutRef = useRef<HTMLDivElement>(null);
     const coverRef = useRef<HTMLDivElement>(null);
     const [lyricAlignPosition, setLyricAlignPosition] = useState(0.25);
+    const [lyricVisible, setLyricVisible] = useState(true);
     const { t } = useTranslation();
 
     useEffect(() => {
@@ -719,7 +951,11 @@ export default function ClassicAmlLDetail({
     }, []);
 
     return (
-        <div ref={layoutRef} className="classic-amll-layout">
+        <div
+            ref={layoutRef}
+            className="classic-amll-layout"
+            data-hide-lyric={lyricVisible ? "false" : "true"}
+        >
             <ClassicAmlLBackground active={active} artwork={artwork}></ClassicAmlLBackground>
             <ClassicWindowControls active={active}></ClassicWindowControls>
 
@@ -753,7 +989,7 @@ export default function ClassicAmlLDetail({
                 <ClassicVolume></ClassicVolume>
             </div>
 
-            <div className="classic-amll-lyric">
+            <div className="classic-amll-lyric" inert={!lyricVisible}>
                 <Lyric
                     active={active}
                     playerReady={playerReady}
@@ -761,6 +997,11 @@ export default function ClassicAmlLDetail({
                     alignPosition={lyricAlignPosition}
                 ></Lyric>
             </div>
+
+            <ClassicBottomControls
+                lyricVisible={lyricVisible}
+                onToggleLyricVisible={() => setLyricVisible((visible) => !visible)}
+            ></ClassicBottomControls>
         </div>
     );
 }

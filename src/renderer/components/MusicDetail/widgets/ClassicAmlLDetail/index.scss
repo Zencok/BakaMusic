@@ -15,6 +15,13 @@
 
 .classic-amll-layout {
     --classic-amll-max-width: min(50vh, 38vw);
+    /* 随机/循环两个顺序按钮的图标方框。上游 PrebuiltMediaButtons 只给这两个图标
+       显式的 1.3em（prev/next 用 SVG 固有的 32px、play/pause 用 38px），
+       本项目根字号与上游同为 16px，故沿用同一比例；要微调体量只改这一处。 */
+    --classic-amll-order-icon-size: 1.3em;
+    /* 信息列占 0.45fr：把它平移到整幅画面中央需要 (1 - 0.45) / 2 的画面宽度，
+       换算成自身栅格区域的百分比即 0.275 / 0.45 */
+    --classic-amll-hide-lyric-left: 61.111111%;
 
     position: absolute;
     inset: 0;
@@ -28,6 +35,27 @@
     color: #fff;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
     -webkit-app-region: drag;
+
+    .classic-amll-drag-area,
+    .classic-amll-cover-frame,
+    .classic-amll-controls {
+        left: 0;
+        transition: left 500ms cubic-bezier(0.5, 0, 0.5, 1);
+    }
+
+    &[data-hide-lyric="true"] {
+        .classic-amll-drag-area,
+        .classic-amll-cover-frame,
+        .classic-amll-controls {
+            left: var(--classic-amll-hide-lyric-left);
+        }
+
+        .classic-amll-lyric {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 250ms cubic-bezier(0.5, 0, 0.5, 1);
+        }
+    }
 }
 
 .classic-amll-background {
@@ -409,18 +437,30 @@
     }
 }
 
-.classic-amll-quality-tag {
-    position: relative;
-    min-width: 0;
-    padding: 2px 0.52em 2px 0.1em;
+.classic-amll-quality-slot {
     display: flex;
     align-items: center;
+    justify-content: center;
+}
+
+.classic-amll-quality-tag {
+    position: relative;
+    padding: 2px 0.52em 2px 0.1em;
+    border: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.16em;
     color: #fff;
+    background: transparent;
     white-space: nowrap;
+    font-family: inherit;
     font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.018em;
-    transform: scale(1.4);
+    cursor: pointer;
+    /* 用 scale 而不是 transform，放大不参与布局也不覆盖后续 transform */
+    scale: 1.4;
+    transition: scale 300ms ease, opacity 200ms ease;
 
     &::before {
         content: "";
@@ -431,14 +471,26 @@
         border-image-width: 8.5px;
         opacity: 0.2;
     }
+
+    /* 无损图标自带左侧留白；纯文字标签需要对称内边距 */
+    &[data-lossless="false"] {
+        padding-left: 0.52em;
+    }
+
+    &:hover,
+    &:focus-visible {
+        opacity: 0.85;
+    }
 }
 
-.classic-amll-quality-tag:empty {
-    visibility: hidden;
+.classic-amll-quality-tag-icon {
+    width: auto;
+    height: 11px;
+    flex: 0 0 auto;
 }
 
-.classic-amll-playing-state {
-    display: none;
+.classic-amll-quality-tag-text {
+    position: relative;
 }
 
 .classic-amll-duration-toggle {
@@ -498,19 +550,32 @@
     > svg {
         width: 32px;
         height: 32px;
-        transform: scale(3);
+        /* 基础放大必须用 scale 属性而不是 transform：按压关键帧动的是 transform，
+           两者是独立属性会相乘；若基础也写 transform，关键帧的 scale(1) 会整体
+           顶掉 scale(3)，每次点击图标先塌到三分之一再弹回，这就是不流畅的来源。 */
+        scale: 3;
         transform-origin: center;
-        transition: transform 500ms ease;
+        transition: scale 500ms ease;
     }
 
     &:nth-child(3) > svg {
         width: 38px;
         height: 38px;
-        transform: scale(2);
+        scale: 2;
+    }
+
+    /* 只有首尾两个顺序按钮（随机 / 循环）走上游的独立方框；
+       它们的高亮态是填满 56 单位 viewBox 的实心圆角方块，
+       方框尺寸直接决定高亮块的视觉体量。 */
+    &:first-child > svg,
+    &:last-child > svg {
+        width: var(--classic-amll-order-icon-size);
+        height: var(--classic-amll-order-icon-size);
     }
 
     &[data-animating="true"] > svg {
         animation: classic-amll-media-pressed 700ms;
+        animation-composition: accumulate;
     }
 }
 
@@ -534,6 +599,62 @@
     opacity: 0.5;
 }
 
+.classic-amll-bottom-controls {
+    grid-column: 1 / 4;
+    grid-row: 5;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4em;
+    padding: 0 4em;
+    mix-blend-mode: plus-lighter;
+    -webkit-app-region: no-drag;
+}
+
+.classic-amll-bottom-controls-spacer {
+    flex: 1;
+}
+
+.classic-amll-toggle-button {
+    width: 4em;
+    height: 4em;
+    aspect-ratio: 1 / 1;
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: transparent;
+    opacity: 0.45;
+    cursor: pointer;
+    transition: opacity 220ms ease, transform 220ms ease;
+
+    > svg {
+        width: 100%;
+        height: 100%;
+    }
+
+    &:hover,
+    &:focus-visible {
+        opacity: 0.72;
+    }
+
+    &[data-active="true"] {
+        opacity: 0.88;
+    }
+
+    &:active {
+        transform: scale(0.92);
+    }
+
+    &:disabled {
+        opacity: 0.2;
+        cursor: default;
+    }
+}
+
 .classic-amll-lyric {
     grid-column: 2;
     grid-row: 2 / 5;
@@ -543,8 +664,10 @@
     padding-right: 15%;
     overflow: hidden;
     contain: paint;
+    opacity: 1;
     mix-blend-mode: plus-lighter;
     mask-image: linear-gradient(transparent, #000 10%, #000 90%, transparent);
+    transition: opacity 500ms 250ms cubic-bezier(0.5, 0, 0.5, 1);
     -webkit-app-region: no-drag;
 
     .music-detail-lyric-stage {
@@ -572,19 +695,29 @@
     .classic-amll-lyric {
         padding-right: 8%;
     }
+
+    .classic-amll-bottom-controls {
+        gap: 2em;
+        padding: 0 2em;
+    }
+
+    .classic-amll-toggle-button {
+        width: 3em;
+        height: 3em;
+    }
 }
 
 @media screen and (max-height: 1080px) {
     .classic-amll-quality-tag {
-        transform: scale(1);
+        scale: 1;
     }
 
     .classic-amll-media-button > svg {
-        transform: scale(2);
+        scale: 2;
     }
 
     .classic-amll-media-button:nth-child(3) > svg {
-        transform: scale(1.1);
+        scale: 1.1;
     }
 }
 
@@ -596,11 +729,11 @@
     }
 
     .classic-amll-media-button > svg {
-        transform: scale(1.5);
+        scale: 1.5;
     }
 
     .classic-amll-media-button:nth-child(3) > svg {
-        transform: scale(0.8);
+        scale: 0.8;
     }
 
     .classic-amll-progress-labels {
@@ -608,7 +741,7 @@
     }
 
     .classic-amll-quality-tag {
-        transform: scale(0.5);
+        scale: 0.5;
     }
 }
 
@@ -621,6 +754,9 @@
 @media screen and (max-width: 760px) {
     .classic-amll-layout {
         --classic-amll-max-width: min(42vh, 37vw);
+        /* 信息列变成 0.46fr，居中位移随之变为 0.27 / 0.46 */
+        --classic-amll-hide-lyric-left: 58.695652%;
+
         grid-template-columns: 0.46fr 0.54fr 0fr;
     }
 
@@ -631,13 +767,28 @@
     .classic-amll-lyric {
         padding-right: 4%;
     }
+
+    .classic-amll-bottom-controls {
+        gap: 1em;
+        padding: 0 1em;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .classic-amll-control-thumb,
     .classic-amll-slider-track,
     .classic-amll-media-button,
-    .classic-amll-media-button > svg {
+    .classic-amll-media-button > svg,
+    .classic-amll-toggle-button,
+    .classic-amll-quality-tag {
+        transition: none;
+    }
+
+    .classic-amll-layout .classic-amll-drag-area,
+    .classic-amll-layout .classic-amll-cover-frame,
+    .classic-amll-layout .classic-amll-controls,
+    .classic-amll-lyric,
+    .classic-amll-layout[data-hide-lyric="true"] .classic-amll-lyric {
         transition: none;
     }
 

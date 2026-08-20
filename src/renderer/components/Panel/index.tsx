@@ -48,3 +48,10 @@ export function hidePanel() {
 export function getCurrentPanel(){
     return panelStore.getValue();
 }
+
+/** 订阅当前面板类型，供需要反映面板开合状态的按钮使用 */
+const selectPanelType = (panel: IPanelInfo) => panel.type;
+
+export function useCurrentPanelType() {
+    return panelStore.useSelector(selectPanelType);
+}

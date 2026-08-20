@@ -98,14 +98,25 @@
         will-change: transform;
     }
 
-    // True OS fullscreen (F11): chrome fades in place (no layout collapse).
-    // Collapsing topbar height reflows the stage and makes the cover look like it jumps.
-    // Cover motion is pure transform on a fixed-size box.
+    // True OS fullscreen (F11): the detail chrome fades away and the artwork/lyrics
+    // stage uses the whole page. The hidden topbar stays mounted for the veil and
+    // windowed restore, but no longer reserves vertical layout space.
     &[data-fullscreen="true"] {
         .music-detail-topbar-slot {
+            position: absolute;
+            inset: 0 0 auto;
+            z-index: 1;
             opacity: 1;
-            // Keep grid row open so the cover's layout box never shifts.
-            grid-template-rows: 1fr;
+            pointer-events: none;
+        }
+
+        .music-detail-shell {
+            gap: 0;
+            padding-top: 32px;
+        }
+
+        .music-detail-lyric-column {
+            padding-bottom: 0;
         }
 
         .music-detail-topbar {
