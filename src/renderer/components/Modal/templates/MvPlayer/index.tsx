@@ -559,7 +559,10 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
             const target = event.target as HTMLElement | null;
-            if (target?.matches("input, button, [role='menuitemradio']")) return;
+            if (target?.matches("input") && (target as HTMLInputElement).type !== "range") return;
+            if (target?.matches("input") && (target as HTMLInputElement).type === "range" && event.code !== "Space") return;
+            if (target?.matches("[role='menuitemradio']")) return;
+            if (target?.matches("button") && event.code !== "Space") return;
             if (event.code === "Space" || event.key.toLocaleLowerCase("en-US") === "k") {
                 event.preventDefault();
                 togglePlayback();
@@ -611,6 +614,8 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
 
     useEffect(() => {
         mountedRef.current = true;
+        // 自动聚焦播放器容器，防止焦点默认落到关闭按钮上，导致空格键触发关闭
+        playerRef.current?.focus();
         return () => {
             mountedRef.current = false;
             downloadRequestIdRef.current = Number.MAX_SAFE_INTEGER;
@@ -1136,6 +1141,7 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
             <div
                 ref={playerRef}
                 className="modal--mv-player"
+                tabIndex={-1}
                 data-fullscreen={fullscreen ? "true" : "false"}
                 data-native-surface-visible={surfaceVisible ? "true" : "false"}
                 data-closing={closing ? "true" : undefined}
@@ -1145,7 +1151,13 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
                     qualityMenuOpen || speedMenuOpen || downloadMenuOpen ? "true" : undefined
                 }
                 onPointerMove={revealControls}
-                onPointerDownCapture={revealControls}
+                onPointerDownCapture={(event) => {
+                    revealControls();
+                    const target = event.target as HTMLElement | null;
+                    if (!target?.closest("button, input, [role^='menuitem']")) {
+                        playerRef.current?.focus();
+                    }
+                }}
                 onMouseLeave={() => {
                     if (!playing || qualityMenuOpen || speedMenuOpen || downloadMenuOpen) return;
                     clearControlsTimer();
