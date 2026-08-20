@@ -1068,6 +1068,10 @@ function MusicListComponent(props: IMusicListProps) {
                 hotkeys.setScope("all");
             }}
         >
+            <div
+                className="music-list-glass-layer"
+                aria-hidden="true"
+            ></div>
             <div className="music-list-toolbar">
                 <div className="music-list-toolbar-summary">
                     <span className="music-list-toolbar-title">

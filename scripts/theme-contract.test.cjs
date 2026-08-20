@@ -277,9 +277,13 @@ assert.match(
     defaultAcrylicSource,
     /\.music-list-virtual-spacer\s*\{[^}]*backdrop-filter:\s*none\s*!important/,
 );
-assert.doesNotMatch(
+assert.match(
     defaultAcrylicSource,
-    /\.music-list-container:not\(\[data-surface-mode="header-only"\]\)\s*\{[^}]*backdrop-filter:\s*var\(--appGlassFilter\)/,
+    /data-theme-source="builtin"[\s\S]*?music-list-glass-layer[\s\S]*?backdrop-filter:\s*var\(--appGlassFilter\)/,
+);
+assert.match(
+    defaultAcrylicSource,
+    /data-ui-style="flat"[\s\S]*?\.music-list-glass-layer\s*\{\s*display:\s*none/,
 );
 assert.match(globalStyleEntrySource, /@use '\.\/default-acrylic\.scss';/);
 

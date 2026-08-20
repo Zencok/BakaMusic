@@ -150,6 +150,15 @@ assert.match(musicListSource, /container\.dataset\.scrolling = "true"/);
 assert.match(musicListSource, /document\.addEventListener\("dragover", handleDragOver\)/);
 assert.match(musicListSource, /startDragAutoScroll\(e\.clientY\)/);
 assert.doesNotMatch(musicListSource, /translateY\(\$\{virtualController\.startTop\}/);
+assert.match(musicListSource, /className="music-list-glass-layer"/);
+assert.match(
+    musicListStyleSource,
+    /\.music-list-glass-layer\s*\{[\s\S]*height:\s*100vh;[\s\S]*backdrop-filter:\s*var\(--appGlassFilter\)/,
+);
+assert.doesNotMatch(
+    musicListStyleSource,
+    /\[data-scrolling="true"\][\s\S]*backdrop-filter:\s*none\s*!important/,
+);
 assert.match(
     musicListStyleSource,
     /\.music-list-row-wrapper\s*\{[^}]*position:\s*absolute;[^}]*contain:\s*layout style;/,

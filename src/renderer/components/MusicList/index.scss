@@ -7,19 +7,38 @@
   --musicListTextStrong: var(--theme-text);
   --musicListText: var(--theme-text-secondary);
   --musicListTextSoft: var(--theme-text-muted);
+  --musicListGlassInset: 12px;
   width: 100%;
   min-height: 300px;
   margin-top: 12px;
   padding: var(--listCardPadding, 12px);
   border-radius: var(--listCardRadius, 28px);
-  background: var(--musicListSurface);
+  background: transparent;
   border: 1px solid var(--appSurfaceBorder);
   box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
-  // A list can be tens of thousands of pixels tall. Blurring that whole layer
-  // makes Chromium continuously re-raster it while the viewport scrolls.
+  overflow: clip;
+  // Keep the filter on a viewport-sized sticky layer instead of the full
+  // virtual height, so scrolling never needs to rebuild a giant blur surface.
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   box-sizing: border-box;
+
+  & .music-list-glass-layer {
+    position: sticky;
+    top: 0;
+    z-index: 0;
+    width: calc(100% + var(--musicListGlassInset) + var(--musicListGlassInset));
+    height: 100vh;
+    margin-top: calc(0px - var(--musicListGlassInset));
+    margin-right: calc(0px - var(--musicListGlassInset));
+    margin-bottom: calc(0px - 100vh + var(--musicListGlassInset));
+    margin-left: calc(0px - var(--musicListGlassInset));
+    border-radius: var(--listCardRadius, 28px);
+    background: var(--defaultAcrylicTexture, none), var(--musicListSurface);
+    -webkit-backdrop-filter: var(--appGlassFilter);
+    backdrop-filter: var(--appGlassFilter);
+    pointer-events: none;
+  }
 
   &[data-surface-mode="header-only"] {
     // Transparent shell only — do not paint or frost the outer container,
@@ -33,6 +52,10 @@
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     isolation: isolate;
+
+    & .music-list-glass-layer {
+      display: none;
+    }
 
     & .music-list-toolbar {
       padding: 0.9rem 1rem;
@@ -66,9 +89,7 @@
   }
 
   // While a wheel gesture keeps moving the content, leave the cheap grey
-  // row-hover background live so the highlight tracks the pointer instead of
-  // going dark until the scroll settles. Only the cover overlay is dropped:
-  // its blurred backdrop-filter layer would re-raster every frame otherwise.
+  // row-hover background live so the highlight tracks the pointer.
   &[data-scrolling="true"] {
     & .music-list-card:hover .music-list-cover-overlay {
       opacity: 0;
@@ -216,6 +237,7 @@
     position: relative;
     min-height: 1px;
     overflow: hidden;
+    z-index: 1;
   }
 
   & .music-list-virtual-content {

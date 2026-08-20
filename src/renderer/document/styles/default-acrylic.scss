@@ -158,6 +158,17 @@ html[data-theme-source="builtin"] {
     }
 }
 
+html[data-theme-source="builtin"][data-ui-style="glass"] {
+    .music-list-container:not([data-surface-mode="header-only"]) {
+        background: transparent !important;
+        background-image: none !important;
+    }
+
+    .music-list-container:not([data-surface-mode="header-only"]) .music-list-glass-layer {
+        background: var(--defaultAcrylicTexture), var(--musicListSurface);
+    }
+}
+
 // Electron Acrylic supplies the desktop blur. The canvas keeps a Lycia-like
 // tinted wash so pure black wallpapers do not punch through empty chrome.
 html[data-theme-source="builtin"][data-window-material="acrylic"] {
@@ -336,6 +347,10 @@ html[data-theme-source="builtin"][data-ui-style="flat"] {
         --musicListSurface: var(--appSurface);
         -webkit-backdrop-filter: none !important;
         backdrop-filter: none !important;
+
+        .music-list-glass-layer {
+            display: none;
+        }
     }
 
     .music-list-container:not([data-surface-mode="header-only"]) .music-list-toolbar {
@@ -381,8 +396,14 @@ html[data-theme-source="builtin"][data-ui-style="glass"] {
 
     .music-list-container:not([data-surface-mode="header-only"]) {
         --musicListSurface: var(--appSurface);
+        background: transparent !important;
+        background-image: none !important;
         -webkit-backdrop-filter: none !important;
         backdrop-filter: none !important;
+
+        .music-list-glass-layer {
+            background: var(--defaultAcrylicTexture), var(--musicListSurface);
+        }
     }
 
     .music-list-container:not([data-surface-mode="header-only"]) .music-list-toolbar {

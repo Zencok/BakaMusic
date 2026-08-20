@@ -953,6 +953,10 @@
         box-shadow: none;
         backdrop-filter: none;
 
+        .music-list-glass-layer {
+            display: none;
+        }
+
         // Local music etc. use header-only: shell must stay transparent so
         // toolbar + list cards are not double-wrapped in an outer card.
         &[data-surface-mode="header-only"] {
