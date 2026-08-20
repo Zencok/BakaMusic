@@ -12,6 +12,10 @@
   box-sizing: border-box;
   background: var(--appPanelMask);
   cursor: default !important;
+  // AMLL's full-page layout is an Electron drag region. Panels sit above it,
+  // so explicitly opt the mask and its content out of native drag hit-testing
+  // before relying on the React backdrop click handlers.
+  -webkit-app-region: no-drag !important;
 
   &[data-cover-header=true] {
     top: 0;
@@ -32,6 +36,7 @@
     border: 1px solid var(--panelBorder, color-mix(in srgb, var(--textColor) 12%, transparent));
     box-shadow: var(--panelShadow, 0 24px 64px rgba(15, 23, 42, 0.16));
     backdrop-filter: var(--panelFilter, blur(28px) saturate(150%));
+    -webkit-app-region: no-drag !important;
     --textColor: var(--panelTextOnSurface, var(--textColor));
     --dividerColor: color-mix(in srgb, var(--textColor) 10%, transparent);
     --listActiveColor: color-mix(in srgb, var(--primaryColor) 12%, transparent);

@@ -4,6 +4,9 @@
   z-index: 10020;
   background: transparent;
   cursor: default;
+  // The AMLL detail surface is a native drag region. Keep the popover layer
+  // in the regular pointer-hit tree so its backdrop can close on every side.
+  -webkit-app-region: no-drag !important;
 }
 
 .quality-select-popover {
@@ -21,6 +24,7 @@
   border: 1px solid var(--theme-popover-border);
   box-shadow: var(--theme-shadow);
   backdrop-filter: blur(var(--theme-blur)) saturate(170%);
+  -webkit-app-region: no-drag !important;
   animation: quality-select-popover-in 140ms ease-out;
 
   &[data-placement="center"] {
