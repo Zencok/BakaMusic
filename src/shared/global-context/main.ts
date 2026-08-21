@@ -5,7 +5,7 @@ import { isIpcSenderAllowed } from "@shared/ipc-security/main";
 
 export function setupGlobalContext() {
     ipcMain.on(_IpcRendererEvt.GET_GLOBAL_DATA, (evt) => {
-        if (!isIpcSenderAllowed(evt, ["main"])) {
+        if (!isIpcSenderAllowed(evt, ["main", "mv"])) {
             evt.returnValue = null;
             return;
         }

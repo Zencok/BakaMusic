@@ -40,6 +40,7 @@ import { IContextMenuItem, showContextMenu } from "../ContextMenu";
 import DragReceiver, { startDrag } from "../DragReceiver";
 import Empty from "../Empty";
 import { hideModal, showModal } from "../Modal";
+import openMusicVideo from "@renderer/utils/open-music-video";
 import MusicDownloaded from "../MusicDownloaded";
 import MusicFavorite from "../MusicFavorite";
 import SvgAsset from "../SvgAsset";
@@ -441,7 +442,7 @@ export function showMusicContextMenu(
                 icon: "picture-in-picture-line",
                 show: canPlayMusicVideo(musicItem),
                 onClick() {
-                    showModal("MvPlayer", { musicItem });
+                    openMusicVideo(musicItem);
                 },
             },
             {

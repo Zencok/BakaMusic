@@ -24,7 +24,7 @@ import {
     MAX_PITCH_SEMITONES,
     MIN_PITCH_SEMITONES,
 } from "@renderer/core/track-player/controller/pitch-shifter";
-import { showModal } from "@renderer/components/Modal";
+import openMusicVideo from "@renderer/utils/open-music-video";
 import { canPlayMusicVideo } from "@/renderer/utils/music-video";
 
 export default function Extra() {
@@ -78,7 +78,7 @@ function MvBtn() {
             aria-label={t("music_bar.play_mv")}
             onClick={() => {
                 if (currentMusic) {
-                    showModal("MvPlayer", { musicItem: currentMusic });
+                    openMusicVideo(currentMusic);
                 }
             }}
         >

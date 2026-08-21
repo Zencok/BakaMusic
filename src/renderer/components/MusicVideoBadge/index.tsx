@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { showModal } from "@renderer/components/Modal";
 import { canPlayMusicVideo } from "@renderer/utils/music-video";
+import openMusicVideo from "@renderer/utils/open-music-video";
 import "./index.scss";
 
 interface IMusicVideoBadgeProps {
@@ -18,7 +18,7 @@ export default function MusicVideoBadge({ musicItem, compact = false }: IMusicVi
     const openMv = (event: MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
         event.stopPropagation();
-        showModal("MvPlayer", { musicItem });
+        openMusicVideo(musicItem);
     };
 
     return (

@@ -12,7 +12,6 @@ import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import { normalizeVideoUpstreamUrl } from "@/common/video-url";
 import SvgAsset from "@renderer/components/SvgAsset";
-import trackPlayer from "@renderer/core/track-player";
 import { getMediaPluginDelegate } from "@renderer/core/track-player/plugin-media";
 import {
     startMusicVideoDownload,
@@ -27,12 +26,20 @@ import type {
 } from "@shared/native-playback/common";
 import PluginManager from "@shared/plugin-manager/renderer";
 import { appWindowUtil, shellUtil } from "@shared/utils/renderer";
-import { hideModal } from "../..";
 import Base from "../Base";
 import "./index.scss";
 
-interface IMvPlayerProps {
+export interface IMvPlayerAudioSession {
+    initialVolume: number;
+    initialMuted: boolean;
+    suspendForVideo(): Promise<void>;
+    restoreAfterVideo(): void | Promise<void>;
+}
+
+export interface IMvPlayerProps {
     musicItem: IMusic.IMusicItem;
+    audioSession: IMvPlayerAudioSession;
+    onClose(): void;
 }
 
 const VIDEO_SPEED_PRESETS = [2, 1.5, 1.25, 1, 0.75, 0.5] as const;
@@ -235,12 +242,14 @@ function getSurfaceBounds(
     if (!rect) {
         return { x: 0, y: 0, width: 1, height: 1, borderRadius: 0 };
     }
-    // Use one rounded coordinate system for both the HWND and the renderer
-    // cutout. Rounding width/height independently can shift the far edges.
+    // Keep the near edge stable while expanding the far edges to cover the
+    // fractional pixels produced by aspect-ratio layouts. Rounding right and
+    // bottom inward leaves a one-pixel strip of the transparent overlay visible
+    // beside the native HWND.
     const left = Math.round(rect.left);
     const top = Math.round(rect.top);
-    const right = Math.round(rect.right);
-    const bottom = Math.round(rect.bottom);
+    const right = Math.ceil(rect.right);
+    const bottom = Math.ceil(rect.bottom);
     const width = Math.max(1, right - left);
     const height = Math.max(1, bottom - top);
     const radiusValue = Number.parseFloat(
@@ -308,7 +317,7 @@ function handleMenuNavigation(event: ReactKeyboardEvent<HTMLDivElement>) {
     }
 }
 
-export default function MvPlayer({ musicItem }: IMvPlayerProps) {
+export default function MvPlayer({ musicItem, audioSession, onClose }: IMvPlayerProps) {
     const { t } = useTranslation();
     const playerRef = useRef<HTMLDivElement>(null);
     const surfaceRef = useRef<HTMLDivElement>(null);
@@ -330,8 +339,10 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
         `video-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
     ).current;
     const activeSessionRef = useRef("");
-    const previousVolumeRef = useRef(Math.max(trackPlayer.volume, 0.82));
-    const currentVolumeRef = useRef(trackPlayer.isMute ? 0 : trackPlayer.volume);
+    const previousVolumeRef = useRef(Math.max(audioSession.initialVolume, 0.82));
+    const currentVolumeRef = useRef(
+        audioSession.initialMuted ? 0 : audioSession.initialVolume,
+    );
     const [retryToken, setRetryToken] = useState(0);
     const sessionId = `${sessionBase}-${retryToken}`;
     const [nativeSessionId, setNativeSessionId] = useState("");
@@ -345,8 +356,8 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
     const [playing, setPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
-    const [volume, setVolume] = useState(trackPlayer.volume);
-    const [muted, setMuted] = useState(trackPlayer.isMute);
+    const [volume, setVolume] = useState(audioSession.initialVolume);
+    const [muted, setMuted] = useState(audioSession.initialMuted);
     const [speed, setSpeed] = useState(1);
     const [fullscreen, setFullscreen] = useState(false);
     const [closing, setClosing] = useState(false);
@@ -450,26 +461,20 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
 
     const exitFullscreen = useCallback(() => {
         fullscreenRequestedRef.current = false;
-        if (document.fullscreenElement === playerRef.current) {
-            void document.exitFullscreen().catch(() => undefined);
-        }
         appWindowUtil.setMainWindowFullScreen?.(false);
         setFullscreenState(false);
         revealControls();
     }, [revealControls, setFullscreenState]);
 
     const enterFullscreen = useCallback(() => {
-        const player = playerRef.current;
-        if (!player) return;
         fullscreenRequestedRef.current = true;
         setFullscreenState(true);
         revealControls();
         appWindowUtil.setMainWindowFullScreen?.(true);
-        void player.requestFullscreen().catch(() => undefined);
     }, [revealControls, setFullscreenState]);
 
     const toggleFullscreen = useCallback(() => {
-        if (fullscreenRef.current || document.fullscreenElement === playerRef.current) {
+        if (fullscreenRef.current) {
             exitFullscreen();
         } else {
             enterFullscreen();
@@ -503,9 +508,9 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
             }
             setExiting(true);
             await waitForOpacityTransition(playerRef.current, 150);
-            hideModal();
+            onClose();
         })();
-    }, [clearControlsTimer, nativeSessionId]);
+    }, [clearControlsTimer, nativeSessionId, onClose]);
 
     const handleWheelVolume = useCallback((event: ReactWheelEvent<HTMLDivElement>) => {
         if (qualityMenuOpen || speedMenuOpen || downloadMenuOpen) return;
@@ -528,31 +533,16 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
     ]);
 
     useEffect(() => {
-        const onFullscreenChange = () => {
-            const enabled = document.fullscreenElement === playerRef.current;
-            if (enabled) {
-                fullscreenRequestedRef.current = true;
-                appWindowUtil.setMainWindowFullScreen?.(true);
-            } else if (fullscreenRequestedRef.current) {
-                fullscreenRequestedRef.current = false;
-                appWindowUtil.setMainWindowFullScreen?.(false);
-            }
-            setFullscreenState(enabled);
-            revealControls();
-        };
         const unsubscribe = appWindowUtil.onMainWindowFullScreenChanged?.((enabled) => {
             const next = Boolean(enabled);
             setFullscreenState(next);
             revealControls();
-            if (!next && document.fullscreenElement === playerRef.current) {
+            if (!next) {
                 fullscreenRequestedRef.current = false;
-                void document.exitFullscreen().catch(() => undefined);
             }
         });
-        document.addEventListener("fullscreenchange", onFullscreenChange);
         return () => {
             unsubscribe?.();
-            document.removeEventListener("fullscreenchange", onFullscreenChange);
         };
     }, [revealControls, setFullscreenState]);
 
@@ -663,7 +653,7 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
         const restoreAudio = () => {
             if (!audioSuspended || audioRestored) return;
             audioRestored = true;
-            trackPlayer.restoreAfterVideo();
+            void audioSession.restoreAfterVideo();
         };
 
         const removeVideoListener = nativePlayback.onVideoEvent((event) => {
@@ -713,9 +703,8 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
             }
             if (canceled) return;
 
-            // Native Acrylic filters every HWND below the BrowserWindow. Switch
-            // to per-pixel composition before the video popup is warmed up so
-            // its decoded frames remain sharp.
+            // Reserve the single native overlay session before resolving its
+            // sources and warming the libmpv popup below this transparent window.
             activeSessionRef.current = sessionId;
             await nativePlayback.prepareVideoOverlay(sessionId);
             await waitForRendererPaint();
@@ -786,7 +775,7 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
             const initialSource = availablePreferred ? toNativeSource(availablePreferred) : null;
             if (!initialSource) throw new Error("MV source unavailable");
 
-            await trackPlayer.suspendForVideo();
+            await audioSession.suspendForVideo();
             audioSuspended = true;
             if (canceled) {
                 restoreAudio();
@@ -894,7 +883,7 @@ export default function MvPlayer({ musicItem }: IMvPlayerProps) {
         };
     // Session settings are captured when this playback session starts; later changes use videoCommand.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [musicItem, retryToken, sessionId, t]);
+    }, [audioSession, musicItem, retryToken, sessionId, t]);
 
     // Keep the native HWND mounted for pause, seek, source switching and menu
     // interactions. Hiding it discards the last presented frame and exposes the

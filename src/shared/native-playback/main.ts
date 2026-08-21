@@ -29,12 +29,6 @@ import ServiceManager from "@shared/service-manager/main";
 import AppConfig from "@shared/app-config/main";
 import messageBus from "@shared/message-bus/main";
 import {
-    getOpaqueWindowBackground,
-    resolveThemeScheme,
-    supportsNativeAcrylic,
-    type ThemeScheme,
-} from "@shared/themepack/window-material";
-import {
     getMpvRuntimeDirectory,
     hasNativePlaybackRuntime,
 } from "./runtime-path";
@@ -415,46 +409,6 @@ interface VideoHostWindow {
     showInactive: () => void;
 }
 
-type NativeVideoBrowserWindow = BrowserWindow & {
-    __bakaNativeVideoOverlay?: boolean;
-    __bakaWindowMaterialPreference?: {
-        enabled: boolean;
-        scheme: ThemeScheme;
-    };
-};
-
-function setNativeVideoWindowComposition(window: BrowserWindow, active: boolean) {
-    if (process.platform !== "win32" || window.isDestroyed()) return;
-    const targetWindow = window as NativeVideoBrowserWindow;
-    if (targetWindow.__bakaNativeVideoOverlay === active) return;
-    targetWindow.__bakaNativeVideoOverlay = active;
-    if (active) {
-        // Acrylic filters every HWND below the BrowserWindow, including the
-        // libmpv popup. The renderer prepares this mode while its player canvas
-        // is still opaque, so the DWM material transition is never exposed
-        // through the video cutout.
-        try {
-            targetWindow.setBackgroundMaterial("none");
-        } catch {
-            // Per-pixel transparency remains usable if the material API is not
-            // available on the current Windows build.
-        }
-        targetWindow.setBackgroundColor("#00000000");
-        return;
-    }
-    const preference = targetWindow.__bakaWindowMaterialPreference;
-    const scheme = preference?.scheme ?? resolveThemeScheme();
-    const acrylic = Boolean(preference?.enabled && supportsNativeAcrylic());
-    try {
-        targetWindow.setBackgroundMaterial(acrylic ? "acrylic" : "none");
-    } catch {
-        // The opaque renderer fill below remains valid if DWM rejects Acrylic.
-    }
-    targetWindow.setBackgroundColor(
-        acrylic ? "#00000000" : getOpaqueWindowBackground(scheme),
-    );
-}
-
 class ElectronVideoHostWindow implements VideoHostWindow {
     constructor(private readonly window: BaseWindow) {}
 
@@ -710,6 +664,10 @@ class NativePlaybackManager {
             }
         });
         windowManager.on("WindowCreated", (data) => {
+            if (data.windowName === "mv") {
+                this.observeVideoOverlayWindowLifecycle(data.browserWindow);
+                return;
+            }
             if (data.windowName !== "main") {
                 return;
             }
@@ -745,31 +703,31 @@ class NativePlaybackManager {
             return result;
         });
         ipcMain.handle("@shared/native-playback/open-video", async (event, value) => {
-            assertIpcSender(event, ["main"]);
+            assertIpcSender(event, ["mv"]);
             await this.openVideo(validateVideoOpenRequest(value));
         });
         ipcMain.handle("@shared/native-playback/prepare-video-overlay", (event, sourceId) => {
-            assertIpcSender(event, ["main"]);
+            assertIpcSender(event, ["mv"]);
             this.prepareVideoOverlay(validateSourceId(sourceId));
         });
         ipcMain.handle("@shared/native-playback/update-video-sources", (event, value) => {
-            assertIpcSender(event, ["main"]);
+            assertIpcSender(event, ["mv"]);
             this.updateVideoSources(validateVideoSourcesUpdate(value));
         });
         ipcMain.handle("@shared/native-playback/select-video-source", async (event, value) => {
-            assertIpcSender(event, ["main"]);
+            assertIpcSender(event, ["mv"]);
             await this.selectVideoSource(validateVideoSourceSelect(value));
         });
         ipcMain.handle("@shared/native-playback/video-command", async (event, value) => {
-            assertIpcSender(event, ["main"]);
+            assertIpcSender(event, ["mv"]);
             await this.commandVideo(validateVideoCommand(value));
         });
         ipcMain.handle("@shared/native-playback/update-video-surface", (event, value) => {
-            assertIpcSender(event, ["main"]);
+            assertIpcSender(event, ["mv"]);
             this.updateVideoSurface(validateVideoSurfaceUpdate(value));
         });
         ipcMain.handle("@shared/native-playback/close-video", async (event, sourceId) => {
-            assertIpcSender(event, ["main"]);
+            assertIpcSender(event, ["mv"]);
             await this.closeVideo(validateSourceId(sourceId));
         });
         app.on("before-quit", () => this.dispose());
@@ -801,6 +759,17 @@ class NativePlaybackManager {
             this.stopOrphanedMedia();
             systemMediaControls.dispose();
         });
+    }
+
+    private observeVideoOverlayWindowLifecycle(browserWindow: BrowserWindow) {
+        const syncVideoSurface = () => this.syncVideoWindowBounds();
+        browserWindow.on("move", syncVideoSurface);
+        browserWindow.on("resize", syncVideoSurface);
+        browserWindow.on("show", syncVideoSurface);
+        browserWindow.on("focus", syncVideoSurface);
+        browserWindow.on("hide", () => this.videoWindow?.hide());
+        browserWindow.webContents.on("render-process-gone", () => this.beginVideoClose());
+        browserWindow.on("closed", () => this.beginVideoClose());
     }
 
     private handleSystemMediaAction(event: SystemMediaAction) {
@@ -950,9 +919,9 @@ class NativePlaybackManager {
     }
 
     private createVideoWindow(request: ValidatedNativeVideoOpenRequest) {
-        const parent = this.windowManager.mainWindow;
+        const parent = this.windowManager.mvWindow;
         if (!parent || parent.isDestroyed()) {
-            throw new Error("Main window is not available");
+            throw new Error("MV overlay window is not available");
         }
         const bounds = request.surface.bounds;
         let window: VideoHostWindow;
@@ -997,7 +966,7 @@ class NativePlaybackManager {
     private syncVideoWindowBounds() {
         const window = this.videoWindow;
         const surface = this.videoSurface;
-        const parent = this.windowManager.mainWindow;
+        const parent = this.windowManager.mvWindow;
         if (!window || window.isDestroyed() || !surface || !parent || parent.isDestroyed()) {
             return;
         }
@@ -1008,11 +977,6 @@ class NativePlaybackManager {
         ) {
             window.hide();
             return;
-        }
-        if (process.platform === "win32") {
-            // Usually prepared while the renderer canvas was still opaque;
-            // keep this idempotent fallback for callers that open directly.
-            setNativeVideoWindowComposition(parent, true);
         }
         window.setBounds(surface.bounds);
         window.showInactive();
@@ -1288,19 +1252,11 @@ class NativePlaybackManager {
             throw new Error("Another native video overlay is already active");
         }
         this.videoOverlaySourceId = sourceId;
-        const mainWindow = this.windowManager.mainWindow;
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            setNativeVideoWindowComposition(mainWindow, true);
-        }
     }
 
     private releaseVideoOverlay(sourceId: string) {
         if (sourceId !== this.videoOverlaySourceId) return;
         this.videoOverlaySourceId = "";
-        const mainWindow = this.windowManager.mainWindow;
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            setNativeVideoWindowComposition(mainWindow, false);
-        }
     }
 
     private finalizeVideoClose() {
@@ -1322,9 +1278,9 @@ class NativePlaybackManager {
         this.videoClosedPromise = null;
         resolve?.();
         this.releaseVideoOverlay(sourceId);
-        const mainWindow = this.windowManager.mainWindow;
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send("@shared/native-playback/video-event", {
+        const mvWindow = this.windowManager.mvWindow;
+        if (mvWindow && !mvWindow.isDestroyed()) {
+            mvWindow.webContents.send("@shared/native-playback/video-event", {
                 sourceId,
                 type: "closed",
             });
@@ -1523,9 +1479,9 @@ class NativePlaybackManager {
     }
 
     private sendVideoEvent(event: import("./common").INativeVideoEvent) {
-        const mainWindow = this.windowManager.mainWindow;
-        if (mainWindow && !mainWindow.isDestroyed() && event.sourceId) {
-            mainWindow.webContents.send("@shared/native-playback/video-event", event);
+        const mvWindow = this.windowManager.mvWindow;
+        if (mvWindow && !mvWindow.isDestroyed() && event.sourceId) {
+            mvWindow.webContents.send("@shared/native-playback/video-event", event);
         }
     }
 

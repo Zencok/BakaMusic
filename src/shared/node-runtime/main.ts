@@ -299,7 +299,7 @@ class NodeRuntimeManager {
             );
         });
         ipcMain.handle("@shared/node-runtime/download-file", async (event, taskId, mediaSource, filePath) => {
-            assertIpcSender(event, ["main"]);
+            assertIpcSender(event, ["main", "mv"]);
             assertString(taskId, "download task id", 512);
             const validatedMediaSource = validateMediaSource(mediaSource);
             const targetPath = assertPathAccess(filePath, { allowMissing: true });
@@ -310,13 +310,13 @@ class NodeRuntimeManager {
             }, DOWNLOAD_FILE_TIMEOUT_MS);
         });
         ipcMain.handle("@shared/node-runtime/probe-media-size", async (event, mediaSource) => {
-            assertIpcSender(event, ["main"]);
+            assertIpcSender(event, ["main", "mv"]);
             return this.request("probe-media-size", {
                 mediaSource: validateMediaSource(mediaSource),
             });
         });
         ipcMain.handle("@shared/node-runtime/abort-download", async (event, taskId, removePartial) => {
-            assertIpcSender(event, ["main"]);
+            assertIpcSender(event, ["main", "mv"]);
             assertString(taskId, "download task id", 512);
             if (removePartial !== undefined) {
                 assertBoolean(removePartial, "removePartial");

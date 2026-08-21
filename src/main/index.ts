@@ -57,6 +57,7 @@ import {
 import NodeRuntimeManager from "@shared/node-runtime/main";
 import { setupBackupMain } from "@shared/backup/main";
 import NativePlaybackManager from "@shared/native-playback/main";
+import MvOverlayManager from "@shared/mv-overlay/main";
 
 registerThemeProtocolScheme();
 
@@ -161,6 +162,7 @@ app.whenReady().then(async () => {
     utils.setup(windowManager);
     setupBackupMain();
     NodeRuntimeManager.setup(windowManager);
+    MvOverlayManager.setup(windowManager);
     NativePlaybackManager.setup(windowManager);
     PluginManager.setup(windowManager);
     TrayManager.setup(windowManager);

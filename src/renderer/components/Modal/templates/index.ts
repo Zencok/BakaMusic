@@ -13,7 +13,6 @@ import Sparkles from "./Sparkles";
 import SongRecognition from "./SongRecognition";
 import Update from "./Update";
 import WatchLocalDir from "./WatchLocalDir";
-import MvPlayer from "./MvPlayer";
 
 export default {
     Base,
@@ -31,5 +30,4 @@ export default {
     ImportMusicSheet,
     Loading,
     PlayMusicById,
-    MvPlayer,
 };

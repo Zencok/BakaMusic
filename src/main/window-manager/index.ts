@@ -34,6 +34,8 @@ declare const LRC_WINDOW_WEBPACK_ENTRY: string;
 declare const LRC_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
 declare const MINIMODE_WINDOW_WEBPACK_ENTRY: string;
 declare const MINIMODE_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
+declare const MV_WINDOW_WEBPACK_ENTRY: string;
+declare const MV_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
 
 function loadRendererEntry(
     targetWindow: BrowserWindow,
@@ -59,6 +61,7 @@ class WindowManager implements IWindowManager {
     private static mainWindow: BrowserWindow | null = null;
     private static lrcWindow: BrowserWindow | null = null;
     private static miniModeWindow: BrowserWindow | null = null;
+    private static mvWindow: BrowserWindow | null = null;
 
     private ee: EventEmitter = new EventEmitter();
     private repaintingTransparentWindows = new WeakSet<BrowserWindow>();
@@ -99,6 +102,10 @@ class WindowManager implements IWindowManager {
         return WindowManager.miniModeWindow;
     }
 
+    get mvWindow() {
+        return WindowManager.mvWindow;
+    }
+
     getExtensionWindows(): BrowserWindow[] {
         const extWindows = [];
         if (WindowManager.lrcWindow) {
@@ -120,6 +127,9 @@ class WindowManager implements IWindowManager {
         }
         if (WindowManager.miniModeWindow) {
             windows.push(WindowManager.miniModeWindow);
+        }
+        if (WindowManager.mvWindow) {
+            windows.push(WindowManager.mvWindow);
         }
         return windows;
     }
@@ -221,17 +231,9 @@ class WindowManager implements IWindowManager {
                 navigateOnDragDrop: false,
             },
             frame: false,
-            // Start from the theme surface defaults; Windows is overridden
-            // below because the libmpv overlay requires a layered window.
+            // The main window stays opaque so DWM can animate native state
+            // transitions. MV playback is hosted by the transparent mvWindow.
             ...getInitialWindowSurfaceOptions(),
-            // Native libmpv video is a popup HWND immediately below this window.
-            // Per-pixel transparency lets its frames show through the player
-            // viewport while Chromium keeps the controls on top.
-            ...(process.platform === "win32" ? {
-                transparent: true,
-                backgroundColor: "#00000000",
-                backgroundMaterial: "none" as const,
-            } : {}),
             // Required for true OS fullscreen (F11 on music detail).
             fullscreenable: true,
             icon: nativeImage.createFromPath(getResourcePath(ResourceName.LOGO_IMAGE)),
@@ -270,6 +272,13 @@ class WindowManager implements IWindowManager {
                 "@shared/utils/main-window-fullscreen-changed",
                 mainWindow.isFullScreen(),
             );
+            const mvWindow = WindowManager.mvWindow;
+            if (mvWindow && !mvWindow.isDestroyed()) {
+                mvWindow.webContents.send(
+                    "@shared/utils/main-window-fullscreen-changed",
+                    mainWindow.isFullScreen(),
+                );
+            }
         };
         mainWindow.on("enter-full-screen", notifyMainWindowFullScreen);
         mainWindow.on("leave-full-screen", notifyMainWindowFullScreen);
@@ -389,12 +398,23 @@ class WindowManager implements IWindowManager {
                 minimizeMainWindowWithNativeAnimation(mainWindow, true);
             }
         });
+        const syncMvBounds = () => this.syncMvWindowBounds();
+        const restoreMvWindow = () => this.restoreMvWindowAfterMainShow();
+        mainWindow.on("move", syncMvBounds);
+        mainWindow.on("resize", syncMvBounds);
+        mainWindow.on("maximize", syncMvBounds);
+        mainWindow.on("unmaximize", syncMvBounds);
+        mainWindow.on("restore", restoreMvWindow);
+        mainWindow.on("show", restoreMvWindow);
+        mainWindow.on("hide", () => WindowManager.mvWindow?.hide());
+        mainWindow.on("minimize", () => WindowManager.mvWindow?.hide());
 
         // 主窗口可以在应用存活时被销毁（macOS Cmd+W、closeBehavior=exit_app 下的
         // Alt+F4，此时歌词/迷你窗口撑着 window-all-closed 不触发）。不清空引用的话，
         // 托盘命令和 ipc-security 的角色判定都会碰到已销毁对象抛异常。
         mainWindow.on("closed", () => {
             updateWindowSizeConfig.cancel();
+            this.closeMvWindow();
             if (WindowManager.mainWindow === mainWindow) {
                 WindowManager.mainWindow = null;
             }
@@ -439,6 +459,7 @@ class WindowManager implements IWindowManager {
     }
 
     public closeMainWindow() {
+        this.closeMvWindow();
         WindowManager.mainWindow?.close();
         WindowManager.mainWindow = null;
     }
@@ -929,6 +950,160 @@ class WindowManager implements IWindowManager {
         // process: the mini renderer may also send show-main-window, but that
         // IPC is rejected once the mini window reference is cleared / destroyed.
         this.showMainWindow();
+    }
+
+    /**************************** MV Overlay Window ***************************/
+    private syncMvWindowBounds() {
+        const mainWindow = WindowManager.mainWindow;
+        const mvWindow = WindowManager.mvWindow;
+        if (
+            !mainWindow
+            || mainWindow.isDestroyed()
+            || !mvWindow
+            || mvWindow.isDestroyed()
+        ) {
+            return;
+        }
+        const bounds = mainWindow.getBounds();
+        mvWindow.setBounds(bounds, false);
+        if (mainWindow.isMinimized() || !mainWindow.isVisible()) {
+            mvWindow.hide();
+        }
+    }
+
+    private restoreMvWindowAfterMainShow() {
+        const mainWindow = WindowManager.mainWindow;
+        const mvWindow = WindowManager.mvWindow;
+        if (
+            !mainWindow
+            || mainWindow.isDestroyed()
+            || mainWindow.isMinimized()
+            || !mainWindow.isVisible()
+            || !mvWindow
+            || mvWindow.isDestroyed()
+        ) {
+            return;
+        }
+        this.syncMvWindowBounds();
+        if (!mvWindow.webContents.isLoadingMainFrame() && !mvWindow.isVisible()) {
+            mvWindow.show();
+        }
+        if (mvWindow.isVisible()) {
+            mvWindow.moveTop();
+            mvWindow.focus();
+        }
+    }
+
+    private createMvWindow() {
+        const mainWindow = WindowManager.mainWindow;
+        if (!mainWindow || mainWindow.isDestroyed()) {
+            return;
+        }
+        if (WindowManager.mvWindow && !WindowManager.mvWindow.isDestroyed()) {
+            return;
+        }
+        const bounds = mainWindow.getBounds();
+        const mvWindow = new BrowserWindow({
+            ...bounds,
+            parent: mainWindow,
+            show: false,
+            frame: false,
+            transparent: true,
+            backgroundColor: "#00000000",
+            backgroundMaterial: "none",
+            skipTaskbar: true,
+            resizable: false,
+            minimizable: false,
+            maximizable: false,
+            fullscreenable: false,
+            hasShadow: false,
+            webPreferences: {
+                preload: MV_WINDOW_PRELOAD_WEBPACK_ENTRY,
+                nodeIntegration: false,
+                nodeIntegrationInWorker: false,
+                contextIsolation: true,
+                webSecurity: true,
+                allowRunningInsecureContent: false,
+                sandbox: true,
+                webviewTag: false,
+                navigateOnDragDrop: false,
+            },
+        });
+        WindowManager.mvWindow = mvWindow;
+        hardenWindow(mvWindow, MV_WINDOW_WEBPACK_ENTRY);
+        void loadRendererEntry(mvWindow, MV_WINDOW_WEBPACK_ENTRY).catch((error) => {
+            logger.logError("MV window failed to load", toError(error));
+        });
+        mvWindow.on("closed", () => {
+            if (WindowManager.mvWindow === mvWindow) {
+                WindowManager.mvWindow = null;
+            }
+        });
+        mvWindow.webContents.on("did-fail-load", (
+            _event,
+            errorCode,
+            errorDescription,
+            validatedUrl,
+            isMainFrame,
+        ) => {
+            if (!isMainFrame) {
+                return;
+            }
+            logger.logError(
+                "MV window renderer failed to load",
+                new Error(`${errorDescription} (${errorCode})`),
+                { url: validatedUrl },
+            );
+        });
+        mvWindow.webContents.on("render-process-gone", (_event, details) => {
+            logger.logError(
+                "MV window renderer process exited",
+                new Error(details.reason),
+                details,
+            );
+        });
+        this.emit("WindowCreated", {
+            windowName: "mv",
+            browserWindow: mvWindow,
+        });
+        this.syncMvWindowBounds();
+        const showLoadedMvWindow = () => {
+            if (
+                !mvWindow.isDestroyed()
+                && mainWindow.isVisible()
+                && !mainWindow.isMinimized()
+            ) {
+                mvWindow.show();
+                mvWindow.focus();
+            }
+        };
+        mvWindow.once("ready-to-show", showLoadedMvWindow);
+        mvWindow.webContents.once("did-finish-load", showLoadedMvWindow);
+    }
+
+    public showMvWindow() {
+        if (!WindowManager.mainWindow || WindowManager.mainWindow.isDestroyed()) {
+            return;
+        }
+        this.createMvWindow();
+        const mvWindow = WindowManager.mvWindow;
+        if (!mvWindow || mvWindow.isDestroyed()) {
+            return;
+        }
+        this.syncMvWindowBounds();
+        if (!mvWindow.webContents.isLoadingMainFrame() && !mvWindow.isVisible()) {
+            mvWindow.show();
+        }
+        mvWindow.moveTop();
+        mvWindow.focus();
+    }
+
+    public closeMvWindow() {
+        const mvWindow = WindowManager.mvWindow;
+        if (mvWindow && !mvWindow.isDestroyed()) {
+            mvWindow.close();
+        }
+        WindowManager.mvWindow = null;
     }
 
     private normalizeWindowPosition(window: BrowserWindow, position: ICommon.IPoint, onNormalized: (position: ICommon.IPoint) => void) {

@@ -12,7 +12,7 @@ const ac4FixturePath = path.resolve(
     __dirname,
     "fixtures/native-media-ac4-smoke.ac4",
 );
-const targetNames = ["main_window", "lrc_window", "minimode_window"];
+const targetNames = ["main_window", "lrc_window", "minimode_window", "mv_window"];
 const serviceNames = ["mflac-proxy", "luna-proxy"];
 
 function delay(milliseconds) {
@@ -348,6 +348,16 @@ async function run() {
             response.end(audio);
             return;
         }
+        if (request.url === "/native-video.wav") {
+            const audio = createSilentWav(120);
+            response.writeHead(200, {
+                "Accept-Ranges": "bytes",
+                "Content-Length": String(audio.length),
+                "Content-Type": "audio/wav",
+            });
+            response.end(audio);
+            return;
+        }
         if (request.url?.startsWith("/lx-audio/")) {
             const audioHeader = Buffer.from("fLaC", "ascii");
             response.writeHead(200, {
@@ -469,6 +479,7 @@ async function run() {
         module.exports = {
             platform: "Phase5Smoke",
             version: "1.0.0",
+            supportedVideoQualities: ["720p"],
             async search() {
                 const response = await axios.get("http://plugin-smoke.invalid/health");
                 if (response.data?.ok !== true) {
@@ -479,6 +490,14 @@ async function run() {
                     throw new Error("plugin storage roundtrip failed");
                 }
                 return { isEnd: true, data: [] };
+            },
+            async getMvSource() {
+                return {
+                    url: ${JSON.stringify(`${resourceOrigin}/native-video.wav`)},
+                    videoQuality: "720p",
+                    width: 1280,
+                    height: 720
+                };
             }
         };`,
         "utf8",
@@ -848,71 +867,9 @@ async function run() {
                 results[name] = await reachedPlaying;
                 await bridge.command({ operation: "stop", sourceId });
             }
-            const videoSourceId = "package-smoke-video";
-            const videoReachedPlaying = new Promise((resolve) => {
-                const timer = setTimeout(() => {
-                    cleanup();
-                    resolve(false);
-                }, 15_000);
-                const cleanup = bridge.onVideoEvent((event) => {
-                    if (event.sourceId !== videoSourceId || event.type !== "snapshot") return;
-                    if (event.snapshot?.state === "playing") {
-                        clearTimeout(timer);
-                        cleanup();
-                        resolve(true);
-                    } else if (event.snapshot?.state === "error") {
-                        clearTimeout(timer);
-                        cleanup();
-                        resolve(false);
-                    }
-                });
-            });
-            await bridge.openVideo({
-                sourceId: videoSourceId,
-                title: "BakaMusic Video SMTC Smoke",
-                artist: "BakaMusic",
-                album: "Package Verification",
-                artwork: ${JSON.stringify(`${resourceOrigin}/pixel.png`)},
-                appMediaId: "video:package-smoke:smtc",
-                sources: [{
-                    key: "smoke",
-                    label: "Smoke",
-                    url: window["@shared/utils"].fs.addFileScheme(
-                        ${JSON.stringify(localMediaPath)},
-                    ),
-                }],
-                initialSourceKey: "smoke",
-                volume: 0,
-                surface: {
-                    bounds: { x: 0, y: 0, width: 64, height: 64, borderRadius: 0 },
-                    visible: false,
-                },
-            });
-            const videoPlaying = await videoReachedPlaying;
-            const videoCapabilities = await bridge.getCapabilities();
-            await bridge.videoCommand({
-                operation: "pause",
-                sourceId: videoSourceId,
-            });
-            await bridge.videoCommand({
-                operation: "seek",
-                sourceId: videoSourceId,
-                seconds: 0,
-            });
-            await bridge.videoCommand({
-                operation: "play",
-                sourceId: videoSourceId,
-            });
-            await bridge.closeVideo(videoSourceId);
-            const finalCapabilities = await bridge.getCapabilities();
-            window["@shared/message-bus/main"].syncAppState({ musicItem: null });
             return {
                 available: initialCapabilities.available,
                 systemMediaControls: initialCapabilities.systemMediaControls,
-                systemMediaControlsActive: finalCapabilities.systemMediaControlsActive,
-                videoPlaying,
-                videoSystemMediaControlsActive: videoCapabilities.systemMediaControlsActive,
-                audioSystemMediaControlsRestored: finalCapabilities.systemMediaControlsActive,
                 clientApiVersion: initialCapabilities.clientApiVersion,
                 mediaBackend: initialCapabilities.mediaBackend,
                 engine: initialCapabilities.engine,
@@ -997,10 +954,6 @@ async function run() {
             nativePlaybackState: {
                 available: true,
                 systemMediaControls: process.platform === "win32",
-                systemMediaControlsActive: process.platform === "win32",
-                videoPlaying: true,
-                videoSystemMediaControlsActive: process.platform === "win32",
-                audioSystemMediaControlsRestored: process.platform === "win32",
                 clientApiVersion: "2.5",
                 mediaBackend: "librempeg",
                 engine: "libmpv",
@@ -1054,6 +1007,66 @@ async function run() {
                 fixture: JSON.stringify({ schema: "package-smoke" }),
             },
         });
+        const audioControlsBeforeMv = await mainSession.evaluate(
+            `window["@shared/native-playback"].getCapabilities()` ,
+            "audio media controls before MV",
+        );
+        const mvOpened = await mainSession.evaluate(`window["@shared/mv-overlay"].open({
+            musicItem: {
+                id: 4242,
+                platform: "Phase5Smoke",
+                title: "BakaMusic MV Package Smoke",
+                artist: "BakaMusic",
+                album: "Package Verification",
+                artwork: ${JSON.stringify(`${resourceOrigin}/pixel.png`)},
+                videoQuality: "720p",
+            },
+            audio: {
+                volume: 0,
+                muted: true,
+            },
+        })`, "open MV overlay window");
+        assert.equal(mvOpened, true);
+        const mvSessions = await connectWindowTargets(port, ["mv_window"]);
+        const mvSession = mvSessions.get("mv_window");
+        sessions.set("mv_window", mvSession);
+        const mvPlaybackState = await retry(async () => {
+            const state = await mvSession.evaluate(`(() => {
+                const nativePlayback = window["@shared/native-playback"];
+                const pluginManager = window["@shared/plugin-manager"];
+                const player = document.querySelector(".modal--mv-player");
+                return {
+                    playerRendered: Boolean(player),
+                    nativeSurfaceVisible:
+                        player?.getAttribute("data-native-surface-visible") === "true",
+                    title: document.querySelector(".mv-player-heading strong")?.textContent || "",
+                    videoCommandBridge: typeof nativePlayback?.videoCommand,
+                    audioCommandBridge: typeof nativePlayback?.command,
+                    capabilitiesBridge: typeof nativePlayback?.getCapabilities,
+                    pluginCallBridge: typeof pluginManager?.callPluginMethod,
+                    pluginInstallBridge: typeof pluginManager?.installPluginFromLocal,
+                };
+            })()`);
+            return state.playerRendered && state.nativeSurfaceVisible ? state : null;
+        }, 30_000);
+        assert.deepEqual(mvPlaybackState, {
+            playerRendered: true,
+            nativeSurfaceVisible: true,
+            title: "BakaMusic MV Package Smoke",
+            videoCommandBridge: "function",
+            audioCommandBridge: "undefined",
+            capabilitiesBridge: "undefined",
+            pluginCallBridge: "function",
+            pluginInstallBridge: "undefined",
+        });
+        const videoControls = await mainSession.evaluate(
+            `window["@shared/native-playback"].getCapabilities()`,
+            "video media controls during MV",
+        );
+        assert.equal(
+            videoControls.systemMediaControlsActive,
+            process.platform === "win32",
+        );
         await mainSession.evaluate(`(() => {
             const appWindow = window["@shared/utils"].appWindow;
             appWindow.setLyricWindow(true);
@@ -1092,6 +1105,30 @@ async function run() {
             assert.deepEqual(serviceStates[name], { status: 200, body: "OK" });
         }
 
+        await mvSession.evaluate(`(() => {
+            setTimeout(() => window["@shared/mv-overlay"].close(), 0);
+            return true;
+        })()`, "close MV overlay window");
+        await retry(async () => {
+            const targets = await getTargets(port);
+            return targets.some((target) => classifyTarget(target) === "mv_window")
+                ? null
+                : true;
+        });
+        const audioControlsAfterMv = await retry(async () => {
+            const capabilities = await mainSession.evaluate(
+                `window["@shared/native-playback"].getCapabilities()`,
+            );
+            return capabilities.systemMediaControlsActive
+                === audioControlsBeforeMv.systemMediaControlsActive
+                ? capabilities
+                : null;
+        });
+        assert.equal(
+            audioControlsAfterMv.systemMediaControlsActive,
+            audioControlsBeforeMv.systemMediaControlsActive,
+        );
+
         await delay(1_000);
         const runtimeErrors = Object.fromEntries(
             [...sessions].map(([name, session]) => [name, session.errors]),
@@ -1103,6 +1140,7 @@ async function run() {
         console.log(JSON.stringify({
             windowStates,
             boundaryState,
+            mvPlaybackState,
             serviceStates,
             runtimeErrors,
         }, null, 2));

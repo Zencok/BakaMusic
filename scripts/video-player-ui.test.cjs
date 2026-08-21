@@ -7,12 +7,29 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 
 const musicList = read("src/renderer/components/MusicList/index.tsx");
 assert.match(musicList, /music_list_context_menu\.play_mv/);
-assert.match(musicList, /showModal\("MvPlayer", \{ musicItem \}\)/);
+assert.match(musicList, /openMusicVideo\(musicItem\)/);
 assert.match(musicList, /canPlayMusicVideo\(musicItem\)/);
 
 const badge = read("src/renderer/components/MusicVideoBadge/index.tsx");
 assert.match(badge, /canPlayMusicVideo\(musicItem\)/);
-assert.match(badge, /showModal\("MvPlayer", \{ musicItem \}\)/);
+assert.match(badge, /openMusicVideo\(musicItem\)/);
+
+const openMusicVideo = read("src/renderer/utils/open-music-video.ts");
+assert.match(openMusicVideo, /mvOverlay\.open/);
+assert.match(openMusicVideo, /volume: trackPlayer\.volume/);
+assert.match(openMusicVideo, /muted: trackPlayer\.isMute/);
+
+const overlayMain = read("src/shared/mv-overlay/main.ts");
+assert.match(overlayMain, /@shared\/mv-overlay\/open/);
+assert.match(overlayMain, /typeof rawMusicId !== "number"/);
+assert.match(overlayMain, /const musicId = String\(rawMusicId\)/);
+assert.match(overlayMain, /@shared\/mv-overlay\/get-session/);
+
+const overlayRenderer = read("src/renderer-mv/document/index.tsx");
+assert.match(overlayRenderer, /mvOverlay\.getSession\(\)/);
+assert.match(overlayRenderer, /<MvPlayer/);
+assert.match(overlayRenderer, /suspendForVideo: mvOverlay\.suspendAudio/);
+assert.match(overlayRenderer, /restoreAfterVideo: mvOverlay\.restoreAudio/);
 
 const player = read("src/renderer/components/Modal/templates/MvPlayer/index.tsx");
 assert.match(player, /"getMvSource"/);
@@ -25,7 +42,8 @@ assert.match(player, /nativePlayback\.selectVideoSource/);
 assert.match(player, /nativePlayback\.videoCommand/);
 assert.match(player, /nativePlayback\.updateVideoSurface/);
 assert.match(player, /const left = Math\.round\(rect\.left\)/);
-assert.match(player, /const right = Math\.round\(rect\.right\)/);
+assert.match(player, /const right = Math\.ceil\(rect\.right\)/);
+assert.match(player, /const bottom = Math\.ceil\(rect\.bottom\)/);
 assert.match(player, /const width = Math\.max\(1, right - left\)/);
 assert.match(player, /borderRadius/);
 assert.match(player, /VIDEO_SPEED_PRESETS/);
@@ -36,8 +54,9 @@ assert.match(player, /mv_player\.playback_speed/);
 assert.match(player, /operation: "speed"/);
 assert.match(player, /nativePlayback\.closeVideo/);
 assert.match(player, /nativePlayback\.onVideoEvent/);
-assert.match(player, /trackPlayer\.suspendForVideo/);
-assert.match(player, /trackPlayer\.restoreAfterVideo/);
+assert.match(player, /audioSession\.suspendForVideo/);
+assert.match(player, /audioSession\.restoreAfterVideo/);
+assert.doesNotMatch(player, /from "@renderer\/core\/track-player"/);
 assert.match(player, /dolby\[\\s_-\]\*vision/);
 assert.match(player, /dynamicRange === "dolby-vision"/);
 assert.match(player, /function getVideoSourceFingerprint/);
@@ -80,7 +99,8 @@ assert.doesNotMatch(
 const nativeMain = read("src/shared/native-playback/main.ts");
 assert.match(nativeMain, /@shared\/native-playback\/open-video/);
 assert.match(nativeMain, /@shared\/native-playback\/prepare-video-overlay/);
-assert.match(nativeMain, /setBackgroundMaterial\("none"\)/);
+assert.match(nativeMain, /assertIpcSender\(event, \["mv"\]\)/);
+assert.match(nativeMain, /const parent = this\.windowManager\.mvWindow/);
 assert.match(nativeMain, /normalizeVideoUpstreamUrl\(value\.url\)/);
 assert.match(nativeMain, /@shared\/native-playback\/update-video-sources/);
 assert.match(nativeMain, /@shared\/native-playback\/close-video/);
@@ -139,6 +159,16 @@ assert.match(nativePreload, /videoCommand/);
 assert.match(nativePreload, /updateVideoSurface/);
 assert.match(nativePreload, /closeVideo/);
 assert.match(nativePreload, /onVideoEvent/);
+
+const mvNativePreload = read("src/shared/native-playback/preload-video.ts");
+assert.match(mvNativePreload, /openVideo/);
+assert.match(mvNativePreload, /prepareVideoOverlay/);
+assert.match(mvNativePreload, /updateVideoSources/);
+assert.match(mvNativePreload, /selectVideoSource/);
+assert.match(mvNativePreload, /videoCommand/);
+assert.match(mvNativePreload, /updateVideoSurface/);
+assert.match(mvNativePreload, /closeVideo/);
+assert.match(mvNativePreload, /onVideoEvent/);
 
 const packageJson = JSON.parse(read("package.json"));
 assert.equal(packageJson.dependencies?.["hls.js"], undefined);

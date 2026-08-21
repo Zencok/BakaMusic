@@ -206,6 +206,15 @@ const config: ForgeConfig = {
                             js: "./src/preload/extension.ts",
                         },
                     },
+                    {
+                        html: "./src/renderer-mv/document/index.html",
+                        js: "./src/renderer-mv/document/index.tsx",
+                        name: "mv_window",
+                        nodeIntegration: false,
+                        preload: {
+                            js: "./src/preload/mv.ts",
+                        },
+                    },
                 ],
             },
         }),

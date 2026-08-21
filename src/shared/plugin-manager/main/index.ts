@@ -299,13 +299,16 @@ class PluginManager {
 
     private setupIpcHandlers() {
         ipcMain.handle("@shared/plugin-manager/call-plugin-method", async (event, data) => {
-            assertIpcSender(event, ["main"]);
+            const role = assertIpcSender(event, ["main", "mv"]);
             assertIpcPayload(data, 8 * 1024 * 1024);
             assertPlainObject(data, "plugin call");
+            if (role === "mv" && data.method !== "getMvSource") {
+                throw new Error("MV overlay may only resolve video sources");
+            }
             return this.callPluginMethod(data as unknown as ICallPluginMethodParams);
         });
         ipcMain.handle("@shared/plugin-manager/load-all-plugins", async (event) => {
-            assertIpcSender(event, ["main"]);
+            assertIpcSender(event, ["main", "mv"]);
             await this.whenReady();
             this.syncPlugins();
             return this.clonedPlugins;

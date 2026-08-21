@@ -79,8 +79,8 @@
 }
 
 // On Windows libmpv renders into a real popup HWND immediately below the
-// transparent Electron window. Cut a radius-aware hole through the application
-// and modal mask, then keep this dialog's Chromium controls above the video.
+// transparent MV window. Cut a radius-aware hole through the overlay and keep
+// this dialog's Chromium controls above the decoded video.
 html[data-native-video-overlay="true"] {
   &,
   & body,
@@ -125,6 +125,28 @@ html[data-native-video-overlay="true"] {
     & .mv-player-backdrop,
     & .mv-player-scrim {
       display: none;
+    }
+  }
+}
+
+// The dedicated overlay has the opaque main window beneath it. Dim that surface
+// while loading, then keep the same mask around the native video cutout.
+html[data-mv-overlay-window="true"] {
+  & #components--modal-base-container:has(> .modal--mv-player) {
+    background: rgba(4, 6, 9, 0.5) !important;
+    -webkit-backdrop-filter: blur(6px) saturate(110%) !important;
+    backdrop-filter: blur(6px) saturate(110%) !important;
+  }
+
+  &[data-native-video-overlay="true"] {
+    & #components--modal-base-container:has(> .modal--mv-player) {
+      background: transparent !important;
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+
+      &::before {
+        background: rgba(4, 6, 9, 0.5);
+      }
     }
   }
 }

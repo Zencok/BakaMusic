@@ -466,7 +466,7 @@ class AppConfig {
         // Bind events
         // sync config
         ipcMain.handle("@shared/app-config/sync-app-config", (event) => {
-            assertIpcSender(event, ["main", "lyric", "minimode"]);
+            assertIpcSender(event, ["main", "lyric", "minimode", "mv"]);
             return this.config;
         });
 

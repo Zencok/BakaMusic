@@ -19,6 +19,7 @@ import shortCut from "@shared/short-cut/renderer";
 import { applyUiStyle } from "@renderer/utils/ui-style";
 import { toast } from "react-toastify";
 import setupKeyboardAccessibility from "@renderer/utils/accessibility";
+import mvOverlay from "@shared/mv-overlay/renderer-main";
 
 
 setAutoFreeze(false);
@@ -42,6 +43,13 @@ export default async function () {
         MusicSheet.frontend.setupMusicSheets(),
         trackPlayer.setup(),
     ]);
+    mvOverlay.onAudioRequest(async (operation) => {
+        if (operation === "suspend") {
+            await trackPlayer.suspendForVideo();
+        } else {
+            trackPlayer.restoreAfterVideo();
+        }
+    });
     await setupI18n();
     shortCut.setup();
     dropHandler();

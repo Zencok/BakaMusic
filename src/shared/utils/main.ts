@@ -322,6 +322,13 @@ class Utils {
             "@shared/utils/main-window-fullscreen-changed",
             enabled,
         );
+        const mvWindow = this.windowManager.mvWindow;
+        if (mvWindow && !mvWindow.isDestroyed()) {
+            mvWindow.webContents.send(
+                "@shared/utils/main-window-fullscreen-changed",
+                enabled,
+            );
+        }
     }
 
     private markImmersiveSession(mainWindow: BrowserWindow, active: boolean) {
@@ -1018,7 +1025,7 @@ class Utils {
         });
 
         ipcMain.on("@shared/utils/set-main-window-fullscreen", (event, enabled: boolean) => {
-            if (!isIpcSenderAllowed(event, ["main"])) {
+            if (!isIpcSenderAllowed(event, ["main", "mv"])) {
                 return;
             }
             try {
@@ -1035,7 +1042,7 @@ class Utils {
         });
 
         ipcMain.handle("@shared/utils/is-main-window-fullscreen", (event) => {
-            assertIpcSender(event, ["main"]);
+            assertIpcSender(event, ["main", "mv"]);
             const mainWindow = this.getMainWindow();
             if (!mainWindow) {
                 return false;
@@ -1092,7 +1099,7 @@ class Utils {
         });
 
         ipcMain.handle("@shared/utils/show-item-in-folder", async (event, filePath) => {
-            assertIpcSender(event, ["main"]);
+            assertIpcSender(event, ["main", "mv"]);
             try {
                 const targetPath = assertPathAccess(filePath);
                 await fs.stat(targetPath);

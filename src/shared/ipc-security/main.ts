@@ -8,7 +8,7 @@ import fs from "fs";
 import path from "path";
 import type { IWindowManager } from "@/types/window-manager";
 
-export type WindowRole = "main" | "lyric" | "minimode";
+export type WindowRole = "main" | "lyric" | "minimode" | "mv";
 export type IpcEvent = IpcMainEvent | IpcMainInvokeEvent;
 
 const DEFAULT_IPC_PAYLOAD_LIMIT = 4 * 1024 * 1024;
@@ -111,6 +111,9 @@ function getWindowRole(event: IpcEvent): WindowRole | null {
     }
     if (webContentsIdOf(windowManager.miniModeWindow) === senderId) {
         return "minimode";
+    }
+    if (webContentsIdOf(windowManager.mvWindow) === senderId) {
+        return "mv";
     }
     return null;
 }

@@ -21,11 +21,11 @@ function walk(directory) {
 
 function testWindowIsolation() {
     const forgeSource = read("forge.config.ts");
-    assert.equal(count(forgeSource, /\bnodeIntegration:\s*false/g), 3);
+    assert.equal(count(forgeSource, /\bnodeIntegration:\s*false/g), 4);
     assert.doesNotMatch(forgeSource, /\bnodeIntegration:\s*true/);
 
     const windowSource = read("src/main/window-manager/index.ts");
-    assert.equal(count(windowSource, /new BrowserWindow\(/g), 3);
+    assert.equal(count(windowSource, /new BrowserWindow\(/g), 4);
     for (const [property, value] of [
         ["nodeIntegration", "false"],
         ["nodeIntegrationInWorker", "false"],
@@ -38,11 +38,11 @@ function testWindowIsolation() {
     ]) {
         assert.equal(
             count(windowSource, new RegExp(`\\b${property}:\\s*${value}`, "g")),
-            3,
-            `${property} must be explicit on all three windows`,
+            4,
+            `${property} must be explicit on all four windows`,
         );
     }
-    assert.equal(count(windowSource, /hardenWindow\(/g), 3);
+    assert.equal(count(windowSource, /hardenWindow\(/g), 4);
 }
 
 function testSessionAndNavigationPolicy() {
@@ -150,6 +150,7 @@ function testIpcAndPathBoundaries() {
 function testPreloadCapabilitySurface() {
     const mainPreload = read("src/preload/index.ts");
     const extensionPreload = read("src/preload/extension.ts");
+    const mvPreload = read("src/preload/mv.ts");
     const utilsPreload = read("src/shared/utils/preload.ts");
     const themePreload = read("src/shared/themepack/preload.ts");
 
@@ -160,6 +161,11 @@ function testPreloadCapabilitySurface() {
         extensionPreload,
         /plugin-manager|node-runtime|native-playback|themepack|backup/,
     );
+    assert.match(mvPreload, /@shared\/mv-overlay\/preload-mv/);
+    assert.match(mvPreload, /@shared\/native-playback\/preload-video/);
+    assert.match(mvPreload, /@shared\/plugin-manager\/preload-mv/);
+    assert.match(mvPreload, /@shared\/node-runtime\/preload-mv/);
+    assert.doesNotMatch(mvPreload, /themepack|backup|message-bus|short-cut/);
     assert.doesNotMatch(utilsPreload, /from "(?:fs|fs\/promises|path|rimraf|unzipper)/);
     assert.match(utilsPreload, /@shared\/utils\/fs-trash-file/);
     assert.doesNotMatch(themePreload, /from "(?:fs|fs\/promises|path|rimraf|unzipper)/);

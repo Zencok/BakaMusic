@@ -1,5 +1,5 @@
 ﻿import { ReactNode, useEffect, useRef } from "react";
-import { hideModal } from "../..";
+import { hideModal } from "../../store";
 import "./index.scss";
 import SvgAsset from "@/renderer/components/SvgAsset";
 import { isQualitySelectPopoverOpen } from "@/renderer/components/QualitySelectPopover";

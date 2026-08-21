@@ -82,7 +82,7 @@ export async function setupI18n(options?: ISetupI18nOptions) {
         }
 
         ipcMain.handle("shared/i18n/setup", async (event) => {
-            assertIpcSender(event, ["main", "lyric", "minimode"]);
+            assertIpcSender(event, ["main", "lyric", "minimode", "mv"]);
             const currentLang = i18n.language;
             const langContent = await readLangContent(currentLang);
             if (langContent) {

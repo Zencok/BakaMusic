@@ -1,0 +1,9 @@
+import "electron-log/preload";
+import "@shared/i18n/preload-readonly";
+import "@shared/app-config/preload-readonly";
+import "@shared/global-context/preload";
+import "@shared/plugin-manager/preload-mv";
+import "@shared/node-runtime/preload-mv";
+import "@shared/native-playback/preload-video";
+import "@shared/utils/preload-mv";
+import "@shared/mv-overlay/preload-mv";
