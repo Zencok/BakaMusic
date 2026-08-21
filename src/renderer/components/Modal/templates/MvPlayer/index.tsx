@@ -242,10 +242,9 @@ function getSurfaceBounds(
     if (!rect) {
         return { x: 0, y: 0, width: 1, height: 1, borderRadius: 0 };
     }
-    // Keep the near edge stable while expanding the far edges to cover the
-    // fractional pixels produced by aspect-ratio layouts. Rounding right and
-    // bottom inward leaves a one-pixel strip of the transparent overlay visible
-    // beside the native HWND.
+    // Keep the near edge stable and round only to the physical CSS-pixel
+    // boundary. The native popup, clip-path hole, and player card must share
+    // the same far edge; expanding it exposes the surface beneath the overlay.
     const left = Math.round(rect.left);
     const top = Math.round(rect.top);
     const right = Math.ceil(rect.right);
@@ -917,11 +916,20 @@ export default function MvPlayer({ musicItem, audioSession, onClose }: IMvPlayer
             frame = window.requestAnimationFrame(() => {
                 const version = ++syncVersion;
                 const bounds = getSurfaceBounds(surfaceRef.current, playerRef.current);
+                // Chromium anti-aliases the clip-path hole on its far edges.
+                // Keep the hole aligned to the visible card, while letting the
+                // native popup extend one CSS pixel underneath that edge so the
+                // compositor never exposes the light main-window surface.
+                const nativeBounds: INativeVideoSurfaceBounds = {
+                    ...bounds,
+                    width: bounds.width + 1,
+                    height: bounds.height + 1,
+                };
                 const sync = async () => {
                     if (surfaceVisible) {
                         const clipRadius = bounds.borderRadius > 0
                             ? Math.min(
-                                bounds.borderRadius + 1,
+                                bounds.borderRadius,
                                 bounds.width / 2,
                                 bounds.height / 2,
                             )
@@ -958,7 +966,7 @@ export default function MvPlayer({ musicItem, audioSession, onClose }: IMvPlayer
                         if (disposed || version !== syncVersion) return;
                         await nativePlayback.updateVideoSurface({
                             sourceId: nativeSessionId,
-                            bounds,
+                            bounds: nativeBounds,
                             visible: true,
                         });
                         if (disposed || version !== syncVersion) return;
@@ -973,7 +981,7 @@ export default function MvPlayer({ musicItem, audioSession, onClose }: IMvPlayer
                         setNativeSurfaceRevealed(false);
                         await nativePlayback.updateVideoSurface({
                             sourceId: nativeSessionId,
-                            bounds,
+                            bounds: nativeBounds,
                             visible: false,
                         }).catch(() => undefined);
                     }

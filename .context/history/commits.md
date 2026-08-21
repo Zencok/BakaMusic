@@ -468,3 +468,11 @@ pending
 - **Bug**: Favorited albums reopened as playlists and showed 0 tracks.
 - **Files**: 7 files
 - **Tests**: npm exec tsc -- --noEmit; npm exec eslint -- ./src; npm test
+
+## 2026-08-21T12:19:01.9513966+08:00 — fix(video): cover transparent overlay edge pixels
+
+- **Context-Id**: 01a02289-fd83-7da3-91b4-5fd0116b682e
+- **Decision**: Extend only the native video surface beyond the clip-path edge
+- **Bug**: A light one-pixel strip of the main-window surface could appear beside the native MV player at fractional aspect-ratio edges.
+- **Files**: 2 files
+- **Tests**: npm exec tsc -- --noEmit --pretty false; npm exec eslint -- ./src; npm test
