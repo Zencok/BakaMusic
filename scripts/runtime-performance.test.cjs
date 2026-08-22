@@ -160,9 +160,11 @@ assert.match(musicListSource, /document\.addEventListener\("dragover", handleDra
 assert.match(musicListSource, /startDragAutoScroll\(e\.clientY\)/);
 assert.doesNotMatch(musicListSource, /translateY\(\$\{virtualController\.startTop\}/);
 assert.match(musicListSource, /className="music-list-glass-layer"/);
+assert.match(musicListSource, /--musicListGlassHeight/);
+assert.match(musicListSource, /--musicListGlassBottomRadius/);
 assert.match(
     musicListStyleSource,
-    /\.music-list-glass-layer\s*\{[\s\S]*height:\s*100vh;[\s\S]*backdrop-filter:\s*var\(--appGlassFilter\)/,
+    /--musicListGlassHeight:\s*100vh;[\s\S]*\.music-list-glass-layer\s*\{[\s\S]*height:\s*var\(--musicListGlassHeight\);[\s\S]*backdrop-filter:\s*var\(--appGlassFilter\)/,
 );
 assert.doesNotMatch(
     musicListStyleSource,

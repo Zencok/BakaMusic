@@ -8,6 +8,8 @@
   --musicListText: var(--theme-text-secondary);
   --musicListTextSoft: var(--theme-text-muted);
   --musicListGlassInset: 12px;
+  --musicListGlassHeight: 100vh;
+  --musicListGlassBottomRadius: var(--listCardRadius, 28px);
   width: 100%;
   min-height: 300px;
   margin-top: 12px;
@@ -31,15 +33,13 @@
     top: calc(-1px - var(--page-container-padding-top, 0px));
     z-index: 0;
     width: calc(100% + var(--musicListGlassInset) + var(--musicListGlassInset));
-    height: 100vh;
+    height: var(--musicListGlassHeight);
     margin-top: calc(0px - var(--musicListGlassInset));
     margin-right: calc(0px - var(--musicListGlassInset));
-    margin-bottom: calc(0px - 100vh + var(--musicListGlassInset));
+    margin-bottom: calc(0px - var(--musicListGlassHeight) + var(--musicListGlassInset));
     margin-left: calc(0px - var(--musicListGlassInset));
-    // The container clips this square layer into rounded corners until the
-    // list reaches the scrollport top. The stuck state then allows it to
-    // paint past the card edge and cover the full visible top edge.
-    border-radius: 0;
+    border-radius: 0 0 var(--musicListGlassBottomRadius) var(--musicListGlassBottomRadius);
+    overflow: hidden;
     background: var(--defaultAcrylicTexture, none), var(--musicListSurface);
     -webkit-backdrop-filter: var(--appGlassFilter);
     backdrop-filter: var(--appGlassFilter);
@@ -48,28 +48,6 @@
 
   &[data-glass-stuck="true"] {
     overflow: visible;
-    // Permit the layer to escape through the top edge, but keep the list's
-    // bottom edge as a hard clip so short lists cannot bleed into the dock.
-    clip-path: inset(
-      calc(0px - 100vh)
-      calc(0px - var(--musicListGlassInset))
-      0
-      calc(0px - var(--musicListGlassInset))
-      round
-      0 0
-      var(--listCardRadius, 28px)
-      var(--listCardRadius, 28px)
-    );
-    -webkit-clip-path: inset(
-      calc(0px - 100vh)
-      calc(0px - var(--musicListGlassInset))
-      0
-      calc(0px - var(--musicListGlassInset))
-      round
-      0 0
-      var(--listCardRadius, 28px)
-      var(--listCardRadius, 28px)
-    );
   }
 
   &[data-surface-mode="header-only"] {

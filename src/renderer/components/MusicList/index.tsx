@@ -978,6 +978,25 @@ function MusicListComponent(props: IMusicListProps) {
                 container.dataset.surfaceMode !== "header-only" &&
                 containerRect.top <= scrollRect.top + 1 &&
                 containerRect.bottom > scrollRect.top;
+
+            if (glassIsStuck) {
+                const glassBottom = Math.min(containerRect.bottom, scrollRect.bottom);
+                const glassHeight = Math.max(0, glassBottom - scrollRect.top + 1);
+                container.style.setProperty(
+                    "--musicListGlassHeight",
+                    `${glassHeight}px`,
+                );
+                container.style.setProperty(
+                    "--musicListGlassBottomRadius",
+                    containerRect.bottom <= scrollRect.bottom + 1
+                        ? "var(--listCardRadius, 28px)"
+                        : "0px",
+                );
+            } else {
+                container.style.removeProperty("--musicListGlassHeight");
+                container.style.removeProperty("--musicListGlassBottomRadius");
+            }
+
             container.dataset.glassStuck = String(glassIsStuck);
         };
 
@@ -1004,6 +1023,8 @@ function MusicListComponent(props: IMusicListProps) {
             delete container.dataset.scrolling;
             delete container.dataset.glassStuck;
             container.style.removeProperty("--page-container-padding-top");
+            container.style.removeProperty("--musicListGlassHeight");
+            container.style.removeProperty("--musicListGlassBottomRadius");
         };
     }, [getScrollElement]);
 
