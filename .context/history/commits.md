@@ -476,3 +476,11 @@ pending
 - **Bug**: A light one-pixel strip of the main-window surface could appear beside the native MV player at fractional aspect-ratio edges.
 - **Files**: 2 files
 - **Tests**: npm exec tsc -- --noEmit --pretty false; npm exec eslint -- ./src; npm test
+
+## 2026-08-22T11:53:41.699+09:00 — fix(modal): keep modal controls clickable
+
+- **Context-Id**: 20ebcef6-9b5a-4648-81ca-39bf8e9d1841
+- **Decision**: Opt modal overlays out of Electron drag regions
+- **Bug**: Controls inside modal dialogs could fail to respond because pointer input was treated as window dragging.
+- **Files**: 1 file
+- **Tests**: Not run (Git-only commit workflow)
