@@ -961,8 +961,30 @@ function MusicListComponent(props: IMusicListProps) {
         }
 
         let scrollEndTimer: ReturnType<typeof setTimeout> | null = null;
+        const updateGlassStuck = () => {
+            const scrollPaddingTop = Number.parseFloat(
+                getComputedStyle(scrollElement).paddingTop,
+            );
+            if (Number.isFinite(scrollPaddingTop)) {
+                container.style.setProperty(
+                    "--page-container-padding-top",
+                    `${scrollPaddingTop}px`,
+                );
+            }
+
+            const containerRect = container.getBoundingClientRect();
+            const scrollRect = scrollElement.getBoundingClientRect();
+            const glassIsStuck =
+                container.dataset.surfaceMode !== "header-only" &&
+                containerRect.top <= scrollRect.top + 1 &&
+                containerRect.bottom > scrollRect.top;
+            container.dataset.glassStuck = String(glassIsStuck);
+        };
+
         const handleScroll = () => {
             container.dataset.scrolling = "true";
+            updateGlassStuck();
+
             if (scrollEndTimer) {
                 clearTimeout(scrollEndTimer);
             }
@@ -973,12 +995,15 @@ function MusicListComponent(props: IMusicListProps) {
         };
 
         scrollElement.addEventListener("scroll", handleScroll, { passive: true });
+        updateGlassStuck();
         return () => {
             scrollElement.removeEventListener("scroll", handleScroll);
             if (scrollEndTimer) {
                 clearTimeout(scrollEndTimer);
             }
             delete container.dataset.scrolling;
+            delete container.dataset.glassStuck;
+            container.style.removeProperty("--page-container-padding-top");
         };
     }, [getScrollElement]);
 

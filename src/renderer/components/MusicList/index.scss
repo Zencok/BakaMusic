@@ -25,7 +25,10 @@
 
   & .music-list-glass-layer {
     position: sticky;
-    top: 0;
+    // Sticky offsets are measured from the scrollport's padding edge. The
+    // page container has top padding, so cancel it to keep the glass layer
+    // flush with the visible content viewport while rows scroll underneath.
+    top: calc(-1px - var(--page-container-padding-top, 0px));
     z-index: 0;
     width: calc(100% + var(--musicListGlassInset) + var(--musicListGlassInset));
     height: 100vh;
@@ -33,11 +36,40 @@
     margin-right: calc(0px - var(--musicListGlassInset));
     margin-bottom: calc(0px - 100vh + var(--musicListGlassInset));
     margin-left: calc(0px - var(--musicListGlassInset));
-    border-radius: var(--listCardRadius, 28px);
+    // The container clips this square layer into rounded corners until the
+    // list reaches the scrollport top. The stuck state then allows it to
+    // paint past the card edge and cover the full visible top edge.
+    border-radius: 0;
     background: var(--defaultAcrylicTexture, none), var(--musicListSurface);
     -webkit-backdrop-filter: var(--appGlassFilter);
     backdrop-filter: var(--appGlassFilter);
     pointer-events: none;
+  }
+
+  &[data-glass-stuck="true"] {
+    overflow: visible;
+    // Permit the layer to escape through the top edge, but keep the list's
+    // bottom edge as a hard clip so short lists cannot bleed into the dock.
+    clip-path: inset(
+      calc(0px - 100vh)
+      calc(0px - var(--musicListGlassInset))
+      0
+      calc(0px - var(--musicListGlassInset))
+      round
+      0 0
+      var(--listCardRadius, 28px)
+      var(--listCardRadius, 28px)
+    );
+    -webkit-clip-path: inset(
+      calc(0px - 100vh)
+      calc(0px - var(--musicListGlassInset))
+      0
+      calc(0px - var(--musicListGlassInset))
+      round
+      0 0
+      var(--listCardRadius, 28px)
+      var(--listCardRadius, 28px)
+    );
   }
 
   &[data-surface-mode="header-only"] {
