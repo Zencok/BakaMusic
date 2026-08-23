@@ -20,6 +20,12 @@
     & > div {
       width: 100%;
       outline: none;
+
+      &[data-headlessui-state~="selected"],
+      &[data-selected],
+      &.ui-selected {
+        animation: theme-panel-fade-in 450ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
     }
   }
 }
@@ -152,5 +158,16 @@
       width: 100%;
       flex-basis: 100%;
     }
+  }
+}
+
+@keyframes theme-panel-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
