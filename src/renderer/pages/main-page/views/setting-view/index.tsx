@@ -9,7 +9,7 @@ const LAST_SECTION_ID = routers[routers.length - 1]?.id ?? "about";
 /** Distance from the body top used to decide which section is active */
 const ACTIVE_SECTION_OFFSET_PX = 96;
 /** How long scroll must be idle after a jump before scroll-spy resumes */
-const SCROLL_IDLE_MS = 80;
+const SCROLL_IDLE_MS = 420;
 /** Near-bottom only wins when the last section itself is in view */
 const SCROLL_BOTTOM_THRESHOLD_PX = 24;
 
@@ -97,7 +97,7 @@ export default function SettingView() {
         // Scroll only the settings body. Element.scrollIntoView() also scrolls
         // fixed overflow ancestors when the retained detail page is translated.
         root.scrollTo({
-            behavior: "auto",
+            behavior: "smooth",
             top: Math.max(
                 0,
                 root.scrollTop

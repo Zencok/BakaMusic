@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { lazy, Suspense, type CSSProperties } from "react";
 import SideBar from "./components/SideBar";
 import Empty from "@/renderer/components/Empty";
@@ -45,6 +45,8 @@ const ROUTE_FALLBACK_STYLE: CSSProperties = {
 };
 
 export default function MainPage() {
+    const location = useLocation();
+
     return (
         <div style={MAIN_PAGE_SHELL_STYLE}>
             <SideBar></SideBar>
@@ -54,50 +56,52 @@ export default function MainPage() {
                         <div style={ROUTE_FALLBACK_STYLE} aria-busy="true"></div>
                     )}
                 >
-                    <Routes>
-                        <Route path="search/:query" element={<SearchView></SearchView>}></Route>
-                        <Route
-                            path="plugin-manager-view"
-                            element={<PluginManagerView></PluginManagerView>}
-                        ></Route>
-                        <Route
-                            path="musicsheet/:platform/:id"
-                            element={<MusicSheetView></MusicSheetView>}
-                        ></Route>
-                        <Route
-                            path="album/:platform/:id"
-                            element={<AlbumView></AlbumView>}
-                        ></Route>
-                        <Route
-                            path="artist/:platform/:id"
-                            element={<ArtistView></ArtistView>}
-                        ></Route>
-                        <Route path="toplist" element={<ToplistView></ToplistView>}></Route>
-                        <Route
-                            path="toplist-detail/:platform"
-                            element={<TopListDetailView></TopListDetailView>}
-                        ></Route>
-                        <Route
-                            path="recommend-sheets"
-                            element={<RecommendSheetsView></RecommendSheetsView>}
-                        ></Route>
-                        <Route
-                            path="local-music"
-                            element={<LocalMusicView></LocalMusicView>}
-                        ></Route>
-                        <Route path="download" element={<DownloadView></DownloadView>}></Route>
-                        <Route path="setting" element={<SettingView></SettingView>}></Route>
-                        <Route path="theme" element={<ThemeView></ThemeView>}></Route>
-                        <Route
-                            path="statistics"
-                            element={<StatisticsView></StatisticsView>}
-                        ></Route>
-                        <Route
-                            path="recently_play"
-                            element={<Navigate to="/main/statistics" replace></Navigate>}
-                        ></Route>
-                        <Route path="*" element={<Empty></Empty>}></Route>
-                    </Routes>
+                    <div key={location.pathname} className="main-route-view-wrapper">
+                        <Routes>
+                            <Route path="search/:query" element={<SearchView></SearchView>}></Route>
+                            <Route
+                                path="plugin-manager-view"
+                                element={<PluginManagerView></PluginManagerView>}
+                            ></Route>
+                            <Route
+                                path="musicsheet/:platform/:id"
+                                element={<MusicSheetView></MusicSheetView>}
+                            ></Route>
+                            <Route
+                                path="album/:platform/:id"
+                                element={<AlbumView></AlbumView>}
+                            ></Route>
+                            <Route
+                                path="artist/:platform/:id"
+                                element={<ArtistView></ArtistView>}
+                            ></Route>
+                            <Route path="toplist" element={<ToplistView></ToplistView>}></Route>
+                            <Route
+                                path="toplist-detail/:platform"
+                                element={<TopListDetailView></TopListDetailView>}
+                            ></Route>
+                            <Route
+                                path="recommend-sheets"
+                                element={<RecommendSheetsView></RecommendSheetsView>}
+                            ></Route>
+                            <Route
+                                path="local-music"
+                                element={<LocalMusicView></LocalMusicView>}
+                            ></Route>
+                            <Route path="download" element={<DownloadView></DownloadView>}></Route>
+                            <Route path="setting" element={<SettingView></SettingView>}></Route>
+                            <Route path="theme" element={<ThemeView></ThemeView>}></Route>
+                            <Route
+                                path="statistics"
+                                element={<StatisticsView></StatisticsView>}
+                            ></Route>
+                            <Route
+                                path="recently_play"
+                                element={<Navigate to="/main/statistics" replace></Navigate>}
+                            ></Route>
+                            <Route path="*" element={<Empty></Empty>}></Route>
+                        </Routes>
+                    </div>
                 </Suspense>
             </div>
         </div>
