@@ -1,8 +1,7 @@
-﻿import SvgAsset from "@/renderer/components/SvgAsset";
+import SvgAsset from "@/renderer/components/SvgAsset";
 import "./index.scss";
 import trackPlayer from "@renderer/core/track-player";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
-import Condition from "@/renderer/components/Condition";
 import throttle from "lodash.throttle";
 import { getCurrentPanel, hidePanel, showPanel } from "@/renderer/components/Panel";
 import { useTranslation } from "react-i18next";
@@ -280,9 +279,30 @@ function FloatingBubble(props: IFloatingBubbleProps) {
     const [style, setStyle] = useState<CSSProperties | null>(null);
     const musicDetailShown = musicDetailShownStore.useValue();
 
+    const [shouldRender, setShouldRender] = useState(visible);
+    const [animating, setAnimating] = useState(false);
+
     useEffect(() => {
-        if (!visible) {
+        if (visible) {
+            setShouldRender(true);
+            const frame = requestAnimationFrame(() => setAnimating(true));
+            return () => cancelAnimationFrame(frame);
+        } else {
+            setAnimating(false);
+            const timer = setTimeout(() => {
+                setShouldRender(false);
+            }, 150);
+            return () => clearTimeout(timer);
+        }
+    }, [visible]);
+
+    useEffect(() => {
+        if (!shouldRender) {
             setStyle(null);
+            return;
+        }
+
+        if (!visible) {
             return;
         }
 
@@ -348,17 +368,20 @@ function FloatingBubble(props: IFloatingBubbleProps) {
             } as CSSProperties);
         };
 
-        updatePosition();
+        const frame = requestAnimationFrame(() => {
+            updatePosition();
+        });
         window.addEventListener("resize", updatePosition);
         window.addEventListener("scroll", updatePosition, true);
 
         return () => {
+            cancelAnimationFrame(frame);
             window.removeEventListener("resize", updatePosition);
             window.removeEventListener("scroll", updatePosition, true);
         };
-    }, [anchorRef, visible, musicDetailShown]);
+    }, [anchorRef, visible, shouldRender, musicDetailShown]);
 
-    if (!visible) {
+    if (!shouldRender) {
         return null;
     }
 
@@ -367,6 +390,7 @@ function FloatingBubble(props: IFloatingBubbleProps) {
             ref={bubbleRef}
             className="volume-bubble-container"
             data-immersive={musicDetailShown ? "true" : "false"}
+            data-open={animating ? "true" : "false"}
             style={style ?? { visibility: "hidden" }}
             onClick={(event) => {
                 event.stopPropagation();
@@ -473,29 +497,27 @@ function VolumeBtn() {
                 trackPlayer.toggleMute();
             }}
         >
-            <Condition condition={showVolumeBubble}>
-                <FloatingBubble
-                    anchorRef={volumeBtnRef}
-                    visible={showVolumeBubble}
-                    onMouseEnter={openVolumeBubble}
-                    onMouseLeave={closeVolumeBubble}
-                >
-                    <div className="volume-slider-container">
-                        <InlineVerticalSlider
-                            min={0}
-                            max={1}
-                            step={0.01}
-                            ariaLabel={t("music_bar.volume")}
-                            getAriaValueText={(value) => `${Math.round(value * 100)}%`}
-                            onChange={(val) => {
-                                trackPlayer.setVolume(val);
-                            }}
-                            value={volume}
-                        ></InlineVerticalSlider>
-                    </div>
-                    <div className="volume-slider-tag">{(volume * 100).toFixed(0)}%</div>
-                </FloatingBubble>
-            </Condition>
+            <FloatingBubble
+                anchorRef={volumeBtnRef}
+                visible={showVolumeBubble}
+                onMouseEnter={openVolumeBubble}
+                onMouseLeave={closeVolumeBubble}
+            >
+                <div className="volume-slider-container">
+                    <InlineVerticalSlider
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        ariaLabel={t("music_bar.volume")}
+                        getAriaValueText={(value) => `${Math.round(value * 100)}%`}
+                        onChange={(val) => {
+                            trackPlayer.setVolume(val);
+                        }}
+                        value={volume}
+                    ></InlineVerticalSlider>
+                </div>
+                <div className="volume-slider-tag">{(volume * 100).toFixed(0)}%</div>
+            </FloatingBubble>
             <SvgAsset
                 title={muted ? t("music_bar.unmute") : t("music_bar.mute")}
                 iconName={muted ? "speaker-x-mark" : "speaker-wave"}
@@ -619,31 +641,29 @@ function PitchBtn() {
                 }
             }}
         >
-            <Condition condition={showPitchBubble}>
-                <FloatingBubble
-                    anchorRef={pitchBtnRef}
-                    visible={showPitchBubble}
-                    onMouseEnter={openPitchBubble}
-                    onMouseLeave={closePitchBubble}
-                >
-                    <div className="volume-slider-container">
-                        <InlineVerticalSlider
-                            min={MIN_PITCH_SEMITONES}
-                            max={MAX_PITCH_SEMITONES}
-                            step={1}
-                            ariaLabel={t("music_bar.pitch_shift")}
-                            getAriaValueText={pitchValueText}
-                            onChange={(value) => {
-                                trackPlayer.setPitch(value);
-                            }}
-                            value={pitch}
-                        ></InlineVerticalSlider>
-                    </div>
-                    <div className="volume-slider-tag">
-                        {pitchValueText(pitch)}
-                    </div>
-                </FloatingBubble>
-            </Condition>
+            <FloatingBubble
+                anchorRef={pitchBtnRef}
+                visible={showPitchBubble}
+                onMouseEnter={openPitchBubble}
+                onMouseLeave={closePitchBubble}
+            >
+                <div className="volume-slider-container">
+                    <InlineVerticalSlider
+                        min={MIN_PITCH_SEMITONES}
+                        max={MAX_PITCH_SEMITONES}
+                        step={1}
+                        ariaLabel={t("music_bar.pitch_shift")}
+                        getAriaValueText={pitchValueText}
+                        onChange={(value) => {
+                            trackPlayer.setPitch(value);
+                        }}
+                        value={pitch}
+                    ></InlineVerticalSlider>
+                </div>
+                <div className="volume-slider-tag">
+                    {pitchValueText(pitch)}
+                </div>
+            </FloatingBubble>
             <SvgAsset
                 title={t("music_bar.pitch_shift")}
                 iconName="pitch-shift"
@@ -755,29 +775,27 @@ function SpeedBtn() {
                 tmpSpeedRef.current = speed;
             }}
         >
-            <Condition condition={showSpeedBubble}>
-                <FloatingBubble
-                    anchorRef={speedBtnRef}
-                    visible={showSpeedBubble}
-                    onMouseEnter={openSpeedBubble}
-                    onMouseLeave={closeSpeedBubble}
-                >
-                    <div className="volume-slider-container">
-                        <InlineVerticalSlider
-                            min={0.25}
-                            max={2}
-                            step={0.05}
-                            ariaLabel={t("music_bar.playback_speed")}
-                            getAriaValueText={(value) => `${value.toFixed(2)}x`}
-                            onChange={(val) => {
-                                trackPlayer.setSpeed(val);
-                            }}
-                            value={speed}
-                        ></InlineVerticalSlider>
-                    </div>
-                    <div className="volume-slider-tag">{speed.toFixed(2)}x</div>
-                </FloatingBubble>
-            </Condition>
+            <FloatingBubble
+                anchorRef={speedBtnRef}
+                visible={showSpeedBubble}
+                onMouseEnter={openSpeedBubble}
+                onMouseLeave={closeSpeedBubble}
+            >
+                <div className="volume-slider-container">
+                    <InlineVerticalSlider
+                        min={0.25}
+                        max={2}
+                        step={0.05}
+                        ariaLabel={t("music_bar.playback_speed")}
+                        getAriaValueText={(value) => `${value.toFixed(2)}x`}
+                        onChange={(val) => {
+                            trackPlayer.setSpeed(val);
+                        }}
+                        value={speed}
+                    ></InlineVerticalSlider>
+                </div>
+                <div className="volume-slider-tag">{speed.toFixed(2)}x</div>
+            </FloatingBubble>
             <SvgAsset
                 title={t("music_bar.playback_speed")}
                 iconName={"dashboard-speed"}
