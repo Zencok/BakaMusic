@@ -97,6 +97,7 @@ const INLINE_SLIDER_HEIGHT = 96;
 const INLINE_SLIDER_HANDLE_SIZE = 14;
 const FLOATING_BUBBLE_OFFSET = 4;
 const FLOATING_BUBBLE_VIEWPORT_MARGIN = 8;
+const FLOATING_BUBBLE_ANIMATION_MS = 180;
 
 function clampSliderValue(value: number, min: number, max: number) {
     return Math.min(max, Math.max(min, value));
@@ -291,7 +292,7 @@ function FloatingBubble(props: IFloatingBubbleProps) {
             setAnimating(false);
             const timer = setTimeout(() => {
                 setShouldRender(false);
-            }, 150);
+            }, FLOATING_BUBBLE_ANIMATION_MS);
             return () => clearTimeout(timer);
         }
     }, [visible]);

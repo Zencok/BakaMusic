@@ -12,6 +12,17 @@ const ACTIVE_SECTION_OFFSET_PX = 96;
 const SCROLL_IDLE_MS = 420;
 /** Near-bottom only wins when the last section itself is in view */
 const SCROLL_BOTTOM_THRESHOLD_PX = 24;
+const SCROLL_KEYS = new Set([
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowUp",
+    "End",
+    "Home",
+    "PageDown",
+    "PageUp",
+    " ",
+]);
 
 function resolveActiveSectionId(scrollRoot: HTMLElement): string {
     const { scrollTop, clientHeight, scrollHeight } = scrollRoot;
@@ -82,7 +93,7 @@ export default function SettingView() {
             return;
         }
 
-        // Instant jump + short lock so scroll-spy does not flicker through neighbors.
+        // Smooth jump + short lock so scroll-spy does not flicker through neighbors.
         programmaticScrollTargetRef.current = settingId;
         setSelected(settingId);
         clearScrollIdleTimer();
@@ -97,7 +108,9 @@ export default function SettingView() {
         // Scroll only the settings body. Element.scrollIntoView() also scrolls
         // fixed overflow ancestors when the retained detail page is translated.
         root.scrollTo({
-            behavior: "smooth",
+            behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                ? "auto"
+                : "smooth",
             top: Math.max(
                 0,
                 root.scrollTop
@@ -144,11 +157,35 @@ export default function SettingView() {
             scrollFrameRef.current = requestAnimationFrame(syncSelectedFromScroll);
         };
 
+        const cancelProgrammaticScroll = () => {
+            if (!programmaticScrollTargetRef.current) {
+                return;
+            }
+
+            programmaticScrollTargetRef.current = null;
+            clearScrollIdleTimer();
+            setSelected(resolveActiveSectionId(root));
+        };
+
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (SCROLL_KEYS.has(event.key)) {
+                cancelProgrammaticScroll();
+            }
+        };
+
         root.addEventListener("scroll", onScroll, { passive: true });
+        root.addEventListener("wheel", cancelProgrammaticScroll, { passive: true });
+        root.addEventListener("touchstart", cancelProgrammaticScroll, { passive: true });
+        root.addEventListener("pointerdown", cancelProgrammaticScroll, { passive: true });
+        root.addEventListener("keydown", onKeyDown);
         setSelected(resolveActiveSectionId(root));
 
         return () => {
             root.removeEventListener("scroll", onScroll);
+            root.removeEventListener("wheel", cancelProgrammaticScroll);
+            root.removeEventListener("touchstart", cancelProgrammaticScroll);
+            root.removeEventListener("pointerdown", cancelProgrammaticScroll);
+            root.removeEventListener("keydown", onKeyDown);
             if (scrollFrameRef.current) {
                 cancelAnimationFrame(scrollFrameRef.current);
             }

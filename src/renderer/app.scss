@@ -109,6 +109,11 @@
   --infoColor: var(--theme-info);
   --shadowColor: color-mix(in srgb, black 20%, transparent);
   --animate-duration: 300ms !important;
+  --appMotionEase: cubic-bezier(0.2, 0.82, 0.24, 1);
+  --appMotionEaseEmphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --appMotionFast: 120ms;
+  --appMotionStandard: 180ms;
+  --appMotionPage: 280ms;
   --scrollbarWidth: 12px;
 
   --appHeaderHeight: 54px;
