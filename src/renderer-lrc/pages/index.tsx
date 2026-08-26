@@ -9,6 +9,10 @@ import useFramelessWindowResize, { FramelessResizeAxis } from "@/hooks/useFramel
 import AppConfig from "@shared/app-config/renderer";
 import messageBus, { useAppStatePartial } from "@shared/message-bus/renderer/extension";
 import { appWindowUtil } from "@shared/utils/renderer";
+import {
+    snapWindowBoundsToWorkAreaCenter,
+    type IWindowWorkArea,
+} from "@renderer-lrc/pages/window-snap";
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -27,6 +31,7 @@ interface IDragState {
     startWindowY: number;
     width: number;
     height: number;
+    workAreas: readonly IWindowWorkArea[];
 }
 
 export default function LyricWindowPage() {
@@ -188,10 +193,17 @@ export default function LyricWindowPage() {
             startWindowY: window.screenY,
             width: window.innerWidth,
             height: window.innerHeight,
+            workAreas: [],
         };
         event.preventDefault();
 
-        const bounds = await appWindowUtil.getCurrentWindowBounds();
+        const workAreasPromise = typeof appWindowUtil.getAllWorkAreas === "function"
+            ? Promise.resolve(appWindowUtil.getAllWorkAreas()).catch(() => [])
+            : Promise.resolve([]);
+        const [bounds, workAreas] = await Promise.all([
+            appWindowUtil.getCurrentWindowBounds(),
+            workAreasPromise,
+        ]);
         const dragState = dragStateRef.current;
         if (!bounds || !dragState || dragState.pointerId !== pointerId) {
             return;
@@ -203,6 +215,7 @@ export default function LyricWindowPage() {
             startWindowY: bounds.y,
             width: bounds.width,
             height: bounds.height,
+            workAreas: Array.isArray(workAreas) ? workAreas : [],
         };
     };
 
@@ -212,12 +225,12 @@ export default function LyricWindowPage() {
             return;
         }
 
-        pendingBoundsRef.current = {
+        pendingBoundsRef.current = snapWindowBoundsToWorkAreaCenter({
             x: Math.round(dragState.startWindowX + event.screenX - dragState.startScreenX),
             y: Math.round(dragState.startWindowY + event.screenY - dragState.startScreenY),
             width: dragState.width,
             height: dragState.height,
-        };
+        }, dragState.workAreas);
         if (!dragRafRef.current) {
             dragRafRef.current = requestAnimationFrame(() => {
                 dragRafRef.current = 0;
