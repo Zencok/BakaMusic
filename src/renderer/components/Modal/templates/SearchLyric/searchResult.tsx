@@ -3,7 +3,7 @@ import { ISearchLyricResult } from "./hooks/searchResultStore";
 import { If } from "@/renderer/components/Condition";
 import { RequestStateCode } from "@/common/constant";
 import Loading from "@/renderer/components/Loading";
-import albumImg from "@/assets/imgs/album-cover.jpg";
+import { useDefaultAlbumCover } from "@/renderer/utils/default-album-cover";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
 import Empty from "@/renderer/components/Empty";
 import "./searchResult.scss";
@@ -22,6 +22,7 @@ interface ISearchResultProps {
 
 function SearchResult(props: ISearchResultProps) {
     const { data, musicItem } = props;
+    const defaultAlbumCover = useDefaultAlbumCover();
 
     const { t } = useTranslation();
 
@@ -62,7 +63,7 @@ function SearchResult(props: ISearchResultProps) {
                                         >
                                             <img
                                                 alt={it.title}
-                                                src={it.artwork || albumImg}
+                                                src={it.artwork || defaultAlbumCover}
                                                 onError={setFallbackAlbum}
                                             ></img>
                                             <div className="lyric-info">

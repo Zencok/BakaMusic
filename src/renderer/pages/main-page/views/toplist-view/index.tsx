@@ -1,6 +1,6 @@
 import Condition from "@/renderer/components/Condition";
 import LazyImage from "@/renderer/components/LazyImage";
-import albumImg from "@/assets/imgs/album-cover.jpg";
+import albumImg from "@/renderer/utils/default-album-cover";
 import getCompactArtworkSrc from "@/renderer/utils/get-compact-artwork-src";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
 import { Tab } from "@headlessui/react";

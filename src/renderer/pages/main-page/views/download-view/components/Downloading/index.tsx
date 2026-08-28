@@ -1,4 +1,4 @@
-import albumImg from "@/assets/imgs/album-cover.jpg";
+import { useDefaultAlbumCover } from "@/renderer/utils/default-album-cover";
 import { DownloadState } from "@/common/constant";
 import { normalizeFileSize } from "@/common/normalize-util";
 import { createSearchMatcher } from "@/common/search-matcher";
@@ -125,6 +125,7 @@ function TaskProgress({ task }: { task: IDownloadTaskSnapshot }) {
 }
 
 export default function Downloading() {
+    const defaultAlbumCover = useDefaultAlbumCover();
     const { t } = useTranslation();
     const tasks = Downloader.useDownloadingTaskList();
     const downloadedList = Downloader.useDownloadedMusicList();
@@ -301,7 +302,7 @@ export default function Downloading() {
                                     <article className="downloading-item-card">
                                         <div className="downloading-item-cover">
                                             <img
-                                                src={musicItem.artwork || albumImg}
+                                                src={musicItem.artwork || defaultAlbumCover}
                                                 alt=""
                                                 onError={setFallbackAlbum}
                                             ></img>

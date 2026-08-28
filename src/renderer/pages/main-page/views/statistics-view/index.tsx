@@ -1,4 +1,4 @@
-import albumImg from "@/assets/imgs/album-cover.jpg";
+import { useDefaultAlbumCover } from "@/renderer/utils/default-album-cover";
 import { secondsToDuration } from "@/common/time-util";
 import { createSearchMatcher } from "@/common/search-matcher";
 import {
@@ -97,10 +97,11 @@ function playStatisticsEntry(entry: IListeningStatisticsEntry) {
 
 function StatisticsTrackRow(props: IStatisticsTrackRowProps) {
     const { entry, index, mode, currentMusic, t } = props;
+    const defaultAlbumCover = useDefaultAlbumCover();
     const isCurrent = currentMusic
         ? getListeningStatisticsKey(currentMusic) === getListeningStatisticsKey(entry.musicItem)
         : false;
-    const artwork = entry.musicItem.coverImg || entry.musicItem.artwork || albumImg;
+    const artwork = entry.musicItem.coverImg || entry.musicItem.artwork || defaultAlbumCover;
     const qualityInfo = getBestMusicQualityInfo(
         entry.musicItem,
         PluginManager.getLxQualityOverride(entry.musicItem.platform)

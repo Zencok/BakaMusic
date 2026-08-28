@@ -7,7 +7,7 @@ import {
 import ThemeSafeRoundButton from "@/renderer/components/ThemeSafeRoundButton";
 import AppleMusicLyricPlayer from "@/renderer/components/AppleMusicLyricPlayer";
 import { isPlaybackActive, PlayerState } from "@/common/constant";
-import albumImg from "@/assets/imgs/album-cover.jpg";
+import { useDefaultAlbumCover } from "@/renderer/utils/default-album-cover";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
 
 import "./index.scss";
@@ -53,10 +53,11 @@ export default function MinimodePage() {
     const { t } = useTranslation();
     const showTranslation = useAppConfig("lyric.showTranslation");
     const showRomanization = useAppConfig("lyric.showRomanization");
+    const defaultAlbumCover = useDefaultAlbumCover();
 
     const title = currentMusicItem?.title || t("media.unknown_title");
     const artist = currentMusicItem?.artist || t("media.unknown_artist");
-    const artwork = currentMusicItem?.artwork || albumImg;
+    const artwork = currentMusicItem?.artwork || defaultAlbumCover;
     const currentLyric = lyricItem?.lrc || title;
     const romanization = showRomanization ? lyricItem?.romanization : undefined;
     const translation = showTranslation ? lyricItem?.translation : undefined;

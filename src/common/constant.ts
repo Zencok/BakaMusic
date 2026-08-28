@@ -225,7 +225,8 @@ export enum ResourceName {
     SKIP_RIGHT_ICON = "skip-right.png",
     PAUSE_ICON = "pause.png",
     PLAY_ICON = "play.png",
-    DEFAULT_ALBUM_COVER_IMAGE = "album-cover.jpeg",
+    DEFAULT_ALBUM_COVER_DARK_IMAGE = "album-cover-dark.png",
+    DEFAULT_ALBUM_COVER_LIGHT_IMAGE = "album-cover-light.png",
     LOGO_IMAGE = "logo.png",
 
 }

@@ -1,6 +1,6 @@
 import "./index.scss";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import albumImg from "@/assets/imgs/album-cover.jpg";
+import albumImg from "@/renderer/utils/default-album-cover";
 import { rem } from "@/common/constant";
 import { getMediaPrimaryKey, isSameMedia } from "@/common/media-util";
 import { secondsToDuration } from "@/common/time-util";

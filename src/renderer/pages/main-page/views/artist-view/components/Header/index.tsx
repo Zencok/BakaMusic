@@ -1,5 +1,5 @@
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
-import albumImg from "@/assets/imgs/album-cover.jpg";
+import { useDefaultAlbumCover } from "@/renderer/utils/default-album-cover";
 import Tag from "@/renderer/components/Tag";
 import Condition from "@/renderer/components/Condition";
 import "./index.scss";
@@ -12,8 +12,9 @@ interface IProps {
 export default function Header(props: IProps) {
     const { artistItem } = props;
     const { t } = useTranslation();
+    const defaultAlbumCover = useDefaultAlbumCover();
     // Empty string must not win over fallback (?? only handles null/undefined).
-    const avatarSrc = (artistItem?.avatar ?? "").trim() || albumImg;
+    const avatarSrc = (artistItem?.avatar ?? "").trim() || defaultAlbumCover;
 
     return (
         <div className="artist-view--header-container">

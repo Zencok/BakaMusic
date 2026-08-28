@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { i18n, isCN } from "@/shared/i18n/renderer";
 import { useTranslation } from "react-i18next";
 import LazyImage from "@/renderer/components/LazyImage";
-import albumImg from "@/assets/imgs/album-cover.jpg";
+import albumImg from "@/renderer/utils/default-album-cover";
 import getCompactArtworkSrc from "@/renderer/utils/get-compact-artwork-src";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
 import BottomLoadingState from "@/renderer/components/BottomLoadingState";

@@ -1,6 +1,6 @@
-﻿import AnimatedDiv from "../AnimatedDiv";
+import AnimatedDiv from "../AnimatedDiv";
 import "./index.scss";
-import albumImg from "@/assets/imgs/album-cover.jpg";
+import { useDefaultAlbumCover } from "@/renderer/utils/default-album-cover";
 import { PlayerState, qualityText } from "@/common/constant";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
 import { useUserPreference } from "@/renderer/utils/user-perference";
@@ -56,6 +56,7 @@ function MusicDetail() {
     const classicAmllPlaybackDetail = useAppConfig("normal.classicAmllPlaybackDetail") === true;
     const [lyricPlayerReady, setLyricPlayerReady] = useState(false);
     const { t } = useTranslation();
+    const defaultAlbumCover = useDefaultAlbumCover();
     const isFullscreenRef = useRef(false);
     const lastF11ToggleAtRef = useRef(0);
     const immersiveOsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -417,7 +418,7 @@ function MusicDetail() {
         };
     }, [applyImmersiveFullScreen, musicDetailShown, toggleImmersiveFullScreen]);
 
-    const rawArtwork = musicItem?.coverImg || musicItem?.artwork || albumImg;
+    const rawArtwork = musicItem?.coverImg || musicItem?.artwork || defaultAlbumCover;
     const [artwork, setArtwork] = useState(rawArtwork);
     useEffect(() => {
         let canceled = false;

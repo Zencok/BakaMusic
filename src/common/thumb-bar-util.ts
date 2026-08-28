@@ -2,11 +2,10 @@
  * Thumb Bar Util
  */
 
-import { BrowserWindow, nativeImage } from "electron";
+import { BrowserWindow, nativeImage, nativeTheme } from "electron";
 import getResourcePath from "@/common/get-resource-path";
 import { t } from "@shared/i18n/main";
 import { ResourceName } from "@/common/constant";
-import asyncMemoize from "@/common/async-memoize";
 import fs from "fs/promises";
 import logger from "@shared/logger/main";
 import axios from "axios";
@@ -56,10 +55,24 @@ function setThumbBarButtons(window: BrowserWindow, isPlaying?: boolean) {
 }
 
 
-// 获取默认的图片
-const getDefaultAlbumCoverImage = asyncMemoize(async () => {
-    return await fs.readFile((getResourcePath(ResourceName.DEFAULT_ALBUM_COVER_IMAGE)));
-});
+// Cache each scheme separately so a system theme change immediately selects the
+// matching artwork without retaining the image from the previous scheme.
+const defaultAlbumCoverCache = new Map<"dark" | "light", Promise<Buffer>>();
+
+function getDefaultAlbumCoverImage() {
+    const scheme = nativeTheme.shouldUseDarkColors ? "dark" : "light";
+    const cached = defaultAlbumCoverCache.get(scheme);
+    if (cached) {
+        return cached;
+    }
+
+    const resourceName = scheme === "dark"
+        ? ResourceName.DEFAULT_ALBUM_COVER_DARK_IMAGE
+        : ResourceName.DEFAULT_ALBUM_COVER_LIGHT_IMAGE;
+    const loading = fs.readFile(getResourcePath(resourceName));
+    defaultAlbumCoverCache.set(scheme, loading);
+    return loading;
+}
 
 let hookedFlag = false;
 

@@ -2,7 +2,7 @@ import MusicSheet, { defaultSheet } from "@/renderer/core/music-sheet";
 import Base from "../Base";
 import "./index.scss";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
-import albumImg from "@/assets/imgs/album-cover.jpg";
+import { useDefaultAlbumCover } from "@/renderer/utils/default-album-cover";
 import addImg from "@/assets/imgs/add.png";
 import { hideModal, showModal } from "../..";
 import { Trans, useTranslation } from "react-i18next";
@@ -14,6 +14,7 @@ interface IAddMusicToSheetProps {
 export default function AddMusicToSheet(props: IAddMusicToSheetProps) {
     const { musicItems } = props;
     const { t } = useTranslation();
+    const defaultAlbumCover = useDefaultAlbumCover();
 
     const allSheets = MusicSheet.frontend.useAllSheets();
     return (
@@ -59,7 +60,7 @@ export default function AddMusicToSheet(props: IAddMusicToSheetProps) {
                         >
                             <img
                                 alt={sheet.title}
-                                src={sheet.artwork || albumImg}
+                                src={sheet.artwork || defaultAlbumCover}
                                 onError={setFallbackAlbum}
                             ></img>
                             <span>

@@ -1,4 +1,8 @@
 import { ImgHTMLAttributes, useEffect, useRef, useState } from "react";
+import {
+    isDefaultAlbumCoverSource,
+    useDefaultAlbumCover,
+} from "@/renderer/utils/default-album-cover";
 
 const DEFAULT_ROOT_MARGIN = "240px 0px";
 
@@ -32,6 +36,13 @@ export default function LazyImage(props: ILazyImageProps) {
         alt = "",
         ...restProps
     } = props;
+    const defaultAlbumCover = useDefaultAlbumCover();
+    const resolvedSrc = isDefaultAlbumCoverSource(src)
+        ? defaultAlbumCover
+        : src;
+    const resolvedFallbackSrc = isDefaultAlbumCoverSource(fallbackSrc)
+        ? defaultAlbumCover
+        : fallbackSrc;
     const imageRef = useRef<HTMLImageElement | null>(null);
     const [isVisible, setIsVisible] = useState(
         typeof window === "undefined" ||
@@ -70,14 +81,14 @@ export default function LazyImage(props: ILazyImageProps) {
 
     useEffect(() => {
         if (isVisible) {
-            setDisplaySrc(src || fallbackSrc || undefined);
+            setDisplaySrc(resolvedSrc || resolvedFallbackSrc || undefined);
             return;
         }
 
         if (releaseWhenHidden) {
             setDisplaySrc(undefined);
         }
-    }, [fallbackSrc, isVisible, releaseWhenHidden, src]);
+    }, [isVisible, releaseWhenHidden, resolvedFallbackSrc, resolvedSrc]);
 
     return (
         <img

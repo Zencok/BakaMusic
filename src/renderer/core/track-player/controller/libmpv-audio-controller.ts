@@ -1,4 +1,4 @@
-import albumImg from "@/assets/imgs/album-cover.jpg";
+import { getDefaultAlbumCover } from "@/renderer/utils/default-album-cover";
 import { PlayerState } from "@/common/constant";
 import { fsUtil } from "@shared/utils/renderer";
 import nativePlayback from "@shared/native-playback/renderer";
@@ -59,7 +59,7 @@ class LibmpvAudioController extends ControllerBase implements IAudioController {
             artist: musicItem.artist,
             album: musicItem.album,
             artwork: [{
-                src: musicItem.coverImg ?? musicItem.artwork ?? albumImg,
+                src: musicItem.coverImg ?? musicItem.artwork ?? getDefaultAlbumCover(),
             }],
         });
     }

@@ -1,5 +1,5 @@
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
-import albumImg from "@/assets/imgs/album-cover.jpg";
+import { useDefaultAlbumCover } from "@/renderer/utils/default-album-cover";
 import "./index.scss";
 import Tag from "@/renderer/components/Tag";
 import Condition, { IfTruthy } from "@/renderer/components/Condition";
@@ -17,12 +17,13 @@ export default function Header(props: IProps) {
     const { musicSheet, hidePlatform } = props;
     const containerRef = useRef<HTMLDivElement>(null);
     const { t } = useTranslation();
+    const defaultAlbumCover = useDefaultAlbumCover();
 
     return (
         <div className="music-sheetlike-view--header-container" ref={containerRef}>
             <img
                 draggable={false}
-                src={musicSheet?.artwork || musicSheet?.coverImg || albumImg}
+                src={musicSheet?.artwork || musicSheet?.coverImg || defaultAlbumCover}
                 onError={setFallbackAlbum}
                 alt={musicSheet?.title}></img>
             <div className="sheet-info-container">

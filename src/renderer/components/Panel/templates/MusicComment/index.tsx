@@ -1,4 +1,4 @@
-﻿import Base from "@renderer/components/Panel/templates/Base";
+import Base from "@renderer/components/Panel/templates/Base";
 import "./index.scss";
 import { useTranslation } from "react-i18next";
 import SvgAsset from "@renderer/components/SvgAsset";
@@ -7,7 +7,7 @@ import useComment from "@renderer/components/Panel/templates/MusicComment/useCom
 import { RequestStateCode } from "@/common/constant";
 import Loading from "@renderer/components/Loading";
 import BottomLoadingState from "@renderer/components/BottomLoadingState";
-import albumImg from "@/assets/imgs/album-cover.jpg";
+import { useDefaultAlbumCover } from "@/renderer/utils/default-album-cover";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
 
 interface IProps {
@@ -18,6 +18,7 @@ interface IProps {
 export default function MusicComment(props: IProps) {
     const { coverHeader, musicItem } = props;
     const { t } = useTranslation();
+    const defaultAlbumCover = useDefaultAlbumCover();
     const [comments, reqState, loadMore] = useComment(musicItem);
 
     const musicTitle = musicItem?.title || t("media.unknown_title");
@@ -35,7 +36,7 @@ export default function MusicComment(props: IProps) {
                 <img
                     alt={musicTitle}
                     className="music-comment-panel--hero-cover"
-                    src={musicItem?.artwork || albumImg}
+                    src={musicItem?.artwork || defaultAlbumCover}
                     onError={setFallbackAlbum}
                 ></img>
                 <div className="music-comment-panel--hero-copy">

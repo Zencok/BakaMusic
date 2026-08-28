@@ -6,7 +6,7 @@ import {
 } from "@tanstack/react-table";
 
 import "./index.scss";
-import albumImg from "@/assets/imgs/album-cover.jpg";
+import albumImg from "@/renderer/utils/default-album-cover";
 import { localPluginName, qualityKeys, RequestStateCode, sortIndexSymbol, timeStampSymbol } from "@/common/constant";
 import { toError } from "@/common/error-util";
 import { getInternalData, isSameMedia } from "@/common/media-util";

@@ -1,10 +1,13 @@
-﻿import SvgAsset from "@/renderer/components/SvgAsset";
+import SvgAsset from "@/renderer/components/SvgAsset";
 import "./index.scss";
 
 import Tag from "@/renderer/components/Tag";
 import { secondsToDuration } from "@/common/time-util";
 import MusicDetail, { useMusicDetailShown } from "@/renderer/components/MusicDetail";
-import albumImg from "@/assets/imgs/album-cover.jpg";
+import {
+    isDefaultAlbumCoverSource,
+    useDefaultAlbumCover,
+} from "@/renderer/utils/default-album-cover";
 import { useTranslation } from "react-i18next";
 import { useCurrentMusic, useProgress } from "@renderer/core/track-player/hooks";
 import { hidePanel } from "@renderer/components/Panel";
@@ -16,7 +19,10 @@ function StableArtwork(props: {
     src?: string;
     title?: string;
 }) {
-    const rawSrc = props.src || albumImg;
+    const defaultAlbumCover = useDefaultAlbumCover();
+    const rawSrc = isDefaultAlbumCoverSource(props.src)
+        ? defaultAlbumCover
+        : (props.src || defaultAlbumCover);
     const [displaySrc, setDisplaySrc] = useState(rawSrc);
 
     useEffect(() => {
@@ -58,6 +64,7 @@ function StableArtwork(props: {
 export default function MusicInfo() {
     const musicItem = useCurrentMusic();
     const musicDetailShown = useMusicDetailShown();
+    const defaultAlbumCover = useDefaultAlbumCover();
     const { t } = useTranslation();
 
     function toggleMusicDetail() {
@@ -101,7 +108,7 @@ export default function MusicInfo() {
                 }}
             >
                 <StableArtwork
-                    src={musicItem.coverImg || musicItem.artwork || albumImg}
+                    src={musicItem.coverImg || musicItem.artwork || defaultAlbumCover}
                     title={musicItem.title}
                 ></StableArtwork>
                 <div

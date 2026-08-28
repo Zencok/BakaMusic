@@ -1,6 +1,6 @@
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
 import "./index.scss";
-import albumImg from "@/assets/imgs/album-cover.jpg";
+import albumImg from "@/renderer/utils/default-album-cover";
 import { memo } from "react";
 import LazyImage from "../LazyImage";
 import getCompactArtworkSrc from "@/renderer/utils/get-compact-artwork-src";

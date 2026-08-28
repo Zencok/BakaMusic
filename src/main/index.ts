@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut } from "electron";
+import { app, BrowserWindow, globalShortcut, nativeTheme } from "electron";
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
@@ -214,6 +214,24 @@ app.whenReady().then(async () => {
     });
 
     messageBus.setup(windowManager);
+
+    // Repaint the taskbar artwork when the OS switches schemes. This matters
+    // when no track artwork is available and the scheme-specific default cover
+    // is being shown.
+    nativeTheme.on("updated", () => {
+        if (process.platform !== "win32") {
+            return;
+        }
+        const mainWindow = windowManager.mainWindow;
+        if (!mainWindow || mainWindow.isDestroyed()) {
+            return;
+        }
+        if (AppConfig.getConfig("normal.taskbarThumb") !== "artwork") {
+            return;
+        }
+        const musicItem = messageBus.getAppState().musicItem;
+        void ThumbBarUtil.setThumbImage(mainWindow, musicItem?.artwork ?? "");
+    });
 
     windowManager.showMainWindow();
     bootstrap();
