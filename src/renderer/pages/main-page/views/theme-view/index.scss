@@ -24,7 +24,12 @@
       &[data-headlessui-state~="selected"],
       &[data-selected],
       &.ui-selected {
-        animation: theme-panel-enter var(--appMotionStandard, 180ms) var(--appMotionEaseEmphasized) both;
+        // `backwards`, never `both`: a forwards-filling transform/opacity
+        // animation stays applied on the selected panel, which keeps it a
+        // backdrop root and blanks the backdrop for the theme cards' own
+        // backdrop-filter. Ending the fill restores their frost.
+        animation: theme-panel-enter var(--appMotionStandard, 180ms)
+          var(--appMotionEaseEmphasized) backwards;
       }
     }
   }

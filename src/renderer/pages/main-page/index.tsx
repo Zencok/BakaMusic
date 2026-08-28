@@ -1,5 +1,12 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { lazy, Suspense, type CSSProperties } from "react";
+import {
+    lazy,
+    Suspense,
+    useLayoutEffect,
+    useRef,
+    type CSSProperties,
+    type ReactNode,
+} from "react";
 import SideBar from "./components/SideBar";
 import Empty from "@/renderer/components/Empty";
 
@@ -44,6 +51,57 @@ const ROUTE_FALLBACK_STYLE: CSSProperties = {
     justifyContent: "center",
 };
 
+/** Safety net in case animationend never fires (animation disabled, tab hidden). */
+const ROUTE_ENTER_MAX_MS = 1000;
+
+/**
+ * Plays the route enter animation, then removes it from the wrapper.
+ *
+ * A permanently applied animation keeps this element a backdrop root, which
+ * blanks out the backdrop for every descendant backdrop-filter surface (the
+ * music list sticky glass layer, theme cards). Dropping the attribute once the
+ * animation finishes returns those surfaces to sampling the real page behind.
+ */
+function RouteViewWrapper(props: { children: ReactNode }) {
+    const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+    useLayoutEffect(() => {
+        const wrapper = wrapperRef.current;
+        if (!wrapper) {
+            return;
+        }
+
+        wrapper.dataset.routeEnter = "true";
+
+        const settle = () => {
+            delete wrapper.dataset.routeEnter;
+        };
+
+        const onAnimationEnd = (event: AnimationEvent) => {
+            if (event.target === wrapper && event.animationName.includes("main-route-view-enter")) {
+                settle();
+            }
+        };
+
+        wrapper.addEventListener("animationend", onAnimationEnd);
+        wrapper.addEventListener("animationcancel", onAnimationEnd);
+        const timer = setTimeout(settle, ROUTE_ENTER_MAX_MS);
+
+        return () => {
+            wrapper.removeEventListener("animationend", onAnimationEnd);
+            wrapper.removeEventListener("animationcancel", onAnimationEnd);
+            clearTimeout(timer);
+            settle();
+        };
+    }, []);
+
+    return (
+        <div ref={wrapperRef} className="main-route-view-wrapper">
+            {props.children}
+        </div>
+    );
+}
+
 export default function MainPage() {
     const location = useLocation();
 
@@ -56,7 +114,7 @@ export default function MainPage() {
                         <div style={ROUTE_FALLBACK_STYLE} aria-busy="true"></div>
                     )}
                 >
-                    <div key={location.pathname} className="main-route-view-wrapper">
+                    <RouteViewWrapper key={location.pathname}>
                         <Routes>
                             <Route path="search/:query" element={<SearchView></SearchView>}></Route>
                             <Route
@@ -101,7 +159,7 @@ export default function MainPage() {
                             ></Route>
                             <Route path="*" element={<Empty></Empty>}></Route>
                         </Routes>
-                    </div>
+                    </RouteViewWrapper>
                 </Suspense>
             </div>
         </div>

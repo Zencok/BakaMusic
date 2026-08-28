@@ -33,7 +33,16 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  animation: main-route-view-enter var(--appMotionPage, 280ms) var(--appMotionEaseEmphasized) both;
+
+  // Keep the enter animation scoped to the entering phase only. An animation
+  // that stays applied (fill-mode `both`) keeps this wrapper composited as a
+  // backdrop root, so descendant backdrop-filter surfaces — the music list
+  // sticky glass layer above all — sample an empty backdrop instead of the
+  // page behind them, and their frost silently disappears.
+  &[data-route-enter="true"] {
+    animation: main-route-view-enter var(--appMotionPage, 280ms)
+      var(--appMotionEaseEmphasized) backwards;
+  }
 }
 
 @keyframes main-route-view-enter {
@@ -48,7 +57,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .main-route-view-wrapper {
+  .main-route-view-wrapper[data-route-enter="true"] {
     animation: none;
   }
 }

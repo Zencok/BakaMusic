@@ -287,6 +287,71 @@ assert.match(
 );
 assert.match(globalStyleEntrySource, /@use '\.\/default-acrylic\.scss';/);
 
+// Page transition animations must not outlive their enter phase. A
+// transform/opacity animation that keeps filling forwards leaves the animated
+// element a backdrop root, so every descendant backdrop-filter surface — the
+// music list sticky glass layer, the theme cards — samples an empty backdrop
+// and loses its frost. Enter animations therefore use `backwards` and are
+// scoped to a state that is removed once the animation finishes.
+const mainPageStyleSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/pages/main-page/index.scss",
+), "utf8");
+const mainPageComponentSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/pages/main-page/index.tsx",
+), "utf8");
+const themeViewStyleSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/pages/main-page/views/theme-view/index.scss",
+), "utf8");
+
+for (const [label, styleSource] of [
+    ["main route wrapper", mainPageStyleSource],
+    ["theme view panel", themeViewStyleSource],
+]) {
+    for (const block of extractStyleBlocks(styleSource, "@keyframes\\s+[\\w-]+")) {
+        assert.doesNotMatch(
+            block,
+            /backdrop-filter/,
+            `${label} keyframes must not animate backdrop-filter`,
+        );
+    }
+    const animationDeclarations = styleSource.match(/animation:[^;]*;/g) ?? [];
+    assert.ok(
+        animationDeclarations.length > 0,
+        `${label} should declare an enter animation`,
+    );
+    for (const declaration of animationDeclarations) {
+        assert.doesNotMatch(
+            declaration,
+            /\b(both|forwards)\b/,
+            `${label} enter animation must not fill forwards: ${declaration.trim()}`,
+        );
+    }
+}
+
+assert.match(
+    mainPageStyleSource,
+    /\.main-route-view-wrapper\s*\{[\s\S]*?&\[data-route-enter="true"\]\s*\{[^}]*animation:\s*main-route-view-enter/,
+    "route enter animation must be gated behind the transient data-route-enter state",
+);
+assert.match(
+    mainPageComponentSource,
+    /dataset\.routeEnter\s*=\s*"true"/,
+    "route wrapper must mark the enter phase",
+);
+assert.match(
+    mainPageComponentSource,
+    /delete\s+wrapper\.dataset\.routeEnter/,
+    "route wrapper must clear the enter phase so descendants regain their backdrop",
+);
+assert.match(
+    mainPageComponentSource,
+    /addEventListener\("animationend"/,
+    "route wrapper must settle on animationend",
+);
+
 const readZIndex = (source, pattern, layerName) => {
     const match = source.match(pattern);
     assert.ok(match, `${layerName} must declare an explicit z-index`);
