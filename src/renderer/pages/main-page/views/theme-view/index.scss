@@ -28,6 +28,11 @@
         // animation stays applied on the selected panel, which keeps it a
         // backdrop root and blanks the backdrop for the theme cards' own
         // backdrop-filter. Ending the fill restores their frost.
+        //
+        // Transform only, never opacity: an opacity fade composites the panel
+        // over the translucent theme background and reads as the view dimming,
+        // and opacity is what blanks descendant backdrop-filter while the
+        // animation runs. Transform keeps the frost alive throughout.
         animation: theme-panel-enter var(--appMotionStandard, 180ms)
           var(--appMotionEaseEmphasized) backwards;
       }
@@ -168,11 +173,9 @@
 
 @keyframes theme-panel-enter {
   from {
-    opacity: 0;
     transform: translate3d(0, 8px, 0);
   }
   to {
-    opacity: 1;
     transform: none;
   }
 }

@@ -434,6 +434,17 @@ for (const [label, styleSource] of [
             /backdrop-filter/,
             `${label} keyframes must not animate backdrop-filter`,
         );
+        // Over a translucent theme background (video wallpaper) an opacity
+        // fade reads as the whole page dimming for the animation's duration,
+        // and opacity is also the one animated property that turns the
+        // animated element into a backdrop root, blanking descendant
+        // backdrop-filter surfaces (music list sticky glass, theme cards).
+        // Transform-only enter animations keep brightness and frost stable.
+        assert.doesNotMatch(
+            block,
+            /opacity/,
+            `${label} keyframes must not animate opacity: ${block.trim()}`,
+        );
     }
     const animationDeclarations = styleSource.match(/animation:[^;]*;/g) ?? [];
     assert.ok(

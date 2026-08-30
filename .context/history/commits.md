@@ -500,3 +500,11 @@ pending
 - **Bug**: None (feature work)
 - **Files**: 10 files
 - **Tests**: TypeScript, ESLint, aggregate regression, package smoke all passed
+
+## 2026-08-30T15:12:37.767668+08:00 — fix(ui): stop page transitions dimming over theme wallpapers
+
+- **Context-Id**: 6dd97fde-ba80-4337-b89c-2094e2544be8
+- **Decision**: Preserve the page transition motion but never animate opacity over glass
+- **Bug**: Switching to the my-sheets page dimmed the entire page for a moment after themes gained translucent video backgrounds.
+- **Files**: 5 files
+- **Tests**: Theme contract, TypeScript, ESLint, aggregate regression passed
