@@ -16,7 +16,7 @@
   padding: var(--listCardPadding, 12px);
   border-radius: var(--listCardRadius, 28px);
   background: transparent;
-  border: 1px solid var(--appSurfaceBorder);
+  border: 1px solid var(--appSurfaceBorderStrong, var(--appSurfaceBorder));
   box-shadow: var(--appSurfaceShadowSoft), var(--appSurfaceInset);
   overflow: clip;
   // Keep the filter on a viewport-sized sticky layer instead of the full
@@ -71,7 +71,7 @@
       padding: 0.9rem 1rem;
       border-radius: var(--cardRadius, 22px);
       background: var(--musicListSurface);
-      border: 1px solid var(--appSurfaceBorder);
+      border: 1px solid var(--appSurfaceBorderStrong, var(--appSurfaceBorder));
       box-shadow: var(--appSurfaceShadowSoft);
       -webkit-backdrop-filter: var(--appGlassFilter);
       backdrop-filter: var(--appGlassFilter);
@@ -87,7 +87,7 @@
       overflow: hidden;
       border-radius: var(--cardRadius, 22px);
       background: var(--musicListSurface);
-      border: 1px solid var(--appSurfaceBorder);
+      border: 1px solid var(--appSurfaceBorderStrong, var(--appSurfaceBorder));
       box-shadow: var(--appSurfaceShadowSoft);
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
@@ -177,7 +177,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: color-mix(in srgb, var(--backgroundColor) 78%, transparent);
+    background: var(--theme-input-bg, var(--appSurfaceStrong));
     box-shadow: var(--appSurfaceInset);
     color: var(--musicListText);
     cursor: pointer;
@@ -420,7 +420,7 @@
       border-radius: inherit;
       clip-path: inset(0 round 14px);
       background: linear-gradient(180deg, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.58));
-      color: #fff;
+      color: var(--theme-text-on-primary, var(--backgroundColor));
       opacity: 0;
       transition: opacity 160ms ease;
       backdrop-filter: blur(4px);
@@ -481,7 +481,7 @@
     justify-content: center;
     flex-shrink: 0;
     background: color-mix(in srgb, var(--primaryColor) 78%, transparent);
-    color: #fff;
+    color: var(--theme-text-on-primary, var(--backgroundColor));
     box-shadow: 0 8px 18px color-mix(in srgb, var(--primaryColor) 24%, transparent);
   }
 
@@ -535,7 +535,7 @@
     border: none;
     // Favorite / download / more: always circular
     border-radius: 50%;
-    background: color-mix(in srgb, var(--backgroundColor) 76%, transparent);
+    background: var(--theme-surface-strong, var(--appSurfaceStrong));
     color: var(--musicListText);
     box-shadow: var(--appSurfaceInset);
     display: inline-flex;

@@ -1,8 +1,8 @@
 @use "../discovery-pages";
 
 .download-view--container {
-  --discovery-cool: color-mix(in srgb, var(--primaryColor) 76%, #42e8c6);
-  --discovery-warm: color-mix(in srgb, var(--warningColor) 72%, #ff5b35);
+  --discovery-cool: var(--theme-primary, var(--primaryColor));
+  --discovery-warm: color-mix(in srgb, var(--theme-primary, var(--primaryColor)) 76%, var(--theme-warning) 24%);
   --discovery-line: color-mix(in srgb, var(--textColor) 15%, transparent);
 
   display: flex;

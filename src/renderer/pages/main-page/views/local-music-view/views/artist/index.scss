@@ -11,8 +11,8 @@
     width: 196px;
     padding: 10px;
     border-radius: var(--cardRadius, 22px);
-    background: var(--appSurfaceMuted);
-    border: 1px solid var(--appSurfaceBorder);
+    background: var(--theme-surface-strong, var(--appSurfaceStrong));
+    border: 1px solid var(--theme-surface-border-strong, var(--appSurfaceBorder));
     box-shadow: var(--appSurfaceInset);
     overflow-y: auto;
     flex-shrink: 0;
@@ -27,11 +27,13 @@
       border-radius: var(--controlRadiusLg, 16px);
       cursor: pointer;
       user-select: none;
-      transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+      border: 1px solid transparent;
+      transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease;
 
       &[data-selected="true"] {
-        background: color-mix(in srgb, var(--primaryColor) 12%, var(--backgroundColor));
-        color: var(--appTextPrimary);
+        background: var(--theme-primary-soft-strong, var(--appInteractiveSurfaceStrong));
+        border-color: var(--theme-primary-border, var(--appSurfaceBorderStrong));
+        color: color-mix(in srgb, var(--theme-primary) 86%, var(--appTextPrimary));
       }
 
       &:hover {

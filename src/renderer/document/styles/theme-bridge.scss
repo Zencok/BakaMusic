@@ -16,6 +16,11 @@
     // Foundation defaults.
     --theme-primary-hover: color-mix(in srgb, var(--theme-primary) 84%, black);
     --theme-primary-active: color-mix(in srgb, var(--theme-primary) 72%, black);
+    // Shared accent surfaces keep controls readable over transparent wallpapers.
+    --theme-primary-soft: color-mix(in srgb, var(--theme-primary) 10%, var(--theme-bg));
+    --theme-primary-soft-strong: color-mix(in srgb, var(--theme-primary) 16%, var(--theme-bg));
+    --theme-primary-border: color-mix(in srgb, var(--theme-primary) 48%, var(--theme-text) 12%);
+    --theme-focus-ring: color-mix(in srgb, var(--theme-primary) 72%, transparent);
     --theme-text-secondary: color-mix(in srgb, var(--theme-text) 72%, transparent);
     --theme-text-muted: color-mix(in srgb, var(--theme-text) 52%, transparent);
     --theme-text-on-primary: #0b0b0f;
@@ -33,7 +38,9 @@
     // Shared surfaces.
     --theme-surface: color-mix(in srgb, var(--theme-bg) 82%, transparent);
     --theme-surface-strong: color-mix(in srgb, var(--theme-bg) 92%, var(--theme-text) 8%);
-    --theme-surface-muted: color-mix(in srgb, var(--theme-bg) 70%, transparent);
+    // Muted surfaces still carry enough of the theme background to avoid
+    // wallpaper/show-through reducing contrast in toolbars and side lists.
+    --theme-surface-muted: color-mix(in srgb, var(--theme-bg) 86%, var(--theme-text) 4%);
     --theme-surface-border: color-mix(in srgb, var(--theme-text) 14%, transparent);
     --theme-surface-border-strong: color-mix(in srgb, var(--theme-text) 22%, transparent);
     --theme-shadow: 0 22px 48px color-mix(in srgb, black 22%, transparent);
@@ -76,7 +83,9 @@
     --theme-player-border: var(--theme-surface-border);
 
     // Lists, sheets and inputs.
-    --theme-list-bg: var(--theme-card-bg);
+    // Lists need a stable opaque base so artwork/wallpapers do not reduce row
+    // and metadata contrast while scrolling.
+    --theme-list-bg: var(--theme-surface-strong);
     --theme-list-row-bg: transparent;
     --theme-list-row-alt-bg: color-mix(in srgb, var(--theme-text) 4%, transparent);
     --theme-list-row-hover-bg: var(--theme-interactive-hover);

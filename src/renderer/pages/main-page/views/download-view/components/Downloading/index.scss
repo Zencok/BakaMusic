@@ -52,9 +52,9 @@
     height: 100%;
     padding: 13px 14px;
     box-sizing: border-box;
-    border: 0;
+    border: 1px solid var(--theme-surface-border, var(--appSurfaceBorder));
     border-radius: var(--controlRadiusLg, 14px);
-    background: color-mix(in srgb, var(--appTextPrimary) 3%, transparent);
+    background: var(--theme-surface-strong, var(--appSurfaceStrong));
     display: grid;
     grid-template-columns: auto minmax(160px, 1fr) minmax(210px, 0.75fr) auto;
     align-items: center;
@@ -63,8 +63,9 @@
   }
 
   & .downloading-item-card:hover {
-    background: color-mix(in srgb, var(--discovery-cool, var(--primaryColor)) 7%, transparent);
-    box-shadow: none;
+    background: var(--theme-primary-soft, var(--appInteractiveSurfaceStrong));
+    border-color: var(--theme-primary-border, var(--appSurfaceBorderStrong));
+    box-shadow: 0 8px 22px color-mix(in srgb, var(--theme-primary) 10%, transparent);
   }
 
   & .downloading-item-cover {
@@ -92,8 +93,8 @@
     padding: 0 0.3rem;
     box-sizing: border-box;
     border-radius: var(--appRadiusPill, 999px);
-    background: rgba(10, 12, 18, 0.66);
-    color: #fff;
+    background: color-mix(in srgb, var(--theme-primary) 86%, var(--theme-bg));
+    color: var(--theme-text-on-primary, var(--backgroundColor));
     backdrop-filter: blur(8px);
     display: inline-grid;
     place-items: center;
@@ -192,13 +193,13 @@
     height: 5px;
     overflow: hidden;
     border-radius: var(--appRadiusPill, 999px);
-    background: color-mix(in srgb, var(--textColor) 9%, transparent);
+    background: color-mix(in srgb, var(--theme-text) 14%, var(--theme-bg));
   }
 
   & .downloading-progress-track span {
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(90deg, var(--primaryColor), color-mix(in srgb, var(--primaryColor) 62%, white));
+    background: linear-gradient(90deg, var(--theme-primary), var(--theme-primary-hover));
     display: block;
     transition: width 140ms linear;
   }
@@ -233,7 +234,7 @@
     padding: 0;
     border: 1px solid var(--discovery-line, var(--appInteractiveBorder));
     border-radius: 50%;
-    background: transparent;
+    background: var(--theme-surface, var(--appSurface));
     color: var(--appTextSecondary);
     display: grid;
     place-items: center;
@@ -244,7 +245,7 @@
   & .downloading-item-action:hover {
     transform: scale(1.06);
     color: var(--primaryColor);
-    background: var(--appInteractiveSurface);
+    background: var(--theme-primary-soft, var(--appInteractiveSurface));
   }
 
   & .downloading-item-action[data-variant="danger"]:hover {

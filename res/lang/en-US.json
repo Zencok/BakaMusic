@@ -383,7 +383,7 @@
         "unique_tracks": "Unique tracks",
         "unique_tracks_hint": "Different tracks in your statistics",
         "total_listening_time": "Listening time",
-        "total_listening_time_hint": "Counts time while audio is actually playing",
+        "total_listening_time_hint": "Your time spent listening to music",
         "duration_second": "{{value}} sec",
         "duration_minute": "{{value}} min",
         "duration_hour": "{{value}} hr",

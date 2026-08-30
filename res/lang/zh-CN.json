@@ -383,7 +383,7 @@
         "unique_tracks": "听过歌曲",
         "unique_tracks_hint": "统计中记录的不同歌曲",
         "total_listening_time": "累计时长",
-        "total_listening_time_hint": "仅累计实际播放时间",
+        "total_listening_time_hint": "记录你的音乐陪伴时光",
         "duration_second": "{{value}} 秒",
         "duration_minute": "{{value}} 分钟",
         "duration_hour": "{{value}} 小时",

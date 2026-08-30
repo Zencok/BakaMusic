@@ -57,20 +57,22 @@
   min-height: var(--discoveryToolbarHeight);
   display: inline-flex;
   align-items: stretch;
-  padding: 0.18rem;
-  border: 1px solid var(--discovery-line, var(--appInteractiveBorder));
-  border-radius: var(--controlRadius, 5px);
-  background: color-mix(in srgb, var(--appTextPrimary) 3%, transparent);
+  padding: 0;
+  border: 1px solid var(--theme-surface-border-strong, var(--discovery-line, var(--appInteractiveBorder)));
+  border-radius: max(10px, var(--controlRadius, 5px));
+  background: color-mix(in srgb, var(--theme-primary) 4%, var(--theme-surface-strong, var(--appSurfaceStrong)));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 16%, transparent);
+  overflow: hidden;
 }
 
 .discovery-toolbar-segment {
   min-width: 0;
-  min-height: calc(var(--discoveryToolbarHeight) - 0.36rem);
+  min-height: var(--discoveryToolbarHeight);
   padding: 0 0.68rem;
   border: 0;
-  border-radius: max(2px, calc(var(--controlRadius, 5px) - 2px));
+  border-radius: max(8px, calc(var(--controlRadius, 5px) - 1px));
   background: transparent;
-  color: var(--appTextTertiary);
+  color: var(--appTextSecondary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -80,7 +82,8 @@
   font-weight: 680;
   white-space: nowrap;
   cursor: pointer;
-  transition: color 150ms ease, background-color 150ms ease, opacity 150ms ease;
+  flex: 1 1 0;
+  transition: color 150ms ease, background-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
 
   & svg {
     width: 0.95rem;
@@ -89,7 +92,8 @@
 
   &:hover:not(:disabled) {
     color: var(--appTextPrimary);
-    background: var(--appInteractiveSurface);
+    background: var(--theme-primary-soft, var(--appInteractiveSurface));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-primary) 10%, transparent);
   }
 
   &:focus-visible {
@@ -99,9 +103,19 @@
   }
 
   &[data-active="true"] {
-    background: var(--appTextPrimary);
-    color: var(--backgroundColor);
+    background: var(--theme-primary-soft-strong, var(--appInteractiveSurfaceStrong));
+    color: color-mix(in srgb, var(--theme-primary) 82%, var(--appTextPrimary));
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--theme-primary) 14%, transparent);
   }
+
+  // Keep the selected state stable while the pointer rests over the button.
+  &[data-active="true"]:hover:not(:disabled),
+  &[data-active="true"]:focus-visible {
+    background: var(--theme-primary-soft-strong, var(--appInteractiveSurfaceStrong));
+    color: color-mix(in srgb, var(--theme-primary) 82%, var(--appTextPrimary));
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--theme-primary) 14%, transparent);
+  }
+
 }
 
 .discovery-toolbar-search {
@@ -110,9 +124,9 @@
   height: var(--discoveryToolbarHeight);
   padding: 0 0.68rem;
   box-sizing: border-box;
-  border: 1px solid var(--discovery-line, var(--appInteractiveBorder));
+  border: 1px solid var(--theme-surface-border-strong, var(--discovery-line, var(--appInteractiveBorder)));
   border-radius: var(--controlRadius, 5px);
-  background: transparent;
+  background: var(--theme-input-bg, var(--appSurfaceStrong));
   color: var(--appTextTertiary);
   display: flex;
   align-items: center;
@@ -121,7 +135,7 @@
 
   &:focus-within {
     border-color: var(--discovery-cool, var(--primaryColor));
-    background: color-mix(in srgb, var(--discovery-cool, var(--primaryColor)) 5%, transparent);
+    background: var(--theme-primary-soft, var(--appInteractiveSurfaceStrong));
     color: var(--discovery-cool, var(--primaryColor));
   }
 
@@ -182,9 +196,9 @@
 .discovery-toolbar-button {
   min-height: var(--discoveryToolbarHeight, 2.5rem);
   padding: 0 0.78rem;
-  border: 1px solid var(--discovery-line, var(--appInteractiveBorder));
+  border: 1px solid var(--theme-surface-border-strong, var(--discovery-line, var(--appInteractiveBorder)));
   border-radius: var(--controlRadius, 5px);
-  background: transparent;
+  background: var(--theme-surface-strong, var(--appSurfaceStrong));
   color: var(--appTextSecondary);
   display: inline-flex;
   align-items: center;
@@ -215,7 +229,7 @@
 
   &:disabled {
     cursor: default;
-    opacity: 0.4;
+    opacity: 0.56;
   }
 
   &[data-variant="danger"] {

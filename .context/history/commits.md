@@ -484,3 +484,11 @@ pending
 - **Bug**: Controls inside modal dialogs could fail to respond because pointer input was treated as window dragging.
 - **Files**: 1 file
 - **Tests**: Not run (Git-only commit workflow)
+
+## 2026-08-30T12:48:30.5798447+08:00 — fix(theme): improve transparent surface contrast
+
+- **Context-Id**: ae374121-a91b-452f-bcaa-50ea0ede2a30
+- **Decision**: Strengthen shared themed surfaces without losing transparency; keep statistics row states ordered and artwork neutral
+- **Bug**: Statistics hover/current contrast inverted across schemes and the current artwork retained a themed pause overlay.
+- **Files**: 16 files
+- **Tests**: TypeScript, ESLint, and aggregate regression suite passed

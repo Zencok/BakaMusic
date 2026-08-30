@@ -1,7 +1,7 @@
 .components--tag-container {
   font-size: 0.9rem;
-  color: var(--primaryColor);
-  border: 1px solid var(--primaryColor);
+  color: color-mix(in srgb, var(--theme-primary, var(--primaryColor)) 84%, var(--appTextPrimary));
+  border: 1px solid var(--theme-primary-border, var(--primaryColor));
   border-radius: var(--tagRadius, 12px);
   padding: 2px 6px;
   width: fit-content;
@@ -13,7 +13,7 @@
   flex-shrink: 0;
 
   &[data-fill=true] {
-    background-color: var(--primaryColor);
-    color: white;
+    background-color: var(--theme-primary, var(--primaryColor));
+    color: var(--theme-text-on-primary, var(--backgroundColor));
   }
 }
