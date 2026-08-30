@@ -25,7 +25,7 @@ export const CLIENT_OWNED_COMPATIBILITY_TOKENS = [
  * deliberately absent: packs may paint every BakaMusic region, but may not
  * restructure it.
  */
-const THEME_TOKENS = [
+export const THEME_TOKENS = [
     ...REQUIRED_THEME_TOKENS,
     "--theme-primary-hover",
     "--theme-primary-active",
@@ -33,6 +33,7 @@ const THEME_TOKENS = [
     "--theme-text-muted",
     "--theme-text-on-primary",
     "--theme-header-text",
+    "--theme-main-header-button-text",
     "--theme-link",
     "--theme-success",
     "--theme-warning",
@@ -115,12 +116,14 @@ const THEME_TOKEN_SET = new Set<string>(THEME_TOKENS);
 const REQUIRED_THEME_TOKEN_SET = new Set<string>(REQUIRED_THEME_TOKENS);
 const COMMENT_PATTERN = /\/\*[\s\S]*?\*\//g;
 const ROOT_BLOCK_PATTERN = /^\s*:root\s*\{([\s\S]*)\}\s*$/;
+const ADAPTIVE_THEME_PATTERN = /^\s*:root\s*\{([\s\S]*?)\}\s*@media\s*\(\s*prefers-color-scheme\s*:\s*dark\s*\)\s*\{\s*:root\s*\{([\s\S]*?)\}\s*\}\s*$/;
 const UNSAFE_VALUE_PATTERN = /[{}]|@import|expression\s*\(|javascript\s*:/i;
 const VARIABLE_REFERENCE_PATTERN = /var\(\s*(--[a-zA-Z0-9-]+)/g;
 
 export interface IParsedThemeCss {
     css: string;
     tokens: ReadonlyMap<string, string>;
+    darkTokens?: ReadonlyMap<string, string>;
 }
 
 function splitDeclarations(rawDeclarations: string): string[] {
@@ -184,16 +187,9 @@ function validateTokenValue(token: string, value: string) {
     }
 }
 
-/** Parse and canonicalise the only CSS shape accepted by theme@2. */
-export function parseThemeCss(rawCss: string): IParsedThemeCss {
-    const withoutComments = rawCss.replace(COMMENT_PATTERN, "");
-    const rootMatch = withoutComments.match(ROOT_BLOCK_PATTERN);
-    if (!rootMatch) {
-        throw new Error("Theme CSS must contain exactly one :root block");
-    }
-
+function parseTokenBlock(rawDeclarations: string) {
     const tokens = new Map<string, string>();
-    for (const declaration of splitDeclarations(rootMatch[1])) {
+    for (const declaration of splitDeclarations(rawDeclarations)) {
         const colonIndex = declaration.indexOf(":");
         if (colonIndex < 1) {
             throw new Error(`Invalid theme declaration: ${declaration}`);
@@ -215,11 +211,38 @@ export function parseThemeCss(rawCss: string): IParsedThemeCss {
             throw new Error(`Missing required theme token: ${requiredToken}`);
         }
     }
+    return tokens;
+}
 
-    const declarations = Array.from(tokens, ([token, value]) => `    ${token}: ${value};`);
+function serializeTokenBlock(tokens: ReadonlyMap<string, string>) {
+    return Array.from(tokens, ([token, value]) => `    ${token}: ${value};`).join("\n");
+}
+
+/** Parse and canonicalise the only CSS shape accepted by theme@2. */
+export function parseThemeCss(rawCss: string): IParsedThemeCss {
+    const withoutComments = rawCss.replace(COMMENT_PATTERN, "");
+    const adaptiveMatch = withoutComments.match(ADAPTIVE_THEME_PATTERN);
+    const rootMatch = adaptiveMatch ? null : withoutComments.match(ROOT_BLOCK_PATTERN);
+    if (!adaptiveMatch && !rootMatch) {
+        throw new Error("Theme CSS must contain exactly one :root block");
+    }
+
+    const tokens = parseTokenBlock(adaptiveMatch?.[1] ?? rootMatch?.[1] ?? "");
+    const darkTokens = adaptiveMatch ? parseTokenBlock(adaptiveMatch[2]) : undefined;
+    if (darkTokens && tokens.get("--theme-scheme") !== "light") {
+        throw new Error("Adaptive themes must use --theme-scheme: light in the base block");
+    }
+    if (darkTokens && darkTokens.get("--theme-scheme") !== "dark") {
+        throw new Error("Adaptive themes must use --theme-scheme: dark in the dark block");
+    }
+    const declarations = serializeTokenBlock(tokens);
+    const css = darkTokens
+        ? `html[data-theme-spec="2"] {\n${declarations}\n}\n@media (prefers-color-scheme: dark) {\n    html[data-theme-spec="2"] {\n${serializeTokenBlock(darkTokens)}\n    }\n}`
+        : `html[data-theme-spec="2"] {\n${declarations}\n}`;
     return {
-        css: `html[data-theme-spec="2"] {\n${declarations.join("\n")}\n}`,
+        css,
         tokens,
+        darkTokens,
     };
 }
 
@@ -262,8 +285,8 @@ export function validateThemePackConfig(jsonData: Record<string, unknown>) {
     if (!/^\d+\.\d+\.\d+$/.test(jsonData.version as string)) {
         throw new Error("config.version must be semver x.y.z");
     }
-    if (jsonData.scheme !== "light" && jsonData.scheme !== "dark") {
-        throw new Error("config.scheme must be light or dark");
+    if (jsonData.scheme !== "light" && jsonData.scheme !== "dark" && jsonData.scheme !== "system") {
+        throw new Error("config.scheme must be light, dark or system");
     }
     if (
         !Array.isArray(jsonData.tags)

@@ -54,8 +54,8 @@ declare namespace ICommon {
       createdAt?: string;
       description?: string;
     tags?: string[];
-    /** light | dark — optional metadata mirror of --theme-scheme */
-    scheme?: "light" | "dark" | string;
+    /** light | dark | system — optional metadata mirror of --theme-scheme */
+    scheme?: "light" | "dark" | "system" | string;
     iframe?: {
       app: string;
     };

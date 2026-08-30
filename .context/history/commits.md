@@ -492,3 +492,11 @@ pending
 - **Bug**: Statistics hover/current contrast inverted across schemes and the current artwork retained a themed pause overlay.
 - **Files**: 16 files
 - **Tests**: TypeScript, ESLint, and aggregate regression suite passed
+
+## 2026-08-30T15:11:48.090952+08:00 — feat(theme): system-adaptive schemes, video cover and header token
+
+- **Context-Id**: 435f99e7-9942-4024-a12a-f6099192ae83
+- **Decision**: Adopt a system-adaptive scheme with a validated dark media block; Inject background-video runtime CSS client-side; Dedicated main header button text token
+- **Bug**: None (feature work)
+- **Files**: 10 files
+- **Tests**: TypeScript, ESLint, aggregate regression, package smoke all passed

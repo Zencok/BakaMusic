@@ -207,8 +207,13 @@ async function parseThemePack(themePackPath: string): Promise<ICommon.IThemePack
         const jsonData = JSON.parse(rawConfig) as Record<string, unknown>;
         validateThemePackConfig(jsonData);
         const parsedCss = parseThemeCss(rawCss);
-        if (parsedCss.tokens.get("--theme-scheme") !== jsonData.scheme) {
-            throw new Error("config.scheme and --theme-scheme must match");
+        const cssScheme = parsedCss.tokens.get("--theme-scheme");
+        if (jsonData.scheme === "system") {
+            if (!parsedCss.darkTokens || cssScheme !== "light") {
+                throw new Error("System themes must provide a dark prefers-color-scheme block");
+            }
+        } else if (cssScheme !== jsonData.scheme || parsedCss.darkTokens) {
+            throw new Error("config.scheme and theme CSS scheme must match");
         }
         if (typeof jsonData.preview !== "string") {
             throw new Error("Theme preview is missing");
@@ -244,7 +249,7 @@ async function parseThemePack(themePackPath: string): Promise<ICommon.IThemePack
             description: jsonData.description as string | undefined,
             createdAt: jsonData.createdAt as string | undefined,
             tags: jsonData.tags as string[] | undefined,
-            scheme: jsonData.scheme as "light" | "dark",
+            scheme: jsonData.scheme as "light" | "dark" | "system",
             iframe,
             hash: compatibilityHash,
             preview: jsonData.preview.startsWith("#")

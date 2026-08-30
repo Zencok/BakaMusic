@@ -177,7 +177,7 @@
       border-radius: var(--iconButtonRadius, 50%);
       opacity: 0.88;
       cursor: pointer;
-      color: var(--headerTextColor, var(--textColor));
+      color: var(--mainHeaderButtonTextColor, var(--headerTextColor, var(--textColor)));
       border: 1px solid var(--headerControlBorder, color-mix(in srgb, var(--textColor) 10%, transparent));
       background: var(--headerControlBg, color-mix(in srgb, var(--textColor) 7%, transparent));
       box-shadow: none;

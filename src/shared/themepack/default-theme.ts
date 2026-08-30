@@ -72,8 +72,11 @@ export const BUILTIN_DEFAULT_DARK_THEME_CSS = `/* bakamusic-theme@2 — built-in
 }
 `;
 
-/** Backward-compatible light token export for non-renderer consumers. */
-export const BUILTIN_DEFAULT_THEME_CSS = BUILTIN_DEFAULT_LIGHT_THEME_CSS;
+/** Unified adaptive form used by the same parser as installed system themes. */
+export const BUILTIN_DEFAULT_THEME_CSS = `${BUILTIN_DEFAULT_LIGHT_THEME_CSS}
+@media (prefers-color-scheme: dark) {
+${BUILTIN_DEFAULT_DARK_THEME_CSS}
+}`;
 
 export function createBuiltinDefaultThemePack(
     name = "Default",

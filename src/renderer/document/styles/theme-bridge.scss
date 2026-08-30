@@ -25,6 +25,8 @@
     --theme-text-muted: color-mix(in srgb, var(--theme-text) 52%, transparent);
     --theme-text-on-primary: #0b0b0f;
     --theme-header-text: var(--theme-text);
+    // Window controls can keep their own contrast without changing page text.
+    --theme-main-header-button-text: var(--theme-header-text);
     --theme-link: var(--theme-primary);
     --theme-success: #08a34c;
     --theme-warning: #d97706;
@@ -199,6 +201,7 @@
     --headerChromeBorder: var(--theme-header-border);
     --headerChromeShadow: var(--theme-shadow-soft);
     --headerChromeFilter: blur(var(--theme-blur)) saturate(145%);
+    --mainHeaderButtonTextColor: var(--theme-main-header-button-text);
     --headerControlBg: var(--theme-header-control-bg);
     --headerControlBorder: var(--theme-header-search-border);
     --headerControlHoverBg: var(--theme-header-control-hover-bg);

@@ -4,6 +4,7 @@ const path = require("node:path");
 const {
     CLIENT_OWNED_COMPATIBILITY_TOKENS,
     THEME_SPEC_V2,
+    THEME_TOKENS,
     parseThemeCss,
     validateThemePackConfig,
 } = require("../src/shared/themepack/contract");
@@ -208,14 +209,131 @@ assert.match(themeRuntimeSource, /data-theme-source/);
 assert.match(themeRuntimeSource, /bridge\.setWindowMaterial\(allowAcrylic,\s*scheme\)/);
 assert.match(themeRuntimeSource, /prefers-reduced-transparency:\s*reduce/);
 assert.match(themeRuntimeSource, /reducedTransparencyQuery\.addEventListener/);
-assert.match(
+// The builtin default theme ships as one adaptive stylesheet, so the runtime
+// must not branch between separate light/dark constants any more.
+assert.doesNotMatch(
     themeRuntimeSource,
-    /systemThemeQuery\?\.matches\s*\?\s*BUILTIN_DEFAULT_DARK_THEME_CSS\s*:\s*BUILTIN_DEFAULT_LIGHT_THEME_CSS/,
+    /BUILTIN_DEFAULT_(DARK|LIGHT)_THEME_CSS/,
+    "renderer runtime must use the unified adaptive builtin CSS",
 );
 assert.match(
     themeRuntimeSource,
-    /const contents = await bridge\.readThemeContents\(themePack\.path\);\s*applyThemeCss[^;]+;\s*stopFollowingSystemTheme\(\)/,
+    /themePack\.scheme === "system" && darkTokens/,
+    "installed system themes must follow the OS scheme only with a dark block",
 );
+assert.match(themeRuntimeSource, /followSystemTheme\(applyCurrentTheme\)/);
+// applyTheme must parse the theme CSS once and reapply it on scheme change.
+assert.match(
+    themeRuntimeSource,
+    /const contents = await bridge\.readThemeContents\(themePack\.path\);\s*const \{ darkTokens \} = parseThemeCss\(contents\.rawCss\);/,
+);
+assert.equal(
+    (themeRuntimeSource.match(/parseThemeCss\(contents\.rawCss\)/g) ?? []).length,
+    1,
+    "applyTheme must not parse the theme CSS twice",
+);
+
+// Adaptive theme shape: base light block plus a dark prefers-color-scheme block.
+const adaptiveSample = parseThemeCss(`
+    :root {
+        --theme-primary: #5ee2d4;
+        --theme-bg: #f5f7fa;
+        --theme-text: #111;
+        --theme-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --theme-primary: #5ee2d4;
+            --theme-bg: #111318;
+            --theme-text: #e8eaed;
+            --theme-scheme: dark;
+        }
+    }
+`);
+assert.equal(adaptiveSample.tokens.get("--theme-scheme"), "light");
+assert.equal(adaptiveSample.darkTokens?.get("--theme-scheme"), "dark");
+assert.equal(adaptiveSample.darkTokens?.get("--theme-bg"), "#111318");
+assert.match(
+    adaptiveSample.css,
+    /@media \(prefers-color-scheme: dark\)\s*\{\s*html\[data-theme-spec="2"\]/,
+);
+const adaptiveCssBaseBlock = adaptiveSample.css.slice(
+    0,
+    adaptiveSample.css.indexOf("@media"),
+);
+assert.doesNotMatch(
+    adaptiveCssBaseBlock,
+    /--theme-bg:\s*#111318/,
+    "dark values must stay inside the dark media block",
+);
+// Error combos: wrong scheme polarity in either block must be rejected.
+assert.throws(() => parseThemeCss(`
+    :root {
+        --theme-primary: red;
+        --theme-bg: #fff;
+        --theme-text: #000;
+        --theme-scheme: dark;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --theme-primary: red;
+            --theme-bg: #111;
+            --theme-text: #eee;
+            --theme-scheme: dark;
+        }
+    }
+`), "adaptive base block must be light");
+assert.throws(() => parseThemeCss(`
+    :root {
+        --theme-primary: red;
+        --theme-bg: #fff;
+        --theme-text: #000;
+        --theme-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --theme-primary: red;
+            --theme-bg: #111;
+            --theme-text: #eee;
+            --theme-scheme: light;
+        }
+    }
+`), "adaptive dark block must be dark");
+assert.throws(() => parseThemeCss(`
+    :root {
+        --theme-primary: red;
+        --theme-bg: #fff;
+        --theme-text: #000;
+        --theme-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --theme-primary: red;
+            --theme-bg: #111;
+            --theme-text: #eee;
+        }
+    }
+`), "adaptive dark block must redeclare the scheme token");
+
+// The builtin default theme is composed from the two block constants and must
+// parse as an adaptive theme.
+assert.match(
+    defaultThemeSource,
+    /BUILTIN_DEFAULT_THEME_CSS = `\$\{BUILTIN_DEFAULT_LIGHT_THEME_CSS\}\s*@media \(prefers-color-scheme: dark\) \{\s*\$\{BUILTIN_DEFAULT_DARK_THEME_CSS\}\s*\}`;/,
+);
+const builtinAdaptiveParsed = parseThemeCss(`${builtinDefaultLightThemeCss}
+@media (prefers-color-scheme: dark) {
+${builtinDefaultDarkThemeCss}
+}`);
+assert.equal(builtinAdaptiveParsed.tokens.get("--theme-scheme"), "light");
+assert.equal(builtinAdaptiveParsed.darkTokens?.get("--theme-scheme"), "dark");
+
+// Background video iframe: client injects runtime rules so window resize and
+// maximize keep the source aspect ratio via object-fit.
+assert.match(themeRuntimeSource, /themeIframeRuntimeCss/);
+assert.match(themeRuntimeSource, /object-fit:\s*cover\s*!important/);
+assert.match(themeRuntimeSource, /prepareThemeIframeHtml\(iframeHtml\)/);
+assert.match(themeRuntimeSource, /styleNode\.textContent = themeIframeRuntimeCss/);
 assert.match(
     themeBridgeSource,
     /@media \(prefers-color-scheme:\s*dark\)[\s\S]*:root:not\(\[data-theme-spec="2"\]\)/,
@@ -888,6 +1006,30 @@ for (const sample of invalidSamples) {
     assert.throws(() => parseThemeCss(sample));
 }
 
+// The dedicated main-header button token must stay in the contract and keep
+// its bridge mapping so window controls can hold contrast independently of
+// the page text color.
+assert.ok(
+    THEME_TOKENS.includes("--theme-main-header-button-text"),
+    "main header button text token must stay in the theme contract",
+);
+assert.match(
+    themeBridgeSource,
+    /--theme-main-header-button-text:\s*var\(--theme-header-text\)/,
+);
+assert.match(
+    themeBridgeSource,
+    /--mainHeaderButtonTextColor:\s*var\(--theme-main-header-button-text\)/,
+);
+const headerStyleSource = fs.readFileSync(path.join(
+    __dirname,
+    "../src/renderer/components/Header/index.scss",
+), "utf8");
+assert.match(
+    headerStyleSource,
+    /color:\s*var\(--mainHeaderButtonTextColor,\s*var\(--headerTextColor,\s*var\(--textColor\)\)\)/,
+);
+
 // The marketplace publisher appends these fields to config.json. They must be
 // readable after download even though authors do not write them in source.
 assert.doesNotThrow(() => validateThemePackConfig({
@@ -914,6 +1056,32 @@ assert.throws(() => validateThemePackConfig({
     tags: ["简约"],
     scheme: "light",
     unexpected: true,
+}));
+
+// scheme: "system" is accepted for adaptive packs; unknown schemes still fail.
+assert.doesNotThrow(() => validateThemePackConfig({
+    spec: THEME_SPEC_V2,
+    id: "market-theme-id",
+    createdAt: "2026-07-14T05:46:43.102Z",
+    name: "Adaptive Theme",
+    author: "Baka",
+    version: "2.1.0",
+    preview: "#fff",
+    description: "System adaptive config fixture",
+    tags: ["简约"],
+    scheme: "system",
+}));
+assert.throws(() => validateThemePackConfig({
+    spec: THEME_SPEC_V2,
+    id: "market-theme-id",
+    createdAt: "2026-07-14T05:46:43.102Z",
+    name: "Adaptive Theme",
+    author: "Baka",
+    version: "2.1.0",
+    preview: "#fff",
+    description: "Unknown scheme must fail",
+    tags: ["简约"],
+    scheme: "auto",
 }));
 
 console.log("theme-contract: all assertions passed");

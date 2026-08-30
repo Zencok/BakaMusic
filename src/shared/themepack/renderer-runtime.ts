@@ -1,16 +1,37 @@
 import type { IMod } from "./type";
 import { parseThemeCss } from "./contract";
 import {
-    BUILTIN_DEFAULT_DARK_THEME_CSS,
-    BUILTIN_DEFAULT_LIGHT_THEME_CSS,
+    BUILTIN_DEFAULT_THEME_CSS,
     BUILTIN_DEFAULT_THEME_PATH,
     createBuiltinDefaultThemePack,
     isBuiltinDefaultTheme,
 } from "./default-theme";
 
 const themeNodeId = "themepack-node";
+const themeIframeRuntimeStyleId = "bakamusic-theme-background-runtime";
 const darkSchemeMediaQuery = "(prefers-color-scheme: dark)";
 const reducedTransparencyMediaQuery = "(prefers-reduced-transparency: reduce)";
+const themeIframeRuntimeCss = `
+html,
+body {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+}
+
+video {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    object-fit: cover !important;
+}
+`;
 export const themePathKey = "themepack-path";
 let themeBackgroundIframe: HTMLIFrameElement | null = null;
 let themeBackgroundIframeSource: string | null = null;
@@ -38,6 +59,12 @@ function resolveThemeScheme(
     themePack: ICommon.IThemePack,
     themeTokens: ReadonlyMap<string, string>,
 ): "light" | "dark" {
+    if (themePack.scheme === "system") {
+        return systemThemeQuery?.matches
+            ?? window.matchMedia(darkSchemeMediaQuery).matches
+            ? "dark"
+            : "light";
+    }
     if (themePack.scheme === "dark" || themePack.scheme === "light") {
         return themePack.scheme;
     }
@@ -155,6 +182,18 @@ function clearThemeIframe() {
     themeBackgroundIframeSource = null;
 }
 
+function prepareThemeIframeHtml(rawHtml: string) {
+    const iframeDocument = new DOMParser().parseFromString(rawHtml, "text/html");
+    let styleNode = iframeDocument.getElementById(themeIframeRuntimeStyleId);
+    if (!styleNode) {
+        styleNode = iframeDocument.createElement("style");
+        styleNode.id = themeIframeRuntimeStyleId;
+        iframeDocument.head.appendChild(styleNode);
+    }
+    styleNode.textContent = themeIframeRuntimeCss;
+    return `<!DOCTYPE html>\n${iframeDocument.documentElement.outerHTML}`;
+}
+
 function stopFollowingSystemTheme() {
     if (systemThemeQuery && systemThemeChangeListener) {
         systemThemeQuery.removeEventListener("change", systemThemeChangeListener);
@@ -163,7 +202,11 @@ function stopFollowingSystemTheme() {
     systemThemeChangeListener = null;
 }
 
-function applyThemeCss(themePack: ICommon.IThemePack, rawCss: string, bridge: IMod) {
+function applyThemeCss(
+    themePack: ICommon.IThemePack,
+    rawCss: string,
+    bridge: IMod,
+) {
     const parsed = parseThemeCss(rawCss);
     let themeNode = document.querySelector(`#${themeNodeId}`) as HTMLStyleElement | null;
     if (!themeNode) {
@@ -177,29 +220,33 @@ function applyThemeCss(themePack: ICommon.IThemePack, rawCss: string, bridge: IM
     const nextCss = isBuiltinDefaultTheme(themePack)
         ? parsed.css
         : replaceThemeAlias(parsed.css, themePack.path);
-    applyThemeDocumentAttributes(themePack, parsed.tokens);
+    const activeTokens = themePack.scheme === "system" && parsed.darkTokens
+        && (systemThemeQuery?.matches ?? window.matchMedia(darkSchemeMediaQuery).matches)
+        ? parsed.darkTokens
+        : parsed.tokens;
+    applyThemeDocumentAttributes(themePack, activeTokens);
     void syncBuiltinWindowMaterial(bridge, isBuiltinDefaultTheme(themePack));
     if (themeNode.textContent !== nextCss) {
         themeNode.textContent = nextCss;
     }
 }
 
-function applyBuiltinDefaultTheme(themePack: ICommon.IThemePack, bridge: IMod) {
+function followSystemTheme(listener: () => void) {
     stopFollowingSystemTheme();
     systemThemeQuery = window.matchMedia(darkSchemeMediaQuery);
+    systemThemeChangeListener = listener;
+    systemThemeQuery.addEventListener("change", systemThemeChangeListener);
+}
 
+function applyBuiltinDefaultTheme(themePack: ICommon.IThemePack, bridge: IMod) {
     const applyCurrentSystemTheme = () => {
         applyThemeCss(
             themePack,
-            systemThemeQuery?.matches
-                ? BUILTIN_DEFAULT_DARK_THEME_CSS
-                : BUILTIN_DEFAULT_LIGHT_THEME_CSS,
+            BUILTIN_DEFAULT_THEME_CSS,
             bridge,
         );
     };
-
-    systemThemeChangeListener = applyCurrentSystemTheme;
-    systemThemeQuery.addEventListener("change", systemThemeChangeListener);
+    followSystemTheme(applyCurrentSystemTheme);
     applyCurrentSystemTheme();
 }
 
@@ -208,7 +255,10 @@ function applyThemeIframe(themePack: ICommon.IThemePack, iframeHtml: string | nu
         clearThemeIframe();
         return;
     }
-    const nextSource = replaceThemeAlias(iframeHtml, themePack.path);
+    const nextSource = replaceThemeAlias(
+        prepareThemeIframeHtml(iframeHtml),
+        themePack.path,
+    );
     if (
         themeBackgroundIframe?.isConnected
         && themeBackgroundIframeSource === nextSource
@@ -217,6 +267,7 @@ function applyThemeIframe(themePack: ICommon.IThemePack, iframeHtml: string | nu
     }
     clearThemeIframe();
     const iframe = document.createElement("iframe");
+    iframe.className = "theme-background-iframe";
     iframe.setAttribute("sandbox", "allow-scripts");
     iframe.setAttribute("aria-hidden", "true");
     iframe.scrolling = "no";
@@ -238,8 +289,17 @@ export async function applyTheme(
         return builtin;
     }
     const contents = await bridge.readThemeContents(themePack.path);
-    applyThemeCss(themePack, contents.rawCss, bridge);
+    const { darkTokens } = parseThemeCss(contents.rawCss);
+    const applyCurrentTheme = () => {
+        applyThemeCss(themePack, contents.rawCss, bridge);
+    };
     stopFollowingSystemTheme();
+    applyCurrentTheme();
+    // main.ts rejects system themes without a dark block, so following the
+    // media query is only needed when one is actually present.
+    if (themePack.scheme === "system" && darkTokens) {
+        followSystemTheme(applyCurrentTheme);
+    }
     applyThemeIframe(themePack, contents.iframeHtml);
     localStorage.setItem(themePathKey, themePack.path);
     return themePack;
