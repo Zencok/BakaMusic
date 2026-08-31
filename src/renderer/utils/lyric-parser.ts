@@ -319,6 +319,44 @@ function parseNeteaseJsonLyricLine(line: string): INeteaseJsonLyricItem | null {
     }
 }
 
+/**
+ * 网易云偶尔把没有时间字段的歌词行也编码成 { c: [...] } JSON。
+ * 这类行通常是制作信息，或紧接着的无时间戳双语歌词；只取 tx 文本，
+ * 不把链接和内部路由字段暴露给歌词显示。
+ */
+function parseNeteaseJsonLyricTextLine(line: string): string | null {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
+        return null;
+    }
+
+    try {
+        const data = JSON.parse(trimmed);
+        if (!Array.isArray(data?.c)) {
+            return null;
+        }
+
+        const text = data.c
+            .map((word: { tx?: unknown }) => (
+                typeof word?.tx === "string" ? word.tx : ""
+            ))
+            .join("")
+            .trim();
+        return text || null;
+    } catch {
+        return null;
+    }
+}
+
+function containsNeteaseJsonTextRows(raw: string) {
+    return raw.split("\n").some((line) => {
+        const body = line.replace(/^\s*(?:\[[\d:.]+\])+/, "").trim();
+        return !!body
+            && !!parseNeteaseJsonLyricTextLine(body)
+            && !parseNeteaseJsonLyricLine(body);
+    });
+}
+
 function containsWordLrc(raw: string) {
     return raw.split(/\r?\n/).some((line) => {
         const trimmed = line.trim();
@@ -431,7 +469,14 @@ function convertAmlLyricLines(
                 obscene: "obscene" in word ? word.obscene : undefined,
             };
         });
-        const lrc = words.map((word) => word.text).join("");
+        const parsedJsonText = parseNeteaseJsonLyricTextLine(
+            words.map((word) => word.text).join(""),
+        );
+        const lrc = parsedJsonText ?? words.map((word) => word.text).join("");
+        if (parsedJsonText && words.length === 1) {
+            words[0].text = parsedJsonText;
+            words[0].space = false;
+        }
         const startTime = line.startTime / 1000;
         const hasOpenEndedLine = !hasWordTimeline && line.endTime >= 60_000_000;
         const endTime = hasOpenEndedLine
@@ -1026,7 +1071,11 @@ function parseLrcLyric(raw: string): IParsedLrcItem[] {
             continue;
         }
 
-        const lrc = trimmed.replace(timeReg, "").trim();
+        const body = trimmed.replace(timeReg, "").trim();
+        const lrc = parseNeteaseJsonLyricTextLine(body) ?? body;
+        if (!lrc) {
+            continue;
+        }
         for (const rawTime of rawTimes) {
             items.push({
                 time: parseTimeTag(rawTime),
@@ -1093,6 +1142,7 @@ function parsePlainTextLyric(raw: string): IParsedLrcItem[] {
     const SECONDS_PER_LINE = 3;
     return raw
         .split("\n")
+        .map((line) => parseNeteaseJsonLyricTextLine(line) ?? line)
         .filter((l) => l.trim())
         .map((line, index) => ({
             time: index * SECONDS_PER_LINE,
@@ -1101,6 +1151,136 @@ function parsePlainTextLyric(raw: string): IParsedLrcItem[] {
             lrc: line.trim(),
             index,
         }));
+}
+
+type AlternatingLyricDirection = "first" | "second";
+
+function getAlternatingLyricDirection(
+    first: IParsedLrcItem,
+    second: IParsedLrcItem,
+): AlternatingLyricDirection | null {
+    if (
+        !first.lrc.trim()
+        || !second.lrc.trim()
+        || isCreditSideLine(first.lrc)
+        || isCreditSideLine(second.lrc)
+    ) {
+        return null;
+    }
+
+    const firstStats = getTextScriptStats(first.lrc);
+    const secondStats = getTextScriptStats(second.lrc);
+    const firstEastAsian = hasEastAsianScript(firstStats);
+    const secondEastAsian = hasEastAsianScript(secondStats);
+    const firstKanaOrHangul = hasKanaOrHangul(firstStats);
+    const secondKanaOrHangul = hasKanaOrHangul(secondStats);
+
+    // Japanese/Korean and Chinese lines are a reliable translation pair even
+    // when the source does not provide a separate tlyric field.
+    if (firstKanaOrHangul && secondStats.han > 0 && !secondKanaOrHangul) {
+        return "first";
+    }
+    if (secondKanaOrHangul && firstStats.han > 0 && !firstKanaOrHangul) {
+        return "second";
+    }
+
+    // The same applies to an English/East-Asian pair. Do not classify two
+    // Chinese (or two Latin) lines as translations; they are often adjacent
+    // original vocal lines instead.
+    if (isMostlyLatin(firstStats) && secondEastAsian && !isMostlyLatin(secondStats)) {
+        return "first";
+    }
+    if (isMostlyLatin(secondStats) && firstEastAsian && !isMostlyLatin(firstStats)) {
+        return "second";
+    }
+
+    return null;
+}
+
+function isRegularAlternatingLyricSpacing(
+    first: IParsedLrcItem,
+    second: IParsedLrcItem,
+    third: IParsedLrcItem,
+) {
+    const firstGap = second.time - first.time;
+    const secondGap = third.time - second.time;
+    if (firstGap <= PARALLEL_LINE_EPSILON || secondGap <= PARALLEL_LINE_EPSILON) {
+        return false;
+    }
+
+    const tolerance = Math.max(0.25, Math.min(firstGap, secondGap) * 0.15);
+    return Math.abs(firstGap - secondGap) <= tolerance;
+}
+
+/**
+ * 部分网易云歌曲没有 tlyric，而是把原文、译文按时间交替放在 lrc 中。
+ * 只有连续两组跨文字体系且间隔规律的行才折叠，避免把普通逐行歌词误判
+ * 成翻译。制作信息和同文字体系的演唱行始终保留为独立主行。
+ */
+function collapseAlternatingLyricItems(items: IParsedLrcItem[]) {
+    if (items.length < 4) {
+        return items;
+    }
+
+    const collapsed: IParsedLrcItem[] = [];
+    for (let index = 0; index < items.length;) {
+        const firstDirection = index + 3 < items.length
+            ? getAlternatingLyricDirection(items[index], items[index + 1])
+            : null;
+        const secondDirection = firstDirection && index + 3 < items.length
+            ? getAlternatingLyricDirection(items[index + 2], items[index + 3])
+            : null;
+
+        if (
+            !firstDirection
+            || firstDirection !== secondDirection
+            || !isRegularAlternatingLyricSpacing(
+                items[index],
+                items[index + 1],
+                items[index + 2],
+            )
+        ) {
+            collapsed.push(items[index]);
+            index++;
+            continue;
+        }
+
+        let pairIndex = index;
+        while (pairIndex + 1 < items.length) {
+            const direction = getAlternatingLyricDirection(
+                items[pairIndex],
+                items[pairIndex + 1],
+            );
+            if (
+                direction !== firstDirection
+                || (pairIndex > index
+                    && !isRegularAlternatingLyricSpacing(
+                        items[pairIndex - 2],
+                        items[pairIndex - 1],
+                        items[pairIndex],
+                    ))
+            ) {
+                break;
+            }
+
+            const original = cloneParsedLrcItem(
+                firstDirection === "first"
+                    ? items[pairIndex]
+                    : items[pairIndex + 1],
+            );
+            const translation = firstDirection === "first"
+                ? items[pairIndex + 1]
+                : items[pairIndex];
+            original.translation = translation.lrc.trim();
+            collapsed.push(original);
+            pairIndex += 2;
+        }
+
+        // The look-ahead guarantees at least two pairs were folded.
+        index = pairIndex > index ? pairIndex : index + 1;
+    }
+
+    return collapsed;
 }
 
 function parseLyricItemsByFormat(
@@ -1281,6 +1461,42 @@ function matchSpeakerPrefix(text: string): ISpeakerPrefix | null {
         normalizedName,
         prefixLength: match[0].length,
     };
+}
+
+/**
+ * 部分逐行歌词把演唱者单独放在一行，且不带冒号（如“周兴哲”或“合”）。
+ * 只有与歌曲艺人完全匹配的名称，或明确的合唱标记，才视为演唱者，避免
+ * 把普通歌词短句误当成标记。
+ */
+function matchStandaloneSpeakerPrefix(
+    text: string,
+    artist?: string,
+) {
+    const name = text.trim();
+    const normalizedName = normalizeSpeakerName(name);
+    if (
+        !name
+        || /[:：]/.test(name)
+        || !artist
+        || (
+            !getNormalizedArtists(artist).some((artistName) =>
+                artistName === normalizedName
+                || artistName.includes(normalizedName),
+            )
+            && !GROUP_SPEAKER_NAMES.has(normalizedName)
+        )
+    ) {
+        return null;
+    }
+
+    return {
+        content: "",
+        explicitSide: undefined,
+        isGroup: GROUP_SPEAKER_NAMES.has(normalizedName),
+        name,
+        normalizedName,
+        prefixLength: name.length,
+    } satisfies ISpeakerPrefix;
 }
 
 function removeLeadingTextFromWords(
@@ -2509,6 +2725,153 @@ function repairCreditCollisionTranslation(items: IParsedLrcItem[]) {
     return repaired;
 }
 
+function getTranslationAnchorText(text: string) {
+    const speakerPrefix = matchSpeakerPrefix(text);
+    return speakerPrefix?.content.trim() || text.trim();
+}
+
+/**
+ * QQ/WY 的翻译有时保留了正确顺序，却把重复副歌的译文时间提前到上一组
+ * 原文。用“前一条英文原文 + 相同译文”作为证据，把译文移到后面再次出现
+ * 的同一英文原句；没有重复原句时保持原数据，避免猜测。
+ */
+function repairMisalignedWordTranslation(items: IParsedLrcItem[]) {
+    let repaired = false;
+
+    for (let index = 0; index < items.length; index++) {
+        const item = items[index];
+        const translation = item.translation?.trim();
+        if (!translation) {
+            continue;
+        }
+
+        const sourceText = getTranslationAnchorText(item.lrc);
+        const sourceStats = getTextScriptStats(sourceText);
+        const translationStats = getTextScriptStats(translation);
+        if (
+            !sourceText
+            || !sourceStats.han
+            || hasKanaOrHangul(sourceStats)
+            || isMostlyLatin(sourceStats)
+            || !translationStats.han
+            || isMostlyLatin(translationStats)
+        ) {
+            continue;
+        }
+
+        const normalizedTranslation = normalizeComparableText(translation);
+        const previousEnglish = items
+            .slice(Math.max(0, index - 8), index)
+            .reverse()
+            .find((candidate) => {
+                if (
+                    !candidate.translation?.trim()
+                    || normalizeComparableText(candidate.translation)
+                        !== normalizedTranslation
+                    || item.time <= candidate.time
+                    || item.time - candidate.time > 6
+                ) {
+                    return false;
+                }
+
+                return isMostlyLatin(getTextScriptStats(candidate.lrc));
+            });
+        if (!previousEnglish) {
+            continue;
+        }
+
+        const previousEnglishKey = normalizeComparableText(
+            getTranslationAnchorText(previousEnglish.lrc),
+        );
+        const duplicateEnglish = items.find((candidate, candidateIndex) =>
+            candidateIndex > index
+            && !candidate.translation?.trim()
+            && isMostlyLatin(getTextScriptStats(candidate.lrc))
+            && normalizeComparableText(getTranslationAnchorText(candidate.lrc))
+                === previousEnglishKey,
+        );
+        if (!duplicateEnglish) {
+            continue;
+        }
+
+        duplicateEnglish.translation = translation;
+        item.translation = undefined;
+        repaired = true;
+    }
+
+    return repaired;
+}
+
+/**
+ * 逐行歌词有时把演唱者单独作为一行，并把该行的翻译也放在同一时间戳。
+ * 在并行时间戳折叠前拆出这种结构，避免“歌手名 + 翻译”被误合并成主行。
+ */
+function repairStandaloneSpeakerMarkers(
+    items: IParsedLrcItem[],
+    artist?: string,
+) {
+    if (!artist) {
+        return false;
+    }
+
+    let repaired = false;
+    for (let index = 0; index < items.length; index++) {
+        const marker = items[index];
+        const prefix = matchStandaloneSpeakerPrefix(marker.lrc, artist);
+        if (!prefix) {
+            continue;
+        }
+
+        const sameTimestampCandidates = items
+            .map((candidate, candidateIndex) => ({ candidate, candidateIndex }))
+            .filter(({ candidate, candidateIndex }) =>
+                candidateIndex > index
+                && Math.abs(candidate.time - marker.time) <= PARALLEL_LINE_EPSILON
+                && !!candidate.lrc.trim()
+                && !matchStandaloneSpeakerPrefix(candidate.lrc, artist),
+            );
+        const likelyTranslations = sameTimestampCandidates.filter(({ candidate }) => {
+            const stats = getTextScriptStats(candidate.lrc);
+            return hasEastAsianScript(stats) && !isMostlyLatin(stats);
+        });
+        const secondaryEntry = likelyTranslations.length === 1
+            ? likelyTranslations[0]
+            : undefined;
+        const targetEntry = sameTimestampCandidates.find(({ candidate }) =>
+            candidate !== secondaryEntry?.candidate
+            && isMostlyLatin(getTextScriptStats(candidate.lrc)),
+        );
+        const nextLyricIndex = items.findIndex((candidate, candidateIndex) =>
+            candidateIndex > index
+            && candidate.time > marker.time + PARALLEL_LINE_EPSILON
+            && !!candidate.lrc.trim()
+            && !isCreditSideLine(candidate.lrc)
+            && !matchStandaloneSpeakerPrefix(candidate.lrc, artist),
+        );
+
+        if (
+            nextLyricIndex < 0
+            || (
+                marker.time <= LEADING_CREDIT_WINDOW_SECONDS
+                && items[nextLyricIndex].time - marker.time < LEADING_NAME_DURATION_SECONDS
+            )
+        ) {
+            continue;
+        }
+
+        marker.lrc = `${marker.lrc.trim()}：`;
+        if (secondaryEntry && (targetEntry || nextLyricIndex >= 0)) {
+            const target = targetEntry?.candidate
+                ?? items[nextLyricIndex];
+            appendLyricField(target, "translation", secondaryEntry.candidate.lrc);
+            items.splice(secondaryEntry.candidateIndex, 1);
+            repaired = true;
+        }
+    }
+
+    return repaired;
+}
+
 function collapseParallelLyricItems(items: IParsedLrcItem[]): ICollapseParallelResult {
     const collapsedItems: IParsedLrcItem[] = [];
     let hasTranslation = false;
@@ -2997,6 +3360,8 @@ export default class LyricParser {
                 || this.hasRomanization;
         }
 
+        repairMisalignedWordTranslation(this.lrcItems);
+
         alignDuetSecondaryParentheses(this.lrcItems);
 
         this.hasRomanization = inheritRepeatedLineRomanization(this.lrcItems)
@@ -3054,7 +3419,17 @@ export default class LyricParser {
             this.format,
             this._musicItem?.artist,
         );
-        const parsedItems = parsedContent.items;
+        let parsedItems = parsedContent.items;
+        repairStandaloneSpeakerMarkers(
+            parsedItems,
+            this._musicItem?.artist,
+        );
+        if (
+            !parsedContent.preserveVocalLayout
+            && containsNeteaseJsonTextRows(raw)
+        ) {
+            parsedItems = collapseAlternatingLyricItems(parsedItems);
+        }
         Object.assign(meta, parsedContent.meta);
         const collapsed = parsedContent.preserveVocalLayout
             ? {
