@@ -7,6 +7,7 @@ import AppConfig from "@shared/app-config/renderer";
 interface ICheckBoxSettingItemProps<T extends keyof IAppConfig> {
     keyPath: T;
     label?: string;
+    description?: string;
     onChange?: (event: Event, checked: boolean) => void;
 }
 
@@ -16,6 +17,7 @@ export default function CheckBoxSettingItem<T extends keyof IAppConfig>(
     const {
         keyPath,
         label,
+        description,
         onChange,
     } = props;
 
@@ -23,7 +25,12 @@ export default function CheckBoxSettingItem<T extends keyof IAppConfig>(
 
     return (
         <div className="setting-row setting-toggle-row">
-            <div className="label-container">{label}</div>
+            <div className={description ? "label-container setting-label-copy" : "label-container"}>
+                <span>{label}</span>
+                {description ? (
+                    <span className="setting-label-description">{description}</span>
+                ) : null}
+            </div>
             <button
                 className={classNames({
                     "setting-toggle-control": true,

@@ -1,0 +1,179 @@
+.source-priority-setting {
+    width: 100%;
+}
+
+.source-priority-setting__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.source-priority-setting__mode {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px;
+    border: 1px solid var(--settingControlBorder, rgba(127, 127, 127, 0.24));
+    border-radius: 7px;
+    background: var(--settingControlSurface, rgba(127, 127, 127, 0.06));
+}
+
+.source-priority-setting__mode button {
+    min-height: 28px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 5px;
+    color: var(--settingTextSecondary, inherit);
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.source-priority-setting__mode button.is-active {
+    color: var(--settingTextPrimary, inherit);
+    background: var(--settingAccentSoft, rgba(127, 127, 127, 0.16));
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.source-priority-setting__empty {
+    color: var(--c-font-2, #8b8f99);
+    font-size: 11.5px;
+    line-height: 1.35;
+}
+
+.source-priority-setting__reset {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    flex: 0 0 auto;
+    margin-left: auto;
+    min-height: 30px;
+    padding: 0 10px;
+    border: 1px solid var(--settingControlBorder, rgba(127, 127, 127, 0.24));
+    border-radius: 6px;
+    color: var(--settingTextSecondary, inherit);
+    background: var(--settingControlSurface, rgba(127, 127, 127, 0.06));
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.source-priority-setting__reset:hover {
+    color: var(--primaryColor, currentColor);
+    border-color: var(--settingControlBorderActive, rgba(127, 127, 127, 0.42));
+    background: var(--settingControlSurfaceHover, rgba(127, 127, 127, 0.12));
+}
+
+.source-priority-setting__list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.source-priority-setting__item {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 8px 0 6px;
+    border: 1px solid var(--c-border, rgba(127, 127, 127, 0.2));
+    border-radius: 6px;
+    background: var(--c-card, rgba(127, 127, 127, 0.06));
+    transition: border-color 140ms ease, background-color 140ms ease, opacity 140ms ease;
+}
+
+.source-priority-setting__item[data-dragging="true"] {
+    opacity: 0.5;
+}
+
+.source-priority-setting__item[data-drop-target="true"] {
+    border-color: var(--primaryColor, #4f8cff);
+    background: color-mix(in srgb, var(--primaryColor, #4f8cff) 9%, transparent);
+}
+
+.source-priority-setting__grip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    color: var(--c-font-3, #8b8f99);
+    cursor: grab;
+}
+
+.source-priority-setting__item:active .source-priority-setting__grip {
+    cursor: grabbing;
+}
+
+.source-priority-setting__index {
+    width: 30px;
+    color: var(--c-font-3, #8b8f99);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+}
+
+.source-priority-setting__name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.source-priority-setting__role {
+    flex: 0 0 auto;
+    min-width: 46px;
+    margin-right: 8px;
+    color: var(--c-font-3, #8b8f99);
+    font-size: 11px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.source-priority-setting__actions {
+    display: inline-flex;
+    gap: 2px;
+}
+
+.source-priority-setting__actions button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+}
+
+.source-priority-setting__actions button:hover:not(:disabled) {
+    background: var(--c-hover, rgba(127, 127, 127, 0.16));
+}
+
+.source-priority-setting__actions button:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+@media (max-width: 560px) {
+    .source-priority-setting__toolbar {
+        flex-wrap: wrap;
+    }
+
+    .source-priority-setting__mode {
+        justify-self: start;
+    }
+
+    .source-priority-setting__role {
+        display: none;
+    }
+
+}

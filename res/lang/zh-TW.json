@@ -730,7 +730,19 @@
         },
         "plugin": {
             "auto_update_plugin": "啟動應用時自動更新插件",
-            "not_check_plugin_version": "安裝插件時不檢查版本"
+            "not_check_plugin_version": "安裝插件時不檢查版本",
+            "playback_source_priority": "播放音源優先級",
+            "download_source_priority": "下載音源優先級",
+            "source_priority_setting": "音源優先級",
+            "source_priority_mode_label": "選擇音源用途",
+            "enable_source_priority": "音源失敗後自動切換",
+            "source_priority_hint": "音源失敗時依此順序嘗試插件；未列出的插件會繼續作為備用。",
+            "move_source_up": "上移音源",
+            "move_source_down": "下移音源",
+            "reset_source_priority": "恢復插件管理順序",
+            "source_priority_primary": "首選",
+            "source_priority_fallback": "備用 {{index}}",
+            "no_source_plugin": "目前沒有支援音源解析的插件"
         },
         "short_cut": {
             "enable_local": "啟用應用內快捷鍵",
@@ -846,6 +858,8 @@
             "cache_desc": "清理應用快取以釋放空間",
             "plugin_updates": "插件更新",
             "plugin_updates_desc": "啟動時更新與安裝校驗",
+            "plugin_source_priority": "音源換源",
+            "plugin_source_priority_desc": "分別指定播放和下載失敗時的插件嘗試順序",
             "shortcut_toggle": "快捷鍵開關",
             "shortcut_toggle_desc": "分別控制軟體內與全域快捷鍵",
             "shortcut_bindings": "快捷鍵綁定",

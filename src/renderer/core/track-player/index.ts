@@ -50,6 +50,7 @@ import {
     IPluginDelegateReference,
 } from "./plugin-media";
 import { shouldPersistPlaybackProgress } from "./progress-persistence";
+import { resolveMediaSourceWithFallback } from "@renderer/core/source-fallback";
 
 const PROGRESS_PERSIST_INTERVAL_MS = 3_000;
 const MAX_LYRIC_OFFSET_SECONDS = 3_600;
@@ -1063,15 +1064,14 @@ class TrackPlayer {
                     url: fsUtil.addFileScheme(downloadedData.path),
                 };
             } else {
-                mediaSource = await this.withAbort(
-                    PluginManager.callPluginDelegateMethod(
-                        getMediaPluginDelegate(currentMusic),
-                        "getMediaSource",
-                        currentMusic,
-                        quality,
-                    ),
+                const resolved = await resolveMediaSourceWithFallback({
+                    musicItem: currentMusic,
+                    qualityOrder: [quality],
+                    mode: "playback",
                     signal,
-                );
+                });
+                mediaSource = resolved?.mediaSource ?? null;
+                realQuality = resolved?.quality ?? quality;
             }
 
             if (
@@ -1410,35 +1410,16 @@ class TrackPlayer {
             };
         }
 
-        // 2. 如果没有下载
-        for (const quality of qualityOrder) {
-            if (signal.aborted) {
-                throw signal.reason;
-            }
-            try {
-                mediaSource = await this.withAbort(
-                    PluginManager.callPluginDelegateMethod(
-                        getMediaPluginDelegate(musicItem),
-                        "getMediaSource",
-                        musicItem,
-                        quality,
-                    ),
-                    signal,
-                );
-                if (!mediaSource?.url) {
-                    continue;
-                }
-                realQuality = quality;
-                if (typeof mediaSource.quality === "string" && mediaSource.quality.trim()) {
-                    realQuality = mediaSource.quality as IMusic.IQualityKey;
-                }
-                break;
-            } catch (error) {
-                if (signal.aborted) {
-                    throw error;
-                }
-                // pass
-            }
+        // 2. 如果没有下载：当前插件失败后按播放优先级换源。
+        const resolved = await resolveMediaSourceWithFallback({
+            musicItem,
+            qualityOrder,
+            mode: "playback",
+            signal,
+        });
+        if (resolved) {
+            mediaSource = resolved.mediaSource;
+            realQuality = resolved.quality;
         }
         if (signal.aborted) {
             throw signal.reason;

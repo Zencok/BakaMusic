@@ -8,6 +8,7 @@ export type SvgAssetIconNames =
     | "arrows-pointing-out"
     | "arrow-left-end-on-rectangle"
     | "arrow-path"
+    | "arrow-uturn-left"
     | "cd"
     | "chat-bubble-left-ellipsis"
     | "check"

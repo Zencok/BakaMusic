@@ -730,7 +730,19 @@
         },
         "plugin": {
             "auto_update_plugin": "打开软件时自动更新插件",
-            "not_check_plugin_version": "安装插件时不校验版本"
+            "not_check_plugin_version": "安装插件时不校验版本",
+            "playback_source_priority": "播放音源优先级",
+            "download_source_priority": "下载音源优先级",
+            "source_priority_setting": "音源优先级",
+            "source_priority_mode_label": "选择音源用途",
+            "enable_source_priority": "音源失败后自动切换",
+            "source_priority_hint": "失败时按此顺序尝试插件；未列出的插件会继续作为后备。",
+            "move_source_up": "上移音源",
+            "move_source_down": "下移音源",
+            "reset_source_priority": "恢复插件管理顺序",
+            "source_priority_primary": "首选",
+            "source_priority_fallback": "备用 {{index}}",
+            "no_source_plugin": "暂无支持音源解析的插件"
         },
         "short_cut": {
             "enable_local": "启用软件内快捷键",
@@ -846,6 +858,8 @@
             "cache_desc": "清理应用缓存以释放空间",
             "plugin_updates": "插件更新",
             "plugin_updates_desc": "启动时更新与安装校验",
+            "plugin_source_priority": "音源换源",
+            "plugin_source_priority_desc": "分别指定播放和下载失败时的插件尝试顺序",
             "shortcut_toggle": "快捷键开关",
             "shortcut_toggle_desc": "分别控制软件内与全局快捷键",
             "shortcut_bindings": "快捷键绑定",

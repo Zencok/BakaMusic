@@ -40,6 +40,7 @@ const rendererWritableConfigKeys = new Set<keyof IAppConfig>([
     "playMusic.clickMusicList",
     "playMusic.newSheetDefaultSort",
     "playMusic.playError",
+    "playMusic.sourcePriority",
     "playMusic.audioOutputDevice",
     "playMusic.whenDeviceRemoved",
     "playMusic.wasapiExclusive",
@@ -59,6 +60,7 @@ const rendererWritableConfigKeys = new Set<keyof IAppConfig>([
     "shortCut.shortcuts",
     "download.path",
     "download.defaultQuality",
+    "download.sourcePriority",
     "download.whenQualityMissing",
     "download.concurrency",
     "download.writeMetadata",
@@ -78,6 +80,7 @@ const rendererWritableConfigKeys = new Set<keyof IAppConfig>([
     "download.transcodeMp3Bitrate",
     "plugin.autoUpdatePlugin",
     "plugin.notCheckPluginVersion",
+    "plugin.enableSourceFallback",
     "network.proxy.enabled",
     "network.proxy.host",
     "network.proxy.port",
@@ -123,6 +126,7 @@ const booleanConfigKeys = new Set<keyof IAppConfig>([
     "download.enableWordByWordLyric",
     "plugin.autoUpdatePlugin",
     "plugin.notCheckPluginVersion",
+    "plugin.enableSourceFallback",
     "network.proxy.enabled",
     "private.minimode",
 ]);
@@ -288,6 +292,12 @@ function validateRendererConfigValue(key: keyof IAppConfig, value: unknown) {
     if (key === "download.lyricOrder") {
         if (!isStringArray(value, 3, new Set(["original", "translation", "romanization"]))) {
             throw new Error(`${key} is not a valid list`);
+        }
+        return;
+    }
+    if (key === "playMusic.sourcePriority" || key === "download.sourcePriority") {
+        if (!isStringArray(value, 256)) {
+            throw new Error(`${key} is not a valid plugin priority list`);
         }
         return;
     }

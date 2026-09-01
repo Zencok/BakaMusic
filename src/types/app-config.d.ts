@@ -26,6 +26,8 @@ interface _IAppConfig {
     "playMusic.newSheetDefaultSort": Exclude<IMusic.IMusicSheetSortType, "None">;
     /** 播放失败时 */
     "playMusic.playError": "pause" | "skip";
+    /** 播放取源失败时的插件优先级（插件 hash 或 platform） */
+    "playMusic.sourcePriority": string[];
     /** 输出设备 */
     "playMusic.audioOutputDevice": MediaDeviceInfo | null;
     /** 设备变化时 */
@@ -87,6 +89,8 @@ interface _IAppConfig {
     "download.path": string;
     /** 默认下载音质 */
     "download.defaultQuality": IMusic.IQualityKey;
+    /** 下载取源失败时的插件优先级（插件 hash 或 platform） */
+    "download.sourcePriority": string[];
     /** 默认下载音质缺失时 */
     "download.whenQualityMissing": "higher" | "lower";
     /** 最多同时下载 */
@@ -136,6 +140,8 @@ interface _IAppConfig {
     "plugin.autoUpdatePlugin": boolean;
     /** 是否不检测插件版本 */
     "plugin.notCheckPluginVersion": boolean;
+    /** 插件取源失败后是否尝试切换其他插件 */
+    "plugin.enableSourceFallback": boolean;
 
     /** 是否启用代理 */
     "network.proxy.enabled": boolean;

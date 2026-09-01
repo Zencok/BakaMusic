@@ -44,7 +44,7 @@ import {
 } from "@/common/file-naming-formatter";
 import nodeRuntime from "@shared/node-runtime/renderer";
 import { i18n } from "@shared/i18n/renderer";
-import { getMediaPluginDelegate } from "@/renderer/core/track-player/plugin-media";
+import { resolveMediaSourceWithFallback } from "@renderer/core/source-fallback";
 
 interface IDownloadStatus {
     state: DownloadState;
@@ -475,37 +475,17 @@ async function downloadMusicImpl(
         msg: "获取音源…",
     });
 
-    // Same entry as track-player: plugin delegate + getMediaSource only.
-    // Plugin/main (mflac/luna proxy) own the real stream URL — no client re-fetch.
-    const pluginDelegate = getMediaPluginDelegate(musicItem);
-
-    for (const quality of qualityOrder) {
-        if (isCancelled()) {
-            return;
-        }
-        try {
-            mediaSource = await PluginManager.callPluginDelegateMethod(
-                pluginDelegate,
-                "getMediaSource",
-                musicItem,
-                quality,
-            );
-            if (mediaSource?.url) {
-                realQuality = quality;
-                // Prefer plugin-reported quality when present.
-                if (typeof mediaSource.quality === "string" && mediaSource.quality.trim()) {
-                    realQuality = mediaSource.quality as IMusic.IQualityKey;
-                }
-                break;
-            }
-        } catch (error) {
-            logger.logError("下载获取音源失败", toError(error), {
-                platform: musicItem.platform,
-                quality,
-                title: musicItem.title,
-            });
-            continue;
-        }
+    // Same entry as track-player: try the current plugin, then the configured
+    // download priority list and finally the remaining enabled plugins.
+    const resolved = await resolveMediaSourceWithFallback({
+        musicItem,
+        qualityOrder,
+        mode: "download",
+        isCancelled,
+    });
+    if (resolved) {
+        mediaSource = resolved.mediaSource;
+        realQuality = resolved.quality;
     }
 
     if (isCancelled()) {

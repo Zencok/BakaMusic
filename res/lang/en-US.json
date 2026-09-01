@@ -730,7 +730,19 @@
         },
         "plugin": {
             "auto_update_plugin": "Automatically update plugins on startup",
-            "not_check_plugin_version": "Do not check plugin version when installing"
+            "not_check_plugin_version": "Do not check plugin version when installing",
+            "playback_source_priority": "Playback source priority",
+            "download_source_priority": "Download source priority",
+            "source_priority_setting": "Source priority",
+            "source_priority_mode_label": "Choose source use",
+            "enable_source_priority": "Switch source after failure",
+            "source_priority_hint": "Plugins are tried in this order after a source fails; unlisted plugins remain as fallbacks.",
+            "move_source_up": "Move source up",
+            "move_source_down": "Move source down",
+            "reset_source_priority": "Restore plugin order",
+            "source_priority_primary": "Primary",
+            "source_priority_fallback": "Fallback {{index}}",
+            "no_source_plugin": "No source-capable plugins installed"
         },
         "short_cut": {
             "enable_local": "Enable in-app shortcuts",
@@ -846,6 +858,8 @@
             "cache_desc": "Clear app cache to free space",
             "plugin_updates": "Plugin updates",
             "plugin_updates_desc": "Startup updates and install checks",
+            "plugin_source_priority": "Source fallback",
+            "plugin_source_priority_desc": "Choose separate plugin orders for playback and downloads",
             "shortcut_toggle": "Shortcut toggles",
             "shortcut_toggle_desc": "Enable in-app and global shortcuts",
             "shortcut_bindings": "Key bindings",

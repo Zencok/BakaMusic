@@ -23,6 +23,38 @@ interface IPluginDelegateLike {
     hash?: string;
 }
 
+export type PluginSourcePriorityMode = "playback" | "download";
+
+/**
+ * Return enabled media-source plugins in the order used by source recovery.
+ * Entries in the per-feature list may be either a plugin hash (preferred for
+ * duplicate platforms) or a platform name. Unlisted plugins retain the global
+ * drag-and-drop order from pluginMeta.
+ */
+function getSourcePluginCandidates(mode: PluginSourcePriorityMode) {
+    const configured = AppConfig.getConfig(
+        mode === "playback" ? "playMusic.sourcePriority" : "download.sourcePriority",
+    ) ?? [];
+    const supported = getSortedSupportedPlugin("getMediaSource");
+    const selected: IPlugin.IPluginDelegate[] = [];
+    const selectedHashes = new Set<string>();
+    const add = (plugin?: IPlugin.IPluginDelegate) => {
+        if (!plugin || selectedHashes.has(plugin.hash)) {
+            return;
+        }
+        selectedHashes.add(plugin.hash);
+        selected.push(plugin);
+    };
+    for (const identifier of configured) {
+        const match = supported.find((plugin) =>
+            plugin.hash === identifier || plugin.platform === identifier,
+        );
+        add(match);
+    }
+    supported.forEach(add);
+    return selected;
+}
+
 interface IMod {
     onPluginUpdated: (callback: (plugins: IPlugin.IPluginDelegate[]) => void) => void,
     onLxPluginUpdated: (callback: (plugins: LxPluginDescriptor[]) => void) => void,
@@ -327,6 +359,7 @@ const PluginManager = {
     getLxQualityOverride,
     getMediaQualityKeys,
     filterMediaQualityOrder,
+    getSourcePluginCandidates,
     callPluginDelegateMethod: mod.callPluginMethod,
     updateAllPlugins: mod.updateAllPlugins,
     uninstallPlugin: mod.uninstallPlugin,

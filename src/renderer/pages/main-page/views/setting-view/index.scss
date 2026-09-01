@@ -432,6 +432,33 @@
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
+  /* —— Collapsible panel: slides open/closed without unmounting its content. —— */
+  & .setting-collapse {
+    display: grid;
+    grid-template-rows: 1fr;
+    visibility: visible;
+    transition:
+      grid-template-rows 200ms ease,
+      opacity 160ms ease,
+      visibility 0s 0s;
+  }
+
+  & .setting-collapse[data-open="false"] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      grid-template-rows 200ms ease,
+      opacity 160ms ease,
+      visibility 0s 200ms;
+  }
+
+  & .setting-collapse--inner {
+    min-height: 0;
+    overflow: hidden;
+  }
+
   & .setting-action-row {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
@@ -502,6 +529,19 @@
     line-height: 1.42;
   }
 
+  & .setting-label-copy {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.16rem;
+  }
+
+  & .setting-label-description {
+    color: var(--settingTextMuted);
+    font-size: 0.78rem;
+    font-weight: 540;
+    line-height: 1.35;
+  }
+
   & .label-container {
     grid-column: 1;
   }
@@ -520,6 +560,11 @@
   .setting-view--container .setting-view--nav-item,
   .setting-view--container .setting-view--nav-item::before,
   .setting-view--container .setting-view--nav-item svg {
+    transition: none;
+  }
+
+  .setting-view--container .setting-collapse,
+  .setting-view--container .setting-collapse[data-open="false"] {
     transition: none;
   }
 }
