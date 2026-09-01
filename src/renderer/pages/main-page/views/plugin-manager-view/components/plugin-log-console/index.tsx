@@ -1,5 +1,6 @@
 import { isModalOpen, hideModal, showModal } from "@/renderer/components/Modal";
 import SvgAsset from "@/renderer/components/SvgAsset";
+import { Listbox } from "@headlessui/react";
 import PluginManager, {
     usePluginPlaybackLogs,
 } from "@shared/plugin-manager/renderer";
@@ -23,6 +24,8 @@ import "./index.scss";
 
 type SourceFilter = "all" | PluginPlaybackLogKind;
 type LevelFilter = "all" | PluginPlaybackLogLevel;
+
+const LEVEL_FILTERS: LevelFilter[] = ["all", "debug", "log", "info", "warn", "error"];
 
 interface IProps {
     open: boolean;
@@ -370,23 +373,30 @@ export default function PluginLogConsole({ open, onClose }: IProps) {
                                 </button>
                             )}
                         </div>
-                        <label className="plugin-log-level-filter">
-                            <span className="sr-only">
-                                {t("plugin_management_page.log_level_filter")}
-                            </span>
-                            <select
-                                value={levelFilter}
-                                aria-label={t("plugin_management_page.log_level_filter")}
-                                onChange={(event) => setLevelFilter(event.target.value as LevelFilter)}
-                            >
-                                {(["all", "debug", "log", "info", "warn", "error"] as LevelFilter[])
-                                    .map((level) => (
-                                        <option key={level} value={level}>
+                        <Listbox value={levelFilter} onChange={setLevelFilter}>
+                            <div className="plugin-log-level-filter">
+                                <Listbox.Label className="sr-only">
+                                    {t("plugin_management_page.log_level_filter")}
+                                </Listbox.Label>
+                                <Listbox.Button
+                                    className="plugin-log-level-select"
+                                    aria-label={t("plugin_management_page.log_level_filter")}
+                                >
+                                    {t(`plugin_management_page.log_level_${levelFilter}`)}
+                                </Listbox.Button>
+                                <Listbox.Options className="plugin-log-level-options">
+                                    {LEVEL_FILTERS.map((level) => (
+                                        <Listbox.Option
+                                            key={level}
+                                            value={level}
+                                            className="plugin-log-level-option"
+                                        >
                                             {t(`plugin_management_page.log_level_${level}`)}
-                                        </option>
+                                        </Listbox.Option>
                                     ))}
-                            </select>
-                        </label>
+                                </Listbox.Options>
+                            </div>
+                        </Listbox>
                     </div>
                     <div className="plugin-log-console-actions">
                         <button
