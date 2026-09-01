@@ -1,19 +1,6 @@
 const MAX_ARTWORK_NORMALIZE_CACHE_SIZE = 80;
 const MAX_ARTWORK_ANALYSIS_SIZE = 256;
-const MAX_ARTWORK_OUTPUT_SIZE = 256;
 const artworkNormalizeCache = new Map<string, Promise<string> | string>();
-
-function needsNoReferrerCanvasCopy(src: string) {
-    try {
-        const hostname = new URL(src).hostname.toLowerCase();
-        return hostname === "hdslb.com"
-            || hostname.endsWith(".hdslb.com")
-            || hostname === "biliimg.com"
-            || hostname.endsWith(".biliimg.com");
-    } catch {
-        return false;
-    }
-}
 
 export function getArtworkCacheKey(src?: string | null) {
     if (!src) {
@@ -68,11 +55,15 @@ function loadImage(src: string) {
     });
 }
 
+/**
+ * Keep network artwork as-is and only trim transparent margins on data URLs.
+ * The output canvas keeps the trimmed source dimensions instead of applying a
+ * fixed 256px cap, so artwork is never downsampled by the renderer.
+ */
 export default async function normalizeArtworkDisplaySrc(src?: string) {
-    const copyRemoteArtwork = !!src && needsNoReferrerCanvasCopy(src);
     if (
         !src ||
-        (!src.startsWith("data:image/") && !copyRemoteArtwork) ||
+        !src.startsWith("data:image/") ||
         src.startsWith("data:image/svg+xml")
     ) {
         return src;
@@ -166,8 +157,7 @@ export default async function normalizeArtworkDisplaySrc(src?: string) {
                 minX === 0 &&
                 minY === 0 &&
                 maxX === analysisWidth - 1 &&
-                maxY === analysisHeight - 1 &&
-                !copyRemoteArtwork
+                maxY === analysisHeight - 1
             ) {
                 return src;
             }
@@ -196,15 +186,8 @@ export default async function normalizeArtworkDisplaySrc(src?: string) {
                 return src;
             }
 
-            const outputScale = Math.min(
-                1,
-                MAX_ARTWORK_OUTPUT_SIZE / Math.max(trimmedWidth, trimmedHeight),
-            );
-            const outputWidth = Math.max(1, Math.round(trimmedWidth * outputScale));
-            const outputHeight = Math.max(
-                1,
-                Math.round(trimmedHeight * outputScale),
-            );
+            const outputWidth = trimmedWidth;
+            const outputHeight = trimmedHeight;
             outputCanvas = document.createElement("canvas");
             outputCanvas.width = outputWidth;
             outputCanvas.height = outputHeight;
