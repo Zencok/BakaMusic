@@ -144,6 +144,7 @@
         "retry": "重試",
         "pause_all": "全部暫停",
         "resume_all": "全部繼續",
+        "retry_failed": "重試失敗任務",
         "clear_failed": "清除錯誤任務",
         "clear_all_tasks": "清空下載任務",
         "clear_all_tasks_confirm": "將停止並移除目前全部下載任務，已完成的檔案不受影響。",

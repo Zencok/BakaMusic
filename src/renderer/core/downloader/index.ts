@@ -439,6 +439,14 @@ function resumeAllTasks() {
     });
 }
 
+function retryFailedTasks() {
+    downloadingTaskStore.getValue().forEach(({ musicItem, status }) => {
+        if (status.state === DownloadState.ERROR) {
+            resumeTask(musicItem);
+        }
+    });
+}
+
 async function clearTasks(states?: DownloadState[]) {
     const targets = downloadingTaskStore.getValue().filter(({ status }) =>
         !states || states.includes(status.state),
@@ -768,6 +776,7 @@ const Downloader = {
     removeTask,
     pauseAllTasks,
     resumeAllTasks,
+    retryFailedTasks,
     clearAllTasks: () => clearTasks(),
     clearFailedTasks: () => clearTasks([DownloadState.ERROR]),
     useDownloadStatus,

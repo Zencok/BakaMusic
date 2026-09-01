@@ -144,6 +144,7 @@
         "retry": "Retry",
         "pause_all": "Pause all",
         "resume_all": "Resume all",
+        "retry_failed": "Retry failed",
         "clear_failed": "Clear failed",
         "clear_all_tasks": "Clear all tasks",
         "clear_all_tasks_confirm": "This stops and removes every current download task. Completed files are not affected.",

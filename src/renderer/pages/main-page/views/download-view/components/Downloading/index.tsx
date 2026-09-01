@@ -266,6 +266,15 @@ export default function Downloading() {
                             type="button"
                             className="discovery-toolbar-button downloading-toolbar-button"
                             disabled={!counts.failed}
+                            onClick={() => Downloader.retryFailedTasks()}
+                        >
+                            <SvgAsset iconName="arrow-path" size={15}></SvgAsset>
+                            {t("download_page.retry_failed")}
+                        </button>
+                        <button
+                            type="button"
+                            className="discovery-toolbar-button downloading-toolbar-button"
+                            disabled={!counts.failed}
                             onClick={() => void Downloader.clearFailedTasks()}
                         >
                             <SvgAsset iconName="arrow-path" size={15}></SvgAsset>
