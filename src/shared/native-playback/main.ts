@@ -992,6 +992,10 @@ class NativePlaybackManager {
             [],
             {
                 serviceName: "BakaMusic libmpv Video",
+                // libmpv and Koffi are external Mach-O files. On macOS Electron
+                // must launch this utility through the Plugin Helper so the
+                // helper's library-loading entitlement is applied.
+                allowLoadingUnsignedLibraries: process.platform === "darwin",
                 execArgv: ["--max-old-space-size=256"],
                 env: {
                     ...createPlaybackEnvironment(),
@@ -1312,6 +1316,10 @@ class NativePlaybackManager {
             [],
             {
                 serviceName: "BakaMusic libmpv Playback",
+                // See the video host above: without the Plugin Helper macOS
+                // kills the process with CODESIGNING/Invalid Page while dyld
+                // maps koffi.node or libmpv.
+                allowLoadingUnsignedLibraries: process.platform === "darwin",
                 execArgv: ["--max-old-space-size=256"],
                 env: {
                     ...createPlaybackEnvironment(),

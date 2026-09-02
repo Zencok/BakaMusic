@@ -15,7 +15,6 @@ import { MakerAppImage } from "./config/forge-appimage-maker";
 import { MakerNsis } from "./config/forge-nsis-maker";
 import path from "path";
 
-const requireReleaseSigning = process.env.REQUIRE_RELEASE_SIGNING === "true";
 const windowsSigningConfigured = !!(
     process.env.WINDOWS_CERTIFICATE_FILE
     && process.env.WINDOWS_CERTIFICATE_PASSWORD
@@ -29,8 +28,20 @@ const macNotarizationConfigured = !!(
 const nsisWebGithubAccelerator = process.env.NSIS_WEB_GITHUB_ACCELERATOR
     ?? githubAcceleratorPrefixes[0];
 
-// Sign when credentials exist. Tagged CI builds must still package if secrets
-// are missing — do not hard-fail release matrix jobs on signing alone.
+// Always apply one coherent ad-hoc signature to macOS app bundles when no
+// Apple Developer identity is available. This is not Developer ID signing and
+// does not require GitHub Secrets, but it prevents macOS from killing Helper
+// processes when native addons/dylibs are loaded. A configured identity is
+// still used when the maintainer elects to provide one.
+const macSignOptions = process.platform === "darwin"
+    ? {
+        identity: macSigningConfigured ? process.env.MACOS_SIGN_IDENTITY : "-",
+        identityValidation: macSigningConfigured,
+        hardenedRuntime: macSigningConfigured,
+        // Do not run spctl assessment after signing — that is a verify gate.
+        gatekeeperAssess: false,
+    }
+    : undefined;
 
 const nativeSourceIgnorePlugin = {
     __isElectronForgePlugin: true,
@@ -79,12 +90,7 @@ const config: ForgeConfig = {
             description: "BakaMusic",
             website: "https://github.com/Zencok/BakaMusic",
         } : undefined,
-        osxSign: macSigningConfigured ? {
-            identity: process.env.MACOS_SIGN_IDENTITY,
-            hardenedRuntime: true,
-            // Do not run spctl assessment after signing — that is a verify gate.
-            gatekeeperAssess: false,
-        } : undefined,
+        osxSign: macSignOptions,
         // Notarize only in the workflow post-step (best-effort). Running it here
         // turns packager failures into hard make failures.
         osxNotarize: undefined,

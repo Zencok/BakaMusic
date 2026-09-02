@@ -65,8 +65,6 @@ jobs:
       contents: read
       id-token: write
       attestations: write
-    env:
-      REQUIRE_RELEASE_SIGNING: ${{ startsWith(github.ref, 'refs/tags/v') }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -137,9 +135,10 @@ jobs:
           APPLE_API_KEY_ID_SECRET: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER_SECRET: ${{ secrets.APPLE_API_ISSUER }}
         run: |
-          # Best-effort: missing secrets skip signing instead of failing the matrix job.
+          # Apple Developer signing is optional. Without these secrets the
+          # Forge build uses a coherent ad-hoc signature for native code.
           if [ -z "$MACOS_CERTIFICATE_BASE64" ] || [ -z "$MACOS_CERTIFICATE_PASSWORD" ] || [ -z "$MACOS_SIGN_IDENTITY_SECRET" ]; then
-            echo "macOS signing secrets incomplete; packaging without codesign identity"
+            echo "macOS signing secrets incomplete; using ad-hoc app signing"
             exit 0
           fi
           CERTIFICATE_PATH="$RUNNER_TEMP/bakamusic-code-signing.p12"
@@ -238,6 +237,13 @@ jobs:
       - name: Verify macOS ASAR, fuses, and media controls addon
         if: matrix.platform == 'macos'
         run: node scripts/package-security-smoke.cjs
+      - name: Verify macOS app code signature
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          APP="./out/BakaMusic-darwin-${{ matrix.arch }}/BakaMusic.app"
+          test -d "$APP"
+          codesign --verify --deep --strict --verbose=4 "$APP"
       - name: Stage macOS artifact
         if: matrix.platform == 'macos'
         shell: bash
@@ -251,14 +257,11 @@ jobs:
         run: |
           DMG="./release-assets/BakaMusic-${VERSION}-${{ matrix.asset_suffix }}.dmg"
           if [ -z "${MACOS_SIGN_IDENTITY:-}" ]; then
-            echo "Skip DMG codesign: MACOS_SIGN_IDENTITY not set"
+            echo "MACOS_SIGN_IDENTITY not set; leaving DMG ad-hoc/unsigned"
             exit 0
           fi
-          # Sign only — no codesign --verify / stapler validate gates.
-          codesign --force --timestamp --sign "$MACOS_SIGN_IDENTITY" "$DMG" || {
-            echo "DMG codesign failed; continuing without notarization"
-            exit 0
-          }
+          codesign --force --timestamp --sign "$MACOS_SIGN_IDENTITY" "$DMG"
+          codesign --verify --strict --verbose=4 "$DMG"
           if [ -z "${APPLE_API_KEY:-}" ] || [ -z "${APPLE_API_KEY_ID:-}" ] || [ -z "${APPLE_API_ISSUER:-}" ]; then
             echo "Skip notarization: API key secrets incomplete"
             exit 0
