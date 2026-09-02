@@ -15,6 +15,11 @@ const {
     getDownloadProgressPercent,
 } = require("../src/renderer/core/downloader/progress");
 const {
+    DOWNLOAD_PROGRESS_UPDATE_INTERVAL_MS,
+    LatestDownloadProgressBuffer,
+    MAX_BUFFERED_DOWNLOAD_PROGRESS_TASKS,
+} = require("../src/common/download-progress");
+const {
     assertSafeTargetUrlSync,
     createByteLimitTransform,
     createSessionStore,
@@ -277,12 +282,38 @@ async function run() {
     assert.match(workerSource, /validateCompletedDownload\(responsePlan, receivedBytes, completedStat\.size\)/);
     assert.match(workerSource, /resolveDownloadedFilePath\(\s*filePath,/);
     assert.match(workerSource, /fsPromises\.rename\(partPath, finalPath\)/);
+    // Progress is human-visible state, not a frame stream. A lower rate limits
+    // utility -> main traffic before main applies its latest-per-task buffer.
+    assert.equal(DOWNLOAD_PROGRESS_UPDATE_INTERVAL_MS, 250);
+    assert.equal(MAX_BUFFERED_DOWNLOAD_PROGRESS_TASKS, 256);
+    const backgroundProgress = new LatestDownloadProgressBuffer();
+    // Default concurrency over two background minutes formerly produced about
+    // 9k IPC frames. The retained buffer now remains one entry per task.
+    for (let index = 0; index < 10_000; index++) {
+        backgroundProgress.upsert({
+            taskId: `task-${index % 5}`,
+            downloaded: index,
+        });
+    }
+    assert.equal(backgroundProgress.size, 5);
+    const latestProgress = backgroundProgress.drain();
+    assert.equal(latestProgress.length, 5);
+    assert.equal(Math.max(...latestProgress.map((item) => item.downloaded)), 9_999);
+    for (let index = 0; index < 300; index++) {
+        backgroundProgress.upsert({ taskId: `unique-${index}`, downloaded: index });
+    }
+    assert.equal(backgroundProgress.size, MAX_BUFFERED_DOWNLOAD_PROGRESS_TASKS);
+    assert.match(workerSource, /DOWNLOAD_PROGRESS_UPDATE_INTERVAL_MS/);
+    assert.doesNotMatch(workerSource, /}, 64, \{/);
     // 封面改由 main 进程 net.fetch 拉取后以 base64 交给 utility 嵌入，
     // utility 后处理不再自行触网；跨 IPC 传输因此必须有显式体积与类型上限。
     assert.match(workerSource, /payload\.coverImage\?\.dataBase64/);
     const coverFetchSource = readSource("src/shared/node-runtime/main.ts");
     assert.match(coverFetchSource, /const MAX_COVER_BYTES = 8 \* 1024 \* 1024/);
     assert.match(coverFetchSource, /async function fetchCoverImageInMain/);
+    assert.match(coverFetchSource, /readResponseBufferLimited\(response, MAX_COVER_BYTES\)/);
+    assert.match(coverFetchSource, /receivedBytes > maximumBytes/);
+    assert.doesNotMatch(coverFetchSource, /response\.arrayBuffer\(\)/);
     assert.match(coverFetchSource, /buffer\.length > MAX_COVER_BYTES/);
     assert.match(coverFetchSource, /mimeType\.startsWith\("image\/"\)/);
     assert.match(coverFetchSource, /validateDownloadCoverImageMode/);
@@ -313,9 +344,14 @@ async function run() {
     );
     assert.match(downloaderSource, /taskControl\.recoveryCount >= maxAutoRecoveryPerTask/);
     assert.match(downloaderSource, /queueTask\(taskControl\)/);
+    // One batched IPC delivery must clone/publish the task array only once,
+    // and per-track subscribers should not all run for another track's tick.
+    assert.match(downloaderSource, /queueMicrotask\(\(\) =>/);
+    assert.match(downloaderSource, /getDownloadStatusEvent\(taskId\)/);
+    assert.match(downloaderSource, /downloadMetadataQueue = new PQueue\(\{ concurrency: 4 \}\)/);
     assert.match(
         downloaderSource,
-        /DownloadStatusUpdated,\s*musicItem,\s*null/,
+        /downloadMetadataQueue\.add\(async \(\) => \{\s*const payload = await buildDownloadPostprocessPayload/,
     );
 
     const downloadControlSource = readSource(
@@ -332,6 +368,30 @@ async function run() {
     assert.match(nodeRuntimeSource, /child\.kill\(\)/);
     assert.match(nodeRuntimeSource, /if \(this\.watcherState\)/);
     assert.match(nodeRuntimeSource, /"watcher-setup", this\.watcherState/);
+    // The heavyweight utility is lazy and exits after downloads/postprocessing
+    // are idle, allowing native working-set memory to return to the OS.
+    assert.match(nodeRuntimeSource, /const RUNTIME_IDLE_TIMEOUT_MS = 60_000/);
+    assert.match(nodeRuntimeSource, /scheduleIdleShutdown\(child\)/);
+    assert.match(nodeRuntimeSource, /!this\.pending\.size\s*&& !this\.watcherState/);
+    assert.doesNotMatch(
+        nodeRuntimeSource,
+        /Cold-start the utility process[\s\S]*?void this\.ensureStarted\(\)/,
+    );
+    // Minimized/background renderers must receive at most the newest progress
+    // sample for each task. Terminal states stay immediate because they release
+    // the renderer queue and start postprocessing.
+    assert.match(nodeRuntimeSource, /new LatestDownloadProgressBuffer/);
+    assert.match(nodeRuntimeSource, /isMainWindowForeground/);
+    assert.match(nodeRuntimeSource, /"@shared\/node-runtime\/download-state-batch"/);
+    assert.match(
+        nodeRuntimeSource,
+        /stateName === DownloadState\.DONE \|\| stateName === DownloadState\.ERROR/,
+    );
+    const nodeRuntimePreloadSource = readSource("src/shared/node-runtime/preload.ts");
+    assert.match(
+        nodeRuntimePreloadSource,
+        /"@shared\/node-runtime\/download-state-batch"/,
+    );
     // 全库扫描不能用 60s 默认超时：超时会 kill 掉下载共用的 utility。
     assert.match(nodeRuntimeSource, /const WATCHER_SCAN_TIMEOUT_MS = 30 \* 60 \* 1000/);
     assert.match(

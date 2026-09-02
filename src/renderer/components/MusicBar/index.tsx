@@ -73,19 +73,22 @@ async function extractMusicBarStyle(artwork?: string | null) {
         return cachedStyle;
     }
 
+    let image: HTMLImageElement | null = null;
+    let canvas: HTMLCanvasElement | null = null;
     try {
-        const image = new Image();
-        image.decoding = "async";
-        image.crossOrigin = "anonymous";
-        image.referrerPolicy = "no-referrer";
+        const loadedImage = new Image();
+        image = loadedImage;
+        loadedImage.decoding = "async";
+        loadedImage.crossOrigin = "anonymous";
+        loadedImage.referrerPolicy = "no-referrer";
 
         await new Promise<void>((resolve, reject) => {
-            image.onload = () => resolve();
-            image.onerror = () => reject(new Error("image load failed"));
-            image.src = artwork;
+            loadedImage.onload = () => resolve();
+            loadedImage.onerror = () => reject(new Error("image load failed"));
+            loadedImage.src = artwork;
         });
 
-        const canvas = document.createElement("canvas");
+        canvas = document.createElement("canvas");
         const width = 32;
         const height = 32;
         canvas.width = width;
@@ -96,7 +99,7 @@ async function extractMusicBarStyle(artwork?: string | null) {
             return DEFAULT_MUSIC_BAR_STYLES;
         }
 
-        context.drawImage(image, 0, 0, width, height);
+        context.drawImage(loadedImage, 0, 0, width, height);
         const { data } = context.getImageData(0, 0, width, height);
         const nextStyle = buildMusicBarPalette(data, width, height)
             ?? DEFAULT_MUSIC_BAR_STYLES;
@@ -104,6 +107,16 @@ async function extractMusicBarStyle(artwork?: string | null) {
         return nextStyle;
     } catch {
         return DEFAULT_MUSIC_BAR_STYLES;
+    } finally {
+        if (image) {
+            image.src = "";
+            image.onload = null;
+            image.onerror = null;
+        }
+        if (canvas) {
+            canvas.width = 0;
+            canvas.height = 0;
+        }
     }
 }
 

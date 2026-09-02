@@ -23,9 +23,28 @@ const downloadCallbacks = new Map<string, DownloadStateCallback>();
 let watcherAddCallback: ((musicItems: unknown[]) => void) | undefined;
 let watcherRemoveCallback: ((filePaths: string[]) => void) | undefined;
 
+function dispatchDownloadState(payload: unknown) {
+    if (!payload || typeof payload !== "object") {
+        return;
+    }
+    const statePayload = payload as { taskId?: unknown; state?: unknown };
+    if (
+        typeof statePayload.taskId === "string"
+        && statePayload.state
+        && typeof statePayload.state === "object"
+    ) {
+        downloadCallbacks.get(statePayload.taskId)?.(
+            statePayload.state as Parameters<DownloadStateCallback>[0],
+        );
+    }
+}
+
 ipcRenderer.on("@shared/node-runtime/download-state", (_event, payload) => {
-    if (payload && typeof payload.taskId === "string") {
-        downloadCallbacks.get(payload.taskId)?.(payload.state);
+    dispatchDownloadState(payload);
+});
+ipcRenderer.on("@shared/node-runtime/download-state-batch", (_event, payloads) => {
+    if (Array.isArray(payloads)) {
+        payloads.forEach(dispatchDownloadState);
     }
 });
 ipcRenderer.on("@shared/node-runtime/watcher-add", (_event, musicItems) => {

@@ -7,3 +7,7 @@ export enum DownloadEvts {
     Downloaded = "Downloaded",
     RemoveDownload = "RemoveDownload",
 }
+
+export function getDownloadStatusEvent(taskId: string) {
+    return `${DownloadEvts.DownloadStatusUpdated}:${taskId}`;
+}

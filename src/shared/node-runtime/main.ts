@@ -1,5 +1,6 @@
 import {
     app,
+    type BrowserWindow,
     ipcMain,
     net,
     utilityProcess,
@@ -21,7 +22,7 @@ import {
     resolveNodeRuntimeWorkingSetLimitBytes,
 } from "@/common/audio-transcode";
 import { getMpvRuntimeDirectory } from "@shared/native-playback/runtime-path";
-import { supportLocalMediaType } from "@/common/constant";
+import { DownloadState, supportLocalMediaType } from "@/common/constant";
 import type { IWindowManager } from "@/types/window-manager";
 import {
     assertBoolean,
@@ -34,9 +35,15 @@ import {
 } from "@shared/ipc-security/main";
 import { toError } from "@/common/error-util";
 import logger from "@shared/logger/main";
+import {
+    DOWNLOAD_PROGRESS_UPDATE_INTERVAL_MS,
+    LatestDownloadProgressBuffer,
+} from "@/common/download-progress";
 
 /** Default RPC timeout for short operations (postprocess, watcher, abort). */
 const RUNTIME_TIMEOUT_MS = 60_000;
+/** Release native tag/transcode RSS after the last task becomes idle. */
+const RUNTIME_IDLE_TIMEOUT_MS = 60_000;
 /**
  * Full media downloads stream through a single RPC. 60s kills multi-minute
  * flac/m4a transfers and leaves the UI stuck after a dead runtime.
@@ -88,6 +95,11 @@ interface PendingRequest {
 interface WatcherState {
     initPaths: string[];
     knownPaths: string[];
+}
+
+interface DownloadStatePayload {
+    taskId: string;
+    state: unknown;
 }
 
 function payloadBytes(value: unknown): number | null {
@@ -228,7 +240,7 @@ async function fetchCoverImageInMain(
     if (!response.ok) {
         throw new Error(`cover HTTP ${response.status}`);
     }
-    const buffer = Buffer.from(await response.arrayBuffer());
+    const buffer = await readResponseBufferLimited(response, MAX_COVER_BYTES);
     if (!buffer.length) {
         throw new Error("cover body empty");
     }
@@ -258,25 +270,71 @@ async function fetchCoverImageInMain(
     };
 }
 
+async function readResponseBufferLimited(response: Response, maximumBytes: number) {
+    const declaredLength = Number(response.headers.get("content-length"));
+    if (Number.isFinite(declaredLength) && declaredLength > maximumBytes) {
+        await response.body?.cancel().catch(() => undefined);
+        throw new Error(`cover too large: ${declaredLength}`);
+    }
+    if (!response.body) {
+        throw new Error("cover body empty");
+    }
+
+    const reader = response.body.getReader();
+    const chunks: Buffer[] = [];
+    let receivedBytes = 0;
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+                break;
+            }
+            receivedBytes += value.byteLength;
+            if (receivedBytes > maximumBytes) {
+                await reader.cancel().catch(() => undefined);
+                throw new Error(`cover too large: >${maximumBytes}`);
+            }
+            chunks.push(Buffer.from(value));
+        }
+    } finally {
+        reader.releaseLock();
+    }
+    return Buffer.concat(chunks, receivedBytes);
+}
+
 class NodeRuntimeManager {
     private child: UtilityProcess | null = null;
     private spawnPromise: Promise<void> | null = null;
     private pending = new Map<string, PendingRequest>();
     private requestCounter = 0;
     private resourceTimer: NodeJS.Timeout | null = null;
+    private idleTimer: NodeJS.Timeout | null = null;
     private watcherState: WatcherState | null = null;
     private windowManager!: IWindowManager;
     private shuttingDown = false;
+    /**
+     * Chromium may throttle a minimized renderer. Keep only the newest
+     * non-terminal sample per task in main instead of filling Electron's IPC
+     * queue with progress frames that are already obsolete when the user
+     * restores the window.
+     */
+    private pendingDownloadStates =
+        new LatestDownloadProgressBuffer<DownloadStatePayload>();
+    private downloadStateFlushTimer: NodeJS.Timeout | null = null;
+    private observedMainWindows = new WeakSet<BrowserWindow>();
 
     setup(windowManager: IWindowManager) {
         this.windowManager = windowManager;
+        if (windowManager.mainWindow) {
+            this.observeMainWindow(windowManager.mainWindow);
+        }
+        windowManager.on("WindowCreated", ({ windowName, browserWindow }) => {
+            if (windowName === "main") {
+                this.observeMainWindow(browserWindow);
+            }
+        });
         this.setupIpcHandlers();
         app.on("before-quit", () => this.dispose());
-        // Cold-start the utility process so the first download is not blocked
-        // on spawn + module load.
-        void this.ensureStarted().catch((error) => {
-            logger.logError("Node runtime warm-up failed", toError(error));
-        });
     }
 
     private setupIpcHandlers() {
@@ -460,6 +518,7 @@ class NodeRuntimeManager {
                 return;
             }
             this.child = null;
+            this.stopIdleShutdown();
             this.stopResourceMonitor();
             this.rejectPending(new Error(`Node runtime exited with code ${code}`));
         });
@@ -481,6 +540,7 @@ class NodeRuntimeManager {
         if (this.watcherState) {
             await this.requestRaw(child, "watcher-setup", this.watcherState);
         }
+        this.scheduleIdleShutdown(child);
     }
 
     private startResourceMonitor(child: UtilityProcess) {
@@ -513,10 +573,7 @@ class NodeRuntimeManager {
             return;
         }
         if (message.type === "download-state") {
-            this.sendToMainWindow("@shared/node-runtime/download-state", {
-                taskId: message.taskId,
-                state: message.state,
-            });
+            this.handleDownloadState(message.taskId, message.state);
             return;
         }
         if (message.type === "watcher-add") {
@@ -549,6 +606,98 @@ class NodeRuntimeManager {
         } else {
             pending.resolve(message.result);
         }
+        this.scheduleIdleShutdown(child);
+    }
+
+    private scheduleIdleShutdown(child: UtilityProcess) {
+        this.stopIdleShutdown();
+        if (this.child !== child || this.pending.size || this.watcherState) {
+            return;
+        }
+        this.idleTimer = setTimeout(() => {
+            this.idleTimer = null;
+            if (
+                this.child === child
+                && !this.pending.size
+                && !this.watcherState
+            ) {
+                child.kill();
+            }
+        }, RUNTIME_IDLE_TIMEOUT_MS);
+        this.idleTimer.unref();
+    }
+
+    private stopIdleShutdown() {
+        if (this.idleTimer) {
+            clearTimeout(this.idleTimer);
+            this.idleTimer = null;
+        }
+    }
+
+    private observeMainWindow(mainWindow: BrowserWindow) {
+        if (this.observedMainWindows.has(mainWindow)) {
+            return;
+        }
+        this.observedMainWindows.add(mainWindow);
+        const flush = () => this.flushDownloadStates();
+        mainWindow.on("show", flush);
+        mainWindow.on("restore", flush);
+        mainWindow.on("focus", flush);
+    }
+
+    private isMainWindowForeground() {
+        const mainWindow = this.windowManager.mainWindow;
+        return Boolean(
+            mainWindow
+            && !mainWindow.isDestroyed()
+            && mainWindow.isVisible()
+            && !mainWindow.isMinimized()
+            && mainWindow.isFocused(),
+        );
+    }
+
+    private handleDownloadState(taskId: unknown, state: unknown) {
+        if (typeof taskId !== "string" || !taskId || taskId.length > 512) {
+            return;
+        }
+
+        const payload = { taskId, state };
+        const stateName = state && typeof state === "object"
+            ? (state as { state?: unknown }).state
+            : undefined;
+        if (stateName === DownloadState.DONE || stateName === DownloadState.ERROR) {
+            // Terminal states drive renderer-side finalization and queue release,
+            // so they must never wait for the window to become foreground.
+            this.pendingDownloadStates.delete(taskId);
+            this.sendToMainWindow("@shared/node-runtime/download-state", payload);
+            return;
+        }
+
+        this.pendingDownloadStates.upsert(payload);
+        this.scheduleDownloadStateFlush();
+    }
+
+    private scheduleDownloadStateFlush() {
+        if (this.downloadStateFlushTimer || !this.isMainWindowForeground()) {
+            return;
+        }
+        this.downloadStateFlushTimer = setTimeout(() => {
+            this.downloadStateFlushTimer = null;
+            this.flushDownloadStates();
+        }, DOWNLOAD_PROGRESS_UPDATE_INTERVAL_MS);
+        this.downloadStateFlushTimer.unref();
+    }
+
+    private flushDownloadStates() {
+        if (!this.isMainWindowForeground() || !this.pendingDownloadStates.size) {
+            return;
+        }
+        if (this.downloadStateFlushTimer) {
+            clearTimeout(this.downloadStateFlushTimer);
+            this.downloadStateFlushTimer = null;
+        }
+        const batch = this.pendingDownloadStates.drain();
+        this.sendToMainWindow("@shared/node-runtime/download-state-batch", batch);
     }
 
     private sendToMainWindow(channel: string, payload: unknown) {
@@ -578,6 +727,7 @@ class NodeRuntimeManager {
         payload: unknown,
         timeoutMs: number = RUNTIME_TIMEOUT_MS,
     ) {
+        this.stopIdleShutdown();
         if (this.pending.size >= MAX_PENDING_REQUESTS) {
             throw new Error("Node runtime concurrency limit reached");
         }
@@ -617,6 +767,12 @@ class NodeRuntimeManager {
 
     private dispose() {
         this.shuttingDown = true;
+        if (this.downloadStateFlushTimer) {
+            clearTimeout(this.downloadStateFlushTimer);
+            this.downloadStateFlushTimer = null;
+        }
+        this.pendingDownloadStates.clear();
+        this.stopIdleShutdown();
         this.stopResourceMonitor();
         this.rejectPending(new Error("Node runtime disposed"));
         this.child?.kill();

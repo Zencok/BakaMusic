@@ -1,8 +1,14 @@
+import BoundedLruCache, { estimateStringBytes } from "./bounded-lru-cache";
+
 const MIN_ARTWORK_DATA_URL_LENGTH_TO_OPTIMIZE = 24 * 1024;
 const MAX_LOCAL_ARTWORK_THUMBNAIL_SIZE = 160;
 const MAX_OPTIMIZED_ARTWORK_CACHE_SIZE = 120;
+const MAX_OPTIMIZED_ARTWORK_CACHE_BYTES = 16 * 1024 * 1024;
 
-const optimizedArtworkCache = new Map<string, Promise<string> | string>();
+const optimizedArtworkCache = new BoundedLruCache<Promise<string> | string>(
+    MAX_OPTIMIZED_ARTWORK_CACHE_SIZE,
+    MAX_OPTIMIZED_ARTWORK_CACHE_BYTES,
+);
 
 function getArtworkCacheKey(src: string) {
     if (!src.startsWith("data:image/")) {
@@ -16,27 +22,15 @@ function getCachedArtwork(cacheKey: string) {
     if (!cached) {
         return null;
     }
-
-    optimizedArtworkCache.delete(cacheKey);
-    optimizedArtworkCache.set(cacheKey, cached);
     return cached;
 }
 
-function setCachedArtwork(cacheKey: string, value: Promise<string> | string) {
-    if (optimizedArtworkCache.has(cacheKey)) {
-        optimizedArtworkCache.delete(cacheKey);
-    }
-
-    optimizedArtworkCache.set(cacheKey, value);
-
-    if (optimizedArtworkCache.size <= MAX_OPTIMIZED_ARTWORK_CACHE_SIZE) {
-        return;
-    }
-
-    const oldestKey = optimizedArtworkCache.keys().next().value;
-    if (oldestKey) {
-        optimizedArtworkCache.delete(oldestKey);
-    }
+function setCachedArtwork(
+    cacheKey: string,
+    value: Promise<string> | string,
+    estimatedBytes: number,
+) {
+    optimizedArtworkCache.set(cacheKey, value, estimatedBytes);
 }
 
 function loadImage(src: string) {
@@ -132,8 +126,12 @@ export default async function optimizeArtworkDataUrl(src?: string | null) {
         }
     })();
 
-    setCachedArtwork(cacheKey, task);
+    setCachedArtwork(
+        cacheKey,
+        task,
+        Math.min(estimateStringBytes(src), MAX_OPTIMIZED_ARTWORK_CACHE_BYTES),
+    );
     const result = await task;
-    setCachedArtwork(cacheKey, result);
+    setCachedArtwork(cacheKey, result, estimateStringBytes(result));
     return result;
 }

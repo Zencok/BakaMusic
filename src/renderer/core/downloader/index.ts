@@ -33,7 +33,7 @@ import {
     useDownloaded,
     useDownloadedMusicList,
 } from "./downloaded-sheet";
-import { DownloadEvts, ee } from "./ee";
+import { ee, getDownloadStatusEvent } from "./ee";
 import { buildDownloadPostprocessPayload } from "./postprocess";
 import { resolveFilePath } from "@/common/path-util";
 import {
@@ -90,8 +90,6 @@ interface IDownloaderWorker {
         filePath: string,
         options: IDownloadTranscodeOptions,
     ) => Promise<IDownloadTranscodeResult>;
-    /** Optional warm-up so the first real download does not pay process spawn cost. */
-    warmUp?: () => Promise<void>;
 }
 
 const downloadingMusicStore = new Store<IMusic.IMusicItem[]>([]);
@@ -105,11 +103,14 @@ const downloadFinalizeQueue = new PQueue({
         Math.max(1, Math.ceil((navigator.hardwareConcurrency || 1) / 2)),
     ),
 });
+/** Cover bytes become base64 across IPC; keep those high-memory stages narrow. */
+const downloadMetadataQueue = new PQueue({ concurrency: 4 });
 const concurrencyLimit = 20;
 const maxAutoRecoveryPerTask = 3;
 let downloaderWorker: IDownloaderWorker | undefined;
 let downloaderWorkerRecovering = false;
 let lastDownloadCompletedAt = 0;
+let taskStoreSyncQueued = false;
 
 function getNextDownloadCompletedAt() {
     const now = Date.now();
@@ -120,10 +121,6 @@ function getNextDownloadCompletedAt() {
 async function setupDownloader() {
     setupDownloaderWorker();
     await setupDownloadedMusicList();
-    // Spawn node runtime early so the first download is not blocked on cold start.
-    void (downloaderWorker as IDownloaderWorker | undefined)?.warmUp?.().catch((error) => {
-        logger.logError("下载运行时预热失败", toError(error));
-    });
 }
 
 function setupDownloaderWorker() {
@@ -219,6 +216,18 @@ function syncTaskStore() {
     );
 }
 
+/** Collapse all status mutations from one IPC batch into one array clone/render. */
+function scheduleTaskStoreSync() {
+    if (taskStoreSyncQueued) {
+        return;
+    }
+    taskStoreSyncQueued = true;
+    queueMicrotask(() => {
+        taskStoreSyncQueued = false;
+        syncTaskStore();
+    });
+}
+
 function updateTaskStatus(
     musicItem: IMusic.IMusicItem,
     nextStatus: IDownloadStatus,
@@ -243,13 +252,14 @@ function updateTaskStatus(
 
     const status = { ...nextStatus, speed, updatedAt };
     downloadingProgress.set(taskId, status);
-    ee.emit(DownloadEvts.DownloadStatusUpdated, musicItem, status);
-    syncTaskStore();
+    ee.emit(getDownloadStatusEvent(taskId), status);
+    scheduleTaskStoreSync();
 }
 
 function clearTaskStatus(musicItem: IMusic.IMusicItem) {
-    downloadingProgress.delete(getMediaPrimaryKey(musicItem));
-    ee.emit(DownloadEvts.DownloadStatusUpdated, musicItem, null);
+    const taskId = getMediaPrimaryKey(musicItem);
+    downloadingProgress.delete(taskId);
+    ee.emit(getDownloadStatusEvent(taskId), null);
 }
 
 function finishTask(musicItem: IMusic.IMusicItem) {
@@ -261,7 +271,7 @@ function finishTask(musicItem: IMusic.IMusicItem) {
     downloadingMusicStore.setValue((previous) =>
         previous.filter((item) => !isSameMedia(item, musicItem)),
     );
-    syncTaskStore();
+    scheduleTaskStoreSync();
 }
 
 function queueTask(taskControl: IDownloadTaskControl) {
@@ -420,7 +430,7 @@ async function removeTask(musicItem: IMusic.IMusicItem) {
     downloadingMusicStore.setValue((previous) =>
         previous.filter((item) => !isSameMedia(item, musicItem)),
     );
-    syncTaskStore();
+    scheduleTaskStoreSync();
     await downloaderWorker?.abortDownload(taskId).catch(() => undefined);
 }
 
@@ -634,30 +644,32 @@ async function finalizeDownloadedMusic(
         true,
     ) as IMusic.IMusicItem;
 
-    const payload = await buildDownloadPostprocessPayload(musicItem);
-    if (payload) {
-        const worker = downloaderWorker;
-        if (!worker) {
-            throw new Error("Downloader worker is unavailable");
-        }
-        try {
-            await worker.postprocessDownloadedFile(finalPath, payload);
-        } catch (error) {
-            logger.logError("下载后写入标签失败", error as Error, {
-                musicItem: {
-                    id: musicItem.id,
-                    platform: musicItem.platform,
-                    title: musicItem.title,
-                    artist: musicItem.artist,
-                },
-                downloadPath: finalPath,
-            });
-            // Metadata write is part of a successful download when enabled.
-            if (payload.options.writeMetadata) {
-                throw error;
+    await downloadMetadataQueue.add(async () => {
+        const payload = await buildDownloadPostprocessPayload(musicItem);
+        if (payload) {
+            const worker = downloaderWorker;
+            if (!worker) {
+                throw new Error("Downloader worker is unavailable");
+            }
+            try {
+                await worker.postprocessDownloadedFile(finalPath, payload);
+            } catch (error) {
+                logger.logError("下载后写入标签失败", error as Error, {
+                    musicItem: {
+                        id: musicItem.id,
+                        platform: musicItem.platform,
+                        title: musicItem.title,
+                        artist: musicItem.artist,
+                    },
+                    downloadPath: finalPath,
+                });
+                // Metadata write is part of a successful download when enabled.
+                if (payload.options.writeMetadata) {
+                    throw error;
+                }
             }
         }
-    }
+    });
 
     await addDownloadedMusicToList(downloadedMusic);
     return finalPath;
@@ -741,22 +753,19 @@ async function transcodeDownloadedMusic(
 
 function useDownloadStatus(musicItem: IMusic.IMusicItem) {
     const [downloadStatus, setDownloadStatus] = useState<IDownloadStatus | null>(null);
+    const taskId = getMediaPrimaryKey(musicItem);
 
     useEffect(() => {
-        setDownloadStatus(downloadingProgress.get(getMediaPrimaryKey(musicItem)) || null);
-        const updateStatus = (
-            item: IMusic.IMusicItem,
-            status: IDownloadStatus | null,
-        ) => {
-            if (isSameMedia(item, musicItem)) {
-                setDownloadStatus(status);
-            }
+        setDownloadStatus(downloadingProgress.get(taskId) || null);
+        const updateStatus = (status: IDownloadStatus | null) => {
+            setDownloadStatus(status);
         };
-        ee.on(DownloadEvts.DownloadStatusUpdated, updateStatus);
+        const event = getDownloadStatusEvent(taskId);
+        ee.on(event, updateStatus);
         return () => {
-            ee.off(DownloadEvts.DownloadStatusUpdated, updateStatus);
+            ee.off(event, updateStatus);
         };
-    }, [musicItem]);
+    }, [taskId]);
 
     return downloadStatus;
 }

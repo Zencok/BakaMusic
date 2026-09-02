@@ -1,6 +1,12 @@
+import BoundedLruCache, { estimateStringBytes } from "./bounded-lru-cache";
+
 const MAX_ARTWORK_NORMALIZE_CACHE_SIZE = 80;
+const MAX_ARTWORK_NORMALIZE_CACHE_BYTES = 32 * 1024 * 1024;
 const MAX_ARTWORK_ANALYSIS_SIZE = 256;
-const artworkNormalizeCache = new Map<string, Promise<string> | string>();
+const artworkNormalizeCache = new BoundedLruCache<Promise<string> | string>(
+    MAX_ARTWORK_NORMALIZE_CACHE_SIZE,
+    MAX_ARTWORK_NORMALIZE_CACHE_BYTES,
+);
 
 export function getArtworkCacheKey(src?: string | null) {
     if (!src) {
@@ -19,26 +25,15 @@ function getCachedArtwork(cacheKey: string) {
     if (!cached) {
         return null;
     }
-
-    artworkNormalizeCache.delete(cacheKey);
-    artworkNormalizeCache.set(cacheKey, cached);
     return cached;
 }
 
-function setCachedArtwork(cacheKey: string, value: Promise<string> | string) {
-    if (artworkNormalizeCache.has(cacheKey)) {
-        artworkNormalizeCache.delete(cacheKey);
-    }
-    artworkNormalizeCache.set(cacheKey, value);
-
-    if (artworkNormalizeCache.size <= MAX_ARTWORK_NORMALIZE_CACHE_SIZE) {
-        return;
-    }
-
-    const oldestKey = artworkNormalizeCache.keys().next().value;
-    if (oldestKey) {
-        artworkNormalizeCache.delete(oldestKey);
-    }
+function setCachedArtwork(
+    cacheKey: string,
+    value: Promise<string> | string,
+    estimatedBytes: number,
+) {
+    artworkNormalizeCache.set(cacheKey, value, estimatedBytes);
 }
 
 function loadImage(src: string) {
@@ -238,8 +233,12 @@ export default async function normalizeArtworkDisplaySrc(src?: string) {
         }
     })();
 
-    setCachedArtwork(cacheKey, task);
+    setCachedArtwork(
+        cacheKey,
+        task,
+        Math.min(estimateStringBytes(src), MAX_ARTWORK_NORMALIZE_CACHE_BYTES),
+    );
     const result = await task;
-    setCachedArtwork(cacheKey, result);
+    setCachedArtwork(cacheKey, result, estimateStringBytes(result));
     return result;
 }

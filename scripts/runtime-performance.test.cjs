@@ -14,6 +14,9 @@ const {
 const {
     getDragAutoScrollDelta,
 } = require("../src/renderer/components/MusicList/drag-auto-scroll");
+const BoundedLruCache = require(
+    "../src/renderer/utils/bounded-lru-cache",
+).default;
 
 assert.equal(shouldPersistPlaybackProgress(-Infinity, 0, false), true);
 assert.equal(shouldPersistPlaybackProgress(1_000, 2_000, false), false);
@@ -33,6 +36,18 @@ assert.equal(getDragAutoScrollDelta(350, 100, 600), 0);
 assert.equal(getDragAutoScrollDelta(600, 100, 600), 24);
 assert.equal(getDragAutoScrollDelta(120, 100, 180), -12);
 assert.equal(getDragAutoScrollDelta(Number.NaN, 100, 600), 0);
+
+{
+    const cache = new BoundedLruCache(3, 10);
+    assert.equal(cache.set("a", "A", 4), true);
+    assert.equal(cache.set("b", "B", 4), true);
+    assert.equal(cache.get("a"), "A"); // promote a; b is now oldest
+    assert.equal(cache.set("c", "C", 4), true);
+    assert.equal(cache.get("b"), undefined);
+    assert.equal(cache.weight, 8);
+    assert.equal(cache.set("oversized", "X", 11), false);
+    assert.equal(cache.size, 2);
+}
 
 {
     const deltas = [];
@@ -59,6 +74,15 @@ assert.match(lyricPlayerSource, /settlePausedLyricLayout/);
 assert.match(lyricPlayerSource, /"line-click"/);
 assert.match(lyricPlayerSource, /apple-music-lyric-player--line-seek/);
 assert.doesNotMatch(lyricPlayerSource, /setLineClickEnabled/);
+
+for (const artworkCachePath of [
+    "../src/renderer/utils/normalize-artwork-display-src.ts",
+    "../src/renderer/utils/optimize-artwork-data-url.ts",
+]) {
+    const artworkCacheSource = fs.readFileSync(path.join(__dirname, artworkCachePath), "utf8");
+    assert.match(artworkCacheSource, /BoundedLruCache/);
+    assert.match(artworkCacheSource, /estimateStringBytes/);
+}
 
 const amllDomPlayerSource = fs.readFileSync(path.join(
     __dirname,

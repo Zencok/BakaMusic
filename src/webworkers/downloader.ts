@@ -17,6 +17,7 @@ import {
     resolveDownloadedFilePath,
     validateCompletedDownload,
 } from "./download-integrity";
+import { DOWNLOAD_PROGRESS_UPDATE_INTERVAL_MS } from "@/common/download-progress";
 
 async function cleanFile(filePath: string) {
     try {
@@ -304,7 +305,7 @@ export async function downloadFile(
                 downloaded: startSize + receivedBytes,
                 total: totalSize,
             });
-        }, 64, {
+        }, DOWNLOAD_PROGRESS_UPDATE_INTERVAL_MS, {
             leading: true,
             trailing: true,
         });
