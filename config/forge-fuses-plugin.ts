@@ -37,8 +37,7 @@ export function createFusesPlugin(fusesConfig: FuseConfig) {
                         : Boolean(osxSign);
 
                     await flipFuses(executablePath, {
-                        resetAdHocDarwinSignature:
-                            applePlatform && arch === "arm64" && !hasOsxSign,
+                        resetAdHocDarwinSignature: false,
                         ...fusesConfig,
                     });
                 },
