@@ -136,9 +136,9 @@ jobs:
           APPLE_API_ISSUER_SECRET: ${{ secrets.APPLE_API_ISSUER }}
         run: |
           # Apple Developer signing is optional. Without these secrets the
-          # Forge build uses a coherent ad-hoc signature for native code.
+          # Forge build leaves the app unsigned (not ad-hoc signed).
           if [ -z "$MACOS_CERTIFICATE_BASE64" ] || [ -z "$MACOS_CERTIFICATE_PASSWORD" ] || [ -z "$MACOS_SIGN_IDENTITY_SECRET" ]; then
-            echo "macOS signing secrets incomplete; using ad-hoc app signing"
+            echo "macOS signing secrets incomplete; packaging without codesign identity"
             exit 0
           fi
           CERTIFICATE_PATH="$RUNNER_TEMP/bakamusic-code-signing.p12"
@@ -238,7 +238,7 @@ jobs:
         if: matrix.platform == 'macos'
         run: node scripts/package-security-smoke.cjs
       - name: Verify macOS app code signature
-        if: matrix.platform == 'macos'
+        if: matrix.platform == 'macos' && env.MACOS_SIGN_IDENTITY != ''
         shell: bash
         run: |
           APP="./out/BakaMusic-darwin-${{ matrix.arch }}/BakaMusic.app"
@@ -257,7 +257,7 @@ jobs:
         run: |
           DMG="./release-assets/BakaMusic-${VERSION}-${{ matrix.asset_suffix }}.dmg"
           if [ -z "${MACOS_SIGN_IDENTITY:-}" ]; then
-            echo "MACOS_SIGN_IDENTITY not set; leaving DMG ad-hoc/unsigned"
+            echo "MACOS_SIGN_IDENTITY not set; leaving DMG unsigned"
             exit 0
           fi
           codesign --force --timestamp --sign "$MACOS_SIGN_IDENTITY" "$DMG"

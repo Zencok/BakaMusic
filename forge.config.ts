@@ -20,28 +20,21 @@ const windowsSigningConfigured = !!(
     && process.env.WINDOWS_CERTIFICATE_PASSWORD
 );
 const macSigningConfigured = !!process.env.MACOS_SIGN_IDENTITY;
-const macNotarizationConfigured = !!(
-    process.env.APPLE_API_KEY
-    && process.env.APPLE_API_KEY_ID
-    && process.env.APPLE_API_ISSUER
-);
 const nsisWebGithubAccelerator = process.env.NSIS_WEB_GITHUB_ACCELERATOR
     ?? githubAcceleratorPrefixes[0];
 
-// Always apply one coherent ad-hoc signature to macOS app bundles when no
-// Apple Developer identity is available. This is not Developer ID signing and
-// does not require GitHub Secrets, but it prevents macOS from killing Helper
-// processes when native addons/dylibs are loaded. A configured identity is
-// still used when the maintainer elects to provide one.
-const macSignOptions = process.platform === "darwin"
-    ? {
-        identity: macSigningConfigured ? process.env.MACOS_SIGN_IDENTITY : "-",
-        identityValidation: macSigningConfigured,
-        hardenedRuntime: macSigningConfigured,
-        // Do not run spctl assessment after signing — that is a verify gate.
-        gatekeeperAssess: false,
-    }
-    : undefined;
+// Sign only when credentials are provided. Without a Developer ID, leave the
+// app unsigned — ad-hoc signing ("-") triggers Library Validation failures
+// because Electron Framework and the main process get inconsistent Team IDs.
+// The allowLoadingUnsignedLibraries flag in native-playback handles loading
+// native addons through the Plugin Helper without requiring signatures.
+const macSignOptions = macSigningConfigured ? {
+    identity: process.env.MACOS_SIGN_IDENTITY,
+    identityValidation: true,
+    hardenedRuntime: true,
+    // Do not run spctl assessment after signing — that is a verify gate.
+    gatekeeperAssess: false,
+} : undefined;
 
 const nativeSourceIgnorePlugin = {
     __isElectronForgePlugin: true,

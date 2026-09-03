@@ -34,7 +34,6 @@ export function createFusesPlugin(fusesConfig: FuseConfig) {
                     const osxSign = forgeConfig.packagerConfig?.osxSign;
                     const hasOsxSign = typeof osxSign === "object"
                         ? Object.keys(osxSign).length > 0
-                            && osxSign.identity !== "-"
                         : Boolean(osxSign);
 
                     await flipFuses(executablePath, {
