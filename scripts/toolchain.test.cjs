@@ -62,9 +62,9 @@ assert.equal(
 );
 assert.equal(
     packageJson.engines.node,
-    "^24.15.0",
+    "^24.19.0",
 );
-assert.equal(projectNodeVersion, "24.15.0");
+assert.equal(projectNodeVersion, "24.19.0");
 assert.equal(
     fs.existsSync(path.join(projectRoot, "scripts/patch-node-gyp.js")),
     false,
@@ -76,7 +76,7 @@ assert.equal(
 assert.equal(packageJson.devDependencies["@larksuiteoapi/node-sdk"], undefined);
 assert.doesNotMatch(preCommitSource, /_\/husky\.sh/);
 
-assert.match(workflowSource, /NODE_VERSION:\s*"24\.15\.0"/);
+assert.match(workflowSource, /NODE_VERSION:\s*"24\.19\.0"/);
 assert.match(workflowSource, /NODE_GYP_VERSION:\s*"13\.0\.1"/);
 assert.doesNotMatch(workflowSource, /patch-node-gyp/);
 assert.match(nativeBuildSource, /npm exec node-gyp -- rebuild/);

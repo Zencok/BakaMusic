@@ -37,7 +37,13 @@ export function createFusesPlugin(fusesConfig: FuseConfig) {
                         : Boolean(osxSign);
 
                     await flipFuses(executablePath, {
-                        resetAdHocDarwinSignature: false,
+                        // Fuse flips rewrite executable bytes and invalidate the
+                        // linker's ad-hoc signature. Without this re-sign the
+                        // kernel kills the app at exec — the "unexpectedly quit"
+                        // crash on launch. The macos-bundle-sign plugin later
+                        // re-signs the whole .app (including loose Mach-O under
+                        // Contents/Resources) once packaging completes.
+                        resetAdHocDarwinSignature: true,
                         ...fusesConfig,
                     });
                 },

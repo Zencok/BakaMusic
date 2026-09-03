@@ -46,6 +46,12 @@ function isRuntimeRelease(value) {
         && /^runtime-mpv-[A-Za-z0-9._-]+$/.test(value.tag_name);
 }
 
+// The /releases listing order is not guaranteed to be newest-first, so rank
+// candidates by publish time before scanning for a complete manifest.
+function releaseTimestamp(release) {
+    return Date.parse(release.published_at ?? release.created_at ?? "") || 0;
+}
+
 function validateArtifact(target, artifact, release) {
     assert(artifact && typeof artifact === "object", `Missing ${target} artifact`);
     assert(/^[a-f0-9]{64}$/.test(artifact.sha256), `Invalid ${target} SHA-256`);
@@ -69,7 +75,9 @@ async function resolveManifestUrl() {
     const releases = await fetchJson(
         `https://api.github.com/repos/${repository}/releases?per_page=100`,
     );
-    const candidates = releases.value.filter(isRuntimeRelease);
+    const candidates = releases.value
+        .filter(isRuntimeRelease)
+        .sort((left, right) => releaseTimestamp(right) - releaseTimestamp(left));
     assert(candidates.length > 0, "No published mpv-libre-runtime release found");
     for (const release of candidates) {
         const manifestUrl = `https://github.com/${repository}/releases/download/`

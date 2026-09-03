@@ -5,7 +5,7 @@
   "description": "一个插件化、定制化、无广告的免费音乐播放器。",
   "main": ".webpack/main",
   "engines": {
-    "node": "^24.15.0"
+    "node": "^24.19.0"
   },
   "scripts": {
     "clean": "rimraf .webpack out tmp",
@@ -15,7 +15,7 @@
     "native:install": "cross-env NODE_USE_ENV_PROXY=1 node scripts/install-native-modules.cjs",
     "native:install:dev": "cross-env NODE_USE_ENV_PROXY=1 node scripts/install-native-modules.cjs",
     "native:update-manifest": "cross-env NODE_USE_ENV_PROXY=1 node scripts/update-native-modules-manifest.cjs",
-    "test": "npm run test:theme-contract && npm run test:music-quality-metadata && npm run test:lx-plugin && npm run test:plugin-playback-log && npm run test:plugin-video-api && npm run test:video-player-ui && npm run test:listening-statistics && npm run test:phase4-data && npm run test:lyric-window-z-order && npm run test:lyric-window-snap && npm run test:lyric-duet && npm run test:lyric-formats && npm run test:update-flow && npm run test:app-config && npm run test:file-naming && npm run test:download-lyric-export && npm run test:download-cover-image && npm run test:download-transcode && npm run test:runtime-performance && npm run test:phase3-network && npm run test:service-manager && npm run test:startup-performance && npm run test:playback-boundary && npm run test:system-media-controls && npm run test:search-matching && npm run test:pitch-shift && npm run test:phase5-security && npm run test:phase6-governance && npm run test:runtime-packaging && npm run test:windows-packaging && npm run test:linux-packaging && npm run test:toolchain",
+    "test": "npm run test:theme-contract && npm run test:music-quality-metadata && npm run test:lx-plugin && npm run test:plugin-playback-log && npm run test:plugin-video-api && npm run test:video-player-ui && npm run test:listening-statistics && npm run test:phase4-data && npm run test:lyric-window-z-order && npm run test:lyric-window-snap && npm run test:lyric-duet && npm run test:lyric-formats && npm run test:update-flow && npm run test:app-config && npm run test:file-naming && npm run test:download-lyric-export && npm run test:download-cover-image && npm run test:download-transcode && npm run test:runtime-performance && npm run test:phase3-network && npm run test:service-manager && npm run test:startup-performance && npm run test:playback-boundary && npm run test:system-media-controls && npm run test:search-matching && npm run test:pitch-shift && npm run test:phase5-security && npm run test:phase6-governance && npm run test:runtime-packaging && npm run test:windows-packaging && npm run test:linux-packaging && npm run test:macos-sign && npm run test:toolchain",
     "start": "npm run runtime:install:dev && npm run native:install:dev && chcp 65001 >nul 2>&1 & cross-env NODE_ENV=development electron-forge start",
     "dev": "npm run runtime:install:dev && npm run native:install:dev && chcp 65001 >nul 2>&1 & cross-env NODE_ENV=development electron-forge start --inspect-electron",
     "package": "npm run runtime:install && npm run native:install && cross-env NODE_ENV=production electron-forge package",
@@ -60,6 +60,7 @@
     "test:runtime-packaging": "node -r ts-node/register/transpile-only scripts/runtime-packaging.test.cjs",
     "test:windows-packaging": "node -r ts-node/register/transpile-only scripts/windows-packaging.test.cjs",
     "test:linux-packaging": "node -r ts-node/register/transpile-only scripts/linux-packaging.test.cjs",
+    "test:macos-sign": "node scripts/sign-macos-bundle.test.cjs",
     "test:toolchain": "node scripts/toolchain.test.cjs"
   },
   "keywords": [],
@@ -103,7 +104,7 @@
     "babel-loader": "^10.1.1",
     "cross-env": "^10.1.0",
     "css-loader": "^7.1.4",
-    "electron": "^43.4.0",
+    "electron": "^44.1.1",
     "eslint": "^10.7.0",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-import-x": "^4.17.1",

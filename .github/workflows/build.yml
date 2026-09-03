@@ -3,7 +3,7 @@ name: Build
 permissions: {}
 
 env:
-  NODE_VERSION: "24.15.0"
+  NODE_VERSION: "24.19.0"
   NODE_GYP_VERSION: "13.0.1"
 
 on:
@@ -136,7 +136,8 @@ jobs:
           APPLE_API_ISSUER_SECRET: ${{ secrets.APPLE_API_ISSUER }}
         run: |
           # Apple Developer signing is optional. Without these secrets the
-          # Forge build leaves the app unsigned (not ad-hoc signed).
+          # Forge build falls back to ad-hoc signing (fuses re-sign + the
+          # macos-bundle-sign plugin), which launches unsigned builds fine.
           if [ -z "$MACOS_CERTIFICATE_BASE64" ] || [ -z "$MACOS_CERTIFICATE_PASSWORD" ] || [ -z "$MACOS_SIGN_IDENTITY_SECRET" ]; then
             echo "macOS signing secrets incomplete; packaging without codesign identity"
             exit 0
@@ -238,12 +239,15 @@ jobs:
         if: matrix.platform == 'macos'
         run: node scripts/package-security-smoke.cjs
       - name: Verify macOS app code signature
-        if: matrix.platform == 'macos' && env.MACOS_SIGN_IDENTITY != ''
+        if: matrix.platform == 'macos'
         shell: bash
         run: |
+          # Runs for both the ad-hoc (no identity) and Developer ID paths:
+          # every loose Mach-O under Contents/Resources must carry a valid
+          # signature or macOS SIGKILLs the libmpv utility process.
           APP="./out/BakaMusic-darwin-${{ matrix.arch }}/BakaMusic.app"
           test -d "$APP"
-          codesign --verify --deep --strict --verbose=4 "$APP"
+          node scripts/sign-macos-bundle.cjs "$APP" --verify
       - name: Stage macOS artifact
         if: matrix.platform == 'macos'
         shell: bash

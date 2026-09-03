@@ -11,6 +11,7 @@ import { rendererConfig } from "./config/webpack.renderer.config";
 import { githubAcceleratorPrefixes } from "./src/common/constant";
 import { createExternalRuntimePlugin } from "./config/forge-external-runtime-plugin";
 import { createFusesPlugin } from "./config/forge-fuses-plugin";
+import { createMacosBundleSignPlugin } from "./config/forge-macos-sign-plugin";
 import { MakerAppImage } from "./config/forge-appimage-maker";
 import { MakerNsis } from "./config/forge-nsis-maker";
 import path from "path";
@@ -23,11 +24,16 @@ const macSigningConfigured = !!process.env.MACOS_SIGN_IDENTITY;
 const nsisWebGithubAccelerator = process.env.NSIS_WEB_GITHUB_ACCELERATOR
     ?? githubAcceleratorPrefixes[0];
 
-// Sign only when credentials are provided. Without a Developer ID, leave the
-// app unsigned — ad-hoc signing ("-") triggers Library Validation failures
-// because Electron Framework and the main process get inconsistent Team IDs.
-// The allowLoadingUnsignedLibraries flag in native-playback handles loading
-// native addons through the Plugin Helper without requiring signatures.
+// Sign only when credentials are provided. Without a Developer ID the build
+// falls back to ad-hoc signing: the fuses plugin re-signs the main executable
+// after flipping fuses, and the macos-bundle-sign plugin re-signs every loose
+// Mach-O plus nested helpers after packaging. Plain ad-hoc signatures carry
+// no hardened runtime and no entitlements, so Library Validation stays off;
+// what actually kills utility processes on macOS is *invalid* signatures
+// (stale page hashes), which the bundle signer repairs at package time.
+// The allowLoadingUnsignedLibraries flag in native-playback routes the
+// utility process through the Plugin Helper for the signed-with-identity
+// path.
 const macSignOptions = macSigningConfigured ? {
     identity: process.env.MACOS_SIGN_IDENTITY,
     identityValidation: true,
@@ -243,6 +249,9 @@ const config: ForgeConfig = {
             [FuseV1Options.GrantFileProtocolExtraPrivileges]: true,
             [FuseV1Options.WasmTrapHandlers]: true,
         }),
+        // Ad-hoc sign the finished .app (loose Mach-O under Contents/Resources,
+        // nested helpers, outer seal) whenever no Developer ID is configured.
+        createMacosBundleSignPlugin(),
     ],
 };
 
