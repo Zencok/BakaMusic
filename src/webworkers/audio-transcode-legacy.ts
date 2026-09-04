@@ -7,6 +7,12 @@ const MPV_EVENT_END_FILE = 7;
 const MPV_EVENT_FILE_LOADED = 8;
 const MPV_END_FILE_REASON_EOF = 0;
 const EVENT_POLL_SECONDS = 0.2;
+const MPV_ERROR_OPTION_NOT_FOUND = -5;
+// Options mpv only registers when built with scripting support
+// (HAVE_LUA || HAVE_JAVASCRIPT || HAVE_CPLUGINS). The Unix runtime builds
+// ship without scripting, so these hardening options are absent there and
+// must be skipped instead of failing the transcode session.
+const SCRIPTING_ONLY_OPTIONS = new Set(["load-scripts", "osc"]);
 
 interface MpvEvent {
     eventId: number;
@@ -121,6 +127,9 @@ async function runMpvSession(
     try {
         for (const [name, value] of [...BASE_OPTIONS, ...extraOptions]) {
             const code = api.setOptionString(handle, name, value);
+            if (code === MPV_ERROR_OPTION_NOT_FOUND && SCRIPTING_ONLY_OPTIONS.has(name)) {
+                continue;
+            }
             if (code < 0) {
                 throw new Error(
                     `libmpv option ${name}=${value} rejected: ${api.errorString(code)}`,

@@ -50,6 +50,7 @@ const MPV_EVENT_FILE_LOADED = 8;
 const MPV_EVENT_QUEUE_OVERFLOW = 24;
 const MPV_END_FILE_REASON_EOF = 0;
 const MPV_END_FILE_REASON_ERROR = 4;
+const MPV_ERROR_OPTION_NOT_FOUND = -5;
 const MPV_ERROR_PROPERTY_UNAVAILABLE = -10;
 const MPV_ERROR_AO_INIT_FAILED = -14;
 const WASAPI_ERROR_CODE = /AUDCLNT_E_[A-Z0-9_]+/i;
@@ -155,8 +156,18 @@ function checkMpv(code: number, context: string) {
     }
 }
 
+// Options mpv only registers when built with scripting support
+// (HAVE_LUA || HAVE_JAVASCRIPT || HAVE_CPLUGINS). The Unix runtime builds
+// ship without scripting, so these hardening options simply do not exist
+// there and must be skipped instead of failing the whole player.
+const SCRIPTING_ONLY_OPTIONS = new Set(["load-scripts", "osc"]);
+
 function setOption(name: string, value: string) {
-    checkMpv(api.setOptionString(player, name, value), `libmpv option ${name}`);
+    const code = api.setOptionString(player, name, value);
+    if (code === MPV_ERROR_OPTION_NOT_FOUND && SCRIPTING_ONLY_OPTIONS.has(name)) {
+        return;
+    }
+    checkMpv(code, `libmpv option ${name}`);
 }
 
 const bootstrapOptions: Array<[string, string]> = [
