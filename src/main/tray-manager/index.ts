@@ -285,11 +285,8 @@ class TrayManager {
             TrayManager.trayInstance?.setTitle("");
             return;
         }
-        if (title.length > 7) {
-            TrayManager.trayInstance?.setTitle(" " + title.slice(0, 7) + "...");
-        } else {
-            TrayManager.trayInstance?.setTitle(" " + title);
-        }
+        // Preserve the entire lyric; the native menu bar sizes the title itself.
+        TrayManager.trayInstance?.setTitle(" " + title);
     }
 
 }
