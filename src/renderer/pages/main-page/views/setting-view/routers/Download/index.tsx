@@ -353,7 +353,7 @@ export default function Download() {
                     label={t("settings.download.default_download_quality")}
                     keyPath="download.defaultQuality"
                     options={[
-                        "mgg",
+                        "96k",
                         "128k",
                         "192k",
                         "320k",

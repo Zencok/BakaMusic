@@ -1,7 +1,7 @@
 import type { LxScriptInfo, LxSource } from "./lx-types";
 
 const lxQualityOrder: readonly IMusic.IQualityKey[] = [
-    "mgg",
+    "96k",
     "128k",
     "192k",
     "320k",

@@ -89,7 +89,7 @@ export function resolveDownloadExtension(
         quality === "128k"
         || quality === "192k"
         || quality === "320k"
-        || (quality as string) === "96k"
+        || quality === "96k"
     ) {
         return "mp3";
     }

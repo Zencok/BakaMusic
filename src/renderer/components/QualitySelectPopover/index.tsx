@@ -69,7 +69,7 @@ function getQualityIconName(quality: IMusic.IQualityKey): SvgAssetIconNames {
     }
 
     switch (quality) {
-        case "mgg":
+        case "96k":
         case "128k":
             return "lq";
         case "192k":

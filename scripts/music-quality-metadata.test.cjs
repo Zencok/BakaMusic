@@ -9,6 +9,8 @@ const {
     qualityText,
 } = require("../src/common/constant.ts");
 
+assert.equal(qualityKeys[0], "96k");
+assert.equal(qualityText["96k"], "流畅音质 96K");
 assert.deepEqual(qualityKeys.slice(-4), [
     "dolby",
     "atmos",

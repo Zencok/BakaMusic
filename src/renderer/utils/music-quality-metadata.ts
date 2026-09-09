@@ -14,7 +14,7 @@ interface IMusicQualityInfo {
 }
 
 const qualityAbbr: Record<IMusic.IQualityKey, string> = {
-    "mgg": "MG",
+    "96k": "96K",
     "128k": "LQ",
     "192k": "MQ",
     "320k": "HQ",

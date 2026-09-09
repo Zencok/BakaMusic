@@ -25,7 +25,7 @@ export default function Playback() {
                     label={t("settings.play_music.default_play_quality")}
                     keyPath="playMusic.defaultQuality"
                     options={[
-                        "mgg",
+                        "96k",
                         "128k",
                         "192k",
                         "320k",

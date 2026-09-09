@@ -22,7 +22,7 @@ export interface IPrefetchedMediaSource {
 }
 
 type PrefetchedQualityKey =
-    | "mgg"
+    | "96k"
     | "128k"
     | "192k"
     | "320k"

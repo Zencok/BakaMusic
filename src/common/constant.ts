@@ -51,7 +51,7 @@ export enum RequestStateCode {
 
 /** 音质列表（从低到高；空间音频档从 Dolby 开始） */
 export const qualityKeys: IMusic.IQualityKey[] = [
-    "mgg",
+    "96k",
     "128k",
     "192k",
     "320k",
@@ -67,7 +67,7 @@ export const qualityKeys: IMusic.IQualityKey[] = [
 
 /** 音质显示文本 */
 export const qualityText: Record<IMusic.IQualityKey, string> = {
-    "mgg": "低音质 MGG",
+    "96k": "流畅音质 96K",
     "128k": "普通音质 128K",
     "192k": "中等音质 192K",
     "320k": "高清音质 320K",

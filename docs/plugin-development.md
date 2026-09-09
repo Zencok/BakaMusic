@@ -84,7 +84,7 @@ module.exports = {
 音频音质键为：
 
 ```text
-mgg, 128k, 192k, 320k, flac, flac24bit, hires, vinyl,
+96k, 128k, 192k, 320k, flac, flac24bit, hires, vinyl,
 dolby, atmos, atmos_plus, master
 ```
 

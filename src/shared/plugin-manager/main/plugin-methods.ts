@@ -16,7 +16,7 @@ import { getLxMusicQualityKeys } from "../lx-adapter";
 
 /** 新音质 -> 旧插件兼容的音质键 (用于旧插件不认识新音质时的回退) */
 const newToLegacyQualityMap: Record<string, string> = {
-    "mgg": "low",
+    "96k": "low",
     "128k": "low",
     "192k": "standard",
     "320k": "high",

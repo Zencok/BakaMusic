@@ -47,7 +47,7 @@ const EVENT_NAMES = Object.freeze({
     updateAlert: "updateAlert",
 });
 const supportedQualities = new Set<IMusic.IQualityKey>([
-    "mgg",
+    "96k",
     "128k",
     "192k",
     "320k",
