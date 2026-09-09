@@ -1,5 +1,6 @@
 import { ipcRenderer } from "electron";
 import exposeInMainWorld from "@/preload/expose-in-main-world";
+import type { INativeVideoFrame } from "./video-frame";
 import type {
     INativeAudioOutputDevice,
     INativePlaybackCapabilities,
@@ -73,6 +74,17 @@ function onVideoEvent(callback: (event: INativeVideoEvent) => void) {
     return () => ipcRenderer.removeListener("@shared/native-playback/video-event", listener);
 }
 
+function onVideoFrame(callback: (frame: INativeVideoFrame) => void) {
+    const listener = (_event: Electron.IpcRendererEvent, frame: INativeVideoFrame) => callback(frame);
+    ipcRenderer.on("@shared/native-playback/video-frame", listener);
+    return () => ipcRenderer.removeListener("@shared/native-playback/video-frame", listener);
+}
+
+function acknowledgeVideoFrame(sourceId: string, frameId: number) {
+    void ipcRenderer.invoke("@shared/native-playback/video-frame-ack", sourceId, frameId)
+        .catch(() => undefined);
+}
+
 export const mod = {
     getCapabilities,
     listAudioDevices,
@@ -86,6 +98,8 @@ export const mod = {
     updateVideoSurface,
     closeVideo,
     onVideoEvent,
+    onVideoFrame,
+    acknowledgeVideoFrame,
 };
 
 exposeInMainWorld("@shared/native-playback", mod);

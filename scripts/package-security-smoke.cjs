@@ -34,6 +34,10 @@ async function run() {
         false,
         "loose resources/app source tree must not be packaged",
     );
+    const entries = listPackage(path.join(resourcesPath, "app.asar"))
+        .map((entry) => entry.replaceAll("\\", "/"));
+    assert.ok(entries.includes("/.webpack/main/native_video_render_worker.js"),
+        "packaged software video render worker is missing");
     if (platform === "linux") {
         const asarEntries = new Set(listPackage(
             path.join(resourcesPath, "app.asar"),

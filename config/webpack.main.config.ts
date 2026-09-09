@@ -14,6 +14,7 @@ export const mainConfig: Configuration = {
         lx_plugin_host: "./src/shared/plugin-manager/utility/lx-plugin-host.ts",
         node_runtime_host: "./src/shared/node-runtime/utility/node-runtime-host.ts",
         native_playback_host: "./src/shared/native-playback/utility/native-playback-host.ts",
+        native_video_render_worker: "./src/shared/native-playback/utility/native-video-render-worker.ts",
     },
     // Put your normal webpack config below here
     module: {

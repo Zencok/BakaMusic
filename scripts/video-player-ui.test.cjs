@@ -47,6 +47,8 @@ assert.match(player, /const bottom = Math\.ceil\(rect\.bottom\)/);
 assert.match(player, /const nativeBounds: INativeVideoSurfaceBounds/);
 assert.match(player, /width: bounds\.width \+ 1/);
 assert.match(player, /height: bounds\.height \+ 1/);
+assert.match(player, /const maskedBottom = bounds\.y \+ bounds\.height - 1/);
+assert.match(player, /"--native-video-bottom",\s*`\$\{maskedBottom\}px`/);
 assert.match(player, /const width = Math\.max\(1, right - left\)/);
 assert.match(player, /borderRadius/);
 assert.match(player, /VIDEO_SPEED_PRESETS/);
@@ -147,8 +149,8 @@ assert.match(videoUrl, /parsed\.protocol = "http:"/);
 
 const nativeHost = read("src/shared/native-playback/utility/native-playback-host.ts");
 assert.match(nativeHost, /videoWindowId/);
-assert.match(nativeHost, /\["vo", "gpu-next"\]/);
-assert.match(nativeHost, /\["hwdec", "auto-safe"\]/);
+assert.match(nativeHost, /\["vo", softwareVideo \? "libmpv" : "gpu-next"\]/);
+assert.match(nativeHost, /\["hwdec", softwareVideo \? "auto-copy" : "auto-safe"\]/);
 assert.match(nativeHost, /\["target-colorspace-hint", "yes"\]/);
 assert.match(nativeHost, /\["gpu-api", "d3d11"\]/);
 assert.match(nativeHost, /\["osc", "no"\]/);
@@ -172,6 +174,19 @@ assert.match(mvNativePreload, /videoCommand/);
 assert.match(mvNativePreload, /updateVideoSurface/);
 assert.match(mvNativePreload, /closeVideo/);
 assert.match(mvNativePreload, /onVideoEvent/);
+for (const preload of [nativePreload, mvNativePreload]) {
+    assert.match(preload, /onVideoFrame/);
+    assert.match(preload, /acknowledgeVideoFrame/);
+    assert.match(preload, /removeListener\("@shared\/native-playback\/video-frame", listener\)/);
+}
+assert.match(nativeMain, /process\.platform === "darwin" \? null : this\.createVideoWindow\(request\)/);
+assert.match(nativeMain, /isNativeVideoFrame\(frame\)/);
+assert.match(nativeMain, /video-frame-ack[\s\S]*?assertIpcSender\(event, \["mv"\]\)/);
+assert.match(player, /softwareVideo\s*\? softwareFrameReadyRef\.current\s*: snapshot\.currentTime > 0/);
+assert.match(player, /context\.putImageData/);
+assert.match(player, /if \(softwareVideo\) \{[\s\S]*?clearRendererOverlay\(\);[\s\S]*?return;/);
+assert.match(player, /removeFrameListener\(\)/);
+assert.match(player, /<canvas ref=\{videoCanvasRef\}/);
 
 const packageJson = JSON.parse(read("package.json"));
 assert.equal(packageJson.dependencies?.["hls.js"], undefined);

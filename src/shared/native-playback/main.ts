@@ -46,6 +46,7 @@ import {
     NativeVideoCommand,
 } from "./common";
 import systemMediaControls, { type SystemMediaAction } from "./system-media-controls";
+import { isNativeVideoFrame } from "./video-frame";
 
 const REQUEST_TIMEOUT_MS = 20_000;
 const MAX_PENDING_REQUESTS = 32;
@@ -706,6 +707,12 @@ class NativePlaybackManager {
             assertIpcSender(event, ["mv"]);
             await this.openVideo(validateVideoOpenRequest(value));
         });
+        ipcMain.handle("@shared/native-playback/video-frame-ack", (event, sourceId, frameId) => {
+            assertIpcSender(event, ["mv"]);
+            if (sourceId === this.videoSourceId && Number.isSafeInteger(frameId) && frameId > 0) {
+                this.videoChild?.postMessage({ type: "ack", frameId });
+            }
+        });
         ipcMain.handle("@shared/native-playback/prepare-video-overlay", (event, sourceId) => {
             assertIpcSender(event, ["mv"]);
             this.prepareVideoOverlay(validateSourceId(sourceId));
@@ -982,7 +989,7 @@ class NativePlaybackManager {
         window.showInactive();
     }
 
-    private async spawnVideoHost(window: VideoHostWindow) {
+    private async spawnVideoHost(window: VideoHostWindow | null) {
         if (!hasNativePlaybackRuntime()) {
             throw new Error("libmpv with LibreMPEG runtime is not installed");
         }
@@ -1000,7 +1007,10 @@ class NativePlaybackManager {
                 env: {
                     ...createPlaybackEnvironment(),
                     BAKAMUSIC_MPV_DIR: runtimeDirectory,
-                    BAKAMUSIC_MPV_WID: window.getNativeWindowId(),
+                    BAKAMUSIC_MPV_WID: window?.getNativeWindowId() ?? "",
+                    BAKAMUSIC_MPV_VIDEO_RENDER: process.platform === "darwin" ? "software" : "native",
+                    BAKAMUSIC_MPV_VIDEO_WIDTH: String(this.videoSurface?.bounds.width ?? 1280),
+                    BAKAMUSIC_MPV_VIDEO_HEIGHT: String(this.videoSurface?.bounds.height ?? 720),
                     PATH: `${runtimeDirectory}${path.delimiter}${process.env.PATH ?? ""}`,
                 },
                 stdio: "pipe",
@@ -1152,7 +1162,9 @@ class NativePlaybackManager {
             this.resolveVideoClosed = resolve;
         });
         try {
-            const window = this.createVideoWindow(request);
+            // macOS NSView pointers are process-local. Render to bounded pixel
+            // buffers instead of creating a black child above the MV controls.
+            const window = process.platform === "darwin" ? null : this.createVideoWindow(request);
             this.videoWindow = window;
             const child = await this.spawnVideoHost(window);
             if (process.platform === "win32") {
@@ -1222,6 +1234,9 @@ class NativePlaybackManager {
         };
         this.videoWindowPriming = false;
         this.syncVideoWindowBounds();
+        if (process.platform === "darwin") {
+            this.videoChild?.postMessage({ type: "size", ...update.bounds });
+        }
     }
 
     private beginVideoClose() {
@@ -1406,6 +1421,17 @@ class NativePlaybackManager {
 
     private handleVideoMessage(child: UtilityProcess, message: any) {
         if (this.videoChild !== child || !message || typeof message !== "object") return;
+        if (message.type === "frame") {
+            const frame = message.frame;
+            if (process.platform !== "darwin" || !isNativeVideoFrame(frame)) return;
+            const window = this.windowManager.mvWindow;
+            if (frame.sourceId === this.videoSourceId && window && !window.isDestroyed()) {
+                window.webContents.send("@shared/native-playback/video-frame", frame);
+            } else {
+                child.postMessage({ type: "ack", frameId: frame.frameId });
+            }
+            return;
+        }
         if (message.type === "snapshot") {
             const snapshot = message.snapshot as INativePlaybackSnapshot;
             const bytes = payloadBytes(snapshot);

@@ -359,6 +359,14 @@ html[data-mv-overlay-window="true"] {
   }
 }
 
+.mv-player-video-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  pointer-events: none;
+}
+
 .mv-player-state strong {
   color: var(--mv-ink);
   font-size: 0.88rem;

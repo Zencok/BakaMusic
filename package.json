@@ -34,7 +34,7 @@
     "test:lx-plugin": "node -r ts-node/register/transpile-only scripts/lx-plugin.test.cjs",
     "test:plugin-playback-log": "node -r ts-node/register/transpile-only scripts/plugin-playback-log.test.cjs",
     "test:plugin-video-api": "node -r ts-node/register/transpile-only scripts/plugin-video-api.test.cjs",
-    "test:video-player-ui": "node scripts/video-player-ui.test.cjs",
+    "test:video-player-ui": "node scripts/video-player-ui.test.cjs && node scripts/native-video-render.test.cjs",
     "test:listening-statistics": "node -r ts-node/register/transpile-only scripts/listening-statistics.test.cjs",
     "test:phase4-data": "node -r ts-node/register/transpile-only scripts/phase4-data.test.cjs",
     "test:lyric-window-z-order": "node -r ts-node/register/transpile-only scripts/lyric-window-z-order.test.cjs",

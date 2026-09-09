@@ -1,5 +1,6 @@
 import { ipcRenderer } from "electron";
 import exposeInMainWorld from "@/preload/expose-in-main-world";
+import type { INativeVideoFrame } from "./video-frame";
 import type {
     INativeVideoEvent,
     INativeVideoOpenRequest,
@@ -46,6 +47,15 @@ function onVideoEvent(callback: (event: INativeVideoEvent) => void) {
 }
 
 export const mod = {
+    onVideoFrame(callback: (frame: INativeVideoFrame) => void) {
+        const listener = (_event: Electron.IpcRendererEvent, frame: INativeVideoFrame) => callback(frame);
+        ipcRenderer.on("@shared/native-playback/video-frame", listener);
+        return () => ipcRenderer.removeListener("@shared/native-playback/video-frame", listener);
+    },
+    acknowledgeVideoFrame(sourceId: string, frameId: number) {
+        void ipcRenderer.invoke("@shared/native-playback/video-frame-ack", sourceId, frameId)
+            .catch(() => undefined);
+    },
     prepareVideoOverlay,
     openVideo,
     updateVideoSources,

@@ -18,6 +18,8 @@ import {
     type IVideoDownloadTask,
 } from "@renderer/utils/download-music-video";
 import nativePlayback from "@shared/native-playback/renderer";
+import { getGlobalContext } from "@shared/global-context/renderer";
+import { isNativeVideoFrame } from "@shared/native-playback/video-frame";
 import nodeRuntime from "@shared/node-runtime/renderer";
 import type {
     INativeVideoSource,
@@ -43,6 +45,7 @@ export interface IMvPlayerProps {
 }
 
 const VIDEO_SPEED_PRESETS = [2, 1.5, 1.25, 1, 0.75, 0.5] as const;
+const softwareVideo = getGlobalContext().platform === "darwin";
 
 type VideoCandidate = IPlugin.IVideoQualityOption & {
     source?: IPlugin.IVideoSourceResult;
@@ -347,6 +350,8 @@ export default function MvPlayer({ musicItem, audioSession, onClose }: IMvPlayer
     const [nativeSessionId, setNativeSessionId] = useState("");
     const [nativeOpened, setNativeOpened] = useState(false);
     const [nativeFrameReady, setNativeFrameReady] = useState(false);
+    const videoCanvasRef = useRef<HTMLCanvasElement>(null);
+    const softwareFrameReadyRef = useRef(false);
     const [nativeSurfaceRevealed, setNativeSurfaceRevealed] = useState(false);
     const [sources, setSources] = useState<PlayerVideoSource[]>([]);
     const [activeSourceKey, setActiveSourceKey] = useState("");
@@ -630,6 +635,7 @@ export default function MvPlayer({ musicItem, audioSession, onClose }: IMvPlayer
 
         setNativeOpened(false);
         setNativeFrameReady(false);
+        softwareFrameReadyRef.current = false;
         setNativeSurfaceRevealed(false);
         setNativeSessionId("");
         setSources([]);
@@ -663,7 +669,9 @@ export default function MvPlayer({ musicItem, audioSession, onClose }: IMvPlayer
                 setDuration(snapshot.duration);
                 if (snapshot.state === "playing") {
                     setPlaying(true);
-                    const frameReady = snapshot.currentTime > 0;
+                    const frameReady = softwareVideo
+                        ? softwareFrameReadyRef.current
+                        : snapshot.currentTime > 0;
                     if (frameReady) setNativeFrameReady(true);
                     setLoading(!frameReady);
                     setError(false);
@@ -694,6 +702,31 @@ export default function MvPlayer({ musicItem, audioSession, onClose }: IMvPlayer
                 }
             }
         });
+
+        const removeFrameListener = softwareVideo ? nativePlayback.onVideoFrame((frame) => {
+            try {
+                if (canceled || frame.sourceId !== sessionId || !isNativeVideoFrame(frame)) return;
+                const canvas = videoCanvasRef.current;
+                const context = canvas?.getContext("2d", { alpha: false });
+                if (!canvas || !context) throw new Error("MV canvas context is unavailable");
+                if (canvas.width !== frame.width || canvas.height !== frame.height) {
+                    canvas.width = frame.width;
+                    canvas.height = frame.height;
+                }
+                context.putImageData(new ImageData(
+                    new Uint8ClampedArray(frame.pixels), frame.width, frame.height,
+                ), 0, 0);
+                softwareFrameReadyRef.current = true;
+                setNativeFrameReady(true);
+                setNativeSurfaceRevealed(true);
+                setLoading(false);
+            } catch {
+                setError(true);
+                setLoading(false);
+            } finally {
+                nativePlayback.acknowledgeVideoFrame(frame.sourceId, frame.frameId);
+            }
+        }) : () => undefined;
 
         const openNativeVideo = async () => {
             const previousSessionId = activeSessionRef.current;
@@ -870,6 +903,7 @@ export default function MvPlayer({ musicItem, audioSession, onClose }: IMvPlayer
         return () => {
             canceled = true;
             removeVideoListener();
+            removeFrameListener();
             if (activeSessionRef.current === sessionId) {
                 activeSessionRef.current = "";
             }
@@ -926,6 +960,17 @@ export default function MvPlayer({ musicItem, audioSession, onClose }: IMvPlayer
                     height: bounds.height + 1,
                 };
                 const sync = async () => {
+                    if (softwareVideo) {
+                        // Canvas and controls share Chromium's compositor. A
+                        // native cutout would erase the video we just painted.
+                        clearRendererOverlay();
+                        await nativePlayback.updateVideoSurface({
+                            sourceId: nativeSessionId,
+                            bounds,
+                            visible: surfaceVisible,
+                        });
+                        return;
+                    }
                     if (surfaceVisible) {
                         const clipRadius = bounds.borderRadius > 0
                             ? Math.min(
@@ -940,9 +985,14 @@ export default function MvPlayer({ musicItem, audioSession, onClose }: IMvPlayer
                             "--native-video-right",
                             `${bounds.x + bounds.width}px`,
                         );
+                        // Close the transparent cutout one pixel before the
+                        // native HWND's far edge. The bottom controls paint over
+                        // this overlap, preventing the overscanned video surface
+                        // from leaking through the card's anti-aliased edge.
+                        const maskedBottom = bounds.y + bounds.height - 1;
                         root.style.setProperty(
                             "--native-video-bottom",
-                            `${bounds.y + bounds.height}px`,
+                            `${maskedBottom}px`,
                         );
                         root.style.setProperty("--native-video-radius", `${clipRadius}px`);
                         root.style.setProperty(
@@ -1233,7 +1283,9 @@ export default function MvPlayer({ musicItem, audioSession, onClose }: IMvPlayer
                         toggleFullscreen();
                     }}
                 >
-                    <div ref={surfaceRef} className="mv-player-native-surface" aria-hidden="true"></div>
+                    <div ref={surfaceRef} className="mv-player-native-surface" aria-hidden="true">
+                        {softwareVideo ? <canvas ref={videoCanvasRef} className="mv-player-video-canvas" /> : null}
+                    </div>
                     {displayLoading && !error ? (
                         <div className="mv-player-state" aria-live="polite">
                             <span className="mv-player-spinner"></span>

@@ -1,5 +1,6 @@
 import path from "path";
 import koffi from "koffi";
+import { Worker } from "node:worker_threads";
 import type {
     INativeAudioOutputDevice,
     INativePlaybackCapabilities,
@@ -63,7 +64,8 @@ if (!runtimeDirectory) {
     throw new Error("libmpv runtime directory is missing");
 }
 const videoWindowId = process.env.BAKAMUSIC_MPV_WID?.trim() ?? "";
-const videoMode = videoWindowId.length > 0;
+const softwareVideo = process.env.BAKAMUSIC_MPV_VIDEO_RENDER === "software";
+const videoMode = softwareVideo || videoWindowId.length > 0;
 
 const libraryName = process.platform === "win32"
     ? "libmpv-2.dll"
@@ -186,10 +188,9 @@ const bootstrapOptions: Array<[string, string]> = [
 
 if (videoMode) {
     bootstrapOptions.push(
-        ["wid", videoWindowId],
         ["video", "auto"],
-        ["vo", "gpu-next"],
-        ["hwdec", "auto-safe"],
+        ["vo", softwareVideo ? "libmpv" : "gpu-next"],
+        ["hwdec", softwareVideo ? "auto-copy" : "auto-safe"],
         // The renderer owns the original BakaMusic controls. libmpv only
         // decodes and presents into the click-through native surface.
         ["input-default-bindings", "no"],
@@ -199,6 +200,9 @@ if (videoMode) {
         ["tone-mapping", "auto"],
         ["hdr-compute-peak", "yes"],
     );
+    if (!softwareVideo) {
+        bootstrapOptions.push(["wid", videoWindowId]);
+    }
     if (process.platform === "win32") {
         bootstrapOptions.push(
             ["gpu-api", "d3d11"],
@@ -344,6 +348,53 @@ let knownAudioDeviceIds: Set<string> | null = null;
 let lastDeviceProbeAt = 0;
 let deviceRemovedPending = false;
 let deviceAddedPending = false;
+let softwareFrameReceived = false;
+let softwareFirstFrameDeadline = 0;
+let renderFailure: Error | null = null;
+
+const renderWorker = softwareVideo ? new Worker(
+    path.resolve(__dirname, "native_video_render_worker.js"),
+    {
+        workerData: {
+            libraryPath: path.join(runtimeDirectory, libraryName),
+            playerAddress: koffi.address(player).toString(),
+            width: Number(process.env.BAKAMUSIC_MPV_VIDEO_WIDTH),
+            height: Number(process.env.BAKAMUSIC_MPV_VIDEO_HEIGHT),
+        },
+    },
+) : null;
+const renderReady = new Promise<void>((resolve, reject) => {
+    if (!renderWorker) {
+        resolve();
+        return;
+    }
+    renderWorker.on("message", (message) => {
+        if (message.type === "ready") resolve();
+        if (message.type === "frame") {
+            if (message.frame.sourceId === sourceId) softwareFrameReceived = true;
+            parentPort.postMessage(message);
+        }
+        if (message.type === "render-error") {
+            lastError = message.error;
+            renderFailure = new Error(message.error);
+            reject(renderFailure);
+        }
+    });
+    renderWorker.on("error", (error) => {
+        lastError = error instanceof Error ? error.message : String(error);
+        renderFailure = new Error(lastError);
+        reject(renderFailure);
+    });
+    renderWorker.on("exit", (code) => {
+        if (!disposed) {
+            lastError = `Video render worker exited (${code})`;
+            renderFailure ??= new Error(lastError);
+            reject(renderFailure);
+        }
+    });
+});
+// Startup can fail before the first request arrives.
+void renderReady.catch(() => undefined);
 
 function runCommand(...args: string[]) {
     checkMpv(api.command(player, [...args, null]), `libmpv command ${args[0]}`);
@@ -569,7 +620,16 @@ function postSnapshot(force = false) {
     }
     processEvents();
     probeAudioDevices(Date.now());
-    const snapshot = readSnapshot();
+    let snapshot = readSnapshot();
+    if (softwareVideo && !softwareFrameReceived && snapshot.state === "playing") {
+        softwareFirstFrameDeadline ||= Date.now() + 10_000;
+        if (Date.now() > softwareFirstFrameDeadline) {
+            lastError = "Video output did not produce a frame within 10 seconds";
+            snapshot = readSnapshot();
+        }
+    } else {
+        softwareFirstFrameDeadline = 0;
+    }
     const snapshotKey = JSON.stringify(snapshot);
     if (force || snapshotKey !== lastSnapshotKey) {
         lastSnapshotKey = snapshotKey;
@@ -619,6 +679,9 @@ function handleCommand(command: NativePlaybackRuntimeCommand) {
                 processEvents();
             }
             sourceId = command.sourceId;
+            softwareFrameReceived = false;
+            softwareFirstFrameDeadline = 0;
+            renderWorker?.postMessage({ type: "source", sourceId });
             lastTime = 0;
             lastDuration = 0;
             lastSnapshotKey = "";
@@ -713,6 +776,9 @@ function dispose() {
     }
     disposed = true;
     clearInterval(pollTimer);
+    // On process exit all native resources are reclaimed together. Never free
+    // the core underneath a render worker still using its context.
+    if (renderWorker) return;
     api.terminateDestroy(player);
     library.unload();
 }
@@ -736,12 +802,18 @@ const pollTimer = setInterval(() => {
     }
 }, 200);
 
-parentPort.on("message", (event) => {
+parentPort.on("message", async (event) => {
+    if (["ack", "size"].includes(event.data?.type)) {
+        renderWorker?.postMessage(event.data);
+        return;
+    }
     const request = event.data as RuntimeRequest;
     if (request?.type !== "request" || typeof request.requestId !== "string") {
         return;
     }
     try {
+        await renderReady;
+        if (renderFailure) throw renderFailure;
         if (request.operation === "capabilities") {
             respond(request.requestId, capabilities);
             return;
