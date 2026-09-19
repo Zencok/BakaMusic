@@ -1063,9 +1063,17 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
     /** 导入歌单 */
     async importMusicSheet(
         urlLike: string,
+        options?: IPlugin.IImportMusicSheetOptions,
     ): Promise<IPlugin.IImportMusicSheetResult | null> {
         try {
-            const result = await this.plugin.instance?.importMusicSheet?.(urlLike);
+            if (typeof urlLike !== "string" || !urlLike.trim() || urlLike.length > 1000
+                || (options !== undefined && (!options || typeof options !== "object" || Array.isArray(options)
+                    || typeof options.knownVersion !== "string" || !options.knownVersion || options.knownVersion.length > 1000))) {
+                return null;
+            }
+            const result = options
+                ? await this.plugin.instance?.importMusicSheet?.(urlLike, { knownVersion: options.knownVersion })
+                : await this.plugin.instance?.importMusicSheet?.(urlLike);
             if (!result) {
                 return null;
             }
@@ -1080,6 +1088,11 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
                 return null;
             }
 
+            if (result.notModified === true) {
+                return options?.knownVersion && result.syncVersion === options.knownVersion
+                    ? { notModified: true, syncVersion: result.syncVersion }
+                    : null;
+            }
             resetMediaItem(result, this.plugin.name);
             result.musicList?.forEach((_) => {
                 resetMediaItem(_, this.plugin.name);

@@ -56,7 +56,7 @@ export function normalizeImportedMusicSheet(
     input: string,
     fallbackTitle: string,
 ): IMusic.IMusicSheetItem | null {
-    if (!result) {
+    if (!result || (!Array.isArray(result) && result.notModified === true)) {
         return null;
     }
 

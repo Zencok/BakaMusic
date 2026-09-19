@@ -4,7 +4,9 @@ import defaultSheet from "./default-sheet";
 import { useEffect, useRef, useState } from "react";
 import { RequestStateCode, localPluginName } from "@/common/constant";
 import PluginManager from "@shared/plugin-manager/renderer";
-import { importedTracks, validateImportSources, type IImportSourceSnapshot } from "./import-sync";
+import { validateImportSources } from "./import-sync";
+import { ImportSyncFetcher } from "./sync-fetcher";
+import AppConfig from "@shared/app-config/renderer";
 
 const musicSheetsStore = new Store<IMusic.IDBMusicSheetItem[]>([]);
 const starredSheetsStore = new Store<IMedia.IMediaBase[]>([]);
@@ -15,6 +17,20 @@ export const useAllStarredSheets = starredSheetsStore.useValue;
 export const getAllSheets = musicSheetsStore.getValue;
 
 const syncingSheets = new Set<string>();
+const syncFetcher = new ImportSyncFetcher((plugin, input, options) =>
+    PluginManager.callPluginDelegateMethod(plugin, "importMusicSheet", input, options),
+);
+PluginManager.onPluginsChanged(() => syncFetcher.invalidate());
+AppConfig.onConfigUpdate((patch) => {
+    if (Object.keys(patch).some((key) => key === "private.pluginMeta" || key === "normal.language" || key.startsWith("network.proxy."))) {
+        syncFetcher.invalidate();
+    }
+});
+let lastImportSyncMetrics: Record<string, number> = {};
+/** Timings contain no source URLs, playlist contents, credentials or version tokens. */
+export function getLastImportSyncMetrics() {
+    return { ...lastImportSyncMetrics };
+}
 
 /** Fetch all sources before touching persistence; one failed source aborts the sync. */
 export async function syncImportedSheet(sheet: IMedia.IMediaBase, starred = false) {
@@ -23,6 +39,7 @@ export async function syncImportedSheet(sheet: IMedia.IMediaBase, starred = fals
         throw new Error("sync_sheet_busy");
     }
     syncingSheets.add(key);
+    const started = performance.now();
     try {
         const current = starred
             ? starredSheetsStore.getValue().find((item) => item.platform === sheet.platform && item.id === sheet.id) as IMusic.IMusicSheetItem | undefined
@@ -32,29 +49,51 @@ export async function syncImportedSheet(sheet: IMedia.IMediaBase, starred = fals
             throw new Error("sync_sheet_missing_source");
         }
         const plugins = PluginManager.getSortedSupportedPlugin("importMusicSheet");
-        const snapshots: IImportSourceSnapshot[] = [];
-        for (const source of sources) {
+        // Resolve every plugin before scheduling any network work.
+        const jobs = sources.map((source) => {
             const candidates = plugins.filter((item) => item.platform === source.platform);
-            // Plugin hashes identify code versions. A unique platform survives updates.
             const plugin = candidates.find((item) => item.hash === source.pluginHash)
                 ?? (candidates.length === 1 ? candidates[0] : undefined);
             if (!plugin) {
                 throw new Error("sync_sheet_missing_plugin");
             }
-            const result = await PluginManager.callPluginDelegateMethod(plugin, "importMusicSheet", source.input);
-            snapshots.push({ source, musicList: importedTracks(result) });
+            return { source, plugin };
+        });
+        const revision = syncFetcher.getRevision();
+        const fetchStarted = performance.now();
+        const responses = await Promise.allSettled(jobs.map(({ source, plugin }) => syncFetcher.fetch(source, plugin)));
+        const snapshots = responses.map((response) => {
+            if (response.status === "rejected") {
+                throw response.reason;
+            }
+            return response.value;
+        });
+        if (revision !== syncFetcher.getRevision()) {
+            throw new Error("Sync context changed");
         }
+        const fetchMs = performance.now() - fetchStarted;
+        const applyStarted = performance.now();
         if (starred) {
             const result = await backend.replaceStarredImportedSheet(sheet, sources, snapshots);
-            starredSheetsStore.setValue(backend.getAllStarredSheets());
+            if (result.changed) {
+                starredSheetsStore.setValue(backend.getAllStarredSheets());
+            }
+            lastImportSyncMetrics = { fetchMs, applyMs: performance.now() - applyStarted, totalMs: performance.now() - started };
             return result;
         }
         const result = await backend.replaceImportedSheetMusic(sheet.id, sources, snapshots);
-        musicSheetsStore.setValue(backend.getAllSheets());
-        if (sheet.id === defaultSheet.id) {
-            refreshFavoriteState();
+        const applyMs = performance.now() - applyStarted;
+        const refreshStarted = performance.now();
+        if (result.changed) {
+            if (sheet.id === defaultSheet.id && (result.added || result.removed)) {
+                refreshFavoriteState();
+            }
+            await refetchSheetDetail(sheet.id);
         }
-        await refetchSheetDetail(sheet.id);
+        lastImportSyncMetrics = {
+            ...result.metrics, fetchMs, applyMs, refreshMs: performance.now() - refreshStarted,
+            totalMs: performance.now() - started,
+        };
         return result;
     } finally {
         syncingSheets.delete(key);
@@ -295,6 +334,9 @@ function updateSheetDetail(newSheet: IMusic.IMusicSheetItem) {
  * @param sheetId
  */
 async function refetchSheetDetail(sheetId: string) {
+    if (!updateSheetDetailCallbacks.get(sheetId)?.size) {
+        return;
+    }
     let sheetDetail = await backend.getSheetItemDetail(sheetId);
     if (!sheetDetail) {
     // 可能已经被删除了
@@ -355,6 +397,9 @@ export function useMusicSheet(sheetId: string) {
 
         return () => {
             cbs?.delete(updateSheet);
+            if (!cbs.size) {
+                updateSheetDetailCallbacks.delete(sheetId);
+            }
         };
     }, [sheetId]);
 

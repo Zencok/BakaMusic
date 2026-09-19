@@ -28,9 +28,9 @@ export function mergeImportSources(
     return validateImportSources([...sources.values()]);
 }
 
-export function mergeImportedTracks(
-    existing: IMusic.IMusicItem[],
-    incoming: IMusic.IMusicItem[],
+export function mergeImportedTracks<T extends IMedia.IMediaBase>(
+    existing: T[],
+    incoming: T[],
 ) {
     const seen = new Set<string>();
     return [...existing, ...incoming].filter((track) => {
@@ -50,6 +50,9 @@ export function mergeImportedTracks(
 }
 
 export function importedTracks(result: IPlugin.IImportMusicSheetResult | null) {
+    if (result && !Array.isArray(result) && result.notModified === true) {
+        throw new Error("A complete cached snapshot is required");
+    }
     const tracks = Array.isArray(result) ? result : result?.musicList;
     if (!Array.isArray(tracks)) {
         throw new Error("Invalid import result");
@@ -102,8 +105,8 @@ export function validateImportOwnership(
 }
 
 /** Missing provenance is deliberately treated as manual, including old backups. */
-export function planImportedSheetSync(
-    existing: IMusic.IMusicItem[],
+export function planImportedSheetSync<T extends IMedia.IMediaBase>(
+    existing: T[],
     ownership: IMusic.ISheetTrackOwnership[] | undefined,
     sources: IMusic.IImportedSheetSource[],
     snapshots: IImportSourceSnapshot[],
@@ -114,38 +117,51 @@ export function planImportedSheetSync(
         || [...received].some((key) => !expected.has(key))) {
         throw new Error("Incomplete import snapshots");
     }
-    const previous = mergeImportedTracks([], existing);
-    const previousKeys = new Set(previous.map(importTrackKey));
+    const previous = new Map(existing.map((track) => [importTrackKey(track), track]));
     const previousOwnership = new Map(validateImportOwnership(ownership, sources).map((entry) => [importTrackKey(entry), entry]));
-    const sourceMembership = new Map<string, string[]>();
-    const incoming: IMusic.IMusicItem[] = [];
+    const next = new Map<string, { track: T | IMusic.IMusicItem; sourceKeys: string[] }>();
     for (const snapshot of snapshots) {
         const sourceKey = importSourceKey(snapshot.source);
-        for (const track of mergeImportedTracks([], snapshot.musicList)) {
+        const seen = new Set<string>();
+        for (const track of snapshot.musicList) {
             const key = importTrackKey(track);
-            const membership = sourceMembership.get(key);
-            if (membership) {
-                membership.push(sourceKey);
+            if (seen.has(key)) {
+                continue;
+            }
+            seen.add(key);
+            const entry = next.get(key);
+            if (entry) {
+                entry.sourceKeys.push(sourceKey);
             } else {
-                incoming.push(track);
-                sourceMembership.set(key, [sourceKey]);
+                next.set(key, { track, sourceKeys: [sourceKey] });
             }
         }
     }
-    const isManual = (track: IMusic.IMusicItem) => previousOwnership.get(importTrackKey(track))?.manual ?? true;
-    const musicList = mergeImportedTracks(incoming, previous.filter(isManual));
-    const nextKeys = new Set(musicList.map(importTrackKey));
-    const importOwnership = musicList.map((track): IMusic.ISheetTrackOwnership => ({
-        platform: track.platform,
-        id: String(track.id),
-        manual: previousKeys.has(importTrackKey(track)) && isManual(track),
-        sourceKeys: sourceMembership.get(importTrackKey(track)) ?? [],
-    }));
-    return {
-        musicList,
-        importOwnership,
-        added: musicList.filter((track) => !previousKeys.has(importTrackKey(track))).length,
-        removed: previous.filter((track) => !nextKeys.has(importTrackKey(track))).length,
-        total: musicList.length,
-    };
+    let removed = 0;
+    for (const [key, track] of previous) {
+        if (!next.has(key)) {
+            if (previousOwnership.get(key)?.manual ?? true) {
+                next.set(key, { track, sourceKeys: [] });
+            } else {
+                removed++;
+            }
+        }
+    }
+    let added = 0;
+    const musicList: (T | IMusic.IMusicItem)[] = [];
+    const importOwnership: IMusic.ISheetTrackOwnership[] = [];
+    for (const [key, entry] of next) {
+        const existed = previous.has(key);
+        if (!existed) {
+            added++;
+        }
+        musicList.push(entry.track);
+        importOwnership.push({
+            platform: entry.track.platform,
+            id: String(entry.track.id),
+            manual: existed && (previousOwnership.get(key)?.manual ?? true),
+            sourceKeys: entry.sourceKeys,
+        });
+    }
+    return { musicList, importOwnership, added, removed, total: musicList.length };
 }

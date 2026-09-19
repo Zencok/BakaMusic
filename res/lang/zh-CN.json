@@ -97,7 +97,7 @@
         "master_quality": "Master"
     },
     "plugin": {
-        "sync_sheet": "同步来源（保留手动添加）",
+        "sync_sheet": "同步来源",
         "sync_sheet_loading": "正在全量同步歌单…",
         "sync_sheet_success": "同步完成：新增 {{added}} 首，移除 {{removed}} 首，共 {{total}} 首",
         "sync_sheet_busy": "此歌单正在同步，请稍候",

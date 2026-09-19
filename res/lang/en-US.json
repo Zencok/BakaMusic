@@ -97,7 +97,7 @@
         "master_quality": "Master"
     },
     "plugin": {
-        "sync_sheet": "Sync sources (keep manually added tracks)",
+        "sync_sheet": "Sync sources",
         "sync_sheet_loading": "Syncing full playlist…",
         "sync_sheet_success": "Synced: {{added}} added, {{removed}} removed, {{total}} tracks total",
         "sync_sheet_busy": "This playlist is already syncing",

@@ -1,3 +1,4 @@
+import { diffSyncRelations, equalSourceKeys } from "./sync-diff";
 /**
  * Database-only music sheet operations. UI-facing state belongs in service.ts.
  */
@@ -460,6 +461,9 @@ let starredMutation: Promise<unknown> = Promise.resolve();
 function mutateStarredSheets(update: (sheets: IMedia.IMediaBase[]) => IMedia.IMediaBase[]) {
     const operation = starredMutation.then(async () => {
         const next = update(starredMusicSheets);
+        if (next === starredMusicSheets) {
+            return;
+        }
         await setUserPreferenceIDB("starredMusicSheets", next);
         starredMusicSheets = next;
     });
@@ -487,7 +491,7 @@ export async function replaceStarredImportedSheet(
     sources: IMusic.IImportedSheetSource[],
     snapshots: IImportSourceSnapshot[],
 ) {
-    let result = { added: 0, removed: 0, total: 0 };
+    let result = { added: 0, removed: 0, total: 0, changed: false };
     await mutateStarredSheets((sheets) => {
         const index = sheets.findIndex((item) => isSameMedia(item, sheet));
         const current = sheets[index] as IMusic.IMusicSheetItem | undefined;
@@ -495,7 +499,18 @@ export async function replaceStarredImportedSheet(
             throw new Error("Sheet or import sources changed during sync");
         }
         const plan = planImportedSheetSync(current.musicList ?? [], current.importOwnership, sources, snapshots);
-        result = { added: plan.added, removed: plan.removed, total: plan.total };
+        const sameOwnership = current.importOwnership?.length === plan.importOwnership.length
+            && current.importOwnership.every((entry, index) => {
+                const next = plan.importOwnership[index];
+                return importTrackKey(entry) === importTrackKey(next) && entry.manual === next.manual
+                    && equalSourceKeys(entry.sourceKeys, next.sourceKeys);
+            });
+        const changed = !sameOwnership || current.worksNum !== plan.total
+            || JSON.stringify(current.musicList) !== JSON.stringify(plan.musicList);
+        result = { added: plan.added, removed: plan.removed, total: plan.total, changed };
+        if (!changed) {
+            return sheets;
+        }
         const next = [...sheets];
         next[index] = { ...current, musicList: plan.musicList, importOwnership: plan.importOwnership, worksNum: plan.total };
         return next;
@@ -632,61 +647,65 @@ export async function addMusicToSheet(
     return musicSheets;
 }
 
-/** Synchronize source ownership atomically, retaining explicitly manual and legacy tracks. */
+/** Compare identities/ownership only; commit just the changed rows and entity references. */
 export async function replaceImportedSheetMusic(
     sheetId: string,
     sources: IMusic.IImportedSheetSource[],
     snapshots: IImportSourceSnapshot[],
 ) {
-    let result = { added: 0, removed: 0, total: 0 };
-    let tracks: IMusic.IMusicItem[] = [];
+    let result = { added: 0, removed: 0, total: 0, changed: false };
+    const metrics = { readMs: 0, planMs: 0, writeMs: 0, relationsWritten: 0 };
+    let addedTracks: IMusic.IMusicItem[] = [];
+    let removedRelations: ISheetMusicRelation[] = [];
+    let retainedFavoriteKeys = new Set<string>();
     await musicSheetDB.transaction(
         "readwrite", musicSheetDB.sheets, musicSheetDB.musicStore, musicSheetDB.sheetMusic,
         async () => {
+            const readStarted = performance.now();
             const sheet = await musicSheetDB.sheets.get(sheetId);
             if (!sheet || JSON.stringify(sheet.importSources) !== JSON.stringify(sources)) {
                 throw new Error("Sheet or import sources changed during sync");
             }
             const previous = await getSheetRelations(sheetId);
-            const previousByKey = new Map(previous.map((relation) => [importTrackKey(relationToMediaBase(relation)), relation]));
-            const existing = await musicSheetDB.musicStore.bulkGet(previous.map((relation) => [relation.platform, relation.musicId]));
-            if (existing.some((track) => !track)) {
-                throw new Error("Missing sheet music entity");
+            metrics.readMs = performance.now() - readStarted;
+            const planStarted = performance.now();
+            const plan = planImportedSheetSync(previous.map(relationToMediaBase), relationOwnership(previous), sources, snapshots);
+            const diff = diffSyncRelations(sheetId, previous, plan.musicList, plan.importOwnership);
+            if (sheetId === defaultSheet.id) {
+                retainedFavoriteKeys = new Set(plan.musicList.map(getMediaPrimaryKey));
             }
-            const plan = planImportedSheetSync(
-                existing as IMusic.IMusicItem[], relationOwnership(previous), sources, snapshots,
-            );
-            tracks = plan.musicList;
-            result = { added: plan.added, removed: plan.removed, total: plan.total };
-            const ownership = new Map(plan.importOwnership.map((entry) => [importTrackKey(entry), entry]));
-            const nextKeys = new Set(tracks.map(importTrackKey));
-            const removedRelations = previous.filter((relation) => {
-                const identity = importTrackKey(relationToMediaBase(relation));
-                return !nextKeys.has(identity) || previousByKey.get(identity) !== relation;
-            });
-            const addedTracks = tracks.filter((track) => !previousByKey.has(importTrackKey(track)));
-            await decrementMusicReferences(removedRelations);
+            const addedKeys = new Set(diff.inserted.map((row) => importTrackKey(relationToMediaBase(row))));
+            // New identities always come from a fetched snapshot, not from lightweight existing rows.
+            addedTracks = plan.musicList.filter((track): track is IMusic.IMusicItem => addedKeys.has(importTrackKey(track)));
+            removedRelations = diff.deleted;
+            metrics.relationsWritten = diff.inserted.length + diff.updated.length + diff.deleted.length;
+            metrics.planMs = performance.now() - planStarted;
+            result = { added: plan.added, removed: plan.removed, total: plan.total, changed: metrics.relationsWritten > 0 };
+            const writeStarted = performance.now();
+            await decrementMusicReferences(diff.deleted);
             await incrementMusicReferences(addedTracks);
-            await musicSheetDB.sheetMusic.where("sheetId").equals(sheetId).delete();
-            if (tracks.length) {
-                await musicSheetDB.sheetMusic.bulkAdd(tracks.map((track, position) => ({
-                    sheetId,
-                    platform: track.platform,
-                    musicId: previousByKey.get(importTrackKey(track))?.musicId ?? track.id,
-                    position,
-                    addedAt: previousByKey.get(importTrackKey(track))?.addedAt ?? Date.now(),
-                    batchIndex: position,
-                    manual: ownership.get(importTrackKey(track))?.manual ?? true,
-                    sourceKeys: ownership.get(importTrackKey(track))?.sourceKeys ?? [],
-                })));
+            if (diff.deleted.length) {
+                await musicSheetDB.sheetMusic.bulkDelete(diff.deleted.map(getRelationKey));
             }
+            if (diff.inserted.length) {
+                await musicSheetDB.sheetMusic.bulkAdd(diff.inserted);
+            }
+            if (diff.updated.length) {
+                await musicSheetDB.sheetMusic.bulkPut(diff.updated);
+            }
+            metrics.writeMs = performance.now() - writeStarted;
         },
     );
     if (sheetId === defaultSheet.id) {
-        favoriteMusicListIds.clear();
-        tracks.forEach((track) => favoriteMusicListIds.add(getMediaPrimaryKey(track)));
+        removedRelations.forEach((row) => {
+            const key = getMediaPrimaryKey(relationToMediaBase(row));
+            if (!retainedFavoriteKeys.has(key)) {
+                favoriteMusicListIds.delete(key);
+            }
+        });
+        addedTracks.forEach((track) => favoriteMusicListIds.add(getMediaPrimaryKey(track)));
     }
-    return result;
+    return { ...result, metrics };
 }
 
 export async function removeMusicFromSheet(

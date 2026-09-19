@@ -105,7 +105,7 @@ function dropHandler() {
                 );
                 const importedItems = Array.isArray(importedMusicList)
                     ? importedMusicList
-                    : importedMusicList?.musicList ?? [];
+                    : importedMusicList?.notModified === true ? [] : importedMusicList?.musicList ?? [];
                 if (importedItems.length) {
                     validMusicList.push(
                         ...importedItems,

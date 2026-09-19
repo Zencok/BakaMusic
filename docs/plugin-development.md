@@ -151,7 +151,7 @@ const artist = {
 | `getMusicSheetInfo` | `sheetItem, page` | `{ sheetItem?, musicList?, isEnd? }` |
 | `getArtistWorks` | `artistItem, page, type` | 歌曲或专辑分页结果 |
 | `getArtistInfo` | `artistItem` | 艺人头像、简介等补充信息 |
-| `importMusicSheet` | `urlLike` | 完整歌单对象；旧式歌曲数组仅用于兼容 |
+| `importMusicSheet` | `urlLike, options?` | 完整歌单对象；旧式数组兼容；可选版本校验见文末 |
 | `importMusicItem` | `urlLike` | 单曲对象或 `null` |
 | `getTopLists` | 无 | 榜单分组数组 |
 | `getTopListDetail` | `topListItem, page` | 榜单信息与歌曲分页结果 |
@@ -360,3 +360,28 @@ buffer, webdav, @react-native-cookies/cookies, musicfree/storage
 8. 发布前计算最终 JavaScript 文件的 SHA-256，并通过 HTTPS 地址重新安装验证。
 
 LX 音源脚本属于独立兼容层，只覆盖已安装底座插件的播放接口，不使用本文的 BakaMusic 插件对象契约。
+
+
+## 歌单来源同步与性能
+
+导入自动记住插件及原始输入，沿用添加/收藏流程。同步按平台 + 字符串归一化歌曲 ID 去重，分别维护来源归属，保留手动添加歌曲。所有来源成功后再事务提交；历史归属不明的歌曲按保留处理。
+
+应用端优化：最多三个插件同时拉取，同插件串行；同插件版本、同输入的在途请求合并（全局上限 200 个）。本地同步只读取关系身份/归属，仅对增删歌曲操作共享实体。关系采用差量写入和稀疏排序位置；无变化零写入，只有变化且正在观察的歌单才重新读取详情。排序间隙耗尽时进行重排。收藏快照无变化时跳过偏好写入。
+
+`MusicSheet.frontend.getLastImportSyncMetrics()` 提供最近一次成功同步的阶段耗时和本地关系写入数，不包含来源 URL、歌曲内容、凭据或版本令牌。测试中的 CPU 耗时只代表合成数据的计划/比对成本，不代表真实网络或 IndexedDB 延迟。
+
+### 可选版本校验（旧插件兼容）
+
+`importMusicSheet(input, options?)` 可接收 `{ knownVersion: string }`。旧插件忽略第二参数并继续返回完整歌单或歌曲数组即可。
+
+新插件首次返回完整歌单时，可附带 `syncVersion`（1–1000 字符的不透明版本号）。后续请求若来源确实未变化，返回：
+
+```js
+{ notModified: true, syncVersion: options.knownVersion }
+```
+
+版本号必须覆盖歌曲成员、顺序及返回的歌曲元数据，并与来源和当前账号绑定。版本号不是凭据。版本变化时返回完整歌单，禁止将部分列表当作完整结果。网络或认证失败应抛错或返回 `null`；成功的空数组意味着来源确实为空。
+
+主进程仅接受与请求版本匹配的未变化响应。Renderer 只复用完整快照：最多 16 个来源、总计 8 MiB UTF-8 序列化数据、单条最多 50,000 首，最长保存 5 分钟。淘汰或重启后重新请求完整快照。插件重载、插件配置/用户变量、语言或代理变更会清理版本缓存并使旧在途结果失效。每次同步仍向插件确认新鲜度。
+
+本次不引入增删游标协议：条件完整快照兼顾原子性、顺序和旧插件兼容，无需持久化插件游标。未采用版本校验的插件仍享受请求合并和本地差量写入优化。

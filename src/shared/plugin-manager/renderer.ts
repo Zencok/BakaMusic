@@ -347,6 +347,7 @@ async function setup() {
 
 const PluginManager = {
     setup,
+    onPluginsChanged: delegatePluginsStore.subscribe,
     getSortedSupportedPlugin,
     getSupportedPlugin,
     getSearchablePlugins,

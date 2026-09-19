@@ -105,7 +105,20 @@ declare namespace IPlugin {
   /**
    * 导入歌单结果。新插件应返回完整歌单；歌曲数组仅用于兼容旧插件。
    */
-  type IImportMusicSheetResult = IMusic.IMusicSheetItem | IMusic.IMusicItem[];
+  interface IImportMusicSheetOptions {
+    /** Optional opaque validator from the last full snapshot of this source. */
+    knownVersion?: string;
+  }
+
+  interface IUnchangedMusicSheetResult {
+    notModified: true;
+    syncVersion: string;
+  }
+
+  type IImportMusicSheetResult = (IMusic.IMusicSheetItem & {
+    syncVersion?: string;
+    notModified?: false;
+  }) | IMusic.IMusicItem[] | IUnchangedMusicSheetResult;
 
   interface ITopListInfoResult {
     isEnd?: boolean;
@@ -194,6 +207,7 @@ declare namespace IPlugin {
     /** 导入歌单 */
     importMusicSheet?: (
       urlLike: string,
+      options?: IImportMusicSheetOptions,
     ) => Promise<IImportMusicSheetResult | null>;
     /** 导入单曲 */
     importMusicItem?: (urlLike: string) => Promise<IMusic.IMusicItem | null>;
