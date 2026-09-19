@@ -1,5 +1,7 @@
+import { validateImportSources, validateImportOwnership, importTrackKey } from "../music-sheet/import-sync";
+
 export const BACKUP_SCHEMA = "bakamusic.music-sheet-backup";
-export const BACKUP_VERSION = 3;
+export const BACKUP_VERSION = 4;
 export const MAX_BACKUP_BYTES = 128 * 1024 * 1024;
 export const MAX_BACKUP_SHEETS = 2_000;
 export const MAX_BACKUP_TRACKS = 200_000;
@@ -132,6 +134,8 @@ function validateMusicSheetList(value: unknown) {
             `musicSheets[${sheetIndex}].title`,
         );
 
+        validateImportSources(sheet.importSources);
+        const ownership = validateImportOwnership(sheet.importOwnership, sheet.importSources);
         const rawMusicList = sheet.musicList ?? [];
         if (!Array.isArray(rawMusicList)) {
             throw new Error(`Invalid music list at sheet ${sheetIndex}`);
@@ -139,6 +143,10 @@ function validateMusicSheetList(value: unknown) {
         const musicList = rawMusicList
             .map((musicItem) => normalizeMusicItem(musicItem))
             .filter((musicItem): musicItem is IMusic.IMusicItem => Boolean(musicItem));
+        const trackKeys = new Set(musicList.map(importTrackKey));
+        if (ownership.some((entry) => !trackKeys.has(importTrackKey(entry)))) {
+            throw new Error("Ownership refers to a missing track");
+        }
         totalTracks += musicList.length;
         if (totalTracks > MAX_BACKUP_TRACKS) {
             throw new Error("Backup contains too many tracks");
@@ -204,7 +212,7 @@ export function parseBackupPayload(data: string | Record<string, unknown>) {
 
     if (
         parsed.schema !== BACKUP_SCHEMA
-        || parsed.version !== BACKUP_VERSION
+        || (parsed.version !== BACKUP_VERSION && parsed.version !== 3)
         || !isRecord(parsed.data)
     ) {
         throw new Error("Unsupported backup schema or version");

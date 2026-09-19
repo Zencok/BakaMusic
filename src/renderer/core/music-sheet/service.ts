@@ -3,6 +3,8 @@ import * as backend from "./repository";
 import defaultSheet from "./default-sheet";
 import { useEffect, useRef, useState } from "react";
 import { RequestStateCode, localPluginName } from "@/common/constant";
+import PluginManager from "@shared/plugin-manager/renderer";
+import { importedTracks, validateImportSources, type IImportSourceSnapshot } from "./import-sync";
 
 const musicSheetsStore = new Store<IMusic.IDBMusicSheetItem[]>([]);
 const starredSheetsStore = new Store<IMedia.IMediaBase[]>([]);
@@ -11,6 +13,53 @@ export const useAllSheets = musicSheetsStore.useValue;
 export const useAllStarredSheets = starredSheetsStore.useValue;
 
 export const getAllSheets = musicSheetsStore.getValue;
+
+const syncingSheets = new Set<string>();
+
+/** Fetch all sources before touching persistence; one failed source aborts the sync. */
+export async function syncImportedSheet(sheet: IMedia.IMediaBase, starred = false) {
+    const key = JSON.stringify([starred, sheet.platform, sheet.id]);
+    if (syncingSheets.has(key)) {
+        throw new Error("sync_sheet_busy");
+    }
+    syncingSheets.add(key);
+    try {
+        const current = starred
+            ? starredSheetsStore.getValue().find((item) => item.platform === sheet.platform && item.id === sheet.id) as IMusic.IMusicSheetItem | undefined
+            : musicSheetsStore.getValue().find((item) => item.id === sheet.id);
+        const sources = validateImportSources(current?.importSources);
+        if (!current || !sources.length) {
+            throw new Error("sync_sheet_missing_source");
+        }
+        const plugins = PluginManager.getSortedSupportedPlugin("importMusicSheet");
+        const snapshots: IImportSourceSnapshot[] = [];
+        for (const source of sources) {
+            const candidates = plugins.filter((item) => item.platform === source.platform);
+            // Plugin hashes identify code versions. A unique platform survives updates.
+            const plugin = candidates.find((item) => item.hash === source.pluginHash)
+                ?? (candidates.length === 1 ? candidates[0] : undefined);
+            if (!plugin) {
+                throw new Error("sync_sheet_missing_plugin");
+            }
+            const result = await PluginManager.callPluginDelegateMethod(plugin, "importMusicSheet", source.input);
+            snapshots.push({ source, musicList: importedTracks(result) });
+        }
+        if (starred) {
+            const result = await backend.replaceStarredImportedSheet(sheet, sources, snapshots);
+            starredSheetsStore.setValue(backend.getAllStarredSheets());
+            return result;
+        }
+        const result = await backend.replaceImportedSheetMusic(sheet.id, sources, snapshots);
+        musicSheetsStore.setValue(backend.getAllSheets());
+        if (sheet.id === defaultSheet.id) {
+            refreshFavoriteState();
+        }
+        await refetchSheetDetail(sheet.id);
+        return result;
+    } finally {
+        syncingSheets.delete(key);
+    }
+}
 
 /** 更新默认歌单变化 */
 const refreshFavCbs = new Set<() => void>();
@@ -162,8 +211,10 @@ export async function setStarredMusicSheets(sheets: IMedia.IMediaBase[]) {
 export async function addMusicToSheet(
     musicItems: IMusic.IMusicItem | IMusic.IMusicItem[],
     sheetId: string,
+    importSources?: IMusic.IImportedSheetSource[],
+    importOwnership?: IMusic.ISheetTrackOwnership[],
 ) {
-    await backend.addMusicToSheet(musicItems, sheetId);
+    await backend.addMusicToSheet(musicItems, sheetId, importSources, importOwnership);
 
     musicSheetsStore.setValue(backend.getAllSheets());
     if (sheetId === defaultSheet.id) {

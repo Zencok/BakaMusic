@@ -8,6 +8,8 @@ import { CommonConst } from "@/common/constant";
 
 interface IProps {
     initMusicItems: IMusic.IMusicItem | IMusic.IMusicItem[];
+    importSources?: IMusic.IImportedSheetSource[];
+    importOwnership?: IMusic.ISheetTrackOwnership[];
 }
 
 export default function AddNewSheet(props: IProps) {
@@ -21,14 +23,14 @@ export default function AddNewSheet(props: IProps) {
                     return;
                 }
                 if (props?.initMusicItems) {
-                    await MusicSheet.frontend.addMusicToSheet(props.initMusicItems, newSheet.id);
+                    await MusicSheet.frontend.addMusicToSheet(props.initMusicItems, newSheet.id, props.importSources, props.importOwnership);
                 }
                 hideModal();
             } catch {
                 return;
             }
         }, 500),
-        [props.initMusicItems],
+        [props.initMusicItems, props.importSources, props.importOwnership],
     );
 
     useEffect(() => () => {

@@ -1,3 +1,4 @@
+import { mergeImportedTracks, importSourceKey } from "@/renderer/core/music-sheet/import-sync";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { hideModal } from "../..";
@@ -79,6 +80,8 @@ export function normalizeImportedMusicSheet(
         (item) => item.artwork || item.coverImg,
     );
 
+    const importSource = { pluginHash: plugin.hash, platform: plugin.platform, input: input.trim() };
+    const uniqueTracks = mergeImportedTracks([], musicList);
     return {
         ...(sourceSheet ?? {}),
         id,
@@ -91,8 +94,15 @@ export function normalizeImportedMusicSheet(
             musicWithArtwork?.coverImg,
         ),
         worksNum: sourceSheet?.worksNum ?? musicList.length,
-        musicList,
+        musicList: uniqueTracks,
         isImported: true,
+        importSources: [importSource],
+        importOwnership: uniqueTracks.map((track) => ({
+            platform: track.platform,
+            id: String(track.id),
+            manual: false,
+            sourceKeys: [importSourceKey(importSource)],
+        })),
     };
 }
 

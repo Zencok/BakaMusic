@@ -83,6 +83,19 @@ declare namespace IMusic {
     };
   }
 
+  interface IImportedSheetSource {
+    pluginHash: string;
+    platform: string;
+    input: string;
+  }
+
+  interface ISheetTrackOwnership {
+    platform: string;
+    id: string;
+    manual: boolean;
+    sourceKeys: string[];
+  }
+
   interface IMusicSheetItem extends IMedia.IMediaBase {
     /** 封面图 */
     artwork?: string;
@@ -98,6 +111,10 @@ declare namespace IMusic {
     musicList?: IMusicItem[];
     /** 是否为导入接口返回的完整歌单快照 */
     isImported?: boolean;
+    /** 导入来源；本地歌单可合并多个导入歌单。 */
+    importSources?: IImportedSheetSource[];
+    /** 收藏快照/备份中的归属；本地数据库按歌曲关系持久化。 */
+    importOwnership?: ISheetTrackOwnership[];
     /** 歌单创建日期 */
     createAt?: number;
     /** 歌单内歌曲排序方式 */

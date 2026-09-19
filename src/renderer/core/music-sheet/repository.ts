@@ -25,6 +25,10 @@ import musicSheetDB, {
     type IStoredMusicItem,
 } from "./database";
 import defaultSheet from "./default-sheet";
+import {
+    mergeImportSources, importSourceKey, importTrackKey, validateImportOwnership,
+    planImportedSheetSync, type IImportSourceSnapshot,
+} from "./import-sync";
 import { normalizeMusicSheetSortType, sortMusicSheetMusicList } from "./sort";
 
 const favoriteMusicListIds = new Set<string>();
@@ -36,6 +40,7 @@ function stripEmbeddedMusicList(
 ): IMusic.IDBMusicSheetItem {
     const metadata = { ...sheet };
     delete metadata.musicList;
+    delete metadata.importOwnership;
     return metadata;
 }
 
@@ -60,10 +65,25 @@ function relationToMediaBase(relation: ISheetMusicRelation): IMedia.IMediaBase {
     };
 }
 
+function relationOwnership(relations: ISheetMusicRelation[]): IMusic.ISheetTrackOwnership[] {
+    const ownership = new Map<string, IMusic.ISheetTrackOwnership>();
+    for (const relation of relations) {
+        const key = importTrackKey(relationToMediaBase(relation));
+        const existing = ownership.get(key);
+        ownership.set(key, {
+            platform: relation.platform,
+            id: String(relation.musicId),
+            manual: (existing?.manual ?? false) || (relation.manual ?? true),
+            sourceKeys: [...new Set([...(existing?.sourceKeys ?? []), ...(relation.sourceKeys ?? [])])],
+        });
+    }
+    return [...ownership.values()];
+}
+
 function uniqueMusicItems(musicItems: IMusic.IMusicItem[]) {
     const seen = new Set<string>();
     return musicItems.filter((musicItem) => {
-        if (!musicItem?.platform || !musicItem.id) {
+        if (!musicItem?.platform || musicItem.id == null || String(musicItem.id) === "") {
             return false;
         }
         const key = getMediaPrimaryKey(musicItem);
@@ -338,6 +358,7 @@ export async function updateSheet(
     }
     const metadata = { ...newData };
     delete metadata.musicList;
+    delete metadata.importOwnership;
     if (!Object.keys(metadata).length) {
         return;
     }
@@ -434,31 +455,59 @@ export async function clearSheet(sheetId: string) {
     return musicSheets;
 }
 
+// Serialize preference-backed mutations so simultaneous syncs cannot lose a sheet.
+let starredMutation: Promise<unknown> = Promise.resolve();
+function mutateStarredSheets(update: (sheets: IMedia.IMediaBase[]) => IMedia.IMediaBase[]) {
+    const operation = starredMutation.then(async () => {
+        const next = update(starredMusicSheets);
+        await setUserPreferenceIDB("starredMusicSheets", next);
+        starredMusicSheets = next;
+    });
+    starredMutation = operation.catch(() => undefined);
+    return operation;
+}
+
 export async function starMusicSheet(sheet: IMedia.IMediaBase) {
-    const newSheets = [
-        ...starredMusicSheets.filter((item) => !isSameMedia(item, sheet)),
+    await mutateStarredSheets((sheets) => [
+        ...sheets.filter((item) => !isSameMedia(item, sheet)),
         sheet,
-    ];
-    await setUserPreferenceIDB("starredMusicSheets", newSheets);
-    starredMusicSheets = newSheets;
+    ]);
 }
 
 export async function unstarMusicSheet(sheet: IMedia.IMediaBase) {
-    const newSheets = starredMusicSheets.filter(
-        (item) => !isSameMedia(item, sheet),
-    );
-    await setUserPreferenceIDB("starredMusicSheets", newSheets);
-    starredMusicSheets = newSheets;
+    await mutateStarredSheets((sheets) => sheets.filter((item) => !isSameMedia(item, sheet)));
 }
 
 export async function setStarredMusicSheets(sheets: IMedia.IMediaBase[]) {
-    await setUserPreferenceIDB("starredMusicSheets", sheets);
-    starredMusicSheets = sheets;
+    await mutateStarredSheets(() => sheets);
+}
+
+export async function replaceStarredImportedSheet(
+    sheet: IMedia.IMediaBase,
+    sources: IMusic.IImportedSheetSource[],
+    snapshots: IImportSourceSnapshot[],
+) {
+    let result = { added: 0, removed: 0, total: 0 };
+    await mutateStarredSheets((sheets) => {
+        const index = sheets.findIndex((item) => isSameMedia(item, sheet));
+        const current = sheets[index] as IMusic.IMusicSheetItem | undefined;
+        if (!current || JSON.stringify(current.importSources) !== JSON.stringify(sources)) {
+            throw new Error("Sheet or import sources changed during sync");
+        }
+        const plan = planImportedSheetSync(current.musicList ?? [], current.importOwnership, sources, snapshots);
+        result = { added: plan.added, removed: plan.removed, total: plan.total };
+        const next = [...sheets];
+        next[index] = { ...current, musicList: plan.musicList, importOwnership: plan.importOwnership, worksNum: plan.total };
+        return next;
+    });
+    return result;
 }
 
 export async function addMusicToSheet(
     musicItems: IMusic.IMusicItem | IMusic.IMusicItem[],
     sheetId: string,
+    importSources?: IMusic.IImportedSheetSource[],
+    importOwnership?: IMusic.ISheetTrackOwnership[],
 ) {
     const targetSheet = musicSheets.find((item) => item.id === sheetId);
     if (!targetSheet) {
@@ -467,10 +516,22 @@ export async function addMusicToSheet(
     const candidates = uniqueMusicItems(
         Array.isArray(musicItems) ? musicItems : [musicItems],
     );
-    if (!candidates.length) {
+    if (!candidates.length && !importSources?.length) {
         return musicSheets;
     }
 
+    const suppliedOwnership = new Map(validateImportOwnership(importOwnership, importSources).map((entry) => [importTrackKey(entry), entry]));
+    const incomingOwnership = (track: IMusic.IMusicItem) => {
+        if (!importSources?.length) {
+            return { manual: true, sourceKeys: [] as string[] };
+        }
+        return suppliedOwnership.get(importTrackKey(track)) ?? {
+            // Single-source imports are unambiguous; old multi-source copies are not.
+            manual: importSources.length !== 1,
+            sourceKeys: importSources.length === 1 ? [importSourceKey(importSources[0])] : [],
+        };
+    };
+    let nextSources = targetSheet.importSources;
     let addedMusicItems: IMusic.IMusicItem[] = [];
     let nextArtwork = targetSheet.artwork ?? "";
     await musicSheetDB.transaction(
@@ -479,17 +540,46 @@ export async function addMusicToSheet(
         musicSheetDB.musicStore,
         musicSheetDB.sheetMusic,
         async () => {
-            const relationKeys = candidates.map((musicItem) => [
-                sheetId,
-                musicItem.platform,
-                musicItem.id,
-            ] as [string, string, string]);
-            const existingRelations = await musicSheetDB.sheetMusic.bulkGet(
-                relationKeys,
-            );
-            addedMusicItems = candidates.filter(
-                (_musicItem, index) => !existingRelations[index],
-            );
+            const currentSheet = await musicSheetDB.sheets.get(sheetId);
+            if (!currentSheet) {
+                throw new Error("Sheet no longer exists");
+            }
+            nextSources = currentSheet.importSources;
+            if (importSources?.length) {
+                nextSources = mergeImportSources(currentSheet.importSources, importSources);
+                await musicSheetDB.sheets.update(sheetId, { importSources: nextSources });
+            }
+            // Probe both scalar ID representations without scanning a large playlist.
+            const relationKeys = candidates.flatMap((musicItem) => {
+                const ids = new Set<string | number>([musicItem.id, String(musicItem.id)]);
+                const numericId = Number(musicItem.id);
+                if (Number.isFinite(numericId) && String(numericId) === String(musicItem.id)) {
+                    ids.add(numericId);
+                }
+                return [...ids].map((id) => [sheetId, musicItem.platform, id] as [string, string, string]);
+            });
+            const existingRelations = await musicSheetDB.sheetMusic.bulkGet(relationKeys);
+            const relevantRelations = existingRelations.filter((relation): relation is ISheetMusicRelation => Boolean(relation));
+            const existingByKey = new Map<string, ISheetMusicRelation[]>();
+            relevantRelations.forEach((relation) => {
+                const key = importTrackKey(relationToMediaBase(relation));
+                existingByKey.set(key, [...(existingByKey.get(key) ?? []), relation]);
+            });
+            const ownershipUpdates: ISheetMusicRelation[] = [];
+            for (const track of candidates) {
+                const incoming = incomingOwnership(track);
+                for (const relation of existingByKey.get(importTrackKey(track)) ?? []) {
+                    ownershipUpdates.push({
+                        ...relation,
+                        manual: (relation.manual ?? true) || incoming.manual,
+                        sourceKeys: [...new Set([...(relation.sourceKeys ?? []), ...incoming.sourceKeys])],
+                    });
+                }
+            }
+            if (ownershipUpdates.length) {
+                await musicSheetDB.sheetMusic.bulkPut(ownershipUpdates);
+            }
+            addedMusicItems = candidates.filter((track) => !existingByKey.has(importTrackKey(track)));
             if (!addedMusicItems.length) {
                 return;
             }
@@ -517,6 +607,8 @@ export async function addMusicToSheet(
                 position: startPosition + index,
                 addedAt,
                 batchIndex: index,
+                manual: incomingOwnership(musicItem).manual,
+                sourceKeys: incomingOwnership(musicItem).sourceKeys,
             }));
 
             await incrementMusicReferences(addedMusicItems);
@@ -527,6 +619,7 @@ export async function addMusicToSheet(
         },
     );
 
+    updateCachedSheet(sheetId, { importSources: nextSources });
     if (!addedMusicItems.length) {
         return musicSheets;
     }
@@ -537,6 +630,63 @@ export async function addMusicToSheet(
         });
     }
     return musicSheets;
+}
+
+/** Synchronize source ownership atomically, retaining explicitly manual and legacy tracks. */
+export async function replaceImportedSheetMusic(
+    sheetId: string,
+    sources: IMusic.IImportedSheetSource[],
+    snapshots: IImportSourceSnapshot[],
+) {
+    let result = { added: 0, removed: 0, total: 0 };
+    let tracks: IMusic.IMusicItem[] = [];
+    await musicSheetDB.transaction(
+        "readwrite", musicSheetDB.sheets, musicSheetDB.musicStore, musicSheetDB.sheetMusic,
+        async () => {
+            const sheet = await musicSheetDB.sheets.get(sheetId);
+            if (!sheet || JSON.stringify(sheet.importSources) !== JSON.stringify(sources)) {
+                throw new Error("Sheet or import sources changed during sync");
+            }
+            const previous = await getSheetRelations(sheetId);
+            const previousByKey = new Map(previous.map((relation) => [importTrackKey(relationToMediaBase(relation)), relation]));
+            const existing = await musicSheetDB.musicStore.bulkGet(previous.map((relation) => [relation.platform, relation.musicId]));
+            if (existing.some((track) => !track)) {
+                throw new Error("Missing sheet music entity");
+            }
+            const plan = planImportedSheetSync(
+                existing as IMusic.IMusicItem[], relationOwnership(previous), sources, snapshots,
+            );
+            tracks = plan.musicList;
+            result = { added: plan.added, removed: plan.removed, total: plan.total };
+            const ownership = new Map(plan.importOwnership.map((entry) => [importTrackKey(entry), entry]));
+            const nextKeys = new Set(tracks.map(importTrackKey));
+            const removedRelations = previous.filter((relation) => {
+                const identity = importTrackKey(relationToMediaBase(relation));
+                return !nextKeys.has(identity) || previousByKey.get(identity) !== relation;
+            });
+            const addedTracks = tracks.filter((track) => !previousByKey.has(importTrackKey(track)));
+            await decrementMusicReferences(removedRelations);
+            await incrementMusicReferences(addedTracks);
+            await musicSheetDB.sheetMusic.where("sheetId").equals(sheetId).delete();
+            if (tracks.length) {
+                await musicSheetDB.sheetMusic.bulkAdd(tracks.map((track, position) => ({
+                    sheetId,
+                    platform: track.platform,
+                    musicId: previousByKey.get(importTrackKey(track))?.musicId ?? track.id,
+                    position,
+                    addedAt: previousByKey.get(importTrackKey(track))?.addedAt ?? Date.now(),
+                    batchIndex: position,
+                    manual: ownership.get(importTrackKey(track))?.manual ?? true,
+                    sourceKeys: ownership.get(importTrackKey(track))?.sourceKeys ?? [],
+                })));
+            }
+        },
+    );
+    if (sheetId === defaultSheet.id) {
+        favoriteMusicListIds.clear();
+        tracks.forEach((track) => favoriteMusicListIds.add(getMediaPrimaryKey(track)));
+    }
+    return result;
 }
 
 export async function removeMusicFromSheet(
@@ -659,6 +809,7 @@ export async function getSheetItemDetail(
 
     return {
         ...(optimizedSheet.item ?? targetSheet),
+        importOwnership: relationOwnership(relations),
         musicList: sortMusicSheetMusicList(
             detailedMusicItems,
             targetSheet.sortType,
@@ -685,6 +836,7 @@ async function writeImportedSheet(
     sortIndex: number,
 ) {
     const musicItems = uniqueMusicItems(sourceSheet.musicList ?? []);
+    const ownership = new Map(validateImportOwnership(sourceSheet.importOwnership, sourceSheet.importSources).map((entry) => [importTrackKey(entry), entry]));
     const metadata = stripEmbeddedMusicList({
         ...sourceSheet,
         id: sheetId,
@@ -709,6 +861,8 @@ async function writeImportedSheet(
             position,
             addedAt: Number(musicItem.$$addedAt ?? fallbackAddedAt),
             batchIndex: Number(musicItem.$$batchIndex ?? position),
+            manual: ownership.get(importTrackKey(musicItem))?.manual ?? true,
+            sourceKeys: ownership.get(importTrackKey(musicItem))?.sourceKeys ?? [],
         })),
     );
 }

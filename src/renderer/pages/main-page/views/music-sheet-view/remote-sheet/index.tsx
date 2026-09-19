@@ -1,3 +1,4 @@
+import MusicSheet from "@/renderer/core/music-sheet";
 import { useLocation, useParams } from "react-router-dom";
 import usePluginSheetMusicList from "./hooks/usePluginSheetMusicList";
 import MusicSheetlikeView from "@/renderer/components/MusicSheetlikeView";
@@ -10,10 +11,14 @@ export default function RemoteSheet() {
         sheetItem?: IMusic.IMusicSheetItem;
     } | null;
 
+    const starredSheets = MusicSheet.frontend.useAllStarredSheets();
+    const savedSheet = starredSheets.find((item) => item.platform === platform && String(item.id) === id) as IMusic.IMusicSheetItem | undefined;
+    const importedSheet = savedSheet?.isImported ? savedSheet : routeState?.sheetItem;
+
     const [state, sheetItem, musicList, getSheetDetail] = usePluginSheetMusicList(
         platform ?? "",
         id ?? "",
-        routeState?.sheetItem,
+        importedSheet,
     );
     return (
         <MusicSheetlikeView

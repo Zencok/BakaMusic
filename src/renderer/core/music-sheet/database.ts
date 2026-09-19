@@ -8,6 +8,8 @@ export interface ISheetMusicRelation {
     position: number;
     addedAt: number;
     batchIndex: number;
+    manual?: boolean;
+    sourceKeys?: string[];
 }
 
 export type IStoredMusicItem = IMusic.IMusicItem & {
@@ -73,6 +75,28 @@ class MusicSheetDB extends Dexie {
                 await sheetTable.bulkPut(normalizedSheets);
             }
         });
+        // Optional importSources metadata; legacy sheets intentionally remain unbound.
+        this.version(3).stores({
+            sheets: "&id, title, artist, createAt, $$sortIndex",
+            musicStore: "[platform+id], title, artist, album",
+            sheetMusic:
+                "[sheetId+platform+musicId], sheetId, [sheetId+position], [platform+musicId]",
+            localMusicStore: "[platform+id], title, artist, album, $$localPath",
+        });
+        this.version(4).stores({
+            sheets: "&id, title, artist, createAt, $$sortIndex",
+            musicStore: "[platform+id], title, artist, album",
+            sheetMusic:
+                "[sheetId+platform+musicId], sheetId, [sheetId+position], [platform+musicId]",
+            localMusicStore: "[platform+id], title, artist, album, $$localPath",
+        }).upgrade(async (transaction) => {
+            await transaction.table<ISheetMusicRelation>("sheetMusic").toCollection().modify((relation) => {
+                // No historical evidence of provenance: retain rather than infer ownership.
+                relation.manual ??= true;
+                relation.sourceKeys ??= [];
+            });
+        });
+
     }
 }
 

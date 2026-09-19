@@ -97,6 +97,13 @@
         "master_quality": "Master"
     },
     "plugin": {
+        "sync_sheet": "Sync sources (keep manually added tracks)",
+        "sync_sheet_loading": "Syncing full playlist…",
+        "sync_sheet_success": "Synced: {{added}} added, {{removed}} removed, {{total}} tracks total",
+        "sync_sheet_busy": "This playlist is already syncing",
+        "sync_sheet_missing_source": "Import source is missing. Please import the playlist again",
+        "sync_sheet_missing_plugin": "The import plugin is disabled or removed. Restore it and retry",
+        "sync_sheet_failed": "Sync failed. Existing tracks are unchanged. Please try again",
         "prop_user_variable": "User Variable",
         "method_search": "Search",
         "method_import_music_item": "Import Song",

@@ -79,7 +79,14 @@ class CdpSession {
     send(method, params = {}) {
         const id = ++this.nextId;
         return new Promise((resolve, reject) => {
-            this.pending.set(id, { resolve, reject });
+            const timer = setTimeout(() => {
+                this.pending.delete(id);
+                reject(new Error(`CDP request timed out: ${method}`));
+            }, 15_000);
+            this.pending.set(id, {
+                resolve: (value) => { clearTimeout(timer); resolve(value); },
+                reject: (error) => { clearTimeout(timer); reject(error); },
+            });
             this.socket.send(JSON.stringify({ id, method, params }));
         });
     }
@@ -213,7 +220,8 @@ async function run() {
             `document.readyState === "complete" && document.getElementById("root")?.innerHTML.length > 0`,
         ));
         await session.evaluate(seedLegacyDatabaseExpression);
-        await session.evaluate("location.reload(); true");
+        // Reload through CDP: an evaluate response can be lost when its context is destroyed.
+        await session.send("Page.reload");
         await retry(() => session.evaluate(
             `document.readyState === "complete" && document.getElementById("root")?.innerHTML.length > 0`,
         ));
@@ -222,6 +230,7 @@ async function run() {
             const result = await session.evaluate(inspectMigrationExpression);
             return result?.relation ? result : null;
         });
+        assert.equal(migration.version, 40);
         assert.ok(migration.stores.includes("sheetMusic"));
         assert.equal(migration.sheet.musicList, undefined);
         assert.equal(migration.music.$$ref, 1);
@@ -232,6 +241,8 @@ async function run() {
             position: 0,
             addedAt: 123,
             batchIndex: 7,
+            manual: true,
+            sourceKeys: [],
         });
 
         const statisticsStores = await session.evaluate(`(() => new Promise((resolve, reject) => {

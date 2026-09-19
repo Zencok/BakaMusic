@@ -87,6 +87,8 @@ export default function Body(props: IProps) {
                         onClick={() => {
                             showModal("AddMusicToSheet", {
                                 musicItems: musicList,
+                                importSources: musicSheet.importSources,
+                                importOwnership: musicSheet.importOwnership,
                             });
                         }}
                     >

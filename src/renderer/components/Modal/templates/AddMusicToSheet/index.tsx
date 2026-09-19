@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import MusicSheet, { defaultSheet } from "@/renderer/core/music-sheet";
 import Base from "../Base";
 import "./index.scss";
@@ -9,6 +10,8 @@ import { Trans, useTranslation } from "react-i18next";
 
 interface IAddMusicToSheetProps {
     musicItems: IMusic.IMusicItem | IMusic.IMusicItem[];
+    importSources?: IMusic.IImportedSheetSource[];
+    importOwnership?: IMusic.ISheetTrackOwnership[];
 }
 
 export default function AddMusicToSheet(props: IAddMusicToSheetProps) {
@@ -42,6 +45,8 @@ export default function AddMusicToSheet(props: IAddMusicToSheetProps) {
                         onClick={() => {
                             showModal("AddNewSheet", {
                                 initMusicItems: musicItems,
+                                importSources: props.importSources,
+                                importOwnership: props.importOwnership,
                             });
                         }}
                     >
@@ -53,9 +58,13 @@ export default function AddMusicToSheet(props: IAddMusicToSheetProps) {
                             className="sheet-item"
                             key={sheet.id}
                             role="button"
-                            onClick={() => {
-                                MusicSheet.frontend.addMusicToSheet(musicItems, sheet.id);
-                                hideModal();
+                            onClick={async () => {
+                                try {
+                                    await MusicSheet.frontend.addMusicToSheet(musicItems, sheet.id, props.importSources, props.importOwnership);
+                                    hideModal();
+                                } catch {
+                                    toast.error(t("plugin_management_page.import_failed"));
+                                }
                             }}
                         >
                             <img

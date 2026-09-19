@@ -97,6 +97,13 @@
         "master_quality": "Master"
     },
     "plugin": {
+        "sync_sheet": "同步来源（保留手动添加）",
+        "sync_sheet_loading": "正在全量同步歌单…",
+        "sync_sheet_success": "同步完成：新增 {{added}} 首，移除 {{removed}} 首，共 {{total}} 首",
+        "sync_sheet_busy": "此歌单正在同步，请稍候",
+        "sync_sheet_missing_source": "此歌单缺少导入来源，请重新导入",
+        "sync_sheet_missing_plugin": "导入插件未启用或已移除，请恢复原插件后重试",
+        "sync_sheet_failed": "同步失败，现有歌曲保持不变，请稍后重试",
         "prop_user_variable": "用户变量",
         "method_search": "搜索",
         "method_import_music_item": "导入单曲",

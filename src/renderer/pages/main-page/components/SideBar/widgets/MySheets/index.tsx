@@ -1,3 +1,4 @@
+import { syncImportedSheetMenu } from "@/renderer/utils/sync-imported-sheet-menu";
 import "./index.scss";
 import ListItem from "../ListItem";
 import CollapsiblePanel from "../CollapsiblePanel";
@@ -76,13 +77,14 @@ export default function MySheets() {
                                         }
                                     }}
                                     onContextMenu={(e) => {
-                                        if (item.id === defaultSheet.id) {
+                                        if (item.id === defaultSheet.id && !item.importSources?.length) {
                                             return;
                                         }
                                         showContextMenu({
                                             x: e.clientX,
                                             y: e.clientY,
                                             menuItems: [
+                                                syncImportedSheetMenu(item, t),
                                                 {
                                                     title: t("side_bar.rename_sheet"),
                                                     icon: "pencil-square",

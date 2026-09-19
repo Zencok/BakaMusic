@@ -1,3 +1,4 @@
+import { syncImportedSheetMenu } from "@/renderer/utils/sync-imported-sheet-menu";
 import "./index.scss";
 import ListItem from "../ListItem";
 import CollapsiblePanel from "../CollapsiblePanel";
@@ -73,6 +74,7 @@ export default function StarredSheets() {
                                             x: e.clientX,
                                             y: e.clientY,
                                             menuItems: [
+                                                syncImportedSheetMenu(item, t, true),
                                                 {
                                                     title: t("side_bar.unstar_sheet"),
                                                     icon: "trash",
