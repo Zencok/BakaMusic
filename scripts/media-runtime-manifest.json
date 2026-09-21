@@ -1,10 +1,10 @@
 {
   "mpv": {
-    "version": "mpv-e76a35ec95.librempeg-9da2d39c36.libplacebo-e2972fdd09",
-    "build": "runtime-mpv-e76a35ec95-librempeg-9da2d39c36-86012bfefc",
+    "version": "mpv-e76a35ec95.librempeg-154efceee2.libplacebo-e2972fdd09",
+    "build": "runtime-mpv-e76a35ec95-librempeg-154efceee2-0b50169149",
     "releaseManifest": {
-      "url": "https://github.com/Zencok/mpv-libre-runtime/releases/download/runtime-mpv-e76a35ec95-librempeg-9da2d39c36-86012bfefc/runtime-manifest-v1.json",
-      "sha256": "3a3145a569e840a49bc948511ab99ce1dafb328d558460f6e885011f9da70b26"
+      "url": "https://github.com/Zencok/mpv-libre-runtime/releases/download/runtime-mpv-e76a35ec95-librempeg-154efceee2-0b50169149/runtime-manifest-v1.json",
+      "sha256": "b2bba9ada2c9cafad2b404953aa87ee9cea3817a42516741be8830ccc0e747d0"
     },
     "engine": "libmpv",
     "mediaBackend": "librempeg",
@@ -14,38 +14,38 @@
     "sourceCommits": {
       "builder": "b26fd7edea2a430e31ff019f6f9bc14dc3a63955",
       "mpv": "e76a35ec95b27f5cf2d27b043b5e2e0d90e468ae",
-      "librempeg": "9da2d39c36f18bf17d393c0abca29763d01a5ea8",
+      "librempeg": "154efceee2a3d6a13054fe3ce503313fc9fa8162",
       "libplacebo": "e2972fdd09adacd383656738d7d280f0cd84a761"
     },
     "platforms": {
       "win32-x64": {
-        "url": "https://github.com/Zencok/mpv-libre-runtime/releases/download/runtime-mpv-e76a35ec95-librempeg-9da2d39c36-86012bfefc/mpv-libre-runtime-win32-x64.7z",
-        "sha256": "7bc425049d552e691f8fd38cc172366cdbdd123e80cf1c3516839d49137127f7",
-        "size": 80345670,
+        "url": "https://github.com/Zencok/mpv-libre-runtime/releases/download/runtime-mpv-e76a35ec95-librempeg-154efceee2-0b50169149/mpv-libre-runtime-win32-x64.7z",
+        "sha256": "515e55d4cca32fac5f9558b958b631e63250446f731c79817ce7ce6e270aa7cc",
+        "size": 80347504,
         "status": "verified"
       },
       "darwin-x64": {
-        "url": "https://github.com/Zencok/mpv-libre-runtime/releases/download/runtime-mpv-e76a35ec95-librempeg-9da2d39c36-86012bfefc/mpv-libre-runtime-darwin-x64.tar.xz",
-        "sha256": "e6c1ac50279f847fb9f7f9d2cfab8f31e2a7dcf30083a2b105a233c3d3e54855",
-        "size": 33533188,
+        "url": "https://github.com/Zencok/mpv-libre-runtime/releases/download/runtime-mpv-e76a35ec95-librempeg-154efceee2-0b50169149/mpv-libre-runtime-darwin-x64.tar.xz",
+        "sha256": "26ac65fcc8fca78bbac5c21f372ef49d0a4d28a1299bfa0d22d091b425cdba90",
+        "size": 33550028,
         "status": "verified"
       },
       "darwin-arm64": {
-        "url": "https://github.com/Zencok/mpv-libre-runtime/releases/download/runtime-mpv-e76a35ec95-librempeg-9da2d39c36-86012bfefc/mpv-libre-runtime-darwin-arm64.tar.xz",
-        "sha256": "b53ea1557d7b6b88ef6faf911bc72e34a19dbd3dc34e12ce2fd33fcc1632f055",
-        "size": 28393940,
+        "url": "https://github.com/Zencok/mpv-libre-runtime/releases/download/runtime-mpv-e76a35ec95-librempeg-154efceee2-0b50169149/mpv-libre-runtime-darwin-arm64.tar.xz",
+        "sha256": "22e88bdbcf1587b8c35751fd8f7f0ef7f36dfaf65f5a10727dc06b5b13a61b85",
+        "size": 28412408,
         "status": "verified"
       },
       "linux-x64": {
-        "url": "https://github.com/Zencok/mpv-libre-runtime/releases/download/runtime-mpv-e76a35ec95-librempeg-9da2d39c36-86012bfefc/mpv-libre-runtime-linux-x64.tar.xz",
-        "sha256": "93b4b90114dbee095304f8e3fdffe04f670083565703bdd703ef002e73ed1062",
-        "size": 41164744,
+        "url": "https://github.com/Zencok/mpv-libre-runtime/releases/download/runtime-mpv-e76a35ec95-librempeg-154efceee2-0b50169149/mpv-libre-runtime-linux-x64.tar.xz",
+        "sha256": "2c845b321ba6872f64eb02d38ce56060aa063c0eebc297dec2ea573f84408860",
+        "size": 41206344,
         "status": "verified"
       },
       "linux-arm64": {
-        "url": "https://github.com/Zencok/mpv-libre-runtime/releases/download/runtime-mpv-e76a35ec95-librempeg-9da2d39c36-86012bfefc/mpv-libre-runtime-linux-arm64.tar.xz",
-        "sha256": "24ec17dfc82be97f07265b0e68f408232b9211f56c226e7777a5fbb9faf4a8c7",
-        "size": 37147948,
+        "url": "https://github.com/Zencok/mpv-libre-runtime/releases/download/runtime-mpv-e76a35ec95-librempeg-154efceee2-0b50169149/mpv-libre-runtime-linux-arm64.tar.xz",
+        "sha256": "e4aa0aa840e3286f19ddadfb6c4e4eb83323549ea15ac3ba69f1e14898293886",
+        "size": 37170560,
         "status": "verified"
       }
     }
