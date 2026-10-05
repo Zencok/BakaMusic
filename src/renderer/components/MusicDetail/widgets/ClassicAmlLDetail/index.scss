@@ -72,15 +72,20 @@
     &::before {
         content: "";
         position: absolute;
-        inset: -24%;
+        inset: -18%;
         z-index: 0;
         background:
-            linear-gradient(108deg, transparent 22%, rgba(47, 132, 143, 0.58) 43%, transparent 64%),
-            linear-gradient(252deg, transparent 28%, rgba(158, 70, 105, 0.46) 48%, transparent 69%);
-        filter: blur(64px) saturate(125%);
+            radial-gradient(46% 40% at 22% 28%, rgba(47, 132, 143, 0.55), transparent 72%),
+            radial-gradient(42% 38% at 78% 74%, rgba(158, 70, 105, 0.42), transparent 74%);
+        filter: blur(72px) saturate(120%);
         opacity: 0.82;
-        transform: translate3d(-3%, -2%, 0) rotate(-7deg) scale(1.16);
-        animation: classic-amll-fallback-flow 18s ease-in-out infinite alternate;
+        transform: translate3d(-2%, -1%, 0) scale(1.08);
+        transition: opacity 650ms ease;
+        animation: classic-amll-fallback-flow 28s ease-in-out infinite alternate;
+    }
+
+    &[data-renderer-ready="true"]::before {
+        opacity: 0;
     }
 
     &::after {
@@ -111,11 +116,11 @@
 
 @keyframes classic-amll-fallback-flow {
     from {
-        transform: translate3d(-3%, -2%, 0) rotate(-7deg) scale(1.16);
+        transform: translate3d(-2%, -1%, 0) scale(1.08);
     }
 
     to {
-        transform: translate3d(4%, 3%, 0) rotate(7deg) scale(1.22);
+        transform: translate3d(3%, 2%, 0) scale(1.14);
     }
 }
 

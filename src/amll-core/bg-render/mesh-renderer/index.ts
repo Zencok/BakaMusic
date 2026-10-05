@@ -29,15 +29,53 @@ void main() {
 `;
 
 const quadFragShader = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 varying vec2 v_uv;
 uniform sampler2D u_texture;
 uniform float u_alpha;
+
+float gradientNoise(vec2 uv) {
+    return fract(52.9829189 * fract(dot(uv, vec2(0.06711056, 0.00583715))));
+}
+
 void main() {
     vec4 color = texture2D(u_texture, v_uv);
-    gl_FragColor = vec4(color.rgb, color.a * u_alpha);
+    // Break 8-bit contour lines after the soft passes, without animating grain.
+    color.rgb += (gradientNoise(gl_FragCoord.xy) - 0.5) / 255.0;
+    gl_FragColor = vec4(max(color.rgb, 0.0), color.a * u_alpha);
 }
 `;
+
+const blurFragShader = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 v_uv;
+uniform sampler2D u_texture;
+uniform vec2 u_texel;
+uniform float u_offset;
+
+void main() {
+    vec2 stepUv = u_texel * u_offset;
+    vec3 sum = texture2D(u_texture, v_uv).rgb * 4.0;
+    sum += texture2D(u_texture, v_uv + vec2(stepUv.x, stepUv.y)).rgb;
+    sum += texture2D(u_texture, v_uv + vec2(-stepUv.x, stepUv.y)).rgb;
+    sum += texture2D(u_texture, v_uv + vec2(stepUv.x, -stepUv.y)).rgb;
+    sum += texture2D(u_texture, v_uv + vec2(-stepUv.x, -stepUv.y)).rgb;
+    sum += texture2D(u_texture, v_uv + vec2(stepUv.x * 2.0, 0.0)).rgb * 2.0;
+    sum += texture2D(u_texture, v_uv + vec2(-stepUv.x * 2.0, 0.0)).rgb * 2.0;
+    sum += texture2D(u_texture, v_uv + vec2(0.0, stepUv.y * 2.0)).rgb * 2.0;
+    sum += texture2D(u_texture, v_uv + vec2(0.0, -stepUv.y * 2.0)).rgb * 2.0;
+    gl_FragColor = vec4(sum / 16.0, 1.0);
+}
+`;
+const BLUR_OFFSETS = [1.0, 2.2, 4.6];
 
 function easeInOutSine(x: number): number {
 	return -(Math.cos(Math.PI * x) - 1) / 2;
@@ -526,11 +564,19 @@ class BHPMesh extends Mesh {
 	 * @param subDivisions 细分级别
 	 */
 	resetSubdivition(subDivisions: number) {
-		this._subDivisions = subDivisions;
-		super.resize(
-			(this._controlPoints.width - 1) * subDivisions,
-			(this._controlPoints.height - 1) * subDivisions,
-		);
+		// Adjacent patches share their boundary vertices. Separate copies
+		// leave a hairline crack wherever the two Hermite evaluations differ.
+		// vx follows control-point Y and vy follows control-point X.
+		let sub = Math.max(2, Math.floor(subDivisions));
+		const spanFor = (value: number) =>
+			(this._controlPoints.height - 1) * (value - 1) + 1;
+		const rowsFor = (value: number) =>
+			(this._controlPoints.width - 1) * (value - 1) + 1;
+		while (spanFor(sub) * rowsFor(sub) > 65535 && sub > 2) {
+			sub -= 1;
+		}
+		this._subDivisions = sub;
+		super.resize(spanFor(sub), rowsFor(sub));
 	}
 	/**
 	 * 重设控制点矩阵尺寸，将会重置所有控制点的颜色和坐标数据
@@ -643,8 +689,8 @@ class BHPMesh extends Mesh {
 
 				const sX = x / (controlPointsWidth - 1);
 				const sY = y / (controlPointsHeight - 1);
-				const baseVx = y * subDivisions;
-				const baseVy = x * subDivisions;
+				const baseVx = y * subDivM1;
+				const baseVy = x * subDivM1;
 
 				for (let u = 0; u < subDivisions; u++) {
 					const vxOffset = baseVx + u;
@@ -750,8 +796,8 @@ class GLTexture implements Disposable {
 		);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 	}
 
 	bind() {
@@ -777,6 +823,11 @@ interface MeshState {
 	alpha: number;
 }
 
+interface ColorTarget {
+	fbo: WebGLFramebuffer;
+	texture: WebGLTexture;
+}
+
 export class MeshGradientRenderer extends BaseRenderer {
 	private gl: RenderingContext;
 	private lastFrameTime = 0;
@@ -791,13 +842,15 @@ export class MeshGradientRenderer extends BaseRenderer {
 	private staticMode = false;
 	private mainProgram: GLProgram;
 	private quadProgram: GLProgram;
+	private blurProgram: GLProgram;
 	private quadBuffer: WebGLBuffer;
-	private fbo: WebGLFramebuffer | null = null;
-	private fboTexture: WebGLTexture | null = null;
+	private colorTargets: ColorTarget[] = [];
+	private colorType = 0x1401;
+	private useHalfFloat = false;
 	private manualControl = false;
 	private reduceImageSizeCanvas = createOffscreenCanvas(
-		32,
-		32,
+		64,
+		64,
 	) as HTMLCanvasElement;
 	private targetSize = Vec2.fromValues(0, 0);
 	private currentSize = Vec2.fromValues(0, 0);
@@ -888,40 +941,128 @@ export class MeshGradientRenderer extends BaseRenderer {
 		}
 	}
 
-	private updateFBO(width: number, height: number) {
+	private detectFloatTarget() {
 		const gl = this.gl;
-		if (this.fbo) gl.deleteFramebuffer(this.fbo);
-		if (this.fboTexture) gl.deleteTexture(this.fboTexture);
+		const half = gl.getExtension("OES_texture_half_float");
+		const linear = gl.getExtension("OES_texture_half_float_linear");
+		const color =
+			gl.getExtension("EXT_color_buffer_half_float") ??
+			gl.getExtension("EXT_color_buffer_float");
+		if (half && linear && color) {
+			this.useHalfFloat = true;
+			this.colorType = half.HALF_FLOAT_OES;
+			return;
+		}
+		this.useHalfFloat = false;
+		this.colorType = gl.UNSIGNED_BYTE;
+	}
 
-		this.fboTexture = gl.createTexture();
-		gl.bindTexture(gl.TEXTURE_2D, this.fboTexture);
-		gl.texImage2D(
-			gl.TEXTURE_2D,
-			0,
-			gl.RGBA,
-			width,
-			height,
-			0,
-			gl.RGBA,
-			gl.UNSIGNED_BYTE,
-			null,
-		);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+	private destroyColorTargets() {
+		const gl = this.gl;
+		for (const target of this.colorTargets) {
+			gl.deleteFramebuffer(target.fbo);
+			gl.deleteTexture(target.texture);
+		}
+		this.colorTargets = [];
+	}
 
-		this.fbo = gl.createFramebuffer();
-		gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-		gl.framebufferTexture2D(
-			gl.FRAMEBUFFER,
-			gl.COLOR_ATTACHMENT0,
-			gl.TEXTURE_2D,
-			this.fboTexture,
-			0,
-		);
+	private allocateColorTargets(width: number, height: number): ColorTarget[] | null {
+		const gl = this.gl;
+		const targets: ColorTarget[] = [];
+		for (let i = 0; i < 2; i++) {
+			const texture = gl.createTexture();
+			const fbo = gl.createFramebuffer();
+			if (!texture || !fbo) {
+				if (texture) gl.deleteTexture(texture);
+				if (fbo) gl.deleteFramebuffer(fbo);
+				for (const target of targets) {
+					gl.deleteFramebuffer(target.fbo);
+					gl.deleteTexture(target.texture);
+				}
+				return null;
+			}
+			gl.bindTexture(gl.TEXTURE_2D, texture);
+			gl.texImage2D(
+				gl.TEXTURE_2D,
+				0,
+				gl.RGBA,
+				width,
+				height,
+				0,
+				gl.RGBA,
+				this.colorType,
+				null,
+			);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+			gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+			gl.framebufferTexture2D(
+				gl.FRAMEBUFFER,
+				gl.COLOR_ATTACHMENT0,
+				gl.TEXTURE_2D,
+				texture,
+				0,
+			);
+			const complete =
+				gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+			if (!complete) {
+				gl.deleteFramebuffer(fbo);
+				gl.deleteTexture(texture);
+				for (const target of targets) {
+					gl.deleteFramebuffer(target.fbo);
+					gl.deleteTexture(target.texture);
+				}
+				return null;
+			}
+			targets.push({ fbo, texture });
+		}
+		return targets;
+	}
 
-		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	private updateFBO(width: number, height: number) {
+		this.destroyColorTargets();
+		let targets = this.allocateColorTargets(width, height);
+		if (!targets && this.useHalfFloat) {
+			this.useHalfFloat = false;
+			this.colorType = this.gl.UNSIGNED_BYTE;
+			targets = this.allocateColorTargets(width, height);
+		}
+		this.colorTargets = targets ?? [];
+	}
+
+	private drawFullscreen(program: GLProgram) {
+		const gl = this.gl;
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
+		const position = program.attrs.a_pos;
+		gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+		gl.enableVertexAttribArray(position);
+		gl.drawArrays(gl.TRIANGLES, 0, 6);
+		gl.disableVertexAttribArray(position);
+	}
+
+	private soften(source: WebGLTexture, width: number, height: number): WebGLTexture {
+		const gl = this.gl;
+		if (this.colorTargets.length < 2 || width <= 0 || height <= 0) {
+			return source;
+		}
+		let current = source;
+		this.blurProgram.use();
+		this.blurProgram.setUniform1i("u_texture", 0);
+		this.blurProgram.setUniform2f("u_texel", 1 / width, 1 / height);
+		gl.activeTexture(gl.TEXTURE0);
+		gl.disable(gl.BLEND);
+		for (let pass = 0; pass < BLUR_OFFSETS.length; pass++) {
+			const destination = this.colorTargets[pass % 2 === 0 ? 1 : 0];
+			gl.bindFramebuffer(gl.FRAMEBUFFER, destination.fbo);
+			gl.bindTexture(gl.TEXTURE_2D, current);
+			this.blurProgram.setUniform1f("u_offset", BLUR_OFFSETS[pass]);
+			this.drawFullscreen(this.blurProgram);
+			current = destination.texture;
+		}
+		return current;
 	}
 
 	private onRedraw(tickTime: number, delta: number) {
@@ -976,7 +1117,7 @@ export class MeshGradientRenderer extends BaseRenderer {
 		const gl = this.gl;
 		this.checkIfResize();
 
-		if (!this.fbo) return canBeStatic;
+		if (this.colorTargets.length < 2) return canBeStatic;
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 		gl.clearColor(0, 0, 0, 0);
@@ -984,34 +1125,35 @@ export class MeshGradientRenderer extends BaseRenderer {
 
 		const lerpFactor = Math.min(1.0, delta / 100.0);
 		this.smoothedVolume += (this.volume - this.smoothedVolume) * lerpFactor;
+		const viewWidth = this.currentSize.x;
+		const viewHeight = this.currentSize.y;
+		gl.viewport(0, 0, viewWidth, viewHeight);
 
 		// 渲染所有网格状态
 		for (const state of this.meshStates) {
-			// 1. 渲染到 FBO
-			gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+			const meshTarget = this.colorTargets[0];
+			gl.bindFramebuffer(gl.FRAMEBUFFER, meshTarget.fbo);
 			gl.disable(gl.BLEND);
-			gl.clearColor(0, 0, 0, 0);
+			gl.clearColor(0, 0, 0, 1);
 			gl.clear(gl.COLOR_BUFFER_BIT);
 
 			this.mainProgram.use();
 			gl.activeTexture(gl.TEXTURE0);
-			const uTime = tickTime / 10000;
 			this.mainProgram.setUniform1f(
 				"u_aspect",
-				this.manualControl ? 1 : this.canvas.width / this.canvas.height,
+				this.manualControl ? 1 : viewWidth / Math.max(1, viewHeight),
 			);
 			this.mainProgram.setUniform1i("u_texture", 0);
-			this.mainProgram.setUniform1f("u_volume", this.volume);
-			this.mainProgram.setUniform1f("u_alpha", 1.0);
-			const angle = (uTime + this.volume) * 2.0;
-			this.mainProgram.setUniform1f("u_sinAngle", Math.sin(angle));
-			this.mainProgram.setUniform1f("u_cosAngle", Math.cos(angle));
+			this.mainProgram.setUniform1f("u_volume", this.smoothedVolume);
+			this.mainProgram.setUniform1f("u_time", tickTime / 1000);
+			this.mainProgram.setUniform2f("u_resolution", viewWidth, viewHeight);
 
 			state.texture.bind();
 			state.mesh.bind();
 			state.mesh.draw();
 
-			// 2. 渲染 FBO 到屏幕
+			const softened = this.soften(meshTarget.texture, viewWidth, viewHeight);
+
 			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 			gl.enable(gl.BLEND);
 			gl.blendFuncSeparate(
@@ -1028,15 +1170,8 @@ export class MeshGradientRenderer extends BaseRenderer {
 			);
 
 			gl.activeTexture(gl.TEXTURE0);
-			gl.bindTexture(gl.TEXTURE_2D, this.fboTexture);
-
-			gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
-			const a_pos = this.quadProgram.attrs.a_pos;
-			gl.vertexAttribPointer(a_pos, 2, gl.FLOAT, false, 0, 0);
-			gl.enableVertexAttribArray(a_pos);
-
-			gl.drawArrays(gl.TRIANGLES, 0, 6);
-			gl.disableVertexAttribArray(a_pos);
+			gl.bindTexture(gl.TEXTURE_2D, softened);
+			this.drawFullscreen(this.quadProgram);
 		}
 
 		gl.flush();
@@ -1055,10 +1190,15 @@ export class MeshGradientRenderer extends BaseRenderer {
 	constructor(canvas: HTMLCanvasElement) {
 		super(canvas);
 
-		const gl = canvas.getContext("webgl", { antialias: true });
+		const gl = canvas.getContext("webgl", {
+			antialias: false,
+			alpha: true,
+			premultipliedAlpha: false,
+		});
 		if (!gl) throw new Error("WebGL not supported");
 
 		this.gl = gl;
+		this.detectFloatTarget();
 		gl.enable(gl.BLEND);
 		gl.blendFuncSeparate(
 			gl.SRC_ALPHA,
@@ -1082,6 +1222,12 @@ export class MeshGradientRenderer extends BaseRenderer {
 			quadFragShader,
 			"quad-program",
 		);
+		this.blurProgram = new GLProgram(
+			gl,
+			quadVertShader,
+			blurFragShader,
+			"blur-program",
+		);
 		const quadBuffer = gl.createBuffer();
 		if (!quadBuffer) throw new Error("Failed to create quad buffer");
 		this.quadBuffer = quadBuffer;
@@ -1096,6 +1242,13 @@ export class MeshGradientRenderer extends BaseRenderer {
 	}
 
 	protected override onResize(width: number, height: number): void {
+		const maxEdge = 1440;
+		const edge = Math.max(width, height);
+		if (edge > maxEdge) {
+			const scale = maxEdge / edge;
+			width = Math.max(1, Math.round(width * scale));
+			height = Math.max(1, Math.round(height * scale));
+		}
 		this.targetSize.x = Math.ceil(width);
 		this.targetSize.y = Math.ceil(height);
 		this.requestTick();
@@ -1221,29 +1374,28 @@ export class MeshGradientRenderer extends BaseRenderer {
 			let g = pixels[i + 1];
 			let b = pixels[i + 2];
 
-			// contrast 0.4
-			r = (r - 128) * 0.4 + 128;
-			g = (g - 128) * 0.4 + 128;
-			b = (b - 128) * 0.4 + 128;
+			// Flatten cover detail, then keep broad color masses.
+			r = (r - 128) * 0.52 + 128;
+			g = (g - 128) * 0.52 + 128;
+			b = (b - 128) * 0.52 + 128;
 
-			// saturate 3.0
-			const gray = r * 0.3 + g * 0.59 + b * 0.11;
-			r = gray * -2.0 + r * 3.0;
-			g = gray * -2.0 + g * 3.0;
-			b = gray * -2.0 + b * 3.0;
+			const gray = r * 0.299 + g * 0.587 + b * 0.114;
+			const saturation = 1.7;
+			r = gray + (r - gray) * saturation;
+			g = gray + (g - gray) * saturation;
+			b = gray + (b - gray) * saturation;
 
-			// contrast 1.7
-			r = (r - 128) * 1.7 + 128;
-			g = (g - 128) * 1.7 + 128;
-			b = (b - 128) * 1.7 + 128;
+			r = (r - 128) * 1.12 + 128;
+			g = (g - 128) * 1.12 + 128;
+			b = (b - 128) * 1.12 + 128;
 
-			// brightness 0.75
-			pixels[i] = r * 0.75;
-			pixels[i + 1] = g * 0.75;
-			pixels[i + 2] = b * 0.75;
+			pixels[i] = Math.min(255, Math.max(0, r * 0.8 + 12));
+			pixels[i + 1] = Math.min(255, Math.max(0, g * 0.8 + 12));
+			pixels[i + 2] = Math.min(255, Math.max(0, b * 0.8 + 12));
+			pixels[i + 3] = 255;
 		}
 
-		blurImage(imageData, 2, 4);
+		blurImage(imageData, 6, 2);
 
 		if (this.manualControl && this.meshStates.length > 0) {
 			this.meshStates[0].texture.dispose();
@@ -1307,9 +1459,9 @@ export class MeshGradientRenderer extends BaseRenderer {
 		this._disposed = true;
 		this.mainProgram.dispose();
 		this.quadProgram.dispose();
+		this.blurProgram.dispose();
 		this.gl.deleteBuffer(this.quadBuffer);
-		if (this.fbo) this.gl.deleteFramebuffer(this.fbo);
-		if (this.fboTexture) this.gl.deleteTexture(this.fboTexture);
+		this.destroyColorTargets();
 		for (const state of this.meshStates) {
 			state.mesh.dispose();
 			state.texture.dispose();

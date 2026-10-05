@@ -1,49 +1,49 @@
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 
 varying vec3 v_color;
 varying vec2 v_uv;
+
 uniform sampler2D u_texture;
+uniform float u_time;
 uniform float u_volume;
-uniform float u_alpha;
-uniform float u_sinAngle;
-uniform float u_cosAngle;
+uniform vec2 u_resolution;
 
-// 预计算常量
-const float INV_255 = 1.0 / 255.0;
-const float HALF_INV_255 = 0.5 / 255.0;
-const float GRADIENT_NOISE_A = 52.9829189;
-const vec2 GRADIENT_NOISE_B = vec2(0.06711056, 0.00583715);
-
-float gradientNoise(in vec2 uv) {
-    return fract(GRADIENT_NOISE_A * fract(dot(uv, GRADIENT_NOISE_B)));
+vec2 flowUv(vec2 uv, float scale, vec2 slide, vec2 warp) {
+    vec2 centered = (uv - 0.5) * scale + 0.5 + slide + warp;
+    return clamp(centered, 0.018, 0.982);
 }
 
 void main() {
-    float volumeEffect = u_volume * 2.0;
+    vec2 p = v_uv;
+    float t = u_time;
+    float swell = 1.0 - clamp(u_volume, 0.0, 1.0) * 0.05;
 
-    float dither = INV_255 * gradientNoise(gl_FragCoord.xy) - HALF_INV_255;
+    vec2 warp = vec2(
+        sin(p.y * 2.0 + t * 0.18) + sin(p.x * 1.35 - t * 0.13),
+        cos(p.x * 1.8 - t * 0.16) + cos(p.y * 1.2 + t * 0.15)
+    ) * 0.014;
+    vec2 slide = vec2(sin(t * 0.075), cos(t * 0.06)) * 0.018;
 
-    vec2 centeredUV = v_uv - vec2(0.2);
+    vec3 primary = texture2D(
+        u_texture,
+        flowUv(p, 0.78 * swell, slide, warp)
+    ).rgb;
+    vec3 secondary = texture2D(
+        u_texture,
+        flowUv(p, 0.84 * swell, slide.yx * 0.55, -warp.yx * 0.65)
+    ).rgb;
 
-    vec2 rotatedUV = vec2(
-        u_cosAngle * centeredUV.x - u_sinAngle * centeredUV.y,
-        u_sinAngle * centeredUV.x + u_cosAngle * centeredUV.y
-    );
+    float blend = 0.5 + 0.5 * sin(t * 0.11 + p.x * 0.42 + p.y * 0.31);
+    blend = smoothstep(0.08, 0.92, blend);
+    vec3 color = mix(primary, secondary, blend) * v_color;
 
-    vec2 finalUV = rotatedUV * max(0.001, 1.0 - volumeEffect) + vec2(0.5);
-    
-    vec4 result = texture2D(u_texture, finalUV);
-    
-    float alphaVolumeFactor = u_alpha * max(0.5, 1.0 - u_volume * 0.5);
-    result.rgb *= v_color * alphaVolumeFactor;
-    result.a *= alphaVolumeFactor;
-    
-    result.rgb += vec3(dither);
-    
-    float dist = distance(v_uv, vec2(0.5));
-    float vignette = smoothstep(0.8, 0.3, dist);
-    float mask = 0.6 + vignette * 0.4;
-    result.rgb *= mask;
-    
-    gl_FragColor = result;
+    vec2 screenUv = gl_FragCoord.xy / max(u_resolution, vec2(1.0));
+    float edge = smoothstep(0.15, 0.92, length((screenUv - 0.5) * vec2(1.12, 1.0)));
+    color *= mix(1.0, 0.9, edge);
+
+    gl_FragColor = vec4(max(color, 0.0), 1.0);
 }

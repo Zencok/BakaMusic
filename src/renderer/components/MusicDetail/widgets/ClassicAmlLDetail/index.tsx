@@ -154,8 +154,8 @@ function ClassicAmlLBackground({ active, artwork }: Pick<
             canvas.style.zIndex = "1";
             canvas.style.contain = "strict";
             const renderer = new MeshGradientRenderer(canvas);
-            renderer.setRenderScale(0.5);
-            renderer.setFPS(30);
+            renderer.setRenderScale(1);
+            renderer.setFPS(60);
             renderer.setFlowSpeed(1);
             renderer.setHasLyric(true);
             host.appendChild(canvas);
