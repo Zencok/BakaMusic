@@ -23,10 +23,10 @@ void main() {
     float swell = 1.0 - clamp(u_volume, 0.0, 1.0) * 0.05;
 
     vec2 warp = vec2(
-        sin(p.y * 2.0 + t * 0.18) + sin(p.x * 1.35 - t * 0.13),
-        cos(p.x * 1.8 - t * 0.16) + cos(p.y * 1.2 + t * 0.15)
-    ) * 0.014;
-    vec2 slide = vec2(sin(t * 0.075), cos(t * 0.06)) * 0.018;
+        sin(p.y * 2.0 + t * 0.30) + sin(p.x * 1.35 - t * 0.22),
+        cos(p.x * 1.8 - t * 0.26) + cos(p.y * 1.2 + t * 0.24)
+    ) * 0.026;
+    vec2 slide = vec2(sin(t * 0.20), cos(t * 0.17)) * 0.034;
 
     vec3 primary = texture2D(
         u_texture,
@@ -37,7 +37,7 @@ void main() {
         flowUv(p, 0.84 * swell, slide.yx * 0.55, -warp.yx * 0.65)
     ).rgb;
 
-    float blend = 0.5 + 0.5 * sin(t * 0.11 + p.x * 0.42 + p.y * 0.31);
+    float blend = 0.5 + 0.5 * sin(t * 0.20 + p.x * 0.42 + p.y * 0.31);
     blend = smoothstep(0.08, 0.92, blend);
     vec3 color = mix(primary, secondary, blend) * v_color;
 
