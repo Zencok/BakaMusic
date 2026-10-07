@@ -4,6 +4,7 @@ const path = require("node:path");
 
 const destination = path.join(__dirname, "media-runtime-manifest.json");
 const repository = "Zencok/mpv-libre-runtime";
+const pinnedRelease = "runtime-mpv-2a4eb8067c-librempeg-9c00336e26-fb08030026";
 const requiredTargets = [
     "win32-x64",
     "darwin-x64",
@@ -39,19 +40,6 @@ async function fetchJson(url) {
     };
 }
 
-function isRuntimeRelease(value) {
-    return !value.draft
-        && !value.prerelease
-        && typeof value.tag_name === "string"
-        && /^runtime-mpv-[A-Za-z0-9._-]+$/.test(value.tag_name);
-}
-
-// The /releases listing order is not guaranteed to be newest-first, so rank
-// candidates by publish time before scanning for a complete manifest.
-function releaseTimestamp(release) {
-    return Date.parse(release.published_at ?? release.created_at ?? "") || 0;
-}
-
 function validateArtifact(target, artifact, release) {
     assert(artifact && typeof artifact === "object", `Missing ${target} artifact`);
     assert(/^[a-f0-9]{64}$/.test(artifact.sha256), `Invalid ${target} SHA-256`);
@@ -72,26 +60,8 @@ async function resolveManifestUrl() {
     if (explicit) {
         return explicit.slice("--manifest-url=".length);
     }
-    const releases = await fetchJson(
-        `https://api.github.com/repos/${repository}/releases?per_page=100`,
-    );
-    const candidates = releases.value
-        .filter(isRuntimeRelease)
-        .sort((left, right) => releaseTimestamp(right) - releaseTimestamp(left));
-    assert(candidates.length > 0, "No published mpv-libre-runtime release found");
-    for (const release of candidates) {
-        const manifestUrl = `https://github.com/${repository}/releases/download/`
-            + `${release.tag_name}/runtime-manifest-v1.json`;
-        try {
-            const manifest = await fetchJson(manifestUrl);
-            if (manifest.value.complete === true && manifest.value.phase === "complete") {
-                return manifestUrl;
-            }
-        } catch {
-            // A staged release may not have its manifest asset yet.
-        }
-    }
-    throw new Error("No complete mpv-libre-runtime release is available");
+    return `https://github.com/${repository}/releases/download/`
+        + `${pinnedRelease}/runtime-manifest-v1.json`;
 }
 
 async function main() {

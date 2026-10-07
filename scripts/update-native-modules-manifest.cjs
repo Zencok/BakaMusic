@@ -10,6 +10,7 @@
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
+const { isDeepStrictEqual } = require("node:util");
 
 const destination = path.join(__dirname, "native-modules-manifest.json");
 const repository = "Zencok/baka-native";
@@ -128,6 +129,7 @@ function localAnnotations() {
     try {
         const current = JSON.parse(fs.readFileSync(destination, "utf8"));
         return {
+            manifest: current,
             devPrebuilt: current.devPrebuilt,
             notes: current.notes,
         };
@@ -246,9 +248,15 @@ async function main() {
             url: manifestUrl,
             sha256: digest,
         },
-        updatedAt: new Date().toISOString(),
     };
 
+    const previous = { ...annotations.manifest };
+    delete previous.updatedAt;
+    if (isDeepStrictEqual(previous, JSON.parse(JSON.stringify(pinned)))) {
+        console.log(`[native-manifest] already pins release ${pinned.release}`);
+        return;
+    }
+    pinned.updatedAt = new Date().toISOString();
     fs.writeFileSync(destination, `${JSON.stringify(pinned, null, 2)}\n`, "utf8");
     console.log(`[native-manifest] pinned release ${pinned.release}`);
     console.log(`[native-manifest] taglib=${pinned.taglib} electron=${pinned.electron}`);

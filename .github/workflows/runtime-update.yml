@@ -28,7 +28,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - name: Pin latest complete runtime release
+      - name: Verify pinned runtime release
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MANIFEST_URL: ${{ inputs.manifest_url }}
@@ -50,7 +50,7 @@ jobs:
           commit-message: "build(runtime): update mpv LibreMPEG artifacts"
           title: "build(runtime): update mpv LibreMPEG artifacts"
           body: |
-            Pins the latest complete MpvLibre Runtime release.
+            Keeps the fixed MpvLibre Runtime release unless an explicit manifest URL is supplied.
 
             All desktop target artifacts are immutable and SHA-256 verified.
           labels: dependencies

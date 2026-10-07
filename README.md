@@ -65,6 +65,11 @@ BakaMusic 是基于 Electron、React 和 TypeScript 的跨平台桌面音乐播�
 
 完整发布包已包含对应平台的 libmpv 媒体运行时，无需单独安装播放组件。
 
+媒体运行时固定使用 `runtime-mpv-2a4eb8067c-librempeg-9c00336e26-fb08030026`，
+五平台归档及清单均以不可变发布 URL 和 SHA-256 锁定。
+`npm run runtime:update-manifest` 默认仅刷新这个固定发布；升级需显式指定
+`--manifest-url`。Native 清单内容未变化时，不刷新 `updatedAt` 或生成空更新 PR。
+
 ## 插件与主题
 
 BakaMusic 不附带在线音源。插件在独立受控进程中运行，网络、存储和媒体能力由应用边界统一管理。

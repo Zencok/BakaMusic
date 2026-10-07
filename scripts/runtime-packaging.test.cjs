@@ -1,13 +1,70 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 
 const {
     createExternalRuntimePlugin,
 } = require("../config/forge-external-runtime-plugin.ts");
 
+async function verifyManifestUpdaters(projectRoot) {
+    const scriptsRoot = path.join(projectRoot, "scripts");
+    const loadUpdater = (name, mockedFs = fs) => {
+        const context = {
+            require: (specifier) => specifier === "node:fs" ? mockedFs : require(specifier),
+            __dirname: scriptsRoot,
+            process: { argv: ["node", name], env: {} },
+            console,
+            URL,
+        };
+        vm.createContext(context);
+        const source = fs.readFileSync(path.join(scriptsRoot, name), "utf8")
+            .replace(/\nmain\(\)\.catch[\s\S]*$/, "");
+        vm.runInContext(source, context);
+        return context;
+    };
+    const runtime = loadUpdater("update-media-runtime-manifest.cjs");
+    const pinnedUrl = "https://github.com/Zencok/mpv-libre-runtime/releases/download/"
+        + "runtime-mpv-2a4eb8067c-librempeg-9c00336e26-fb08030026/runtime-manifest-v1.json";
+    assert.equal(await runtime.resolveManifestUrl(), pinnedUrl);
+    runtime.process.argv.push("--manifest-url=https://github.com/explicit/runtime-manifest-v1.json");
+    assert.equal(await runtime.resolveManifestUrl(), "https://github.com/explicit/runtime-manifest-v1.json");
+
+    const nativeManifestPath = path.join(scriptsRoot, "native-modules-manifest.json");
+    let stored = fs.readFileSync(nativeManifestPath, "utf8");
+    const original = JSON.parse(stored);
+    const release = structuredClone(original);
+    let writes = 0;
+    const mockedFs = {
+        ...fs,
+        readFileSync: (filename, ...args) => filename === nativeManifestPath
+            ? stored : fs.readFileSync(filename, ...args),
+        writeFileSync: (filename, content) => {
+            assert.equal(filename, nativeManifestPath);
+            stored = content;
+            writes++;
+        },
+    };
+    const native = loadUpdater("update-native-modules-manifest.cjs", mockedFs);
+    native.resolveManifestUrl = async () => original.releaseManifest.url;
+    native.fetchReleaseAssetJson = async () => ({
+        digest: original.releaseManifest.sha256, value: release,
+    });
+    await native.main();
+    assert.equal(writes, 0);
+    assert.equal(JSON.parse(stored).updatedAt, original.updatedAt);
+    release.platforms["win32-x64"].modules.qmc2.sha256 = "a".repeat(64);
+    await native.main();
+    assert.equal(writes, 1);
+    assert.deepEqual(JSON.parse(stored).devPrebuilt, original.devPrebuilt);
+    assert.equal(JSON.parse(stored).notes, original.notes);
+    await native.main();
+    assert.equal(writes, 1);
+}
+
 async function main() {
     const projectRoot = path.join(__dirname, "..");
+    await verifyManifestUpdaters(projectRoot);
     const plugin = createExternalRuntimePlugin([
         "sharp",
         "get-windows",
