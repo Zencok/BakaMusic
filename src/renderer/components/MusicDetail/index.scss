@@ -41,10 +41,20 @@
         pointer-events: none;
     }
 
+    &[data-page-motion="visible"] {
+        animation: none;
+        transform: none;
+    }
+
+    &[data-page-motion="hidden"] {
+        display: none;
+    }
+
     // keepMounted leaves this overlay on top of the app. Electron drag hit-testing
     // ignores pointer-events/inert, so every drag region must be withdrawn while
     // hidden — and exit fill ends at visibility:hidden so the layer cannot steal
     // title-bar drags after close.
+    &[data-page-motion="enter"],
     &.music-detail--exit,
     &[inert] {
         -webkit-app-region: no-drag !important;

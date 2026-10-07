@@ -23,6 +23,7 @@ import { getCurrentPanel } from "@/renderer/components/Panel";
 import normalizeArtworkDisplaySrc from "@/renderer/utils/normalize-artwork-display-src";
 import useAppConfig from "@/hooks/useAppConfig";
 import ClassicAmlLDetail from "./widgets/ClassicAmlLDetail";
+import usePageMotion from "./usePageMotion";
 
 export const isMusicDetailShown = musicDetailShownStore.getValue;
 export const useMusicDetailShown = musicDetailShownStore.useValue;
@@ -46,6 +47,7 @@ function MusicDetail() {
     const playerState = usePlayerState();
     const quality = useQuality();
     const musicDetailShown = musicDetailShownStore.useValue();
+    const pageMotion = usePageMotion(musicDetailShown);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isImmersiveBusy, setIsImmersiveBusy] = useState(false);
     const [immersivePhase, setImmersivePhase] = useState<"idle" | "enter" | "exit">("idle");
@@ -55,6 +57,12 @@ function MusicDetail() {
     const [storedTonearmReach] = useUserPreference("musicDetailVinylTonearmReach");
     const classicAmllPlaybackDetail = useAppConfig("normal.classicAmllPlaybackDetail") === true;
     const [lyricPlayerReady, setLyricPlayerReady] = useState(false);
+
+    useEffect(() => {
+        if (pageMotion.phase === "visible") {
+            setLyricPlayerReady(true);
+        }
+    }, [pageMotion.phase]);
     const { t } = useTranslation();
     const defaultAlbumCover = useDefaultAlbumCover();
     const isFullscreenRef = useRef(false);
@@ -449,6 +457,7 @@ function MusicDetail() {
             keepMounted
             className="music-detail--container"
             inert={!musicDetailShown}
+            data-page-motion={pageMotion.phase}
             data-fullscreen={isFullscreen ? "true" : "false"}
             data-immersive-busy={isImmersiveBusy ? "true" : "false"}
             data-immersive-phase={immersivePhase}
@@ -463,11 +472,8 @@ function MusicDetail() {
             }
             mountClassName="music-detail--enter"
             unmountClassName="music-detail--exit"
-            onMountAnimationEnd={() => {
-                // Let the lightweight stage finish its first paint before AMLL
-                // creates and measures the word-by-word lyric DOM.
-                setLyricPlayerReady(true);
-            }}
+            onMountAnimationEnd={pageMotion.finish}
+            onUnmountAnimationEnd={pageMotion.finish}
         >
             {classicAmllPlaybackDetail ? (
                 <ClassicAmlLDetail
