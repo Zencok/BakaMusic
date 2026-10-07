@@ -142,6 +142,19 @@ function ClassicAmlLBackground({ active, artwork }: Pick<
     const [rendererReady, setRendererReady] = useState(false);
     activeRef.current = active;
 
+    const syncAnimation = useCallback(() => {
+        const renderer = rendererRef.current;
+        if (!renderer) {
+            return;
+        }
+        renderer.setStaticMode(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+        if (activeRef.current && document.visibilityState === "visible") {
+            renderer.resume();
+        } else {
+            renderer.pause();
+        }
+    }, []);
+
     useEffect(() => {
         const host = hostRef.current;
         if (!host) {
@@ -190,13 +203,7 @@ function ClassicAmlLBackground({ active, artwork }: Pick<
             } finally {
                 meshArtwork.src = "";
             }
-            const shouldRun = activeRef.current;
-            renderer.setStaticMode(!shouldRun);
-            if (shouldRun) {
-                renderer.resume();
-            } else {
-                renderer.pause();
-            }
+            syncAnimation();
             if (requestId === artworkRequestRef.current) {
                 setRendererReady(true);
             }
@@ -207,20 +214,18 @@ function ClassicAmlLBackground({ active, artwork }: Pick<
                 artworkRequestRef.current += 1;
             }
         };
-    }, [artwork]);
+    }, [artwork, syncAnimation]);
 
     useEffect(() => {
-        const renderer = rendererRef.current;
-        if (!renderer) {
-            return;
-        }
-        renderer.setStaticMode(!active);
-        if (active) {
-            renderer.resume();
-        } else {
-            renderer.pause();
-        }
-    }, [active]);
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+        syncAnimation();
+        document.addEventListener("visibilitychange", syncAnimation);
+        reducedMotion.addEventListener("change", syncAnimation);
+        return () => {
+            document.removeEventListener("visibilitychange", syncAnimation);
+            reducedMotion.removeEventListener("change", syncAnimation);
+        };
+    }, [active, syncAnimation]);
 
     return (
         <div

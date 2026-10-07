@@ -18,6 +18,120 @@ const BoundedLruCache = require(
     "../src/renderer/utils/bounded-lru-cache",
 ).default;
 
+{
+    const rendererSource = fs.readFileSync(path.join(
+        __dirname,
+        "../src/amll-core/bg-render/mesh-renderer/index.ts",
+    ), "utf8");
+    const typescript = require("typescript");
+    const sandbox = {
+        exports: {},
+        require: (specifier) => {
+            if (specifier === "../base.ts") {
+                return { BaseRenderer: class {} };
+            }
+            if (specifier === "gl-matrix") {
+                return require("gl-matrix");
+            }
+            if (specifier === "#utils/clamp.ts") {
+                return require("../src/amll-core/utils/clamp.ts");
+            }
+            return {};
+        },
+        performance: { now: () => 0 },
+        requestAnimationFrame: () => 1,
+        cancelAnimationFrame: () => undefined,
+    };
+    require("node:vm").runInNewContext(typescript.transpileModule(rendererSource, {
+        compilerOptions: { module: typescript.ModuleKind.CommonJS },
+    }).outputText, sandbox);
+    const renderer = Object.create(sandbox.exports.MeshGradientRenderer.prototype);
+    const frames = [];
+    Object.assign(renderer, {
+        paused: false,
+        _disposed: false,
+        staticMode: false,
+        maxFPS: 60,
+        flowSpeed: 1,
+        frameTime: 0,
+        lastFrameTime: Number.NaN,
+        lastTickTime: 0,
+        tickHandle: 0,
+        onRedraw: (time, delta) => {
+            frames.push({ time, delta });
+            return true;
+        },
+    });
+    for (let frame = 1; frame <= 60; frame++) {
+        renderer.onTick(frame * 16.666);
+    }
+    assert.equal(frames.length, 60);
+    assert.equal(frames[0].delta, 0);
+    assert.ok(renderer.frameTime > 980 && renderer.frameTime < 1000);
+    renderer.pause();
+    renderer.onTick(60_000);
+    assert.equal(frames.length, 60);
+    renderer.resume();
+    renderer.onTick(60_016);
+    assert.equal(frames.at(-1).delta, 0);
+    renderer.onTick(120_000);
+    assert.equal(frames.at(-1).delta, 100);
+    renderer.setFPS(0);
+    renderer.onTick(120_016);
+    assert.equal(frames.length, 62);
+    assert.equal(renderer.tickHandle, 0);
+    renderer.setFPS(60);
+    renderer.setStaticMode(true);
+    renderer.onTick(120_032);
+    assert.equal(renderer.tickHandle, 0);
+    renderer.setStaticMode(false);
+    renderer.resume();
+    renderer.onTick(120_048);
+    assert.equal(renderer.tickHandle, 1);
+    renderer._disposed = true;
+    renderer.onTick(120_064);
+    assert.equal(frames.length, 64);
+
+    const calls = [];
+    const gl = new Proxy({}, {
+        get: (_target, name) => (...args) => calls.push([name, ...args]),
+    });
+    const state = {
+        alpha: 1.1,
+        mesh: { bind: () => calls.push(["mesh-bind"]), draw: () => calls.push(["mesh-draw"]) },
+        texture: { bind: () => undefined },
+    };
+    const program = {
+        attrs: { a_color: 1, a_uv: 2 },
+        use: () => undefined,
+        setUniform1f: () => undefined,
+        setUniform1i: () => undefined,
+        setUniform2f: () => undefined,
+    };
+    Object.assign(renderer, {
+        meshStates: [state],
+        gl,
+        mainProgram: program,
+        quadProgram: program,
+        manualControl: false,
+        currentSize: { x: 960, y: 640 },
+        colorTargets: [{ texture: {} }, { texture: {} }],
+        smoothedVolume: 0,
+        volume: 0,
+        checkIfResize: () => undefined,
+        soften: (texture) => texture,
+        drawFullscreen: () => calls.push(["fullscreen"]),
+    });
+    const redraw = sandbox.exports.MeshGradientRenderer.prototype.onRedraw;
+    redraw.call(renderer, 1000, 16);
+    assert.equal(calls.filter(([name]) => name === "fullscreen").length, 2);
+    assert.equal(calls.filter(([name]) => name === "mesh-draw").length, 0);
+    renderer.manualControl = true;
+    state.mesh.updateMesh = () => undefined;
+    redraw.call(renderer, 1016, 16);
+    assert.equal(calls.filter(([name]) => name === "mesh-draw").length, 1);
+}
+
 assert.equal(shouldPersistPlaybackProgress(-Infinity, 0, false), true);
 assert.equal(shouldPersistPlaybackProgress(1_000, 2_000, false), false);
 assert.equal(shouldPersistPlaybackProgress(1_000, 4_000, false), true);

@@ -830,7 +830,7 @@ interface ColorTarget {
 
 export class MeshGradientRenderer extends BaseRenderer {
 	private gl: RenderingContext;
-	private lastFrameTime = 0;
+	private lastFrameTime = Number.NaN;
 	private frameTime = 0;
 	// private currentImageData?: ImageData;
 	private lastTickTime = 0;
@@ -897,13 +897,11 @@ export class MeshGradientRenderer extends BaseRenderer {
 		this.tickHandle = 0;
 		if (this.paused) return;
 		if (this._disposed) return;
-
-		// 更新性能统计
-		this.updatePerformanceStats(tickTime);
+		if (this.maxFPS <= 0) return;
 
 		const interval = 1000 / this.maxFPS;
 		const delta = tickTime - this.lastTickTime;
-		if (delta < interval) {
+		if (delta < interval - 0.5) {
 			this.requestTick();
 			return;
 		}
@@ -911,12 +909,13 @@ export class MeshGradientRenderer extends BaseRenderer {
 		if (Number.isNaN(this.lastFrameTime)) {
 			this.lastFrameTime = tickTime;
 		}
-		const frameDelta = tickTime - this.lastFrameTime;
+		const frameDelta = Math.min(100, Math.max(0, tickTime - this.lastFrameTime));
 		this.lastFrameTime = tickTime;
 		// 减去多余的时间，避免帧率漂移（例如高刷显示器限制低帧率时）
-		this.lastTickTime = tickTime - (delta % interval);
+		this.lastTickTime = tickTime - (Math.max(0, delta - interval) % interval);
 
 		this.frameTime += frameDelta * this.flowSpeed;
+		this.updatePerformanceStats(tickTime);
 
 		if (!(this.onRedraw(this.frameTime, frameDelta) && this.staticMode)) {
 			this.requestTick();
@@ -1073,7 +1072,6 @@ export class MeshGradientRenderer extends BaseRenderer {
 		const deltaFactor = delta / 500;
 
 		if (latestMeshState) {
-			latestMeshState.mesh.bind();
 			// 考虑到我们并不逐帧更新网格控制点，因此也不需要重复调用 updateMesh
 			if (this.manualControl) latestMeshState.mesh.updateMesh();
 
@@ -1141,16 +1139,23 @@ export class MeshGradientRenderer extends BaseRenderer {
 			gl.activeTexture(gl.TEXTURE0);
 			this.mainProgram.setUniform1f(
 				"u_aspect",
-				this.manualControl ? 1 : viewWidth / Math.max(1, viewHeight),
+				1,
 			);
+			this.mainProgram.setUniform1f("u_manual", this.manualControl ? 1 : 0);
 			this.mainProgram.setUniform1i("u_texture", 0);
 			this.mainProgram.setUniform1f("u_volume", this.smoothedVolume);
 			this.mainProgram.setUniform1f("u_time", tickTime / 1000);
 			this.mainProgram.setUniform2f("u_resolution", viewWidth, viewHeight);
 
 			state.texture.bind();
-			state.mesh.bind();
-			state.mesh.draw();
+			if (this.manualControl) {
+				state.mesh.bind();
+				state.mesh.draw();
+			} else {
+				gl.disableVertexAttribArray(this.mainProgram.attrs.a_color);
+				gl.disableVertexAttribArray(this.mainProgram.attrs.a_uv);
+				this.drawFullscreen(this.mainProgram);
+			}
 
 			const softened = this.soften(meshTarget.texture, viewWidth, viewHeight);
 
@@ -1242,7 +1247,7 @@ export class MeshGradientRenderer extends BaseRenderer {
 	}
 
 	protected override onResize(width: number, height: number): void {
-		const maxEdge = 1440;
+		const maxEdge = 960;
 		const edge = Math.max(width, height);
 		if (edge > maxEdge) {
 			const scale = maxEdge / edge;
@@ -1260,7 +1265,10 @@ export class MeshGradientRenderer extends BaseRenderer {
 		this.requestTick();
 	}
 	override setFPS(fps: number): void {
-		this.maxFPS = fps;
+		this.maxFPS = Number.isFinite(fps) ? Math.max(0, fps) : 60;
+		this.lastFrameTime = Number.NaN;
+		this.lastTickTime = 0;
+		this.requestTick();
 	}
 	override pause(): void {
 		if (this.tickHandle) {
@@ -1271,6 +1279,8 @@ export class MeshGradientRenderer extends BaseRenderer {
 	}
 	override resume(): void {
 		this.paused = false;
+		this.lastFrameTime = Number.NaN;
+		this.lastTickTime = 0;
 		this.requestTick();
 	}
 	override async setAlbum(

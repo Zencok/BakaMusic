@@ -123,5 +123,6 @@ Renderer 默认关闭 Node integration，并通过最小化 preload 接口调用
 ## 第三方与许可
 
 - `src/amll-core/` 基于 [applemusic-like-lyrics](https://github.com/amll-dev/applemusic-like-lyrics)，并保留完整上游同步边界。
+- AMLL 动态背景的本地渲染与调度设计见 [背景实现说明](./docs/amll-background.md)。
 - BakaMusic 不提供在线音源或媒体内容。插件、数据来源及内容使用由其提供者与使用者负责，请遵守所在地区法律、服务条款与版权规则。
 - 软件按现状提供，采用 [AGPL-3.0-only](LICENSE) 许可。
