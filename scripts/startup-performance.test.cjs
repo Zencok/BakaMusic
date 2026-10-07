@@ -31,6 +31,16 @@ assert.match(runtimeRootSource, /import App from "\.\.\/app"/);
 assert.match(runtimeRootSource, /<ErrorBoundary/);
 
 const bootstrapHookSource = read("src/renderer/document/useBootstrap.ts");
+const packageSmokeSource = read("scripts/package-smoke.cjs");
+assert.match(packageSmokeSource, /mainReady: !!document\.querySelector\("\.app-container \.music-bar-container"\)/);
+assert.match(packageSmokeSource, /&& !document\.querySelector\("\.startup-shell"\)/);
+assert.match(packageSmokeSource, /if \(name === "main_window" && !state\.mainReady\) return null;/);
+assert.match(packageSmokeSource, /path\.join\(userDataPath, "config\.json"\),\s*JSON\.stringify\(\{ "normal\.checkUpdate": false \}\)/);
+assert.match(
+    packageSmokeSource,
+    /"open default detail"[\s\S]*?await retry\([\s\S]*?data-playback-detail=default\]\[data-page-motion=visible\]:not\(\[inert\]\)/,
+    "smoke must open the lazy-mounted detail after bootstrap and wait for its visible state",
+);
 assert.match(
     bootstrapHookSource,
     /useLayoutEffect\(\(\) => \{\s*void Themepack\.setupThemePacks\(\);[\s\S]*?\}, \[\]\);/,

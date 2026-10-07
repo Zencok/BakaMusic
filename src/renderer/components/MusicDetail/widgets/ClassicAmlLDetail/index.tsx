@@ -16,6 +16,8 @@ import {
     getQualityDisplayText,
     resolveMusicQualityChoices,
 } from "@/renderer/utils/music-quality";
+import { showModal } from "@renderer/components/Modal";
+import { dlnaDeviceStore } from "@renderer/core/track-player/dlna-store";
 import MusicSheet from "@renderer/core/music-sheet";
 import trackPlayer from "@renderer/core/track-player";
 import {
@@ -495,6 +497,54 @@ function ClassicMusicInfo({ album, artist, title }: Pick<
 >) {
     const currentMusic = useCurrentMusic();
     const { t } = useTranslation();
+    const isFavorite = MusicSheet.frontend.useMusicIsFavorite(
+        currentMusic ?? emptyFavoriteTarget,
+    );
+    const favorited = !!currentMusic && isFavorite;
+    const favoritePlatform = currentMusic?.platform;
+    const favoriteMusicId = currentMusic?.id;
+    const favoriteIconRef = useRef<SVGSVGElement>(null);
+    const previousFavoriteRef = useRef({
+        platform: favoritePlatform,
+        id: favoriteMusicId,
+        favorited,
+    });
+
+    useEffect(() => {
+        const previous = previousFavoriteRef.current;
+        previousFavoriteRef.current = {
+            platform: favoritePlatform,
+            id: favoriteMusicId,
+            favorited,
+        };
+        if (
+            favoriteMusicId === undefined
+            || previous.platform !== favoritePlatform
+            || previous.id !== favoriteMusicId
+            || previous.favorited === favorited
+            || window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ) {
+            return;
+        }
+
+        const animation = favoriteIconRef.current?.animate(
+            favorited ? [
+                { transform: "scale(1) rotate(0deg)" },
+                { transform: "scale(0.82) rotate(-8deg)", offset: 0.2 },
+                { transform: "scale(1.18) rotate(5deg)", offset: 0.55 },
+                { transform: "scale(1) rotate(0deg)" },
+            ] : [
+                { transform: "scale(1)" },
+                { transform: "scale(0.8)", offset: 0.35 },
+                { transform: "scale(1)" },
+            ],
+            {
+                duration: favorited ? 380 : 260,
+                easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+            },
+        );
+        return () => animation?.cancel();
+    }, [favoritePlatform, favoriteMusicId, favorited]);
 
     return (
         <div className="classic-amll-music-info">
@@ -513,11 +563,37 @@ function ClassicMusicInfo({ album, artist, title }: Pick<
             </div>
             <button
                 type="button"
+                className="classic-amll-menu-button classic-amll-favorite-button"
+                title={favorited
+                    ? t("music_detail.amll_unfavorite")
+                    : t("music_detail.amll_favorite")}
+                aria-label={favorited
+                    ? t("music_detail.amll_unfavorite")
+                    : t("music_detail.amll_favorite")}
+                aria-pressed={favorited}
+                disabled={!currentMusic}
+                onClick={() => {
+                    if (!currentMusic) {
+                        return;
+                    }
+                    if (favorited) {
+                        void MusicSheet.frontend.removeMusicFromFavorite(currentMusic);
+                    } else {
+                        void MusicSheet.frontend.addMusicToFavorite(currentMusic);
+                    }
+                }}
+            >
+                <ClassicStarIcon active={favorited} ref={favoriteIconRef}></ClassicStarIcon>
+            </button>
+            <button
+                type="button"
                 className="classic-amll-menu-button"
                 disabled={!currentMusic}
                 title={t("music_detail.amll_more_actions")}
                 aria-label={t("music_detail.amll_more_actions")}
+                aria-haspopup="menu"
                 onClick={(event) => {
+                    event.stopPropagation();
                     if (!currentMusic) {
                         return;
                     }
@@ -748,6 +824,7 @@ function ClassicVolume() {
 }
 
 interface IClassicToggleButtonProps {
+    className?: string;
     label: string;
     active: boolean;
     disabled?: boolean;
@@ -756,6 +833,7 @@ interface IClassicToggleButtonProps {
 }
 
 function ClassicToggleButton({
+    className,
     label,
     active,
     disabled = false,
@@ -765,7 +843,7 @@ function ClassicToggleButton({
     return (
         <button
             type="button"
-            className="classic-amll-toggle-button"
+            className={["classic-amll-toggle-button", className].filter(Boolean).join(" ")}
             data-active={active ? "true" : "false"}
             disabled={disabled}
             aria-pressed={active}
@@ -790,39 +868,22 @@ function ClassicBottomControls({
     lyricVisible,
     onToggleLyricVisible,
 }: IClassicBottomControlsProps) {
-    const currentMusic = useCurrentMusic();
+    const selectedDevice = dlnaDeviceStore.useValue();
     const panelType = useCurrentPanelType();
     const { t } = useTranslation();
     const playlistOpened = panelType === "PlayList";
 
-    // 队列面板独立于当前曲目存在，收藏按钮则必须有曲目才有意义
-    const isFavorite = MusicSheet.frontend.useMusicIsFavorite(
-        currentMusic ?? emptyFavoriteTarget,
-    );
-    const favorited = !!currentMusic && isFavorite;
-
-    // DOM 顺序与视觉顺序保持一致（左侧收藏、右侧歌词与队列），
-    // 让 Tab 焦点顺序不至于和布局相反
     return (
         <div className="classic-amll-bottom-controls">
             <ClassicToggleButton
-                label={favorited
-                    ? t("music_detail.amll_unfavorite")
-                    : t("music_detail.amll_favorite")}
-                active={favorited}
-                disabled={!currentMusic}
-                onClick={() => {
-                    if (!currentMusic) {
-                        return;
-                    }
-                    if (favorited) {
-                        void MusicSheet.frontend.removeMusicFromFavorite(currentMusic);
-                    } else {
-                        void MusicSheet.frontend.addMusicToFavorite(currentMusic);
-                    }
-                }}
+                label={selectedDevice
+                    ? t("dlna.connected", { name: selectedDevice.name })
+                    : t("dlna.title")}
+                active={!!selectedDevice}
+                className="classic-amll-output-button"
+                onClick={() => showModal("Dlna")}
             >
-                <ClassicStarIcon active={favorited}></ClassicStarIcon>
+                <SvgAsset iconName="audio-output"></SvgAsset>
             </ClassicToggleButton>
             <div className="classic-amll-bottom-controls-spacer"></div>
             <ClassicToggleButton

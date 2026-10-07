@@ -1,4 +1,27 @@
 {
+    "dlna": {
+        "title": "Play To",
+        "hint": "Make sure your speaker or TV is on and connected to the same Wi-Fi as this computer.",
+        "limitations": "Some songs may not play on other devices.",
+        "refresh": "Find devices again",
+        "busy": "Switching playback device…",
+        "scanning": "Looking for devices…",
+        "connected": "Playing on {{name}}",
+        "local": "This Computer",
+        "local_hint": "Computer speakers or headphones",
+        "nearby": "Nearby Devices",
+        "wireless": "Wireless playback",
+        "disconnect": "Play on this computer",
+        "devices": "Playback devices",
+        "empty": "No nearby devices found",
+        "scan_error": "Unable to find devices right now. Check your connection and try again.",
+        "error": "Unable to connect to this device. Try again or choose This Computer.",
+        "seek_error": "This device cannot change the playback position right now. Playback will continue.",
+        "volume_error": "Please adjust the volume on your speaker or TV.",
+        "source_headers": "This song cannot play wirelessly right now. Listen on this computer instead.",
+        "source_proxy": "This song cannot play wirelessly right now. Listen on this computer instead.",
+        "playback_error": "Playback was interrupted. Check the device connection or switch to this computer."
+    },
     "common": {
         "cancel": "Cancel",
         "confirm": "Confirm",

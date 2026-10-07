@@ -375,6 +375,36 @@
     }
 }
 
+.classic-amll-favorite-button {
+    flex: 0 0 auto;
+    margin-left: 12px;
+    transition: background-color 180ms ease;
+
+    + .classic-amll-menu-button {
+        margin-left: 8px;
+    }
+
+    svg {
+        width: 100% !important;
+        height: 100% !important;
+        transform-origin: center;
+    }
+
+    .classic-amll-star-outline,
+    .classic-amll-star-filled {
+        transition: opacity 180ms ease;
+    }
+
+    &[aria-pressed="true"] {
+        background: transparent;
+    }
+
+    &:disabled {
+        opacity: 0.35;
+        cursor: default;
+    }
+}
+
 .classic-amll-progress {
     position: relative;
 }
@@ -785,6 +815,9 @@
     .classic-amll-media-button,
     .classic-amll-media-button > svg,
     .classic-amll-toggle-button,
+    .classic-amll-favorite-button,
+    .classic-amll-favorite-button .classic-amll-star-outline,
+    .classic-amll-favorite-button .classic-amll-star-filled,
     .classic-amll-quality-tag {
         transition: none;
     }

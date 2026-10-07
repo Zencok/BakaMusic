@@ -3,6 +3,95 @@ const fs = require("node:fs");
 const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 
+function testSongMoreMenu() {
+    const ts = require("typescript");
+    const source = ts.createSourceFile("index.tsx", fs.readFileSync(path.join(root,
+        "src/renderer/components/MusicDetail/widgets/ClassicAmlLDetail/index.tsx"), "utf8"),
+    ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    let button;
+    const visit = (node) => {
+        if (ts.isJsxOpeningElement(node) && node.tagName.getText(source) === "button"
+            && node.attributes.getText(source).includes('t("music_detail.amll_more_actions")')) {
+            button = node;
+        }
+        ts.forEachChild(node, visit);
+    };
+    visit(source);
+    assert.ok(button, "AMLL more button must exist");
+    const attributes = button.attributes.properties;
+    assert.equal(attributes.find((attribute) => attribute.name?.text === "aria-haspopup").initializer.text, "menu");
+    const handler = attributes.find((attribute) => attribute.name?.text === "onClick").initializer.expression;
+    const code = ts.transpileModule("(" + handler.getText(source) + ")", {
+        compilerOptions: { target: ts.ScriptTarget.ES2022 },
+    }).outputText;
+    const currentMusic = { platform: "local", id: "song" };
+    let menu;
+    let stopped = false;
+    const context = { currentMusic, showMusicContextMenu: (...args) => { menu = args; } };
+    const click = require("node:vm").runInNewContext(code, context);
+    const event = {
+        stopPropagation() { stopped = true; },
+        currentTarget: { getBoundingClientRect: () => ({ left: 120, bottom: 240 }) },
+    };
+    click(event);
+    assert.equal(stopped, true, "opening click must not reach the global menu dismiss listener");
+    assert.deepEqual(menu, [currentMusic, 120, 240], "more must open the existing menu for the current song");
+    context.currentMusic = undefined;
+    menu = undefined;
+    click(event);
+    assert.equal(menu, undefined, "no song must not open a menu");
+    console.log("Song more menu passed: current song, button anchor, click propagation and empty playback");
+}
+
+function testFavoriteMotion() {
+    const ts = require("typescript");
+    const source = ts.createSourceFile("index.tsx", fs.readFileSync(path.join(root,
+        "src/renderer/components/MusicDetail/widgets/ClassicAmlLDetail/index.tsx"), "utf8"),
+    ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const component = source.statements.find((statement) => statement.name?.text === "ClassicMusicInfo");
+    const effect = component.body.statements.find((statement) =>
+        ts.isExpressionStatement(statement) && statement.expression.expression?.text === "useEffect");
+    const code = ts.transpileModule(effect.getText(source), {
+        compilerOptions: { target: ts.ScriptTarget.ES2022 },
+    }).outputText;
+    const animations = [];
+    let reducedMotion = false;
+    const context = {
+        favoritePlatform: "local", favoriteMusicId: "first", favorited: false,
+        previousFavoriteRef: { current: { platform: "local", id: "first", favorited: false } },
+        favoriteIconRef: { current: { animate(keyframes, options) {
+            const animation = { keyframes, options, cancelled: false, cancel() { this.cancelled = true; } };
+            animations.push(animation);
+            return animation;
+        } } },
+        window: { matchMedia: () => ({ matches: reducedMotion }) },
+        useEffect(callback) { context.cleanup = callback(); },
+    };
+    const runEffect = () => {
+        context.cleanup?.();
+        require("node:vm").runInNewContext(code, context);
+    };
+    runEffect();
+    assert.equal(animations.length, 0, "mount must not animate");
+    context.favorited = true;
+    runEffect();
+    assert.equal(animations[0].options.duration, 380);
+    context.favorited = false;
+    runEffect();
+    assert.equal(animations[0].cancelled, true, "reversal must cancel the previous animation");
+    assert.equal(animations[1].options.duration, 260);
+    context.favoriteMusicId = "second";
+    context.favorited = true;
+    runEffect();
+    assert.equal(animations[1].cancelled, true, "track change must cancel the animation");
+    assert.equal(animations.length, 2, "track change must not animate");
+    reducedMotion = true;
+    context.favorited = false;
+    runEffect();
+    assert.equal(animations.length, 2, "reduced motion must skip animations");
+    console.log("Favorite motion passed: mount, favorite, unfavorite, reversal, track change and reduced motion");
+}
+
 function testMotion() {
     require("ts-node/register/transpile-only");
     const Module = require("node:module");
@@ -151,6 +240,8 @@ if (process.argv.includes("--electron-child")) {
         require("electron").app.exit(1);
     });
 } else {
+    testSongMoreMenu();
+    testFavoriteMotion();
     testMotion();
     if (process.argv.includes("--native") && process.platform === "win32") {
         const os = require("node:os");

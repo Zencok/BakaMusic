@@ -13,8 +13,10 @@ import Sparkles from "./Sparkles";
 import SongRecognition from "./SongRecognition";
 import Update from "./Update";
 import WatchLocalDir from "./WatchLocalDir";
+import Dlna from "./Dlna";
 
 export default {
+    Dlna,
     Base,
     ExitConfirm,
     AddNewSheet,

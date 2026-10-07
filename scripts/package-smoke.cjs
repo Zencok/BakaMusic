@@ -313,6 +313,8 @@ async function inspectWindow(session, name) {
             return {
                 readyState: document.readyState,
                 rootLength: root?.innerHTML.length || 0,
+                mainReady: !!document.querySelector(".app-container .music-bar-container")
+                    && !document.querySelector(".startup-shell"),
                 width: window.innerWidth,
                 height: window.innerHeight,
                 failedResources: performance.getEntriesByType("resource")
@@ -321,6 +323,7 @@ async function inspectWindow(session, name) {
             };
         })()`);
         if (state.readyState !== "complete" || state.rootLength === 0) return null;
+        if (name === "main_window" && !state.mainReady) return null;
         assert.ok(state.width > 0 && state.height > 0, `${name} has invalid dimensions`);
         assert.deepEqual(state.failedResources, [], `${name} has failed resources`);
         return state;
@@ -470,6 +473,11 @@ async function run() {
         fs.promises.mkdir(appDataPath, { recursive: true }),
         fs.promises.mkdir(localAppDataPath, { recursive: true }),
     ]);
+    await fs.promises.writeFile(
+        path.join(userDataPath, "config.json"),
+        JSON.stringify({ "normal.checkUpdate": false }),
+        "utf8",
+    );
     const pluginPath = path.join(userDataPath, "bakamusic-plugins");
     await fs.promises.mkdir(pluginPath, { recursive: true });
     await fs.promises.writeFile(
@@ -669,12 +677,83 @@ async function run() {
                 nodeRuntimeBridge: typeof nodeRuntime.closeWatcher,
                 nativeProbeBridge: typeof nativePlayback.probe,
                 nativeCommandBridge: typeof nativePlayback.command,
+                dlnaDiscoverBridge: typeof window["@shared/dlna"].discover,
+                dlnaCommandBridge: typeof window["@shared/dlna"].command,
                 backupWriteBridge: typeof backupBridge.backupToWebdav,
                 backupReadBridge: typeof backupBridge.restoreFromWebdav,
                 trashFileBridge: typeof fsBridge.trashFile,
                 pluginBridge: typeof pluginBridge.callPluginMethod,
             };
         })()`, "renderer boundary");
+        const dlnaState = await mainSession.evaluate(
+            '(async () => { const bridge = window["@shared/dlna"]; const invalid = await bridge.command({ operation: "seek", sourceId: "smoke-invalid", value: -1 }).then(() => false, () => true); const stale = await bridge.command({ operation: "status", sourceId: "smoke-stale" }); return { invalidRejected: invalid, staleSnapshot: stale }; })()',
+            "DLNA IPC validation",
+        );
+        assert.deepEqual(dlnaState, { invalidRejected: true, staleSnapshot: null });
+        const originalDetailConfig = await mainSession.evaluate(
+            '(async () => { const config = await window["@shared/app-config"].syncConfig(); return config["normal.classicAmllPlaybackDetail"] ?? false; })()',
+            "original playback detail preference",
+        );
+        await mainSession.evaluate(
+            'window["@shared/app-config"].setConfig({ "normal.classicAmllPlaybackDetail": false })',
+            "default detail without casting entry",
+        );
+        await mainSession.evaluate(
+            'window["@shared/message-bus/main"].sendCommand("OpenMusicDetailPage")',
+            "open default detail",
+        );
+        await retry(() => mainSession.evaluate(
+            '!!document.querySelector(".music-detail--container[data-playback-detail=default][data-page-motion=visible]:not([inert])") && !document.querySelector(".classic-amll-output-button") && ![...document.querySelectorAll(".music-extra-tools button")].some((button) => button.textContent.trim() === "DLNA" || button.getAttribute("aria-label") === "Play To")',
+            "DLNA entry absent outside AMLL detail",
+        ));
+        await mainSession.evaluate(
+            'window["@shared/app-config"].setConfig({ "normal.classicAmllPlaybackDetail": true })',
+            "AMLL playback detail preference",
+        );
+        await mainSession.evaluate(
+            'window["@shared/message-bus/main"].sendCommand("OpenMusicDetailPage")',
+            "open AMLL detail",
+        );
+        await retry(() => mainSession.evaluate(
+            '!!document.querySelector(".music-detail--container[data-playback-detail=classic-amll]:not([inert]) .classic-amll-output-button")',
+            "DLNA AMLL detail ready",
+        ));
+        const dlnaDialog = await mainSession.evaluate(
+            '(async () => { const trigger = document.querySelector(".classic-amll-output-button"); trigger.focus(); trigger.click(); await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))); const dialog = document.querySelector(".modal--dlna"); const container = dialog?.closest("[role=dialog]"); const favorite = document.querySelector(".classic-amll-favorite-button"); return { open: !!dialog, semantic: container?.getAttribute("aria-modal"), focusContained: !!container?.contains(document.activeElement), localFocused: document.activeElement === dialog?.querySelector(".dlna-output"), scanButton: !!dialog?.querySelector(".dlna-refresh"), hasHint: !!dialog?.querySelector(".dlna-hint"), favoriteBeforeMore: favorite?.nextElementSibling?.classList.contains("classic-amll-menu-button"), outputFirst: trigger === document.querySelector(".classic-amll-bottom-controls")?.firstElementChild }; })()',
+            "DLNA dialog and AMLL layout",
+        );
+        assert.deepEqual(dlnaDialog, {
+            open: true,
+            semantic: "true",
+            focusContained: true,
+            localFocused: true,
+            scanButton: true,
+            hasHint: true,
+            favoriteBeforeMore: true,
+            outputFirst: true,
+        });
+        if (process.env.BAKAMUSIC_SMOKE_SCREENSHOT_DIR) {
+            await delay(400);
+            const screenshot = await mainSession.send("Page.captureScreenshot", { format: "png" });
+            await fs.promises.mkdir(process.env.BAKAMUSIC_SMOKE_SCREENSHOT_DIR, { recursive: true });
+            await fs.promises.writeFile(
+                path.join(process.env.BAKAMUSIC_SMOKE_SCREENSHOT_DIR, "dlna-picker.png"),
+                Buffer.from(screenshot.data, "base64"),
+            );
+        }
+        const dlnaClosed = await mainSession.evaluate(
+            '(async () => { document.dispatchEvent(new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true })); await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))); return { closed: !document.querySelector(".modal--dlna"), focusRestored: document.activeElement?.classList.contains("classic-amll-output-button"), detailStillOpen: !!document.querySelector(".music-detail--container:not([inert])") }; })()',
+            "DLNA dialog Escape and focus restore",
+        );
+        assert.deepEqual(dlnaClosed, { closed: true, focusRestored: true, detailStillOpen: true });
+        await mainSession.evaluate(
+            'window.dispatchEvent(new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true }))',
+            "close AMLL detail",
+        );
+        await mainSession.evaluate(
+            'window["@shared/app-config"].setConfig({ "normal.classicAmllPlaybackDetail": ' + JSON.stringify(originalDetailConfig) + ' })',
+            "restore playback detail preference",
+        );
         const localScanState = await mainSession.evaluate(`(async () => {
             const result = await window["@shared/node-runtime"].scanDirectories(
                 [${JSON.stringify(localScanPath)}],
@@ -948,6 +1027,8 @@ async function run() {
             nodeRuntimeBridge: "function",
             nativeProbeBridge: "undefined",
             nativeCommandBridge: "function",
+            dlnaDiscoverBridge: "function",
+            dlnaCommandBridge: "function",
             backupWriteBridge: "function",
             backupReadBridge: "function",
             trashFileBridge: "function",
@@ -1087,6 +1168,9 @@ async function run() {
         const windowStates = {};
         for (const name of targetNames) {
             windowStates[name] = await inspectWindow(sessions.get(name), name);
+            if (name !== "main_window") {
+                assert.equal(await sessions.get(name).evaluate('typeof window["@shared/dlna"]'), "undefined");
+            }
         }
 
         const serviceHosts = await retry(async () => {
@@ -1144,6 +1228,9 @@ async function run() {
         console.log(JSON.stringify({
             windowStates,
             boundaryState,
+            dlnaState,
+            dlnaDialog,
+            dlnaClosed,
             mvPlaybackState,
             serviceStates,
             runtimeErrors,

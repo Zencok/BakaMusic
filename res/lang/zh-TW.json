@@ -1,4 +1,27 @@
 {
+    "dlna": {
+        "title": "播放至",
+        "hint": "請確認音箱或電視已開啟，並與電腦連接同一 Wi-Fi。",
+        "limitations": "部分歌曲可能無法在其他裝置上播放。",
+        "refresh": "重新尋找裝置",
+        "busy": "正在切換播放裝置…",
+        "scanning": "正在尋找裝置…",
+        "connected": "正在使用 {{name}} 播放",
+        "local": "這台電腦",
+        "local_hint": "使用電腦揚聲器或耳機",
+        "nearby": "附近的裝置",
+        "wireless": "無線播放",
+        "disconnect": "在這台電腦上播放",
+        "devices": "播放裝置",
+        "empty": "未找到附近的裝置",
+        "scan_error": "暫時無法尋找裝置，請檢查網路後重試。",
+        "error": "無法連接這台裝置，請重試或選擇這台電腦。",
+        "seek_error": "這台裝置暫時無法調整播放進度，將繼續播放。",
+        "volume_error": "請在音箱或電視上調整音量。",
+        "source_headers": "這首歌暫時無法無線播放，請在這台電腦上聆聽。",
+        "source_proxy": "這首歌暫時無法無線播放，請在這台電腦上聆聽。",
+        "playback_error": "播放已中斷，請檢查裝置連線，或切回這台電腦。"
+    },
     "common": {
         "cancel": "取消",
         "confirm": "確認",

@@ -1,6 +1,8 @@
 import { CSSProperties, memo } from "react";
 
 export type SvgAssetIconNames =
+    | "audio-output"
+    | "computer"
     | "album"
     | "app-mark"
     | "array-download-tray"

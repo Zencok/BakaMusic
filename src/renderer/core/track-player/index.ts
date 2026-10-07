@@ -23,6 +23,9 @@ import _trackPlayerStore from "./store";
 import EventEmitter from "eventemitter3";
 import { IAudioController } from "@/types/audio-controller";
 import LibmpvAudioController from "@renderer/core/track-player/controller/libmpv-audio-controller";
+import DlnaAudioController from "./controller/dlna-audio-controller";
+import { dlnaDeviceStore } from "./dlna-store";
+import type { DlnaDevice } from "@shared/dlna/common";
 import logger from "@shared/logger/renderer";
 import voidCallback from "@/common/void-callback";
 import { delay } from "@/common/time-util";
@@ -188,6 +191,8 @@ class TrackPlayer {
     private currentIndex = -1;
 
     private audioController: IAudioController;
+    private switchingOutput = false;
+    private localPlaybackRate: { speed: number; pitch: number } | null = null;
 
     private ee: EventEmitter<InternalPlayerEvents>;
 
@@ -345,8 +350,7 @@ class TrackPlayer {
     }
 
 
-    private createAudioController() {
-        const audioController = new LibmpvAudioController();
+    private createAudioController(audioController: IAudioController = new LibmpvAudioController()) {
         // 播放结束
         audioController.onEnded = () => {
             this.resetProgress();
@@ -386,12 +390,16 @@ class TrackPlayer {
 
         audioController.onSpeedChange = (speed) => {
             currentSpeedStore.setValue(speed);
-            setUserPreference("speed", speed);
+            if (!dlnaDeviceStore.getValue()) {
+                setUserPreference("speed", speed);
+            }
         };
 
         audioController.onPitchChange = (semitones) => {
             currentPitchStore.setValue(semitones);
-            setUserPreference("pitch", semitones);
+            if (!dlnaDeviceStore.getValue()) {
+                setUserPreference("pitch", semitones);
+            }
         };
 
         audioController.onPlayerStateChanged = (state) => {
@@ -418,6 +426,50 @@ class TrackPlayer {
 
 
         this.audioController = audioController;
+    }
+
+    public async setDlnaDevice(device: DlnaDevice | null) {
+        if (this.switchingOutput || dlnaDeviceStore.getValue()?.id === device?.id) {
+            return;
+        }
+        this.switchingOutput = true;
+        const currentMusic = this.currentMusic;
+        const currentTime = this.progress.currentTime;
+        const autoPlay = isPlaybackActive(this.playerState);
+        this.cancelMediaLoad();
+        try {
+            if (this.audioController instanceof DlnaAudioController) {
+                await this.audioController.disconnect();
+            } else {
+                this.localPlaybackRate = { speed: this.speed, pitch: this.pitch };
+                await this.audioController.suspendForVideo?.();
+            }
+            this.audioController.destroy();
+            this.createAudioController(device ? new DlnaAudioController(device) : new LibmpvAudioController());
+            dlnaDeviceStore.setValue(device);
+            this.audioController.setVolume(this.isMute ? 0 : this.volume);
+            this.audioController.setSpeed(device ? 1 : this.localPlaybackRate?.speed ?? this.speed);
+            this.audioController.setPitch(device ? 0 : this.localPlaybackRate?.pitch ?? this.pitch);
+            if (!device) {
+                await this.restorePreferredAudioDevice();
+                await this.setWasapiExclusive(!!AppConfig.getConfig("playMusic.wasapiExclusive"));
+            }
+            if (currentMusic && this.isCurrentMusic(currentMusic)) {
+                const { generation, signal } = this.beginMediaLoad();
+                const { mediaSource } = await this.fetchMediaSource(currentMusic, this.currentQuality, signal);
+                if (!this.hasPlayableMediaSource(mediaSource)) {
+                    throw new Error("mediaSource.url is empty");
+                }
+                if (this.isCurrentMediaLoad(generation, signal) && this.isCurrentMusic(currentMusic)) {
+                    this.setTrack(mediaSource, currentMusic, { seekTo: currentTime > 0 ? currentTime : undefined, autoPlay });
+                    if (!autoPlay) {
+                        this.audioController.pause();
+                    }
+                }
+            }
+        } finally {
+            this.switchingOutput = false;
+        }
     }
 
     public async setup() {
