@@ -470,9 +470,8 @@
     justify-content: space-between;
     gap: 18px;
     opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
     transform-origin: top center;
-    -webkit-app-region: drag;
+    -webkit-app-region: drag !important;
     transition:
         opacity 220ms ease 40ms,
         transform 320ms var(--md-ease-out) 20ms;
