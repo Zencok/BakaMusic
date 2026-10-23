@@ -493,6 +493,7 @@ function MusicDetail() {
 
                     <div className="music-detail-shell">
                         <div className="music-detail-topbar-slot">
+                            <div aria-hidden="true" className="music-detail-topbar-drag-region"></div>
                             <div className="music-detail-topbar">
                                 <div className="music-detail-topbar-left">
                                     <RoundButton
