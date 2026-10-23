@@ -495,7 +495,8 @@
 
 .music-detail-topbar-right {
     flex-shrink: 0;
-    -webkit-app-region: no-drag;
+    // Keep any empty right-side chrome draggable; buttons opt out below.
+    -webkit-app-region: drag !important;
 }
 
 .music-detail-info-bar {
