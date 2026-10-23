@@ -468,11 +468,13 @@
     -webkit-app-region: drag !important;
 }
 
+// Native drag hit-testing resolves by paint order, so this layer must sit above
+// every topbar child: the whole strip is then draggable and each control carves
+// its own hole below. A painted box is required or the region is not emitted.
 .music-detail-topbar-drag-region {
     position: absolute;
     inset: 0;
-    z-index: 2;
-    // A painted layer is required for Chromium to emit a native drag region.
+    z-index: 5;
     background: rgba(0, 0, 0, 0.001);
     -webkit-app-region: drag !important;
 }
@@ -503,11 +505,12 @@
     min-width: 0;
 }
 
+// Sits above the drag layer but declares no app-region, so it neither punches a
+// hole nor blocks dragging: only the controls inside it opt out.
 .music-detail-topbar-right {
     position: relative;
-    z-index: 3;
+    z-index: 6;
     flex-shrink: 0;
-    -webkit-app-region: no-drag !important;
 }
 
 .music-detail-info-bar {
@@ -605,8 +608,9 @@
     border: 1px solid var(--musicDetailBorder);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
     position: relative;
-    z-index: 3;
+    z-index: 6;
     backdrop-filter: blur(18px);
+    // Only the controls themselves are carved out of the topbar drag strip.
     -webkit-app-region: no-drag !important;
     transition: transform 160ms ease, background-color 160ms ease;
 
