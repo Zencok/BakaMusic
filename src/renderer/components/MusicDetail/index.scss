@@ -472,6 +472,8 @@
     position: absolute;
     inset: 0;
     z-index: 2;
+    // A painted layer is required for Chromium to emit a native drag region.
+    background: rgba(0, 0, 0, 0.001);
     -webkit-app-region: drag !important;
 }
 
