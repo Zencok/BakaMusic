@@ -653,6 +653,7 @@
             "max_history_length": "搜尋歷史記錄最大數量",
             "music_list_hide_columns": "歌曲列表隱藏列",
             "languages": "語言",
+            "follow_system": "跟隨系統語言",
             "toast_switch_language_fail": "切換語言失敗",
             "ui_style": "介面風格",
             "ui_style_glass": "玻璃",

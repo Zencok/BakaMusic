@@ -4,6 +4,7 @@ import fs from "fs/promises";
 import i18n from "i18next";
 import logger from "@shared/logger/main";
 import { assertIpcSender, assertString } from "@shared/ipc-security/main";
+import { resolveLanguage } from "./language";
 
 const ns = "translation";
 
@@ -57,28 +58,15 @@ export async function setupI18n(options?: ISetupI18nOptions) {
             .map((it) => it.name.slice(0, -5))
             .sort((left, right) => left.localeCompare(right, "en"));
 
-        let defaultLang = getDefaultLang?.();
-        if (defaultLang && !allLangs.includes(defaultLang)) {
-            defaultLang = undefined;
-        }
-
-        if (!defaultLang) {
-            const appLocale = app.getLocale();
-            if (allLangs.includes(appLocale)) {
-                defaultLang = appLocale;
-            } else if (appLocale.includes("zh") && allLangs.includes("zh-CN")) {
-                defaultLang = "zh-CN";
-            } else if (allLangs.includes("en-US")) {
-                defaultLang = "en-US";
-            } else {
-                defaultLang = allLangs[0];
-            }
-        }
+        const getSystemLocale = () => (process.platform === "linux"
+            ? process.env.LC_ALL || process.env.LC_MESSAGES || process.env.LANG
+            : undefined) || app.getLocale();
+        const defaultLang = resolveLanguage(getDefaultLang?.(), getSystemLocale(), allLangs);
 
         const langContent = await readLangContent(defaultLang);
         if (defaultLang && langContent) {
             i18n.addResourceBundle(defaultLang, ns, langContent);
-            i18n.changeLanguage(defaultLang);
+            await i18n.changeLanguage(defaultLang);
         }
 
         ipcMain.handle("shared/i18n/setup", async (event) => {
@@ -98,12 +86,14 @@ export async function setupI18n(options?: ISetupI18nOptions) {
         ipcMain.handle("shared/i18n/changeLang", async (event, lang: string) => {
             assertIpcSender(event, ["main"]);
             assertString(lang, "language", 32);
-            if (!allLangs.includes(lang)) {
+            if (lang !== "system" && !allLangs.includes(lang)) {
                 return null;
             }
+            const preference = lang;
+            lang = resolveLanguage(preference, getSystemLocale(), allLangs);
             if (i18n.hasResourceBundle(lang, ns)) {
                 await i18n.changeLanguage(lang);
-                onLanguageChanged?.(lang);
+                onLanguageChanged?.(preference);
                 const data = {
                     lang,
                     content: i18n.getResourceBundle(lang, ns),
@@ -119,7 +109,7 @@ export async function setupI18n(options?: ISetupI18nOptions) {
                 if (langContent) {
                     i18n.addResourceBundle(lang, ns, langContent);
                     await i18n.changeLanguage(lang);
-                    onLanguageChanged?.(lang);
+                    onLanguageChanged?.(preference);
                     const data = {
                         lang,
                         content: langContent,

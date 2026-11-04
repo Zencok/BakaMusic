@@ -52,7 +52,7 @@ const _defaultAppConfig: IAppConfig =  {
     "normal.musicListColumnsShown": [],
     "backup.resumeBehavior": "overwrite",
     "localMusic.watchDir": [],
-    "normal.language": "zh-CN",
+    "normal.language": "system",
     "normal.uiStyle": "glass",
     "normal.detailAutoHideMusicBar": false,
     "normal.classicAmllPlaybackDetail": false,

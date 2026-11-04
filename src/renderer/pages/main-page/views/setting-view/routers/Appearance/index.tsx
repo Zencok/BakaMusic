@@ -44,7 +44,8 @@ export default function Appearance() {
                             toast.warning(t("settings.normal.toast_switch_language_fail"));
                         }
                     }}
-                    options={allLangs}
+                    options={["system", ...allLangs]}
+                    renderItem={(lang) => lang === "system" ? t("settings.normal.follow_system") : lang}
                 ></ListBoxSettingItem>
             </SettingGroup>
 
