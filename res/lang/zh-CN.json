@@ -284,7 +284,7 @@
         "install_plugin_from_network": "从网络安装插件",
         "installing": "正在安装",
         "info_hint_install_placeholder": "请输入插件源地址(链接以json或js结尾)",
-        "error_hint_plugin_should_end_with_js_or_json": "插件链接需要以json或者js结尾",
+        "plugin_url_hint": "请输入 HTTPS 插件或订阅地址",
         "info_hint_install_plugin": "插件需要满足 BakaMusic 的插件协议，详情可在<a>GitHub 仓库</a>中查看",
         "installed_plugins": "已安装插件",
         "subscription_plugins": "订阅插件",

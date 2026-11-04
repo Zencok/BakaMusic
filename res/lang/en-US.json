@@ -284,7 +284,7 @@
         "install_plugin_from_network": "Install Plugin from Network",
         "installing": "Installing",
         "info_hint_install_placeholder": "Please enter the plugin source URL (link ends with .json or .js)",
-        "error_hint_plugin_should_end_with_js_or_json": "Plugin URL must end with .json or .js",
+        "plugin_url_hint": "Enter an HTTPS plugin or subscription URL",
         "info_hint_install_plugin": "Plugins must comply with the BakaMusic plugin protocol. For details, visit the <a>GitHub repository</a>",
         "installed_plugins": "Installed Plugins",
         "subscription_plugins": "Subscription Plugins",

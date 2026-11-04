@@ -67,6 +67,15 @@ function sha256(code: string) {
     return createHash("sha256").update(code, "utf8").digest("hex");
 }
 
+function isManifestContent(content: string) {
+    try {
+        JSON.parse(content.replace(/^\uFEFF/, ""));
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 function parseExpectedSha256(value: unknown) {
     if (typeof value !== "string" || !value) {
         return undefined;
@@ -612,26 +621,12 @@ class PluginManager {
         if (Buffer.byteLength(rawManifest, "utf8") > MAX_MANIFEST_BYTES) {
             throw new Error("Plugin manifest exceeds the accepted size");
         }
-        const manifest = JSON.parse(rawManifest) as { plugins?: unknown };
+        const manifest: unknown = JSON.parse(rawManifest.replace(/^\uFEFF/, ""));
+        assertPlainObject(manifest, "plugin manifest");
         if (!Array.isArray(manifest.plugins) || manifest.plugins.length > MAX_MANIFEST_PLUGINS) {
             throw new Error("Plugin manifest list is not valid");
         }
         return manifest.plugins.map((entry) => validateManifestEntry(entry, manifestUrl));
-    }
-
-    private async downloadManifest(manifestUrl: string) {
-        const url = assertUrl(manifestUrl, ["https:"], 8192);
-        url.searchParams.set("_bakamusic_cache", Date.now().toString());
-        const response = await axios.get<string>(url.toString(), {
-            responseType: "text",
-            transformResponse: [(value) => value],
-            timeout: REMOTE_TIMEOUT_MS,
-            maxRedirects: 5,
-            beforeRedirect: assertHttpsRedirect,
-            maxContentLength: MAX_MANIFEST_BYTES,
-            maxBodyLength: MAX_MANIFEST_BYTES,
-        });
-        return this.readManifest(response.data, manifestUrl);
     }
 
     public async loadAllPlugins() {
@@ -696,16 +691,14 @@ class PluginManager {
     public async installPluginFromRemoteUrl(urlLike: string) {
         try {
             const source = getRemoteSourceFromUrl(urlLike.trim());
-            const extension = path.posix.extname(new URL(source.url).pathname).toLocaleLowerCase();
-            if (extension === ".js") {
-                await this.installRemoteSource(source);
-            } else if (extension === ".json") {
-                const sources = await this.downloadManifest(source.url);
+            const downloaded = await this.downloadPlugin(source);
+            if (isManifestContent(downloaded.code)) {
+                const sources = await this.readManifest(downloaded.code, source.url);
                 for (const pluginSource of sources) {
                     await this.installRemoteSource(pluginSource);
                 }
             } else {
-                throw new Error("Plugin URL extension is not accepted");
+                await this.installPluginCode(downloaded.code, downloaded.integrity);
             }
         } finally {
             this.syncPlugins();

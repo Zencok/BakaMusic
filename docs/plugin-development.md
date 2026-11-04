@@ -331,9 +331,9 @@ buffer, webdav, @react-native-cookies/cookies, musicfree/storage
 
 ## 安装与发布
 
-开发阶段可在“插件管理”中导入本地 `.js` 文件。远程安装只接受 HTTPS `.js` 或 `.json` 地址。
+开发阶段可在“插件管理”中导入本地 `.js` 文件。远程安装只接受 HTTPS 地址，按实际内容识别单个 JavaScript 插件与 JSON 订阅清单，不要求链接以 `.js`、`.json` 结尾；带查询参数的地址也可使用。
 
-单插件发布时，将 `srcUrl` 指向稳定的 HTTPS `.js` 地址。订阅或批量发布可使用清单：
+单插件发布时，将 `srcUrl` 指向稳定的 HTTPS 插件地址。订阅或批量发布可使用清单：
 
 ```json
 {

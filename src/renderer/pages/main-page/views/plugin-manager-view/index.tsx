@@ -63,20 +63,17 @@ export default function PluginManagerView() {
         showModal("SimpleInputWithState", {
             title: t("plugin_management_page.install_plugin_from_network"),
             placeholder: t(
-                "plugin_management_page.error_hint_plugin_should_end_with_js_or_json",
+                "plugin_management_page.plugin_url_hint",
             ),
             okText: t("plugin_management_page.install"),
             loadingText: t("plugin_management_page.installing"),
             withLoading: true,
             async onOk(text) {
-                if (text.trim().endsWith(".json") || text.trim().endsWith(".js")) {
-                    return PluginManager.installPluginFromRemote(text);
+                const url = new URL(text.trim());
+                if (url.protocol !== "https:") {
+                    throw new Error(t("plugin_management_page.plugin_url_hint"));
                 }
-                throw new Error(
-                    t(
-                        "plugin_management_page.error_hint_plugin_should_end_with_js_or_json",
-                    ),
-                );
+                return PluginManager.installPluginFromRemote(text.trim());
             },
             onPromiseResolved() {
                 toast.success(t("plugin_management_page.install_successfully"));
