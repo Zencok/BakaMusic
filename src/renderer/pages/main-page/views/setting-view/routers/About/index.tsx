@@ -106,12 +106,12 @@ export default function About() {
             </SettingGroup>
 
             <SettingGroup title={t("settings.group.about_community")}>
-                <AboutInfoRow label={t("settings.about.qq_group")}>
+                <AboutInfoRow label={t("settings.about.telegram_channel")}>
                     <AboutLink
                         iconName="chat-bubble-left-ellipsis"
-                        href="https://qm.qq.com/q/VNyG9RoygE"
+                        href="https://t.me/bakaisu"
                     >
-                        {t("settings.about.qq_group_name")}
+                        {t("settings.about.telegram_channel_name")}
                     </AboutLink>
                 </AboutInfoRow>
 
