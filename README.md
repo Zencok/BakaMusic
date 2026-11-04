@@ -5,6 +5,8 @@
 [![Downloads](https://badgen.net/github/assets-dl/Zencok/BakaMusic)](https://github.com/Zencok/BakaMusic/releases)
 [![Issues](https://badgen.net/github/issues/Zencok/BakaMusic)](https://github.com/Zencok/BakaMusic/issues)
 [![License](https://badgen.net/badge/license/AGPL-3.0-only/blue)](LICENSE)
+[![TG Channel](https://badgen.net/badge/Telegram/Channel/0088cc)](https://t.me/bakaisu)
+[![TG Group](https://badgen.net/badge/Telegram/Group/0088cc)](https://t.me/mvscute)
 
 **无广告、无内置在线音源、由插件扩展。**
 
