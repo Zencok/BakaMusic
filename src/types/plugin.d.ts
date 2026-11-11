@@ -69,10 +69,25 @@ declare namespace IPlugin {
 
   export type ISearchResultType = IMedia.SupportMediaType;
 
+  /** Optional fourth search argument. Duration is always milliseconds.
+   * musicItem is included only when searching the song's own platform. */
+  export interface ILyricSearchContext {
+    title: string;
+    artist: string;
+    durationMs?: number;
+    musicItem?: {
+      id: string;
+      hash?: string;
+      kg_song_id?: string | number;
+      album_audio_id?: string | number;
+    };
+  }
+
   type ISearchFunc = <T extends IMedia.SupportMediaType>(
     query: string,
     page: number,
-    type: T
+    type: T,
+    context?: ILyricSearchContext
   ) => Promise<ISearchResult<T>>;
 
   type IGetArtistWorksFunc = <T extends IArtist.ArtistMediaType>(

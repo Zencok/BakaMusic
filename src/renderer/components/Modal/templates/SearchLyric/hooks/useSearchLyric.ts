@@ -4,9 +4,10 @@ import searchResultStore from "./searchResultStore";
 import { produce } from "immer";
 import { useTranslation } from "react-i18next";
 import PluginManager from "@shared/plugin-manager/renderer";
+import { lyricSearchContext } from "@shared/plugin-manager/lyric-search";
 
 
-export default function () {
+export default function (musicItem?: IMusic.IMusicItem) {
     // 当前正在搜索
     const currentQueryRef = useRef<string>("");
     const { t } = useTranslation();
@@ -95,7 +96,8 @@ export default function () {
                         };
                     }),
                 );
-                const result = await PluginManager.callPluginDelegateMethod(plugin, "search", query, page, "lyric");
+                const context = musicItem ? lyricSearchContext(musicItem, plugin.platform) : undefined;
+                const result = await PluginManager.callPluginDelegateMethod(plugin, "search", query, page, "lyric", context);
                 /** 如果搜索结果不是本次结果 */
                 if (currentQueryRef.current !== query) {
                     return;
@@ -150,7 +152,7 @@ export default function () {
             }
         });
     },
-    [t]);
+    [t, musicItem]);
 
     return search;
 }

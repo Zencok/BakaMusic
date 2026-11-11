@@ -513,6 +513,7 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
         query: string,
         page: number,
         type: T,
+        context?: IPlugin.ILyricSearchContext,
     ): Promise<IPlugin.ISearchResult<T>> {
         if (!this.plugin.instance.search) {
             return {
@@ -521,7 +522,7 @@ export default class PluginMethods implements IPlugin.IPluginInstanceMethods {
             };
         }
 
-        const result = await this.plugin.instance.search(query, page, type);
+        const result = await this.plugin.instance.search(query, page, type, context);
         if (Array.isArray(result.data)) {
             result.data.forEach((_) => {
                 resetMediaItem(_, this.plugin.name);

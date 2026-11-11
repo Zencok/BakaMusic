@@ -4,6 +4,12 @@ BakaMusic 插件是单文件 JavaScript 模块，用于提供在线搜索、媒�
 
 本指南以当前仓库为准。完整字段和返回类型以 [`src/types/plugin.d.ts`](../src/types/plugin.d.ts) 与 [`src/types/media.d.ts`](../src/types/media.d.ts) 为唯一契约；新增能力不会以其他播放器的插件文档为基准。
 
+## 歌词搜索上下文
+
+歌词搜索默认关键词为 `歌手 - 歌名`，保留歌名和歌手中的空格。宿主调用 `search(query, page, "lyric", context)`；第四参数可选，旧插件可忽略。
+
+`context` 包含 `title`、`artist` 和可选的 `durationMs`（毫秒，未知时省略）。仅当目标歌曲与搜索插件属于同一平台时，包含 `musicItem`，其字段限定为 `id`、`hash`、`kg_song_id`、`album_audio_id`；跨平台不得使用原平台 ID 作为目标平台歌曲 ID。普通搜索不提供歌词上下文。
+
 ## 最小插件
 
 插件必须导出一个对象，`platform` 是唯一必填元数据。推荐使用 CommonJS：

@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import PluginManager from "@shared/plugin-manager/renderer";
 import { RequestStateCode } from "@/common/constant";
 import useHorizontalWheel from "@/hooks/useHorizontalWheel";
+import { lyricSearchKeyword } from "@shared/plugin-manager/lyric-search";
 
 interface IProps {
     defaultTitle?: string;
@@ -19,12 +20,15 @@ interface IProps {
 
 export default function SearchLyric(props: IProps) {
     const { defaultTitle, musicItem } = props;
+    const initialQuery = musicItem
+        ? lyricSearchKeyword(musicItem)
+        : defaultTitle ?? "";
 
-    const [inputSearch, setInputSearch] = useState(defaultTitle ?? "");
+    const [inputSearch, setInputSearch] = useState(initialQuery);
     const [selectedPlatformIndex, setSelectedPlatformIndex] = useState(0);
     const handlePlatformWheel = useHorizontalWheel<HTMLDivElement>();
 
-    const searchLyric = useSearchLyric();
+    const searchLyric = useSearchLyric(musicItem);
     const searchResults = searchResultStore.useValue();
     const { t } = useTranslation();
 
@@ -42,10 +46,10 @@ export default function SearchLyric(props: IProps) {
     );
 
     useEffect(() => {
-        if (defaultTitle) {
-            searchLyric(defaultTitle);
+        if (initialQuery) {
+            searchLyric(initialQuery);
         }
-    }, [defaultTitle, searchLyric]);
+    }, [initialQuery, searchLyric]);
 
     return (
         <Base defaultClose withBlur={false}>
