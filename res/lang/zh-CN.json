@@ -310,6 +310,7 @@
         "toast_plugin_is_latest": "插件 {{plugin}} 已更新到最新版本",
         "update_failed": "更新失败",
         "update": "更新",
+        "copy_link": "复制链接",
         "importing_media": "正在导入中",
         "placeholder_import_music_item": "输入 {{plugin}} 单曲链接",
         "import_failed": "导入失败",

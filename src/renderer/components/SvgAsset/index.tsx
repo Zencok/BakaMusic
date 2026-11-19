@@ -38,6 +38,7 @@ export type SvgAssetIconNames =
     | "identification"
     | "keyboard"
     | "language"
+    | "link"
     | "list-bullet"
     | "lock-closed"
     | "lock-open"

@@ -13,6 +13,7 @@ import {
     type IContextMenuItem,
 } from "@/renderer/components/ContextMenu";
 import { hideModal, showModal } from "@/renderer/components/Modal";
+import { copyTextToClipboard } from "@/common/music-identity";
 import Empty from "@/renderer/components/Empty";
 import { toast } from "react-toastify";
 import { showPanel } from "@/renderer/components/Panel";
@@ -98,6 +99,19 @@ function openPluginActions(
                         (error as Error)?.message ??
                         t("plugin_management_page.update_failed"),
                     );
+                }
+            },
+        });
+        menuItems.push({
+            title: t("plugin_management_page.copy_link"),
+            icon: "link",
+            async onClick() {
+                if (!row.srcUrl) return;
+                const ok = await copyTextToClipboard(row.srcUrl);
+                if (ok) {
+                    toast.success(t("common.copied_to_clipboard"));
+                } else {
+                    toast.warn(t("common.copy_to_clipboard_failed"));
                 }
             },
         });

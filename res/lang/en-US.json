@@ -310,6 +310,7 @@
         "toast_plugin_is_latest": "Plugin {{plugin}} is up to date",
         "update_failed": "Update Failed",
         "update": "Update",
+        "copy_link": "Copy Link",
         "importing_media": "Importing",
         "placeholder_import_music_item": "Enter {{plugin}} song link",
         "import_failed": "Import Failed",
