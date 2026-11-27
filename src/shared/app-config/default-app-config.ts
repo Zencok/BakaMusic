@@ -3,6 +3,7 @@ import { IAppConfig } from "@/types/app-config";
 
 const _defaultAppConfig: IAppConfig =  {
     "$schema-version": 1,
+    "private.pluginResolverBindings": {},
     "playMusic.whenQualityMissing": "lower",
     "playMusic.defaultQuality": "flac",
     "playMusic.clickMusicList": "replace",

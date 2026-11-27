@@ -1,3 +1,4 @@
+import getSourceName from "@renderer/utils/get-source-name";
 import AnimatedDiv from "../AnimatedDiv";
 import "./index.scss";
 import { useDefaultAlbumCover } from "@/renderer/utils/default-album-cover";
@@ -525,7 +526,7 @@ function MusicDetail() {
                                                 </div>
                                                 {musicItem?.platform ? (
                                                     <div className="music-detail-info-badge">
-                                                        {musicItem.platform}
+                                                        {getSourceName(musicItem.platform)}
                                                     </div>
                                                 ) : null}
                                                 {qualityLabel ? (

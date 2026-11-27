@@ -112,12 +112,8 @@ export async function resolveMusicQualityChoices(
     let detailMusic = musicItem;
     let choices = getAvailableQualityChoices(detailMusic, t);
 
-    if (!choices.length && PluginManager.isSupportFeatureMethod(musicItem.platform, "getMusicInfo")) {
-        const musicInfo = await PluginManager.callPluginDelegateMethod(
-            { platform: musicItem.platform },
-            "getMusicInfo",
-            musicItem,
-        ).catch((): null => null);
+    if (!choices.length && PluginManager.isSupportFeatureMethod(musicItem.platform, "entities.get")) {
+        const musicInfo = await PluginManager.invoke({ platform: musicItem.platform }, "entities.get", { entity: musicItem }).catch((): null => null);
 
         if (musicInfo && typeof musicInfo === "object") {
             detailMusic = {

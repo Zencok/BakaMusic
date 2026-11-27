@@ -1,0 +1,1 @@
+Native lyric parsing and QQ custom DES preserve behavior originally ported from BakaMusic/AMLL. These license and source-version records remain for attribution. The removed JavaScript compatibility bundles are not installed or executed. Native regression corpora in tests retain their separate oracle role.

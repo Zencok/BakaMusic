@@ -1,0 +1,61 @@
+[package]
+name = "baka-plugin-host"
+description = "Strict V2 QuickJS package host with generic native SDK services."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+baka-logging.workspace = true
+baka-core = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.40.2", default-features = false, features = ["bundled"] }
+regex = "1.13"
+unicode-normalization = "0.1"
+xml-rs = "1.0"
+base64 = "0.23.1"
+
+# One Runtime + one Context per plugin. The `futures` feature is not optional
+# here: plugin entry points is async (they all await HTTP), so the host has to
+# be able to drive the QuickJS job queue.
+rquickjs = { version = "0.14.0", features = ["futures", "parallel"] }
+
+# ---- shims (added together with the code that uses them, see shim/mod.rs) ----
+# Generic HTTP transport
+reqwest = { workspace = true, features = ["gzip", "multipart"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+webpki-roots = "1"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+url = "2"
+# Native hash/cipher primitives (md5/sha1/sha256/hmac + AES-ECB/CBC with Pkcs7)
+md-5 = "0.11"
+sha1 = "0.11"
+sha2 = "0.11"
+hmac = "0.13"
+aes = "0.9"
+cbc = "0.2"
+hex = "0.4"
+getrandom = "0.4.3"
+# Generic zlib compression
+flate2 = "1"
+# HTML entity decoding
+html-escape = "0.2"
+# TextDecoder backend -- gb18030 is the whole point (kw lyrics); native support
+# is why the QuickJS route beats Hermes (MusicFree bug #4).
+encoding_rs = "0.8"
+# Native timer delays and independently abortable transport tasks.
+futures-timer = "3"
+tokio = { version = "1", features = ["rt"] }
+
+[dev-dependencies]
+rcgen = { version = "0.14.10", default-features = false, features = ["ring"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+axum = "0.8"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+# No iOS bindings are shipped upstream. Generate them with the same Apple
+# target/SDK flags as the QuickJS C build; never reuse Android/macOS layouts.
+[target.'cfg(target_os = "ios")'.dependencies]
+rquickjs = { version = "0.14.0", features = ["bindgen"] }

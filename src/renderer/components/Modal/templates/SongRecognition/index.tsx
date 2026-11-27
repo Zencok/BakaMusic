@@ -1,3 +1,4 @@
+import getSourceName from "@renderer/utils/get-source-name";
 import { useEffect, useState } from "react";
 import Base from "../Base";
 import "./index.scss";
@@ -25,7 +26,7 @@ export default function SongRecognition() {
     const [error, setError] = useState("");
     const [preparingMatchKey, setPreparingMatchKey] = useState<string | null>(null);
     const [, setFavoriteTick] = useState(0);
-    const available = PluginManager.getSortedSupportedPlugin("recognize");
+    const available = PluginManager.getSortedSupportedPlugin("recognition.identify");
 
     useEffect(() => {
         if (status !== "recording") return;
@@ -74,13 +75,13 @@ export default function SongRecognition() {
     }
 
     async function playMatch(match: RecognizeMatch) {
-        const matchKey = `${match.platform}:${match.musicItem.id}`;
+        const matchKey = JSON.stringify([match.platform, match.musicItem.id]);
         if (preparingMatchKey) return;
         setPreparingMatchKey(matchKey);
         try {
             const preparedMatch = await prepareRecognizeMatchForPlayback(match);
             setMatches((currentMatches) => currentMatches.map((item) =>
-                `${item.platform}:${item.musicItem.id}` === matchKey
+                JSON.stringify([item.platform, item.musicItem.id]) === matchKey
                     ? preparedMatch
                     : item,
             ));
@@ -150,10 +151,10 @@ export default function SongRecognition() {
                         <ul>
                             {matches.map((match, index) => {
                                 const favorite = MusicSheet.frontend.isFavoriteMusic(match.musicItem);
-                                const matchKey = `${match.platform}:${match.musicItem.id}`;
+                                const matchKey = JSON.stringify([match.platform, match.musicItem.id]);
                                 const preparing = preparingMatchKey === matchKey;
                                 return (
-                                    <li key={`${match.platform}-${match.musicItem.id}-${index}`}>
+                                    <li key={`${JSON.stringify([match.platform, match.musicItem.id])}-${index}`}>
                                         <div className="song-recognition-confidence">
                                             {Math.round(match.confidence * 100)}%
                                             <small>{t("song_recognition.match")}</small>
@@ -166,7 +167,7 @@ export default function SongRecognition() {
                                         <div className="song-recognition-info">
                                             <strong>{match.musicItem.title}</strong>
                                             <span>{match.musicItem.artist || t("song_recognition.unknown_artist")}{match.musicItem.album ? ` · ${match.musicItem.album}` : ""}</span>
-                                            <small>{match.platform}</small>
+                                            <small>{getSourceName(match.platform)}</small>
                                         </div>
                                         <div className="song-recognition-actions">
                                             <button type="button" disabled={preparingMatchKey !== null} title={t("song_recognition.play")} aria-label={t("song_recognition.play")} onClick={() => void playMatch(match)}>

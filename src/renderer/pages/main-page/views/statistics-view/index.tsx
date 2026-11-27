@@ -1,3 +1,4 @@
+import getSourceName from "@renderer/utils/get-source-name";
 import { useDefaultAlbumCover } from "@/renderer/utils/default-album-cover";
 import { secondsToDuration } from "@/common/time-util";
 import { createSearchMatcher } from "@/common/search-matcher";
@@ -104,9 +105,7 @@ function StatisticsTrackRow(props: IStatisticsTrackRowProps) {
     const artwork = entry.musicItem.coverImg || entry.musicItem.artwork || defaultAlbumCover;
     const qualityInfo = getBestMusicQualityInfo(
         entry.musicItem,
-        PluginManager.getLxQualityOverride(entry.musicItem.platform)
-            ? PluginManager.getMediaQualityKeys(entry.musicItem)
-            : null,
+        PluginManager.getMediaQualityKeys(entry.musicItem),
     );
 
     return (
@@ -160,7 +159,7 @@ function StatisticsTrackRow(props: IStatisticsTrackRowProps) {
                     ) : null}
                     {entry.musicItem.platform ? (
                         <Tag fill>
-                            {entry.musicItem.platform}
+                            {getSourceName(entry.musicItem.platform)}
                         </Tag>
                     ) : null}
                 </div>

@@ -22,6 +22,7 @@ import { i18n } from "@/shared/i18n/renderer";
 import PluginManager from "@shared/plugin-manager/renderer";
 import SvgAsset from "@/renderer/components/SvgAsset";
 import useAppConfig from "@/hooks/useAppConfig";
+import { getPluginDisplayVersion, getPluginUpdateOptions, isLxPlugin } from "../../import-format";
 
 const t = i18n.t;
 
@@ -39,15 +40,15 @@ interface IPluginToggleProps {
 }
 
 function PluginToggle({ plugin, meta }: IPluginToggleProps) {
-    const disabled = meta[plugin.platform]?.disabled ?? false;
+    const disabled = meta[plugin.id]?.disabled ?? false;
 
     function toggle(e: React.MouseEvent) {
         e.stopPropagation();
         AppConfig.setConfig({
             "private.pluginMeta": produce(meta, (draft) => {
-                const pluginMeta = draft[plugin.platform] ?? {};
+                const pluginMeta = draft[plugin.id] ?? {};
                 pluginMeta.disabled = !disabled;
-                draft[plugin.platform] = pluginMeta;
+                draft[plugin.id] = pluginMeta;
             }),
         });
     }
@@ -61,12 +62,12 @@ function PluginToggle({ plugin, meta }: IPluginToggleProps) {
             aria-label={t(disabled
                 ? "plugin_management_page.enable_plugin"
                 : "plugin_management_page.disable_plugin", {
-                plugin: plugin.platform,
+                plugin: plugin.name,
             })}
             title={t(disabled
                 ? "plugin_management_page.enable_plugin"
                 : "plugin_management_page.disable_plugin", {
-                plugin: plugin.platform,
+                plugin: plugin.name,
             })}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={toggle}
@@ -90,9 +91,9 @@ function openPluginActions(
             async onClick() {
                 if (!row.srcUrl) return;
                 try {
-                    await PluginManager.installPluginFromRemote(row.srcUrl);
+                    await PluginManager.installPluginFromRemote(row.srcUrl, getPluginUpdateOptions(row));
                     toast.success(t("plugin_management_page.toast_plugin_is_latest", {
-                        plugin: row.platform,
+                        plugin: row.name,
                     }));
                 } catch (error) {
                     toast.error(
@@ -117,7 +118,7 @@ function openPluginActions(
         });
     }
 
-    if (row.supportedMethod.includes("importMusicItem")) {
+    if (row.capabilities.includes("links.resolve")) {
         menuItems.push({
             title: t("plugin.method_import_music_item"),
             icon: "musical-note",
@@ -128,15 +129,11 @@ function openPluginActions(
                     loadingText: t("plugin_management_page.importing_media"),
                     placeholder: String(t(
                         "plugin_management_page.placeholder_import_music_item",
-                        { plugin: row.platform },
+                        { plugin: row.name },
                     )),
                     maxLength: 1000,
                     onOk(text) {
-                        return PluginManager.callPluginDelegateMethod(
-                            row,
-                            "importMusicItem",
-                            text.trim(),
-                        );
+                        return PluginManager.invoke(row, "links.resolve", { url: text.trim(), kind: "music" });
                     },
                     onPromiseResolved(result) {
                         hideModal();
@@ -147,13 +144,13 @@ function openPluginActions(
                     onPromiseRejected() {
                         toast.error(t("plugin_management_page.import_failed"));
                     },
-                    hints: row.hints?.importMusicItem,
+                    hints: row.hints?.["links.resolve"],
                 });
             },
         });
     }
 
-    if (row.supportedMethod.includes("importMusicSheet")) {
+    if (row.capabilities.includes("links.resolve")) {
         menuItems.push({
             title: t("plugin.method_import_music_sheet"),
             icon: "playlist",
@@ -171,10 +168,10 @@ function openPluginActions(
             icon: "cog-8-tooth",
             onClick() {
                 showPanel("UserVariables", {
-                    variables: row.userVariables,
+                    variables: row.userVariables ?? [],
                     plugin: row,
                     initValues: AppConfig.getConfig("private.pluginMeta")
-                        ?.[row.platform]?.userVariables,
+                        ?.[row.id]?.userVariables,
                 });
             },
         });
@@ -190,14 +187,14 @@ function openPluginActions(
             showModal("Reconfirm", {
                 title: t("plugin_management_page.uninstall_plugin"),
                 content: t("plugin_management_page.confirm_text_uninstall_plugin", {
-                    plugin: row.platform,
+                    plugin: row.name,
                 }),
                 async onConfirm() {
                     hideModal();
                     try {
                         await PluginManager.uninstallPlugin(row.hash);
                         toast.success(t("plugin_management_page.uninstall_successfully", {
-                            plugin: row.platform,
+                            plugin: row.name,
                         }));
                     } catch {
                         toast.error(t("plugin_management_page.uninstall_failed"));
@@ -429,9 +426,9 @@ export default function PluginTable({ plugins }: IPluginTableProps) {
         const currentMeta = AppConfig.getConfig("private.pluginMeta") ?? {};
         const nextMeta = produce(currentMeta, (draft) => {
             ordered.forEach((plugin, index) => {
-                const pluginMeta = draft[plugin.platform] ?? {};
+                const pluginMeta = draft[plugin.id] ?? {};
                 pluginMeta.order = index;
-                draft[plugin.platform] = pluginMeta;
+                draft[plugin.id] = pluginMeta;
             });
         });
 
@@ -559,8 +556,10 @@ export default function PluginTable({ plugins }: IPluginTableProps) {
                         draggingHash !== null,
                     )}>
                         {localPlugins.map((plugin, index) => {
-                            const disabled = meta[plugin.platform]?.disabled ?? false;
+                            const disabled = meta[plugin.id]?.disabled ?? false;
                             const isDragging = plugin.hash === draggingHash;
+                            const lx = isLxPlugin(plugin);
+                            const version = getPluginDisplayVersion(plugin);
                             return (
                                 <article
                                     ref={(node) => setCardRef(plugin.hash, node)}
@@ -577,7 +576,7 @@ export default function PluginTable({ plugins }: IPluginTableProps) {
                                             aria-label={t(
                                                 "plugin_management_page.reorder_plugin",
                                                 {
-                                                    plugin: plugin.platform,
+                                                    plugin: plugin.name,
                                                     position: index + 1,
                                                 },
                                             )}
@@ -602,14 +601,14 @@ export default function PluginTable({ plugins }: IPluginTableProps) {
                                         <div className="plugin-card-main">
                                             <div
                                                 className="plugin-card-title"
-                                                title={plugin.platform}
+                                                title={plugin.name}
                                             >
-                                                {plugin.platform}
+                                                {plugin.name}
                                             </div>
                                             <div className="plugin-card-meta">
                                                 <span>
-                                                    {plugin.version
-                                                        ? `v${plugin.version}`
+                                                    {version
+                                                        ? lx ? version : `v${version}`
                                                         : "v-"}
                                                 </span>
                                                 <span aria-hidden="true">·</span>
@@ -624,6 +623,9 @@ export default function PluginTable({ plugins }: IPluginTableProps) {
                                             </div>
                                         </div>
                                         <div className="plugin-card-origin">
+                                            {lx ? <span className="plugin-card-source" data-source="lx">
+                                                {t("plugin_management_page.lx_plugin")}
+                                            </span> : null}
                                             <span
                                                 className="plugin-card-source"
                                                 data-source={plugin.srcUrl
@@ -636,7 +638,7 @@ export default function PluginTable({ plugins }: IPluginTableProps) {
                                             </span>
                                             <span className="plugin-card-capabilities">
                                                 {t("plugin_management_page.capability_count", {
-                                                    count: plugin.supportedMethod.length,
+                                                    count: plugin.capabilities.length,
                                                 })}
                                             </span>
                                         </div>
@@ -653,11 +655,11 @@ export default function PluginTable({ plugins }: IPluginTableProps) {
                                             className="plugin-manager-row-menu-button"
                                             aria-label={t(
                                                 "plugin_management_page.plugin_actions",
-                                                { plugin: plugin.platform },
+                                                { plugin: plugin.name },
                                             )}
                                             title={t(
                                                 "plugin_management_page.plugin_actions",
-                                                { plugin: plugin.platform },
+                                                { plugin: plugin.name },
                                             )}
                                             aria-haspopup="menu"
                                             onMouseDown={(event) =>

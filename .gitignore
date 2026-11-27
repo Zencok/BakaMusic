@@ -41,6 +41,8 @@ res/.service/native/smtc.node
 !res/.service/native/prebuilt/
 !res/.service/native/prebuilt/**/*
 res/.runtime/
+/res/.service/plugin-v2/
+/plugin-runtime/target/
 
 # Dependency directories
 node_modules/

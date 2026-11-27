@@ -874,7 +874,7 @@ function CommentBtn() {
     const { t } = useTranslation();
     const canShowComments = PluginManager.isSupportFeatureMethod(
         currentMusic?.platform ?? "",
-        "getMusicComments",
+        "comments.list",
     );
 
     return (

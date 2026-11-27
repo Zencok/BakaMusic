@@ -1,0 +1,1123 @@
+[
+  {
+    "name": "offset",
+    "rawLrc": "[offset:500]\n[1000,1000](1000,1000,0)word",
+    "expected": [
+      {
+        "time": 1.5,
+        "endTime": 2.5,
+        "duration": 1,
+        "lrc": "word",
+        "index": 0,
+        "words": [
+          {
+            "text": "word",
+            "startTime": 1.5,
+            "duration": 1,
+            "endTime": 2.5,
+            "index": 0,
+            "space": false
+          }
+        ],
+        "hasWordTimeline": true,
+        "isBG": false,
+        "isDuet": false
+      }
+    ]
+  },
+  {
+    "name": "plain",
+    "rawLrc": "first\nsecond",
+    "expected": [
+      {
+        "time": 0,
+        "endTime": 3,
+        "duration": 3,
+        "lrc": "first",
+        "index": 0,
+        "isBG": false,
+        "isDuet": false,
+        "words": [
+          {
+            "text": "f",
+            "startTime": 0,
+            "duration": 0.6,
+            "endTime": 0.6,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "i",
+            "startTime": 0.6,
+            "duration": 0.6,
+            "endTime": 1.2,
+            "index": 1,
+            "isVirtual": true
+          },
+          {
+            "text": "r",
+            "startTime": 1.2,
+            "duration": 0.6,
+            "endTime": 1.7999999999999998,
+            "index": 2,
+            "isVirtual": true
+          },
+          {
+            "text": "s",
+            "startTime": 1.7999999999999998,
+            "duration": 0.6,
+            "endTime": 2.4,
+            "index": 3,
+            "isVirtual": true
+          },
+          {
+            "text": "t",
+            "startTime": 2.4,
+            "duration": 0.6,
+            "endTime": 3,
+            "index": 4,
+            "isVirtual": true
+          }
+        ],
+        "isVirtualWords": true
+      },
+      {
+        "time": 3,
+        "endTime": 6,
+        "duration": 3,
+        "lrc": "second",
+        "index": 1,
+        "isBG": false,
+        "isDuet": false,
+        "words": [
+          {
+            "text": "s",
+            "startTime": 3,
+            "duration": 0.5,
+            "endTime": 3.5,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "e",
+            "startTime": 3.5,
+            "duration": 0.5,
+            "endTime": 4,
+            "index": 1,
+            "isVirtual": true
+          },
+          {
+            "text": "c",
+            "startTime": 4,
+            "duration": 0.5,
+            "endTime": 4.5,
+            "index": 2,
+            "isVirtual": true
+          },
+          {
+            "text": "o",
+            "startTime": 4.5,
+            "duration": 0.5,
+            "endTime": 5,
+            "index": 3,
+            "isVirtual": true
+          },
+          {
+            "text": "n",
+            "startTime": 5,
+            "duration": 0.5,
+            "endTime": 5.5,
+            "index": 4,
+            "isVirtual": true
+          },
+          {
+            "text": "d",
+            "startTime": 5.5,
+            "duration": 0.5,
+            "endTime": 6,
+            "index": 5,
+            "isVirtual": true
+          }
+        ],
+        "isVirtualWords": true
+      }
+    ]
+  },
+  {
+    "name": "parallel",
+    "rawLrc": "[00:01.00]Hello\n[00:01.00]你好\n[00:03.00]World",
+    "expected": [
+      {
+        "time": 1,
+        "endTime": 3,
+        "duration": 2,
+        "lrc": "Hello",
+        "translation": "你好",
+        "index": 0,
+        "words": [
+          {
+            "text": "H",
+            "startTime": 1,
+            "duration": 0.4,
+            "endTime": 1.4,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "e",
+            "startTime": 1.4,
+            "duration": 0.4,
+            "endTime": 1.8,
+            "index": 1,
+            "isVirtual": true
+          },
+          {
+            "text": "l",
+            "startTime": 1.8,
+            "duration": 0.4,
+            "endTime": 2.2,
+            "index": 2,
+            "isVirtual": true
+          },
+          {
+            "text": "l",
+            "startTime": 2.2,
+            "duration": 0.4,
+            "endTime": 2.6,
+            "index": 3,
+            "isVirtual": true
+          },
+          {
+            "text": "o",
+            "startTime": 2.6,
+            "duration": 0.4,
+            "endTime": 3,
+            "index": 4,
+            "isVirtual": true
+          }
+        ],
+        "hasWordTimeline": false,
+        "isBG": false,
+        "isDuet": false,
+        "isVirtualWords": true
+      },
+      {
+        "time": 3,
+        "endTime": 6,
+        "duration": 3,
+        "lrc": "World",
+        "index": 1,
+        "words": [
+          {
+            "text": "W",
+            "startTime": 3,
+            "duration": 0.6,
+            "endTime": 3.6,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "o",
+            "startTime": 3.6,
+            "duration": 0.6,
+            "endTime": 4.2,
+            "index": 1,
+            "isVirtual": true
+          },
+          {
+            "text": "r",
+            "startTime": 4.2,
+            "duration": 0.6,
+            "endTime": 4.8,
+            "index": 2,
+            "isVirtual": true
+          },
+          {
+            "text": "l",
+            "startTime": 4.8,
+            "duration": 0.6,
+            "endTime": 5.4,
+            "index": 3,
+            "isVirtual": true
+          },
+          {
+            "text": "d",
+            "startTime": 5.4,
+            "duration": 0.6,
+            "endTime": 6,
+            "index": 4,
+            "isVirtual": true
+          }
+        ],
+        "hasWordTimeline": false,
+        "isBG": false,
+        "isDuet": false,
+        "isVirtualWords": true
+      }
+    ]
+  },
+  {
+    "name": "natural-role",
+    "artist": "甲 / 乙",
+    "rawLrc": "[00:01.00]甲：你好\n[00:03.00]甲：以后\n[00:05.00]乙：再见",
+    "expected": [
+      {
+        "time": 1,
+        "endTime": 3,
+        "duration": 2,
+        "lrc": "甲：你好",
+        "index": 0,
+        "words": [
+          {
+            "text": "甲",
+            "startTime": 1,
+            "duration": 0.5,
+            "endTime": 1.5,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "：",
+            "startTime": 1.5,
+            "duration": 0.5,
+            "endTime": 2,
+            "index": 1,
+            "isVirtual": true
+          },
+          {
+            "text": "你",
+            "startTime": 2,
+            "duration": 0.5,
+            "endTime": 2.5,
+            "index": 2,
+            "isVirtual": true
+          },
+          {
+            "text": "好",
+            "startTime": 2.5,
+            "duration": 0.5,
+            "endTime": 3,
+            "index": 3,
+            "isVirtual": true
+          }
+        ],
+        "hasWordTimeline": false,
+        "isBG": false,
+        "isDuet": false,
+        "hasSingerLabel": true,
+        "isVirtualWords": true
+      },
+      {
+        "time": 3,
+        "endTime": 5,
+        "duration": 2,
+        "lrc": "以后",
+        "index": 1,
+        "words": [
+          {
+            "text": "以",
+            "startTime": 3,
+            "duration": 1,
+            "endTime": 4,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "后",
+            "startTime": 4,
+            "duration": 1,
+            "endTime": 5,
+            "index": 1,
+            "isVirtual": true
+          }
+        ],
+        "hasWordTimeline": false,
+        "isBG": false,
+        "isDuet": false,
+        "hasSingerLabel": true,
+        "isVirtualWords": true
+      },
+      {
+        "time": 5,
+        "endTime": 8,
+        "duration": 3,
+        "lrc": "乙：再见",
+        "index": 2,
+        "words": [
+          {
+            "text": "乙",
+            "startTime": 5,
+            "duration": 0.75,
+            "endTime": 5.75,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "：",
+            "startTime": 5.75,
+            "duration": 0.75,
+            "endTime": 6.5,
+            "index": 1,
+            "isVirtual": true
+          },
+          {
+            "text": "再",
+            "startTime": 6.5,
+            "duration": 0.75,
+            "endTime": 7.25,
+            "index": 2,
+            "isVirtual": true
+          },
+          {
+            "text": "见",
+            "startTime": 7.25,
+            "duration": 0.75,
+            "endTime": 8,
+            "index": 3,
+            "isVirtual": true
+          }
+        ],
+        "hasWordTimeline": false,
+        "isBG": false,
+        "isDuet": true,
+        "hasSingerLabel": true,
+        "isVirtualWords": true
+      }
+    ]
+  },
+  {
+    "name": "cross-line",
+    "artist": "甲 / 乙",
+    "rawLrc": "[00:01.00]（你好\n[00:03.00]再见）\n[00:05.00]以后",
+    "expected": [
+      {
+        "time": 1,
+        "endTime": 3,
+        "duration": 2,
+        "lrc": "你好",
+        "index": 0,
+        "words": [
+          {
+            "text": "你",
+            "startTime": 1,
+            "duration": 1,
+            "endTime": 2,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "好",
+            "startTime": 2,
+            "duration": 1,
+            "endTime": 3,
+            "index": 1,
+            "isVirtual": true
+          }
+        ],
+        "hasWordTimeline": false,
+        "isBG": false,
+        "isDuet": true,
+        "isVirtualWords": true
+      },
+      {
+        "time": 3,
+        "endTime": 5,
+        "duration": 2,
+        "lrc": "再见",
+        "index": 1,
+        "words": [
+          {
+            "text": "再",
+            "startTime": 3,
+            "duration": 1,
+            "endTime": 4,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "见",
+            "startTime": 4,
+            "duration": 1,
+            "endTime": 5,
+            "index": 1,
+            "isVirtual": true
+          }
+        ],
+        "hasWordTimeline": false,
+        "isBG": false,
+        "isDuet": true,
+        "isVirtualWords": true
+      },
+      {
+        "time": 5,
+        "endTime": 8,
+        "duration": 3,
+        "lrc": "以后",
+        "index": 2,
+        "words": [
+          {
+            "text": "以",
+            "startTime": 5,
+            "duration": 1.5,
+            "endTime": 6.5,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "后",
+            "startTime": 6.5,
+            "duration": 1.5,
+            "endTime": 8,
+            "index": 1,
+            "isVirtual": true
+          }
+        ],
+        "hasWordTimeline": false,
+        "isBG": false,
+        "isDuet": false,
+        "isVirtualWords": true
+      }
+    ]
+  },
+  {
+    "name": "lqe",
+    "rawLrc": "[Lyricify Quick Export]\n[lyrics: format@Lyricify Syllable]\n[2]Hello(1000,1000)\n[translation: format@LRC]\n[00:01.00]你好",
+    "expected": [
+      {
+        "time": 1,
+        "endTime": 2,
+        "duration": 1,
+        "lrc": "Hello",
+        "translation": "你好",
+        "index": 0,
+        "words": [
+          {
+            "text": "Hello",
+            "startTime": 1,
+            "duration": 1,
+            "endTime": 2,
+            "index": 0,
+            "space": false
+          }
+        ],
+        "hasWordTimeline": true,
+        "isBG": false,
+        "isDuet": true
+      }
+    ]
+  },
+  {
+    "name": "lrc",
+    "rawLrc": "[00:01.00]Hello\n[00:03.00]World",
+    "expected": [
+      {
+        "time": 1,
+        "endTime": 3,
+        "duration": 2,
+        "lrc": "Hello",
+        "index": 0,
+        "words": [
+          {
+            "text": "H",
+            "startTime": 1,
+            "duration": 0.4,
+            "endTime": 1.4,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "e",
+            "startTime": 1.4,
+            "duration": 0.4,
+            "endTime": 1.8,
+            "index": 1,
+            "isVirtual": true
+          },
+          {
+            "text": "l",
+            "startTime": 1.8,
+            "duration": 0.4,
+            "endTime": 2.2,
+            "index": 2,
+            "isVirtual": true
+          },
+          {
+            "text": "l",
+            "startTime": 2.2,
+            "duration": 0.4,
+            "endTime": 2.6,
+            "index": 3,
+            "isVirtual": true
+          },
+          {
+            "text": "o",
+            "startTime": 2.6,
+            "duration": 0.4,
+            "endTime": 3,
+            "index": 4,
+            "isVirtual": true
+          }
+        ],
+        "hasWordTimeline": false,
+        "isBG": false,
+        "isDuet": false,
+        "isVirtualWords": true
+      },
+      {
+        "time": 3,
+        "endTime": 6,
+        "duration": 3,
+        "lrc": "World",
+        "index": 1,
+        "words": [
+          {
+            "text": "W",
+            "startTime": 3,
+            "duration": 0.6,
+            "endTime": 3.6,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "o",
+            "startTime": 3.6,
+            "duration": 0.6,
+            "endTime": 4.2,
+            "index": 1,
+            "isVirtual": true
+          },
+          {
+            "text": "r",
+            "startTime": 4.2,
+            "duration": 0.6,
+            "endTime": 4.8,
+            "index": 2,
+            "isVirtual": true
+          },
+          {
+            "text": "l",
+            "startTime": 4.8,
+            "duration": 0.6,
+            "endTime": 5.4,
+            "index": 3,
+            "isVirtual": true
+          },
+          {
+            "text": "d",
+            "startTime": 5.4,
+            "duration": 0.6,
+            "endTime": 6,
+            "index": 4,
+            "isVirtual": true
+          }
+        ],
+        "hasWordTimeline": false,
+        "isBG": false,
+        "isDuet": false,
+        "isVirtualWords": true
+      }
+    ]
+  },
+  {
+    "name": "qrc",
+    "rawLrc": "[1000,2000]Hello(1000,1000) world(2000,1000)",
+    "expected": [
+      {
+        "time": 1,
+        "endTime": 3,
+        "duration": 2,
+        "lrc": "Hello world",
+        "index": 0,
+        "words": [
+          {
+            "text": "Hello",
+            "startTime": 1,
+            "duration": 1,
+            "endTime": 2,
+            "index": 0,
+            "space": false
+          },
+          {
+            "text": " world",
+            "startTime": 2,
+            "duration": 1,
+            "endTime": 3,
+            "index": 1,
+            "space": false
+          }
+        ],
+        "hasWordTimeline": true,
+        "isBG": false,
+        "isDuet": false
+      }
+    ]
+  },
+  {
+    "name": "yrc",
+    "rawLrc": "[1000,2000](1000,1000,0)Hello (2000,1000,0)world",
+    "expected": [
+      {
+        "time": 1,
+        "endTime": 3,
+        "duration": 2,
+        "lrc": "Hello world",
+        "index": 0,
+        "words": [
+          {
+            "text": "Hello ",
+            "startTime": 1,
+            "duration": 1,
+            "endTime": 2,
+            "index": 0,
+            "space": false
+          },
+          {
+            "text": "world",
+            "startTime": 2,
+            "duration": 1,
+            "endTime": 3,
+            "index": 1,
+            "space": false
+          }
+        ],
+        "hasWordTimeline": true,
+        "isBG": false,
+        "isDuet": false
+      }
+    ]
+  },
+  {
+    "name": "translation",
+    "rawLrc": "[00:01.00]Hello\n[00:03.00]World",
+    "translation": "[00:01.02]你好\n[00:03.00]世界",
+    "expected": [
+      {
+        "time": 1,
+        "endTime": 3,
+        "duration": 2,
+        "lrc": "Hello",
+        "translation": "你好",
+        "index": 0,
+        "words": [
+          {
+            "text": "H",
+            "startTime": 1,
+            "duration": 0.4,
+            "endTime": 1.4,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "e",
+            "startTime": 1.4,
+            "duration": 0.4,
+            "endTime": 1.8,
+            "index": 1,
+            "isVirtual": true
+          },
+          {
+            "text": "l",
+            "startTime": 1.8,
+            "duration": 0.4,
+            "endTime": 2.2,
+            "index": 2,
+            "isVirtual": true
+          },
+          {
+            "text": "l",
+            "startTime": 2.2,
+            "duration": 0.4,
+            "endTime": 2.6,
+            "index": 3,
+            "isVirtual": true
+          },
+          {
+            "text": "o",
+            "startTime": 2.6,
+            "duration": 0.4,
+            "endTime": 3,
+            "index": 4,
+            "isVirtual": true
+          }
+        ],
+        "hasWordTimeline": false,
+        "isBG": false,
+        "isDuet": false,
+        "isVirtualWords": true
+      },
+      {
+        "time": 3,
+        "endTime": 6,
+        "duration": 3,
+        "lrc": "World",
+        "translation": "世界",
+        "index": 1,
+        "words": [
+          {
+            "text": "W",
+            "startTime": 3,
+            "duration": 0.6,
+            "endTime": 3.6,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "o",
+            "startTime": 3.6,
+            "duration": 0.6,
+            "endTime": 4.2,
+            "index": 1,
+            "isVirtual": true
+          },
+          {
+            "text": "r",
+            "startTime": 4.2,
+            "duration": 0.6,
+            "endTime": 4.8,
+            "index": 2,
+            "isVirtual": true
+          },
+          {
+            "text": "l",
+            "startTime": 4.8,
+            "duration": 0.6,
+            "endTime": 5.4,
+            "index": 3,
+            "isVirtual": true
+          },
+          {
+            "text": "d",
+            "startTime": 5.4,
+            "duration": 0.6,
+            "endTime": 6,
+            "index": 4,
+            "isVirtual": true
+          }
+        ],
+        "hasWordTimeline": false,
+        "isBG": false,
+        "isDuet": false,
+        "isVirtualWords": true
+      }
+    ]
+  },
+  {
+    "name": "roles",
+    "rawLrc": "[00:01.00]v1:Hello\n[00:03.00]v2:World",
+    "expected": [
+      {
+        "time": 1,
+        "endTime": 3,
+        "duration": 2,
+        "lrc": "Hello",
+        "index": 0,
+        "words": [
+          {
+            "text": "H",
+            "startTime": 1,
+            "duration": 0.4,
+            "endTime": 1.4,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "e",
+            "startTime": 1.4,
+            "duration": 0.4,
+            "endTime": 1.8,
+            "index": 1,
+            "isVirtual": true
+          },
+          {
+            "text": "l",
+            "startTime": 1.8,
+            "duration": 0.4,
+            "endTime": 2.2,
+            "index": 2,
+            "isVirtual": true
+          },
+          {
+            "text": "l",
+            "startTime": 2.2,
+            "duration": 0.4,
+            "endTime": 2.6,
+            "index": 3,
+            "isVirtual": true
+          },
+          {
+            "text": "o",
+            "startTime": 2.6,
+            "duration": 0.4,
+            "endTime": 3,
+            "index": 4,
+            "isVirtual": true
+          }
+        ],
+        "hasWordTimeline": false,
+        "isBG": false,
+        "isDuet": false,
+        "hasSingerLabel": false,
+        "isVirtualWords": true
+      },
+      {
+        "time": 3,
+        "endTime": 6,
+        "duration": 3,
+        "lrc": "World",
+        "index": 1,
+        "words": [
+          {
+            "text": "W",
+            "startTime": 3,
+            "duration": 0.6,
+            "endTime": 3.6,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "o",
+            "startTime": 3.6,
+            "duration": 0.6,
+            "endTime": 4.2,
+            "index": 1,
+            "isVirtual": true
+          },
+          {
+            "text": "r",
+            "startTime": 4.2,
+            "duration": 0.6,
+            "endTime": 4.8,
+            "index": 2,
+            "isVirtual": true
+          },
+          {
+            "text": "l",
+            "startTime": 4.8,
+            "duration": 0.6,
+            "endTime": 5.4,
+            "index": 3,
+            "isVirtual": true
+          },
+          {
+            "text": "d",
+            "startTime": 5.4,
+            "duration": 0.6,
+            "endTime": 6,
+            "index": 4,
+            "isVirtual": true
+          }
+        ],
+        "hasWordTimeline": false,
+        "isBG": false,
+        "isDuet": true,
+        "hasSingerLabel": false,
+        "isVirtualWords": true
+      }
+    ]
+  },
+  {
+    "name": "lys",
+    "rawLrc": "[2]Hello(1000,1000) world(2000,1000)",
+    "expected": [
+      {
+        "time": 1,
+        "endTime": 3,
+        "duration": 2,
+        "lrc": "Hello world",
+        "index": 0,
+        "words": [
+          {
+            "text": "Hello",
+            "startTime": 1,
+            "duration": 1,
+            "endTime": 2,
+            "index": 0,
+            "space": false
+          },
+          {
+            "text": " world",
+            "startTime": 2,
+            "duration": 1,
+            "endTime": 3,
+            "index": 1,
+            "space": false
+          }
+        ],
+        "hasWordTimeline": true,
+        "isBG": false,
+        "isDuet": true
+      }
+    ]
+  },
+  {
+    "name": "lyl",
+    "rawLrc": "[type:LyricifyLines]\n[1000,3000]Hello",
+    "expected": [
+      {
+        "time": 1,
+        "endTime": 3,
+        "duration": 2,
+        "lrc": "Hello",
+        "index": 0,
+        "words": [
+          {
+            "text": "H",
+            "startTime": 1,
+            "duration": 0.4,
+            "endTime": 1.4,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "e",
+            "startTime": 1.4,
+            "duration": 0.4,
+            "endTime": 1.8,
+            "index": 1,
+            "isVirtual": true
+          },
+          {
+            "text": "l",
+            "startTime": 1.8,
+            "duration": 0.4,
+            "endTime": 2.2,
+            "index": 2,
+            "isVirtual": true
+          },
+          {
+            "text": "l",
+            "startTime": 2.2,
+            "duration": 0.4,
+            "endTime": 2.6,
+            "index": 3,
+            "isVirtual": true
+          },
+          {
+            "text": "o",
+            "startTime": 2.6,
+            "duration": 0.4,
+            "endTime": 3,
+            "index": 4,
+            "isVirtual": true
+          }
+        ],
+        "hasWordTimeline": false,
+        "isBG": false,
+        "isDuet": false,
+        "isVirtualWords": true
+      }
+    ]
+  },
+  {
+    "name": "eslrc",
+    "rawLrc": "[00:01.00]Hello[00:02.00] world[00:03.00]",
+    "expected": [
+      {
+        "time": 1,
+        "endTime": 3,
+        "duration": 2,
+        "lrc": "Hello world",
+        "index": 0,
+        "words": [
+          {
+            "text": "Hello",
+            "startTime": 1,
+            "duration": 1,
+            "endTime": 2,
+            "index": 0,
+            "space": false
+          },
+          {
+            "text": " world",
+            "startTime": 2,
+            "duration": 1,
+            "endTime": 3,
+            "index": 1,
+            "space": false
+          }
+        ],
+        "hasWordTimeline": true,
+        "isBG": false,
+        "isDuet": false
+      }
+    ]
+  },
+  {
+    "name": "parenthetical",
+    "artist": "甲 / 乙",
+    "rawLrc": "[00:01.00]你好（再见）\n[00:03.00]以后",
+    "expected": [
+      {
+        "time": 1,
+        "endTime": 3,
+        "duration": 2,
+        "lrc": "你好",
+        "index": 0,
+        "words": [
+          {
+            "text": "你好",
+            "startTime": 1,
+            "duration": 0.6666666666666665,
+            "endTime": 1.6666666666666665,
+            "index": 0,
+            "space": false
+          }
+        ],
+        "hasWordTimeline": true,
+        "isBG": false,
+        "isDuet": false
+      },
+      {
+        "time": 1,
+        "endTime": 3,
+        "duration": 2,
+        "lrc": "再见",
+        "index": 1,
+        "words": [
+          {
+            "text": "再见",
+            "startTime": 2,
+            "duration": 0.666666666666667,
+            "endTime": 2.666666666666667,
+            "index": 0,
+            "space": false
+          }
+        ],
+        "hasWordTimeline": true,
+        "isBG": false,
+        "isDuet": true,
+        "hasRomanizationWordTimeline": false,
+        "isDuetPartner": true
+      },
+      {
+        "time": 3,
+        "endTime": 6,
+        "duration": 3,
+        "lrc": "以后",
+        "index": 2,
+        "words": [
+          {
+            "text": "以",
+            "startTime": 3,
+            "duration": 1.5,
+            "endTime": 4.5,
+            "index": 0,
+            "isVirtual": true
+          },
+          {
+            "text": "后",
+            "startTime": 4.5,
+            "duration": 1.5,
+            "endTime": 6,
+            "index": 1,
+            "isVirtual": true
+          }
+        ],
+        "hasWordTimeline": false,
+        "isBG": false,
+        "isDuet": false,
+        "isVirtualWords": true
+      }
+    ]
+  }
+]

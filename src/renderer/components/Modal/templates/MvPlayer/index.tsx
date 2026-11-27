@@ -1,3 +1,4 @@
+import getSourceName from "@renderer/utils/get-source-name";
 import {
     CSSProperties,
     KeyboardEvent as ReactKeyboardEvent,
@@ -755,12 +756,7 @@ export default function MvPlayer({ musicItem, audioSession, onClose }: IMvPlayer
             const initialCandidate = [...declaredCandidates]
                 .sort((left, right) => getQualityHeight(right) - getQualityHeight(left))[0];
             const initialKey = musicItem.videoQuality || initialCandidate?.key || "1080p";
-            const initialResult = await PluginManager.callPluginDelegateMethod(
-                pluginReference,
-                "getMvSource",
-                musicItem,
-                initialKey,
-            );
+            const initialResult = await PluginManager.invoke(pluginReference, "media.video", { entity: musicItem, quality: initialKey });
             if (!initialResult?.url) throw new Error("MV source unavailable");
 
             let candidates = mergeCandidates(
@@ -782,12 +778,7 @@ export default function MvPlayer({ musicItem, audioSession, onClose }: IMvPlayer
             const preferredCandidate = explicitCandidate
                 ?? [...candidates].sort((left, right) => getQualityRank(right) - getQualityRank(left))[0];
             if (preferredCandidate && !preferredCandidate.source) {
-                const preferredResult = await PluginManager.callPluginDelegateMethod(
-                    pluginReference,
-                    "getMvSource",
-                    musicItem,
-                    preferredCandidate.key,
-                ).catch(() => null);
+                const preferredResult = await PluginManager.invoke(pluginReference, "media.video", { entity: musicItem, quality: preferredCandidate.key }).catch(() => null);
                 if (preferredResult?.url) {
                     candidates = mergeCandidates(candidates, [{
                         ...preferredCandidate,
@@ -859,12 +850,7 @@ export default function MvPlayer({ musicItem, audioSession, onClose }: IMvPlayer
                 while (!canceled && nextIndex < candidates.length) {
                     const candidate = candidates[nextIndex++];
                     if (!candidate || candidate.source?.url) continue;
-                    const result = await PluginManager.callPluginDelegateMethod(
-                        pluginReference,
-                        "getMvSource",
-                        musicItem,
-                        candidate.key,
-                    ).catch(() => null);
+                    const result = await PluginManager.invoke(pluginReference, "media.video", { entity: musicItem, quality: candidate.key }).catch(() => null);
                     if (!result?.url || canceled) continue;
                     candidate.source = result;
                     candidate.label = result.videoQuality || candidate.label;
@@ -1242,7 +1228,7 @@ export default function MvPlayer({ musicItem, audioSession, onClose }: IMvPlayer
                         </span>
                         <strong title={musicItem.title}>{musicItem.title}</strong>
                         <span className="mv-player-subtitle">
-                            <span title={musicItem.artist}>{musicItem.artist || musicItem.platform}</span>
+                            <span title={musicItem.artist}>{musicItem.artist || getSourceName(musicItem.platform)}</span>
                             <i aria-hidden="true">·</i>
                             <span className="mv-player-heading-quality">{activeQualityLabel}</span>
                         </span>

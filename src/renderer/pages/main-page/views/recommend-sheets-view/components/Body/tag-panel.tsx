@@ -7,7 +7,7 @@ interface ITagPanelProps {
     id: string;
     show: boolean;
     tagsGroups: IMusic.IMusicSheetGroupItem[];
-    selectedId?: string | null;
+    selectedId?: string | number | null;
     onTagClick?: (tag: IMedia.IUnique) => void;
 }
 

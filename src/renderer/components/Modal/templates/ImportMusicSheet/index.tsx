@@ -1,3 +1,5 @@
+import getSourceName from "@renderer/utils/get-source-name";
+import { isV2Media } from "@/common/media-util";
 import { mergeImportedTracks, importSourceKey } from "@/renderer/core/music-sheet/import-sync";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -26,7 +28,7 @@ function rememberImportMusicSheetPlugin(plugin: IPlugin.IPluginDelegate) {
     if (!plugin?.hash) {
         return;
     }
-    setUserPreference("importMusicSheetPluginHash", plugin.hash);
+    setUserPreference("importMusicSheetPluginHash", plugin.id);
 }
 
 function createImportedSheetId(
@@ -75,12 +77,12 @@ export function normalizeImportedMusicSheet(
         : "";
     const id = sourceSheet?.id === undefined || sourceSheet.id === null
         ? createImportedSheetId(plugin, input)
-        : String(sourceSheet.id);
+        : sourceSheet.id;
     const musicWithArtwork = musicList.find(
         (item) => item.artwork || item.coverImg,
     );
 
-    const importSource = { pluginHash: plugin.hash, platform: plugin.platform, input: input.trim() };
+    const importSource = { pluginHash: plugin.id, platform: plugin.platform, input: input.trim() };
     const uniqueTracks = mergeImportedTracks([], musicList);
     return {
         ...(sourceSheet ?? {}),
@@ -99,7 +101,7 @@ export function normalizeImportedMusicSheet(
         importSources: [importSource],
         importOwnership: uniqueTracks.map((track) => ({
             platform: track.platform,
-            id: String(track.id),
+            id: isV2Media(track) ? track.id : String(track.id),
             manual: false,
             sourceKeys: [importSourceKey(importSource)],
         })),
@@ -156,7 +158,7 @@ export default function ImportMusicSheet(props: IProps) {
                             ></LazyImage>
                             <span className="import-music-sheet-result-info">
                                 <span className="import-music-sheet-result-platform">
-                                    {parsedSheet.platform}
+                                    {getSourceName(parsedSheet.platform)}
                                 </span>
                                 <strong title={parsedSheet.title}>
                                     {parsedSheet.title}
@@ -207,7 +209,7 @@ export default function ImportMusicSheet(props: IProps) {
             cancelText={t("common.cancel")}
             emptySupportMethod={t("plugin.method_import_music_sheet")}
             errorText={t("plugin_management_page.import_failed")}
-            hintMethod="importMusicSheet"
+            hintMethod="links.resolve"
             hintTitle={t("plugin.input_panel_hints")}
             hints={(plugin) => [t("plugin.import_music_sheet_hint", {
                 plugin: plugin.platform,
@@ -219,7 +221,7 @@ export default function ImportMusicSheet(props: IProps) {
             maxLength={1000}
             placeholder={(plugin) => t(
                 "plugin_management_page.placeholder_import_music_sheet",
-                { plugin: plugin.platform },
+                { plugin: plugin.name },
             )}
             plugins={plugins}
             selectLabel={t("plugin_management_page.choose_plugin")}
@@ -228,11 +230,7 @@ export default function ImportMusicSheet(props: IProps) {
             variant="import-music-sheet"
             onSelectedPluginChange={rememberImportMusicSheetPlugin}
             onSubmit={async (plugin, input) => {
-                const result = await PluginManager.callPluginDelegateMethod(
-                    plugin,
-                    "importMusicSheet",
-                    input,
-                );
+                const result = await PluginManager.importCollection(plugin, input);
                 const sheet = normalizeImportedMusicSheet(
                     result,
                     plugin,

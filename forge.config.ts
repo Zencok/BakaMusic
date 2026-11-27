@@ -15,6 +15,7 @@ import { createMacosBundleSignPlugin } from "./config/forge-macos-sign-plugin";
 import { MakerAppImage } from "./config/forge-appimage-maker";
 import { MakerNsis } from "./config/forge-nsis-maker";
 import path from "path";
+import { prunePackagedRuntime } from "./scripts/build-plugin-runtime.cjs";
 
 const windowsSigningConfigured = !!(
     process.env.WINDOWS_CERTIFICATE_FILE
@@ -55,7 +56,7 @@ const nativeSourceIgnorePlugin = {
                 const existingIgnore = forgeConfig.packagerConfig.ignore;
 
                 forgeConfig.packagerConfig.ignore = (file: string) => {
-                    if (/^[/\\]native($|[/\\])/.test(file)) {
+                    if (/^[/\\](native|plugin-runtime)($|[/\\])/.test(file)) {
                         return true;
                     }
                     return typeof existingIgnore === "function" ? existingIgnore(file) : false;
@@ -77,6 +78,10 @@ const config: ForgeConfig = {
         icon: path.resolve(__dirname, "res/logo"),
         executableName: "BakaMusic",
         extraResource: [path.resolve(__dirname, "res")],
+        // Prune other locally built targets before platform signing seals res.
+        afterCopyExtraResources: [(buildPath, _version, platform, arch, callback) => {
+            prunePackagedRuntime(buildPath, platform, arch).then(() => callback(), callback);
+        }],
         protocols: [
             {
                 name: "BakaMusic",

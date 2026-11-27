@@ -64,7 +64,7 @@ export function isSameMedia(
 ) {
     if (a && b) {
         // 插件 API 常返回 number id，路由/params 是 string；严格相等会导致误判「换了媒体」
-        return String(a.id) === String(b.id) && a.platform === b.platform;
+        return a.platform === b.platform && (isV2Media(a) || isV2Media(b) ? a.id === b.id : String(a.id) === String(b.id));
     }
     return false;
 }
@@ -101,9 +101,15 @@ export function resetMediaItem<T extends IMedia.IMediaBase>(
     }
 }
 
+/** V2 package IDs use typed keys; established local/legacy identities stay readable. */
+export function isV2Media(item: unknown) {
+    const platform = item && typeof item === "object" ? (item as { platform?: unknown }).platform : undefined;
+    return typeof platform === "string" && /^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+$/.test(platform);
+}
+
 export function getMediaPrimaryKey(mediaItem: IMedia.IUnique) {
     if (mediaItem) {
-        return `${mediaItem.platform}@${mediaItem.id}`;
+        return isV2Media(mediaItem) ? JSON.stringify([mediaItem.platform, mediaItem.id]) : `${mediaItem.platform}@${mediaItem.id}`;
     }
     return "invalid@invalid";
 }

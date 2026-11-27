@@ -39,8 +39,8 @@ export default function (props: IUserVariablesProps) {
                                 saved = await AppConfig.setConfig({
                                     "private.pluginMeta": {
                                         ...currentMeta,
-                                        [plugin.platform]: {
-                                            ...(currentMeta[plugin.platform] ?? {}),
+                                        [plugin.id]: {
+                                            ...(currentMeta[plugin.id] ?? {}),
                                             userVariables: { ...valueRef.current },
                                         },
                                     },
@@ -63,7 +63,7 @@ export default function (props: IUserVariablesProps) {
                     </div>
                 }
             >
-                {plugin.platform ?? ""} {t("panel.user_variable")}
+                {plugin.name ?? ""} {t("panel.user_variable")}
             </Base.Header>
             <div className="panel--user-variables-container">
                 {variables.map((variable) => (

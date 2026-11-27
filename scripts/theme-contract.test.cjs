@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+require("./register-test-aliases.cjs");
 const {
     CLIENT_OWNED_COMPATIBILITY_TOKENS,
     THEME_SPEC_V2,
@@ -804,13 +805,13 @@ assert.match(statisticsViewSource, /className="statistics-track-meta-row"/);
 assert.match(statisticsViewSource, /secondsToDuration\(entry\.musicItem\.duration\)/);
 assert.match(
     statisticsViewSource,
-    /getBestMusicQualityInfo\([\s\S]{0,120}entry\.musicItem[\s\S]{0,120}getLxQualityOverride/,
+    /getBestMusicQualityInfo\([\s\S]{0,120}entry\.musicItem[\s\S]{0,120}getMediaQualityKeys/,
 );
 assert.match(statisticsViewSource, /statistics_page\.tracks_unit/);
 assert.match(statisticsViewSource, /statistics-summary-value-unit/);
 assert.match(
     statisticsViewSource,
-    /<Tag fill>\s*\{entry\.musicItem\.platform\}\s*<\/Tag>/s,
+    /<Tag fill>\s*\{getSourceName\(entry\.musicItem\.platform\)\}\s*<\/Tag>/s,
 );
 assert.match(statisticsViewSource, /iconName=\{isCurrent \? "pause" : "play"\}/);
 assert.doesNotMatch(statisticsViewSource, /speaker-wave/);
@@ -852,7 +853,7 @@ assert.match(
 );
 assert.match(
     sideBarSource,
-    /supportedMethod\.includes\("getMusicInfo"\)[\s\S]*?supportedMethod\.includes\("getMediaSource"\)/,
+    /capabilities\.includes\("entities\.get"\)[\s\S]*?capabilities\.includes\("media\.resolve"\)/,
 );
 assert.doesNotMatch(mySheetsSource, /PlayMusicById|iconName="identification"/);
 
@@ -877,14 +878,14 @@ assert.match(pluginInputPanelSource, /className="plugin-input-field"/);
 assert.match(pluginInputPanelSource, /className="plugin-input-hints"/);
 assert.doesNotMatch(pluginInputPanelSource, /plugin-input-intro/);
 assert.match(playMusicByIdSource, /<PluginInputPanel/);
-assert.match(playMusicByIdSource, /hintMethod="getMusicInfo"/);
+assert.match(playMusicByIdSource, /hintMethod="entities.get"/);
 assert.match(playMusicByIdSource, /playMusicByPluginId\(plugin, id\)/);
 assert.match(playMusicByIdSource, /playByIdPluginHash/);
 assert.match(playMusicByIdSource, /initialPluginHash=\{rememberedPluginHash\}/);
 assert.match(playMusicByIdSource, /onSelectedPluginChange=\{rememberPlayByIdPlugin\}/);
 assert.doesNotMatch(playMusicByIdSource, /SimpleInputWithState|showModal/);
 assert.match(importMusicSheetSource, /<PluginInputPanel/);
-assert.match(importMusicSheetSource, /hintMethod="importMusicSheet"/);
+assert.match(importMusicSheetSource, /hintMethod="links.resolve"/);
 assert.match(importMusicSheetSource, /importMusicSheetPluginHash/);
 assert.match(importMusicSheetSource, /initialPluginHash=\{rememberedPluginHash\}/);
 assert.match(importMusicSheetSource, /onSelectedPluginChange=\{rememberImportMusicSheetPlugin\}/);
@@ -907,11 +908,6 @@ const identifierBase = createMusicIdentifierBase("QQ音乐[L2]", " 003Y82u91ZIDm
 assert.deepEqual(identifierBase, {
     platform: "QQ音乐[L2]",
     id: "003Y82u91ZIDmO",
-    songid: "003Y82u91ZIDmO",
-    songmid: "003Y82u91ZIDmO",
-    mid: "003Y82u91ZIDmO",
-    hash: "003Y82u91ZIDmO",
-    copyrightId: "003Y82u91ZIDmO",
 });
 const boundIdentifier = bindMediaToPlugin(identifierBase, {
     platform: "QQ音乐[L2]",
@@ -919,6 +915,7 @@ const boundIdentifier = bindMediaToPlugin(identifierBase, {
 });
 assert.deepEqual(getMediaPluginDelegate(boundIdentifier), {
     platform: "QQ音乐[L2]",
+    id: "PLUGIN_HASH",
     hash: "PLUGIN_HASH",
 });
 
@@ -938,7 +935,7 @@ const resolvedWithInfo = buildPlayByIdMusicItem("QQ音乐[L2]", "003Y82u91ZIDmO"
 });
 assert.equal(resolvedWithInfo.id, "123456");
 assert.equal(resolvedWithInfo.songmid, "003Y82u91ZIDmO");
-assert.equal(resolvedWithInfo.mid, "003Y82u91ZIDmO");
+assert.equal(resolvedWithInfo.mid, undefined, "entity aliases come only from the provider response");
 assert.equal(resolvedWithInfo.title, "Demo Song");
 assert.equal(resolvedWithInfo.artist, "Demo Artist");
 assert.equal(resolvedWithInfo.platform, "QQ音乐[L2]");
@@ -946,7 +943,7 @@ assert.equal(resolvedWithInfo.platform, "QQ音乐[L2]");
 // Bare-id fallback when getMusicInfo is missing.
 const bareItem = buildPlayByIdMusicItem("酷狗", "ABCDEFHASH", null);
 assert.equal(bareItem.id, "ABCDEFHASH");
-assert.equal(bareItem.hash, "ABCDEFHASH");
+assert.equal(bareItem.hash, undefined, "bare IDs are not guessed to be provider-specific hashes");
 assert.equal(bareItem.title, "ABCDEFHASH");
 assert.equal(bareItem.artist, "");
 

@@ -2,9 +2,9 @@ import { musicRefSymbol } from "@/common/constant";
 import Dexie, { type Table } from "dexie";
 
 export interface ISheetMusicRelation {
-    sheetId: string;
+    sheetId: string | number;
     platform: string;
-    musicId: string;
+    musicId: string | number;
     position: number;
     addedAt: number;
     batchIndex: number;
@@ -18,14 +18,14 @@ export type IStoredMusicItem = IMusic.IMusicItem & {
 
 class MusicSheetDB extends Dexie {
     /** `sheet` entity: metadata only; tracks live in `sheetMusic`. */
-    sheets!: Table<IMusic.IDBMusicSheetItem, string>;
+    sheets!: Table<IMusic.IDBMusicSheetItem, string | number>;
     /** `music` entity shared by sheets and the downloaded library. */
-    musicStore!: Table<IStoredMusicItem, [string, string]>;
+    musicStore!: Table<IStoredMusicItem, [string, string | number]>;
     /** Normalized `sheet_music` relation. */
-    sheetMusic!: Table<ISheetMusicRelation, [string, string, string]>;
+    sheetMusic!: Table<ISheetMusicRelation, [string | number, string, string | number]>;
     localMusicStore!: Table<IMusic.IMusicItem & {
         $$localPath: string;
-    }, [string, string]>;
+    }, [string, string | number]>;
 
     constructor() {
         super("musicSheetDB");
@@ -47,7 +47,7 @@ class MusicSheetDB extends Dexie {
             );
             const relationTable = transaction.table<
                 ISheetMusicRelation,
-                [string, string, string]
+                [string | number, string, string | number]
             >("sheetMusic");
             const sheets = await sheetTable.toArray();
             const relations: ISheetMusicRelation[] = [];

@@ -170,6 +170,7 @@ interface _IAppConfig {
     "private.minimodeWindowPosition": ICommon.IPoint;
 
     "private.pluginMeta": Record<string, IPlugin.IPluginMeta>;
+    "private.pluginResolverBindings": Record<string, string>;
 
     "private.minimode": boolean;
 

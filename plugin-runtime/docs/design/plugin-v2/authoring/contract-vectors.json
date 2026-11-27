@@ -1,0 +1,1359 @@
+{
+  "validManifests": [
+    {
+      "apiVersion": 2,
+      "kind": "provider",
+      "id": "org.bakamusic.qq",
+      "sourceId": "qq",
+      "name": "QQ 音乐",
+      "author": "Original author / maintainer",
+      "version": "2.0.0",
+      "capabilities": [
+        "search",
+        "media.prepare",
+        "media.resolve",
+        "lyrics.get"
+      ],
+      "description": "Attribution and source settings survive updates",
+      "hints": {
+        "import": [
+          "Use a playlist link"
+        ]
+      },
+      "userVariables": [
+        {
+          "key": "token",
+          "name": "Connection code",
+          "hint": "Provider-owned setting"
+        }
+      ],
+      "homepage": "https://example.invalid/provider"
+    },
+    {
+      "apiVersion": 2,
+      "kind": "resolver",
+      "id": "org.example.resolver",
+      "sources": [
+        "qq",
+        "wy"
+      ],
+      "name": "Media resolver",
+      "author": "Resolver author",
+      "version": "1.0.0-rc.1+build.001",
+      "capabilities": [
+        "media.resolve",
+        "media.license"
+      ]
+    },
+    {
+      "apiVersion": 2,
+      "kind": "provider",
+      "id": "org.bakamusic.qq-other",
+      "sourceId": "qq",
+      "name": "🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵🎵",
+      "author": "Original author / maintainer",
+      "version": "0.0.0-0+001",
+      "capabilities": [
+        "search",
+        "media.prepare",
+        "media.resolve",
+        "lyrics.get"
+      ],
+      "description": "Attribution and source settings survive updates",
+      "hints": {
+        "import": [
+          "Use a playlist link"
+        ]
+      },
+      "userVariables": [
+        {
+          "key": "token",
+          "name": "Connection code",
+          "hint": "Provider-owned setting"
+        }
+      ],
+      "homepage": "https://example.invalid/provider"
+    },
+    {
+      "apiVersion": 2.0,
+      "kind": "provider",
+      "id": "org.example.decimal-api",
+      "sourceId": "qq",
+      "name": "QQ 音乐",
+      "author": "Original author / maintainer",
+      "version": "2.0.0",
+      "capabilities": [
+        "search",
+        "media.prepare",
+        "media.resolve",
+        "lyrics.get"
+      ],
+      "description": "Attribution and source settings survive updates",
+      "hints": {
+        "import": [
+          "Use a playlist link"
+        ]
+      },
+      "userVariables": [
+        {
+          "key": "token",
+          "name": "Connection code",
+          "hint": "Provider-owned setting"
+        }
+      ],
+      "homepage": "https://example.invalid/provider"
+    }
+  ],
+  "invalidManifests": [
+    {
+      "name": "missing kind",
+      "manifest": {
+        "apiVersion": 2,
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "missing author",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "missing sourceId",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "old api",
+      "manifest": {
+        "apiVersion": 1,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "boolean api",
+      "manifest": {
+        "apiVersion": true,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "blank author",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "  ",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "numeric author",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": 3,
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "long author",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "display-name id",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "QQ 音乐",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "URL id",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "https://example.invalid/provider.js",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "uppercase id",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "Org.Example",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "long id",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "blank name",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "\n\t",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "long name",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "short version",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "1.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "zero prerelease",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "1.0.0-01",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "empty caps",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "duplicate caps",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "search"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "unknown cap",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "not.real"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "platform alias",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider",
+        "platform": "qq"
+      }
+    },
+    {
+      "name": "providerId alias",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider",
+        "providerId": "org.bakamusic.qq"
+      }
+    },
+    {
+      "name": "legacy alias",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider",
+        "legacyPlatforms": [
+          "QQ"
+        ]
+      }
+    },
+    {
+      "name": "provider resolver sources",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider",
+        "sources": [
+          "qq"
+        ]
+      }
+    },
+    {
+      "name": "uppercase source",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "QQ",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "long source",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "URL source",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "https://qq.com",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "resolver provider source",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "resolver",
+        "id": "org.example.resolver",
+        "sources": [
+          "qq",
+          "wy"
+        ],
+        "name": "Media resolver",
+        "author": "Resolver author",
+        "version": "1.0.0-rc.1+build.001",
+        "capabilities": [
+          "media.resolve",
+          "media.license"
+        ],
+        "sourceId": "qq"
+      }
+    },
+    {
+      "name": "resolver empty sources",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "resolver",
+        "id": "org.example.resolver",
+        "sources": [],
+        "name": "Media resolver",
+        "author": "Resolver author",
+        "version": "1.0.0-rc.1+build.001",
+        "capabilities": [
+          "media.resolve",
+          "media.license"
+        ]
+      }
+    },
+    {
+      "name": "resolver duplicate sources",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "resolver",
+        "id": "org.example.resolver",
+        "sources": [
+          "qq",
+          "qq"
+        ],
+        "name": "Media resolver",
+        "author": "Resolver author",
+        "version": "1.0.0-rc.1+build.001",
+        "capabilities": [
+          "media.resolve",
+          "media.license"
+        ]
+      }
+    },
+    {
+      "name": "resolver invalid source",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "resolver",
+        "id": "org.example.resolver",
+        "sources": [
+          "qq",
+          "QQ"
+        ],
+        "name": "Media resolver",
+        "author": "Resolver author",
+        "version": "1.0.0-rc.1+build.001",
+        "capabilities": [
+          "media.resolve",
+          "media.license"
+        ]
+      }
+    },
+    {
+      "name": "resolver metadata capability",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "resolver",
+        "id": "org.example.resolver",
+        "sources": [
+          "qq",
+          "wy"
+        ],
+        "name": "Media resolver",
+        "author": "Resolver author",
+        "version": "1.0.0-rc.1+build.001",
+        "capabilities": [
+          "media.resolve",
+          "search"
+        ]
+      }
+    },
+    {
+      "name": "resolver prepares",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "resolver",
+        "id": "org.example.resolver",
+        "sources": [
+          "qq",
+          "wy"
+        ],
+        "name": "Media resolver",
+        "author": "Resolver author",
+        "version": "1.0.0-rc.1+build.001",
+        "capabilities": [
+          "media.resolve",
+          "media.prepare"
+        ]
+      }
+    },
+    {
+      "name": "resolver missing audio resolution",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "resolver",
+        "id": "org.example.resolver",
+        "sources": [
+          "qq",
+          "wy"
+        ],
+        "name": "Media resolver",
+        "author": "Resolver author",
+        "version": "1.0.0-rc.1+build.001",
+        "capabilities": [
+          "media.video"
+        ]
+      }
+    },
+    {
+      "name": "newline package",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq\n",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "newline source",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq\n",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "newline version",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "Original author / maintainer",
+        "version": "2.0.0\n",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "invisible author",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "﻿",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    },
+    {
+      "name": "NEL author",
+      "manifest": {
+        "apiVersion": 2,
+        "kind": "provider",
+        "id": "org.bakamusic.qq",
+        "sourceId": "qq",
+        "name": "QQ 音乐",
+        "author": "",
+        "version": "2.0.0",
+        "capabilities": [
+          "search",
+          "media.prepare",
+          "media.resolve",
+          "lyrics.get"
+        ],
+        "description": "Attribution and source settings survive updates",
+        "hints": {
+          "import": [
+            "Use a playlist link"
+          ]
+        },
+        "userVariables": [
+          {
+            "key": "token",
+            "name": "Connection code",
+            "hint": "Provider-owned setting"
+          }
+        ],
+        "homepage": "https://example.invalid/provider"
+      }
+    }
+  ],
+  "validEntityRefs": [
+    {
+      "providerId": "org.bakamusic.qq",
+      "kind": "music",
+      "id": 7.0
+    },
+    {
+      "providerId": "org.bakamusic.qq",
+      "kind": "music",
+      "id": "7"
+    },
+    {
+      "providerId": "org.bakamusic.qq",
+      "kind": "music",
+      "id": 0
+    },
+    {
+      "providerId": "org.bakamusic.qq",
+      "kind": "music",
+      "id": -1
+    },
+    {
+      "providerId": "org.bakamusic.qq",
+      "kind": "music",
+      "id": 9007199254740991
+    },
+    {
+      "providerId": "org.bakamusic.qq",
+      "kind": "music",
+      "id": -9007199254740991
+    },
+    {
+      "providerId": "org.bakamusic.qq",
+      "kind": "music",
+      "id": "长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长"
+    },
+    {
+      "providerId": "org.bakamusic.qq",
+      "kind": "chart",
+      "id": 7
+    }
+  ],
+  "invalidEntityRefs": [
+    {
+      "name": "empty string",
+      "entityRef": {
+        "providerId": "org.bakamusic.qq",
+        "kind": "music",
+        "id": ""
+      }
+    },
+    {
+      "name": "null",
+      "entityRef": {
+        "providerId": "org.bakamusic.qq",
+        "kind": "music",
+        "id": null
+      }
+    },
+    {
+      "name": "boolean",
+      "entityRef": {
+        "providerId": "org.bakamusic.qq",
+        "kind": "music",
+        "id": true
+      }
+    },
+    {
+      "name": "array",
+      "entityRef": {
+        "providerId": "org.bakamusic.qq",
+        "kind": "music",
+        "id": []
+      }
+    },
+    {
+      "name": "object",
+      "entityRef": {
+        "providerId": "org.bakamusic.qq",
+        "kind": "music",
+        "id": {}
+      }
+    },
+    {
+      "name": "fraction",
+      "entityRef": {
+        "providerId": "org.bakamusic.qq",
+        "kind": "music",
+        "id": 0.5
+      }
+    },
+    {
+      "name": "unsafe positive",
+      "entityRef": {
+        "providerId": "org.bakamusic.qq",
+        "kind": "music",
+        "id": 9007199254740992
+      }
+    },
+    {
+      "name": "unsafe negative",
+      "entityRef": {
+        "providerId": "org.bakamusic.qq",
+        "kind": "music",
+        "id": -9007199254740992
+      }
+    },
+    {
+      "name": "unknown kind",
+      "entityRef": {
+        "providerId": "org.bakamusic.qq",
+        "kind": "video",
+        "id": 7
+      }
+    },
+    {
+      "name": "display owner",
+      "entityRef": {
+        "providerId": "QQ 音乐",
+        "kind": "music",
+        "id": 7
+      }
+    },
+    {
+      "name": "extra identity field",
+      "entityRef": {
+        "providerId": "org.bakamusic.qq",
+        "kind": "music",
+        "id": 7,
+        "platform": "qq"
+      }
+    }
+  ]
+}

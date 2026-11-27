@@ -1,0 +1,49 @@
+BakaMusic Source-Available License
+Version 1.0
+
+Copyright (c) BakaMusicFlutter contributors.
+All rights reserved except as expressly granted below.
+
+1. Scope
+
+This license applies only to original project-owned material in this
+repository for which the applicable copyright holders have authority to grant
+these terms. It does not apply to third-party material, derived third-party
+material, or material carrying a different license or notice.
+
+2. Limited permission
+
+You may view and study the covered source material for learning purposes.
+You may obtain and retain a private, unmodified copy solely for that purpose.
+No other permission is granted by this license.
+
+3. Separate authorization
+
+Any other use of covered material, including building or running the software,
+modification, redistribution, publication, sublicensing, incorporation into
+another work, or commercial use, requires separate prior authorization from
+the applicable copyright holders. No patent or trademark rights are granted.
+Rights that cannot lawfully be restricted remain unaffected.
+
+4. Third-party material
+
+Third-party and derived material remains subject to its original licenses.
+Those licenses, including applicable copyleft obligations, control that
+material. Nothing here limits rights granted by those licenses, changes their
+terms, or grants permission to impose these restrictions on their covered
+material. See THIRD_PARTY_NOTICES.md and component-level notices.
+
+These terms alone do not establish permission to distribute a combined work
+containing differently licensed components. Applicable upstream obligations
+must also be satisfied.
+
+5. No warranty
+
+TO THE EXTENT PERMITTED BY LAW, THE COVERED MATERIAL IS PROVIDED "AS IS",
+WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING
+FROM THE MATERIAL OR ITS USE.
+
+This is a source-available license, not an open-source license.
+For additional permission, contact the repository maintainers.

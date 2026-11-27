@@ -15,7 +15,7 @@ export interface IDownloadTagWriteOptions {
 }
 
 export interface IDownloadPostprocessMusicItem {
-    id: string;
+    id: string | number;
     platform: string;
     title: string;
     artist: string;

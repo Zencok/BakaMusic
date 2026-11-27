@@ -9,13 +9,13 @@ import { useTranslation } from "react-i18next";
 export type SourcePriorityMode = "playback" | "download";
 
 function getPluginIdentifier(plugin: IPlugin.IPluginDelegate) {
-    return plugin.hash || plugin.platform;
+    return plugin.id;
 }
 
 export default function SourcePrioritySetting() {
     const { t } = useTranslation();
     const [mode, setMode] = useState<SourcePriorityMode>("playback");
-    const plugins = useSortedSupportedPlugin("getMediaSource");
+    const plugins = useSortedSupportedPlugin("media.resolve");
     const configured = useAppConfig(
         mode === "playback" ? "playMusic.sourcePriority" : "download.sourcePriority",
     );
@@ -27,11 +27,10 @@ export default function SourcePrioritySetting() {
 
     const orderedPlugins = useMemo(() => {
         const byId = new Map(plugins.map((plugin) => [plugin.hash, plugin]));
-        const byPlatform = new Map(plugins.map((plugin) => [plugin.platform, plugin]));
         const result: IPlugin.IPluginDelegate[] = [];
         const seen = new Set<string>();
         for (const identifier of configured ?? []) {
-            const plugin = byId.get(identifier) ?? byPlatform.get(identifier);
+            const plugin = byId.get(identifier);
             if (plugin && !seen.has(plugin.hash)) {
                 result.push(plugin);
                 seen.add(plugin.hash);
@@ -159,7 +158,7 @@ export default function SourcePrioritySetting() {
                                 {String(index + 1).padStart(2, "0")}
                             </span>
                             <span className="source-priority-setting__name">
-                                {plugin.platform}
+                                {plugin.name}
                             </span>
                             <span className="source-priority-setting__role">
                                 {index === 0

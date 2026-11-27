@@ -1,3 +1,5 @@
+import BottomLoadingState from "@renderer/components/BottomLoadingState";
+import getSourceName from "@renderer/utils/get-source-name";
 import Condition from "@/renderer/components/Condition";
 import LazyImage from "@/renderer/components/LazyImage";
 import albumImg from "@/renderer/utils/default-album-cover";
@@ -22,7 +24,7 @@ import "./index.scss";
 import PluginManager from "@shared/plugin-manager/renderer";
 
 export default function ToplistView() {
-    const availablePlugins = PluginManager.getSortedSupportedPlugin("getTopLists");
+    const availablePlugins = PluginManager.getSortedSupportedPlugin("discovery.charts");
     const navigate = useNavigate();
     const { t } = useTranslation();
     const pageScrollRef = usePageScrollPosition<HTMLDivElement>();
@@ -113,6 +115,12 @@ function ToplistBody(props: IToplistBodyProps) {
                         platform={plugin.platform}
                     ></ToplistGroupItem>
                 ))}
+                <BottomLoadingState
+                    state={topLists[plugin.id]?.state ?? RequestStateCode.IDLE}
+                    onLoadMore={() => {
+                        void getTopList(plugin.id);
+                    }}
+                />
             </Condition>
         </Condition>
     );
@@ -130,7 +138,7 @@ function ToplistGroupItem(props: IToplistGroupItemProps) {
         <section className="toplist-group-item--container">
             <header className="toplist-group-header">
                 <span className="toplist-group-rule" aria-hidden="true"></span>
-                <h2>{groupItem.title ?? platform}</h2>
+                <h2>{groupItem.title ?? getSourceName(platform)}</h2>
                 <span className="toplist-group-total">
                     {String(items.length).padStart(2, "0")}
                 </span>

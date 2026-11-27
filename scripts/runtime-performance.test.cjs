@@ -256,8 +256,14 @@ const searchLyricSource = fs.readFileSync(path.join(
     __dirname,
     "../src/renderer/components/Modal/templates/SearchLyric/hooks/useSearchLyric.ts",
 ), "utf8");
-assert.match(searchLyricSource, /modal\.search_lyric_result_empty/);
 assert.doesNotMatch(searchLyricSource, /modal\.serach_lyric_result_empty/);
+assert.match(searchLyricSource, /new CursorSession/);
+assert.match(searchLyricSource, /loader\.invalidate\(\)/);
+const searchLyricResultSource = fs.readFileSync(path.join(
+    __dirname, "../src/renderer/components/Modal/templates/SearchLyric/searchResult.tsx",
+), "utf8");
+assert.match(searchLyricResultSource, /<Empty>/);
+assert.match(searchLyricResultSource, /<BottomLoadingState[^>]*state=\{data\?\.state/);
 
 const settingsViewSource = fs.readFileSync(path.join(
     __dirname,

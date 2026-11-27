@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+require("./register-test-aliases.cjs");
 const LyricParser = require("../src/renderer/utils/lyric-parser.ts").default;
 
 const { mapWithConcurrency } = require(

@@ -27,6 +27,10 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - name: Install native plugin Rust toolchain
+        run: rustup toolchain install 1.100.0 --profile minimal
+      - name: Verify native plugin runtime
+        run: npm run test:plugin-runtime
       - name: Type check
         run: npm exec tsc -- --noEmit
       - name: Lint
@@ -88,6 +92,10 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           node -e "const fs=require('fs');const version=process.env.VERSION;for(const file of ['package.json','package-lock.json']){const data=JSON.parse(fs.readFileSync(file,'utf8'));data.version=version;if(data.packages?.[''])data.packages[''].version=version;fs.writeFileSync(file,JSON.stringify(data,null,2)+'\n')}"
       - run: npm ci
+      - name: Install native plugin Rust toolchain
+        run: rustup toolchain install 1.100.0 --profile minimal
+      - name: Verify native plugin runtime on target platform
+        run: npm run test:plugin-runtime
       - name: Print build environment
         run: |
           node -v

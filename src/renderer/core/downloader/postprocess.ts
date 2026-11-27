@@ -88,13 +88,9 @@ async function resolveCoverUrl(
     const pluginDelegate = getMediaPluginDelegate(musicItem);
     try {
         const musicInfo = await withTimeout(
-            PluginManager.callPluginDelegateMethod(
-                pluginDelegate,
-                "getMusicInfo",
-                musicItem,
-            ),
+            PluginManager.invoke(pluginDelegate, "entities.get", { entity: musicItem }),
             POSTPROCESS_PLUGIN_TIMEOUT_MS,
-            "getMusicInfo",
+            "entities.get",
         );
         if (musicInfo && typeof musicInfo === "object") {
             return resolveCoverUrlFromItem(musicInfo as IMusic.IMusicItem);
@@ -119,13 +115,9 @@ async function resolveLyricSource(
     const pluginDelegate = getMediaPluginDelegate(musicItem);
     try {
         return await withTimeout(
-            PluginManager.callPluginDelegateMethod(
-                pluginDelegate,
-                "getLyric",
-                musicItem,
-            ),
+            PluginManager.invoke(pluginDelegate, "lyrics.get", { entity: musicItem }),
             POSTPROCESS_PLUGIN_TIMEOUT_MS,
-            "getLyric",
+            "lyrics.get",
         );
     } catch (error) {
         logger.logError("获取下载歌词失败", error as Error, {

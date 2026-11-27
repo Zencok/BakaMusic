@@ -1,3 +1,4 @@
+import getSourceName from "@renderer/utils/get-source-name";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
 import { useDefaultAlbumCover } from "@/renderer/utils/default-album-cover";
 import Tag from "@/renderer/components/Tag";
@@ -27,7 +28,7 @@ export default function Header(props: IProps) {
             ></img>
             <div className="artist-info">
                 <div className="title-container">
-                    <Tag>{artistItem?.platform}</Tag>
+                    <Tag>{getSourceName(artistItem?.platform)}</Tag>
                     <div className="title">
                         {artistItem?.name ?? t("media.unknown_artist")}
                     </div>

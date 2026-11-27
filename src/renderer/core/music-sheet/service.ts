@@ -18,7 +18,7 @@ export const getAllSheets = musicSheetsStore.getValue;
 
 const syncingSheets = new Set<string>();
 const syncFetcher = new ImportSyncFetcher((plugin, input, options) =>
-    PluginManager.callPluginDelegateMethod(plugin, "importMusicSheet", input, options),
+    PluginManager.importCollection(plugin, input, options),
 );
 PluginManager.onPluginsChanged(() => syncFetcher.invalidate());
 AppConfig.onConfigUpdate((patch) => {
@@ -48,12 +48,10 @@ export async function syncImportedSheet(sheet: IMedia.IMediaBase, starred = fals
         if (!current || !sources.length) {
             throw new Error("sync_sheet_missing_source");
         }
-        const plugins = PluginManager.getSortedSupportedPlugin("importMusicSheet");
+        const plugins = PluginManager.getSortedSupportedPlugin("links.resolve");
         // Resolve every plugin before scheduling any network work.
         const jobs = sources.map((source) => {
-            const candidates = plugins.filter((item) => item.platform === source.platform);
-            const plugin = candidates.find((item) => item.hash === source.pluginHash)
-                ?? (candidates.length === 1 ? candidates[0] : undefined);
+            const plugin = plugins.find((item) => item.id === source.pluginHash && item.platform === source.platform);
             if (!plugin) {
                 throw new Error("sync_sheet_missing_plugin");
             }
@@ -145,7 +143,7 @@ export async function addSheet(
  * @returns
  */
 export async function updateSheet(
-    sheetId: string,
+    sheetId: string | number,
     newData: Partial<IMusic.IMusicSheetItem>,
 ) {
     try {
@@ -162,7 +160,7 @@ export async function updateSheet(
  * @param musicList
  */
 export async function updateSheetMusicOrder(
-    sheetId: string,
+    sheetId: string | number,
     musicList: IMusic.IMusicItem[],
 ) {
     try {
@@ -189,7 +187,7 @@ export async function updateSheetMusicOrder(
  * @param sheetId 歌单ID
  * @returns 删除后的ID
  */
-export async function removeSheet(sheetId: string) {
+export async function removeSheet(sheetId: string | number) {
     try {
         await backend.removeSheet(sheetId);
         musicSheetsStore.setValue(backend.getAllSheets());
@@ -203,7 +201,7 @@ export async function removeSheet(sheetId: string) {
  * @param sheetId 歌单ID
  * @returns 删除后的ID
  */
-export async function clearSheet(sheetId: string) {
+export async function clearSheet(sheetId: string | number) {
     try {
         await backend.clearSheet(sheetId);
         musicSheetsStore.setValue(backend.getAllSheets());
@@ -249,7 +247,7 @@ export async function setStarredMusicSheets(sheets: IMedia.IMediaBase[]) {
  */
 export async function addMusicToSheet(
     musicItems: IMusic.IMusicItem | IMusic.IMusicItem[],
-    sheetId: string,
+    sheetId: string | number,
     importSources?: IMusic.IImportedSheetSource[],
     importOwnership?: IMusic.ISheetTrackOwnership[],
 ) {
@@ -278,7 +276,7 @@ export async function addMusicToFavorite(
  */
 export async function removeMusicFromSheet(
     musicItems: IMusic.IMusicItem | IMusic.IMusicItem[],
-    sheetId: string,
+    sheetId: string | number,
 ) {
     await backend.removeMusicFromSheet(musicItems, sheetId);
 
@@ -321,7 +319,7 @@ export function useMusicIsFavorite(musicItem: IMusic.IMusicItem) {
 }
 
 const updateSheetDetailCallbacks: Map<
-    string,
+    string | number,
     Set<(newSheet: IMusic.IMusicSheetItem) => void>
 > = new Map();
 
@@ -333,7 +331,7 @@ function updateSheetDetail(newSheet: IMusic.IMusicSheetItem) {
  * 重新取歌单状态
  * @param sheetId
  */
-async function refetchSheetDetail(sheetId: string) {
+async function refetchSheetDetail(sheetId: string | number) {
     if (!updateSheetDetailCallbacks.get(sheetId)?.size) {
         return;
     }
@@ -356,7 +354,7 @@ async function refetchSheetDetail(sheetId: string) {
  * @param sheetId 歌单ID
  * @param initQuery 是否重新查询
  */
-export function useMusicSheet(sheetId: string) {
+export function useMusicSheet(sheetId: string | number) {
     const [pendingState, setPendingState] = useState(
         RequestStateCode.PENDING_FIRST_PAGE,
     );

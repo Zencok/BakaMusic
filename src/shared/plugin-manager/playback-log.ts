@@ -52,7 +52,7 @@ export function isPluginPlaybackLogEvent(value: unknown): value is PluginPlaybac
         && typeof event.timestamp === "number"
         && Number.isFinite(event.timestamp)
         && kindSet.has(String(event.kind))
-        && isBoundedString(event.pluginHash, 64)
+        && isBoundedString(event.pluginHash, 128)
         && isBoundedString(event.pluginName, 256)
         && isBoundedString(event.platform, 128)
         && levelSet.has(String(event.level))

@@ -48,12 +48,15 @@ import {
     buildPlayByIdMusicItem,
     createMusicIdentifierBase,
     getPrefetchedMediaSource,
+    invalidatePrefetchedMediaSources,
     getMediaPluginDelegate,
     matchesMusicIdentifier,
     IPluginDelegateReference,
 } from "./plugin-media";
 import { shouldPersistPlaybackProgress } from "./progress-persistence";
 import { resolveMediaSourceWithFallback } from "@renderer/core/source-fallback";
+
+PluginManager.onPluginsChanged(invalidatePrefetchedMediaSources);
 
 const PROGRESS_PERSIST_INTERVAL_MS = 3_000;
 const MAX_LYRIC_OFFSET_SECONDS = 3_600;
@@ -685,11 +688,7 @@ class TrackPlayer {
 
             // extra information
             const musicInfo = await this.withAbort(
-                PluginManager.callPluginDelegateMethod(
-                    getMediaPluginDelegate(nextMusicItem),
-                    "getMusicInfo",
-                    nextMusicItem,
-                ).catch(voidCallback),
+                PluginManager.invoke(getMediaPluginDelegate(nextMusicItem), "entities.get", { entity: nextMusicItem }).catch(voidCallback),
                 signal,
             );
 
@@ -755,7 +754,7 @@ class TrackPlayer {
     ) {
         const { platform } = pluginDelegate;
         const identifierBase = createMusicIdentifierBase(platform, id);
-        const normalizedId = identifierBase.id;
+        const normalizedId = String(identifierBase.id);
 
         // 1. Try to find in current queue first (canonical id or aliases)
         const queueIndex = this.musicQueue.findIndex((item) =>
@@ -768,11 +767,7 @@ class TrackPlayer {
         // 2. Prefer getMusicInfo for full metadata; fall back to bare id aliases.
         let musicInfo: Record<string, unknown> | null = null;
         try {
-            const result = await PluginManager.callPluginDelegateMethod(
-                pluginDelegate,
-                "getMusicInfo",
-                identifierBase,
-            );
+            const result = await PluginManager.invoke(pluginDelegate, "entities.get", { entity: identifierBase });
             if (result && typeof result === "object") {
                 musicInfo = result as Record<string, unknown>;
             }
@@ -1353,11 +1348,7 @@ class TrackPlayer {
 
             if (linkedLyricItem) {
                 lyricSource = await this.withAbort(
-                    PluginManager.callPluginDelegateMethod(
-                        getMediaPluginDelegate(linkedLyricItem),
-                        "getLyric",
-                        linkedLyricItem,
-                    ),
+                    PluginManager.invoke(getMediaPluginDelegate(linkedLyricItem), "lyrics.get", { entity: linkedLyricItem }),
                     signal,
                 );
             }
@@ -1367,11 +1358,7 @@ class TrackPlayer {
                 && this.isCurrentMusic(currentMusic)
             ) {
                 lyricSource = await this.withAbort(
-                    PluginManager.callPluginDelegateMethod(
-                        getMediaPluginDelegate(currentMusic),
-                        "getLyric",
-                        currentMusic,
-                    ),
+                    PluginManager.invoke(getMediaPluginDelegate(currentMusic), "lyrics.get", { entity: currentMusic }),
                     signal,
                 );
             }

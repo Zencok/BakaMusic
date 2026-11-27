@@ -1,0 +1,38 @@
+# Third-party notices
+
+The root [LICENSE](LICENSE) applies only to project-owned material. Dependencies,
+adaptations and derived sources retain their upstream licenses. A root-level
+notice does not replace component-level terms, source headers or copyright
+notices. This index is not a complete dependency license inventory.
+
+| Component / material | License notice | Location |
+| --- | --- | --- |
+| JIZURA v0.13.0 palette adaptation and lyric PV reference | MIT, Copyright (c) 2026 hakoniwa | [License](third_party/licenses/JIZURA-MIT.txt), [port scope and exact reference](REALTIME_PV.md) |
+| BakaMusic-derived native lyric behavior | GNU AGPL v3; retain upstream notices | [BakaMusic license](third_party/licenses/BakaMusic-AGPL-3.0.txt), [embedded copy](rust/crates/baka-plugin-host/licenses/lyrics/LICENSE-BakaMusic) |
+| Apple Music-like Lyrics parser | Upstream license | [LICENSE-AMLL](rust/crates/baka-plugin-host/licenses/lyrics/LICENSE-AMLL) |
+| xmldom attribution retained from the retired lyric reference bundle | Upstream license | [LICENSE-xmldom](rust/crates/baka-plugin-host/licenses/lyrics/LICENSE-xmldom) |
+| baka-ac4 decoder 0.2.0 | GPL-3.0-or-later | [LICENSE](rust/crates/baka-ac4-core/LICENSE), [NOTICE](rust/crates/baka-ac4-core/NOTICE), [pinned import](rust/crates/baka-ac4-core/UPSTREAM.json) |
+| baka-av3a core/container 0.1.0 | GPL-3.0-or-later | [LICENSE](third_party/licenses/baka-av3a-GPL-3.0.txt), [source](https://github.com/Zencok/baka-av3a/tree/v0.1.0), registry checksums in rust/Cargo.lock |
+| compose-miuix-ui adaptations | Apache-2.0 | [LICENSE](third_party/miuix_about/LICENSE), [adaptation notice](third_party/miuix_about/NOTICE.md), [retained license](third_party/licenses/compose-miuix-LICENSE.txt) |
+| flutter_miuix top app bar adaptation | Apache-2.0 | [LICENSE](third_party/miuix_top_app_bar/LICENSE), [adaptation notice](third_party/miuix_top_app_bar/NOTICE.md) |
+| audio_service local fork | Upstream license | [LICENSE](third_party/audio_service/LICENSE), [patch notes](third_party/audio_service/BAKA_PATCHES.md) |
+| just_audio local fork | Upstream license | [LICENSE](third_party/just_audio/LICENSE), [patch notes](third_party/just_audio/BAKA_PATCHES.md) |
+| QuickJS / rquickjs-sys vendored runtime | Upstream license and source notices | [QuickJS LICENSE](rust/vendor/rquickjs-sys/quickjs/LICENSE), [patch notes](rust/vendor/rquickjs-sys/BAKA_PATCHES.md) |
+| Symphonia FLAC local fork | Upstream license | [LICENSE](rust/vendor/symphonia-bundle-flac/LICENSE), [patch notes](rust/vendor/symphonia-bundle-flac/BAKA_PATCHES.md) |
+| Temari Apple audio decryption | MIT | [LICENSE](rust/vendor/temari/LICENSE), [pinned source and integration changes](rust/vendor/temari/BAKA_PATCHES.md) |
+| kunyin Apple HLS/MP4 reference-derived behavior | MIT | [Retained license](rust/crates/baka-proxy/src/apple/KUNYIN_LICENSE), [scope and source version](rust/crates/baka-proxy/src/apple/DESIGN.md) |
+| OpenCC data | Upstream license | [OpenCC-LICENSE](rust/crates/baka-core/data/OpenCC-LICENSE) |
+| Kuwo reference-derived player wave alpha mask and test frames | Source ownership retained; no separate asset license included in the supplied sample | [Provenance and conversion](assets/player/README.md) |
+
+The previously misnamed BakaMusic license file contains the GNU **Affero**
+General Public License, version 3. Its contents are retained verbatim under
+`third_party/licenses/BakaMusic-AGPL-3.0.txt`.
+
+Additional Dart and Rust dependencies are recorded in `pubspec.lock` and
+`rust/Cargo.lock`; consult each dependency's distributed license. Plugin scripts
+and imported reference fixtures may also carry separate upstream notices.
+Preserve them when exercising permissions granted by their respective licenses.
+
+The project-owned source-available terms do not authorize relicensing covered
+upstream code. Distribution of a combined application must satisfy the licenses
+of the components it includes, including applicable copyleft requirements.

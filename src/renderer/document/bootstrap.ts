@@ -96,16 +96,10 @@ function dropHandler() {
             }
 
             if (f.type === "" && (await fsUtil.isFolder(filePath))) {
-                const importedMusicList = await PluginManager.callPluginDelegateMethod(
-                    {
-                        hash: localPluginHash,
-                    },
-                    "importMusicSheet",
-                    filePath,
-                );
+                const importedMusicList = await PluginManager.invoke({ platform: localPluginHash }, "links.resolve", { url: filePath, kind: "sheet" });
                 const importedItems = Array.isArray(importedMusicList)
                     ? importedMusicList
-                    : importedMusicList?.notModified === true ? [] : importedMusicList?.musicList ?? [];
+                    : importedMusicList?.musicList ?? [];
                 if (importedItems.length) {
                     validMusicList.push(
                         ...importedItems,
@@ -115,15 +109,11 @@ function dropHandler() {
                 supportLocalMediaType.some((postfix) =>
                     filePath.toLocaleLowerCase().endsWith(postfix))
             ) {
-                const importedMusicItem = await PluginManager.callPluginDelegateMethod(
-                    {
-                        hash: localPluginHash,
-                    },
-                    "importMusicItem",
-                    filePath,
-                );
+                const importedMusicItem = await PluginManager.invoke({
+                    platform: localPluginHash,
+                }, "links.resolve", { url: filePath, kind: "music" });
                 if (importedMusicItem) {
-                    validMusicList.push(importedMusicItem);
+                    validMusicList.push(importedMusicItem as IMusic.IMusicItem);
                 }
             } else if (filePath.endsWith(".mftheme")) {
                 // 主题包

@@ -1,0 +1,624 @@
+{
+  "repository": "https://github.com/Zencok/BakaMusicFlutter",
+  "commit": "236e46302cfb4334bd964bde38991fbbeb339d07",
+  "scope": "Unmodified native V2 host, core, logging, patched QuickJS, shared test vectors, and separately documented adapted LX import converter",
+  "license": "Component-specific; see licenses/ and retained component licenses. Original project-owned imported material retains source-available terms.",
+  "importedFiles": [
+    {
+      "path": "rust/crates/baka-core/Cargo.toml",
+      "sha256": "8515c5cae337cf2c150bfd8cf01c22df401d92e65c95f0d42a0aebd5fa8d0c2f"
+    },
+    {
+      "path": "rust/crates/baka-core/data/OpenCC-LICENSE",
+      "sha256": "fb531487f666909d487239da6130e2256d8c86f26ec2674ce6aa5763bc7f8c56"
+    },
+    {
+      "path": "rust/crates/baka-core/data/TSCharacters.txt",
+      "sha256": "6b5a0a799bea2bb22c001f635eaa3fc2904310f0c08addbff275477a80ecf09a"
+    },
+    {
+      "path": "rust/crates/baka-core/src/download/DESIGN.md",
+      "sha256": "63d0f3a08ce303eb83192806d440524797c53518fbfab1abaf663a31665880f0"
+    },
+    {
+      "path": "rust/crates/baka-core/src/download/identity.rs",
+      "sha256": "ba76e354d2020bd5fcf3da7cf0cad1d50a89040317ae591d824787d8673ef1ca"
+    },
+    {
+      "path": "rust/crates/baka-core/src/download/mod.rs",
+      "sha256": "c2c2f039a95c1f02833b985875a1e06b789c34be65ab4f60e21a19121ca91a46"
+    },
+    {
+      "path": "rust/crates/baka-core/src/download/policy.rs",
+      "sha256": "560173540e2325bce8083c50c63b378a83219521cff9db4319028f32a4696853"
+    },
+    {
+      "path": "rust/crates/baka-core/src/download/README.md",
+      "sha256": "a2cba76716f320c9e184eb34cd95874606fdafba75c96125a18d30b0d22140d7"
+    },
+    {
+      "path": "rust/crates/baka-core/src/download/tests.rs",
+      "sha256": "303ffbd28418a087cd3b13973d3430ac9c0983f9367da3ba62175b75d85b2a2a"
+    },
+    {
+      "path": "rust/crates/baka-core/src/error.rs",
+      "sha256": "a8fd5f0115f455f03a9bd035d49c71a40b668774fc017c7c3973dc2ece4ca5df"
+    },
+    {
+      "path": "rust/crates/baka-core/src/lib.rs",
+      "sha256": "219384c4ce01fb1fef02434b950e0d0c0de082fc637762cb7e317e47fc0d8e66"
+    },
+    {
+      "path": "rust/crates/baka-core/src/local_album.rs",
+      "sha256": "77232612da6ac74ff70769ca82f177c565d64fcfd48c0e8145d2a8713a8d4ecf"
+    },
+    {
+      "path": "rust/crates/baka-core/src/local_library.rs",
+      "sha256": "3756ca0f231966c5e156958699d31af783f7eefec6e93fd4f8fe5fcb160eeaa3"
+    },
+    {
+      "path": "rust/crates/baka-core/src/lyric.rs",
+      "sha256": "64be1fbfcc1a9a38f48e109732b0691c81b65f550e823f8268dd071837647c15"
+    },
+    {
+      "path": "rust/crates/baka-core/src/media_source.rs",
+      "sha256": "78372b8354064d2796df77a778947baaf1cb3ee0f3e62f5ec69b9415eedae16d"
+    },
+    {
+      "path": "rust/crates/baka-core/src/natural_order.rs",
+      "sha256": "cd5c4fcd3f298c933ed245d1f92dd512c9b715f0c1adfacc5e9aa17918994bd3"
+    },
+    {
+      "path": "rust/crates/baka-core/src/playlist_sync.rs",
+      "sha256": "91c247b6cab312ce309f363ef0c2cba4138d0b69284812cac4bcc52c5767f370"
+    },
+    {
+      "path": "rust/crates/baka-core/src/plugin_contract.rs",
+      "sha256": "993b7851768bac2ad1492dfb061394e9dfb881dc3386f4e61d877d4351e0a2da"
+    },
+    {
+      "path": "rust/crates/baka-core/src/search_text.rs",
+      "sha256": "6343278f5dc101deb8ddc3396373d57c8887091358868387e416d97be80bd76e"
+    },
+    {
+      "path": "rust/crates/baka-core/src/track.rs",
+      "sha256": "77479bfe83635c1700266ba6ad806c2084f37c477c17622cddaed4be93f1dbb9"
+    },
+    {
+      "path": "rust/crates/baka-core/src/workspace/download.rs",
+      "sha256": "28b814537391ea0221289d24bfa972a9fdb872f4e42516413b3360e5495fb149"
+    },
+    {
+      "path": "rust/crates/baka-core/src/workspace_bootstrap_tests.rs",
+      "sha256": "d7010797717eca865ce03fd497ad51069e94a02f7dd3de954ba7b55b85b53a60"
+    },
+    {
+      "path": "rust/crates/baka-core/src/workspace.rs",
+      "sha256": "67ddcb20c9498f952c843633150e06220302627dfe1eaa46c395dcce5699e415"
+    },
+    {
+      "path": "rust/crates/baka-logging/Cargo.toml",
+      "sha256": "31cdc179fe1327a6fbd621f5e65ce7ed5b45c70c3de72d120f1c6756f8c2d389"
+    },
+    {
+      "path": "rust/crates/baka-logging/DESIGN.md",
+      "sha256": "b63f732a10915d175e8f8c85f6f442e90c3b792874ad6e9e239a31c0b36dc9c6"
+    },
+    {
+      "path": "rust/crates/baka-logging/README.md",
+      "sha256": "b5d1bccc35006c24c2227f363b65fe52dc5143ead4b421b81d566da38182b8fd"
+    },
+    {
+      "path": "rust/crates/baka-logging/src/lib.rs",
+      "sha256": "07296dab6db789ab2ea9db6f0617e89717c5ee00d6c7be1375a9e7bc22295b5e"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/Cargo.toml",
+      "sha256": "5703b9cb89bb3df2a2528c5da6f29d0f490f4affb2e11dec2c70a5354d385e1a"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/DESIGN.md",
+      "sha256": "0ab1bce7abba065c3f07ad5e201efb32c75e82a20f7c44a50934dfb09122a307"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/examples/capture_qq_lyric.rs",
+      "sha256": "83e30740020e155bfb40c9d6f8fbaa6bbe41b27d552aabe3671d5a645e9f1f5b"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/examples/v2_probe.rs",
+      "sha256": "62d695ed2ca1a299c2815f519a9a2ce1af0534f1d65bef99824197eb8ad267c9"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/licenses/lyrics/LICENSE-AMLL",
+      "sha256": "67432cfd365e739b78deb5c723c9d4500eacc632e2a8207c5128ec6d6d4ff7df"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/licenses/lyrics/LICENSE-BakaMusic",
+      "sha256": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/licenses/lyrics/LICENSE-xmldom",
+      "sha256": "4da724fc305d81606b245b324d4d2586916b9d248b23d82183df753ace0fdf71"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/licenses/lyrics/README.md",
+      "sha256": "8eaa80dd7664b63e2ca700b352e240c8876f8aef8a38d475635e42cae48e7e57"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/licenses/lyrics/versions.json",
+      "sha256": "7e36bbbded167f4a2a615b58bfd916b70b0515b6f0c0a2a89ed5242bd82d4e27"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/README.md",
+      "sha256": "f088a41de53275bc9e7041e856ed05895aa88ed0430cebe4c6047f9ccec3ad95"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/call_scope.rs",
+      "sha256": "fe98d598eddcf8da3c4b90b605bbe4ca17b91e042c74a72a69543fecef9af0a9"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/host.rs",
+      "sha256": "fed38ea992d553daafcd661c9deec69775346a7a9749c3d0140a66f8962df0ed"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/http_client.rs",
+      "sha256": "9c36bba11a3057833907552ed4cd84fb15d340491fdab42cf16823d3f8ee5fe4"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/lib.rs",
+      "sha256": "2f56bd0d614f100f587f47898428ba3ee4f5696cc26bb3f297dcf67339d7eaa8"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/lifecycle.rs",
+      "sha256": "cdb75e528db43112c5967d9fe30dfd366287b2e48c9254e0edf706cc10518b4f"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/lyric_native/export.rs",
+      "sha256": "008496e0ce544d20746a5c1aad0612158aef3084237ac20d2489e5431eb82b50"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/lyric_native/formats.rs",
+      "sha256": "30c3441c77a83d6ad297de9c0094b3b2412e9af73b86549e6f2ff3234d0a9ba2"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/lyric_native/rules.rs",
+      "sha256": "1fd107ae655a22fd36e59f3842172a6e8ef52134ab328f21fdb4ae8b9b1e40b0"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/lyric_native/secondary.rs",
+      "sha256": "e4ffad4d293d6fc899a3af34a65d8adc96e3ff175bd3bc0de99acf4c5ccf23d9"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/lyric_native/speakers.rs",
+      "sha256": "726d9eb8d953eff96813d5179550f9dcd88af58344532b1b5793b8eb783525c5"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/lyric_native/timeline.rs",
+      "sha256": "6ae0e49253b0fe08a80a6d594def929046f6c05ab8d75f9a098051e1ede08635"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/lyric_native/ttml.rs",
+      "sha256": "1e433a60ea3f65897a9d12f238fa97b95e6a04823020d3a771edc5d62675a703"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/lyric_native.rs",
+      "sha256": "cd7b5cd740748aade070ed643640ed963394cbd1600675890039b03ea6954749"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/manifest_snapshot.js",
+      "sha256": "ea4e8f05ccea6cf0a264f659c9aad00b7ecd75674453edf015ed5cb5ae1c8ca4"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/plugin_network.rs",
+      "sha256": "1b56ef0ed449c937f8ebb6ce60bd36f0cc9b60d217e82f00f2fabc930911a3e0"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/shim/cancellation.rs",
+      "sha256": "36209442dde9d63d66d93e3cd41172347110cceba21e20806886b24cdcaecf5f"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/shim/crypto.rs",
+      "sha256": "a8ac6de4854be936b68a521c11ea5c4a4c5dd5077e505673c3f4254291f7ea34"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/shim/http.rs",
+      "sha256": "34f969201e438c9aaf089fd1e65a7b2df7c9a6d7cd272a165b03d94bf4bd419e"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/shim/mod.rs",
+      "sha256": "d97272bb4ff1e6d3b509030f35511eb5f0053c889fb41b7e46d65c05351230e3"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/shim/namespace.rs",
+      "sha256": "447c24af58642b3dc27dd834ea17defddf73c00f46be991026194279be885c0a"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/shim/qrc.rs",
+      "sha256": "3f9d594c9afd21ae92e41e7a919fdd6033de3c72a01ebd7ea135a764aa8bbb11"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/shim/storage.rs",
+      "sha256": "ff4bdd6136ed8ec85acaa98a60100521e06c394cf5300f893da3aaa1a641d1af"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/shim/timers.rs",
+      "sha256": "fc46334c8fef8593aa6b403ce0accea36c419dd4e37fcf2903c94213075729c3"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/shim/v2_native.rs",
+      "sha256": "3d6626c111f53f5db20d018fe44d7aaccee7cc30e90e3f8dcfb81b8fda39830d"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/shim/v2_sm3.rs",
+      "sha256": "b606375de619865523b8478d453117376515aa36e70373ecccc004d75a4a0fe1"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/shim/web.js",
+      "sha256": "e8bbaabbb4b0b0d0bef1a126f985144bf70ff55c3e51bef51ad59c4293efb424"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/shim/web.rs",
+      "sha256": "5624e5cb4256922b9fea51bfee8e6252cf4d8dffe83cef7186fde1d9e9300cf1"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/v2_bridge.js",
+      "sha256": "cf6592f936863772f13e1dfd8a807ed5b084d56c4cb2227454a2188bbf494455"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/v2.js",
+      "sha256": "882244ec0c77d0f7dfee3d10906f4b1e72d0e0c805753312660c850aab79d3a4"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/v2.rs",
+      "sha256": "2b36bd8e6df57b8b4ef6cd5b6f0ef74eef7cf1d57ffd920a71ae63fe3ec9d220"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/workspace_transport/download_tests.rs",
+      "sha256": "7a188b901f83d569c98c8bdacc0d9eea2dfdc92c0f7412775fa7e94505f9afe6"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/src/workspace_transport.rs",
+      "sha256": "fba69e0216095f56046e55b24cefd20994b49a63d64eb632852a8fe56fc565ca"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/tests/amll_lyric.rs",
+      "sha256": "2ce105f8c973f09ed7ca26a1264d60c5a08e6b800204cfbe9055a33aadb7e503"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/tests/common/mod.rs",
+      "sha256": "5ab58e68df2ff114e185c04bf84fd5b9e695e585b374a63b111caa21ab17aff0"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/tests/concurrent_entries.rs",
+      "sha256": "9fc18004b5d768e7c32c443baf59e0b934eabf4f6502eefeecb3700a746d6326"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/tests/desktop_lyric_parity.json",
+      "sha256": "a30bf4b0e0af6db4411f4b214c4b04827e33c6f3c53b272c06655b096a0ccebd"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/tests/desktop_lyric_parity.rs",
+      "sha256": "7fe6047b0e8fe394e39383fd20b0d08c50a3a23dab946f252b8a599565bf8750"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/tests/entry_cancellation.rs",
+      "sha256": "5b2ddbdc6bc9c99651ed3a43ec9b3251a415b951df738ebf31280eecb677b334"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/tests/host_shutdown.rs",
+      "sha256": "f65badf557fa414a65e2d37ea4af6b2c4c83eb9bec336ace632cdfcf1ef9279f"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/tests/lyric_parity.json",
+      "sha256": "c6d108599fd98e2922e5263827879cf341e839850a508c756b929dbf033ef037"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/tests/native_rich_lyrics.rs",
+      "sha256": "dc1a6ea6aa11c63f66a7b2dd7c4f91c90b6d9ce98d28ff33c940ec22d161ac5a"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/tests/plugin_network.rs",
+      "sha256": "e61f99bbae53da70fbd33e92bc8215e8e5a72747b9ce1af3e3df998676f322be"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/tests/qrc_vectors.json",
+      "sha256": "8549ca17031ec302b4fabdcc8f209623e261d8f2ea9e1b21b7e73eaf5b3a23e3"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/tests/storage.rs",
+      "sha256": "5bad1a333c7f98cbf59ea6d72b0fa2e41644581f806cfab5c521bfc6ce32c22a"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/tests/v2_contract.rs",
+      "sha256": "801653f60e58f394f444a316a067595f592fc8989a6f029ec61ce2b587a866c0"
+    },
+    {
+      "path": "rust/crates/baka-plugin-host/tests/v2_pilot_sdk.rs",
+      "sha256": "a9030eee45aacc3e9bc030b7c07f8e15e070c33b22b67a8519c590da5e984114"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/BAKA_PATCHES.md",
+      "sha256": "bebf10bfa41e49500587f741bd5b3b17b806eafc61990a5020664489eef4b95c"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/build.rs",
+      "sha256": "cf2ac94e05b48cee348d20f513054d7098360c75f3a4ded46e5aa783f249a105"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/Cargo.toml",
+      "sha256": "e127f802730c72074e34db76bd24ebbec3d7fa15cbb6da81b034d02b372452e3"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/Cargo.toml.orig",
+      "sha256": "f95c0cce12c4aa0179471abe3490cb6edbdd38033f1710cbdeafcbe36198030b"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/api-test.c",
+      "sha256": "78394d89264b015b7c3cc637ef58fe6a5f9448f4afe37ba312be270e952c298f"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/builtin-array-fromasync.h",
+      "sha256": "f41eb2eb028832cff9a5f8d8d2cb438c27771a9d7d85c30dfd16aa78f34fe6de"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/builtin-iterator-zip-keyed.h",
+      "sha256": "b44cb8065f2eb2d4689b426bbc08fdf24ac996065cd909a09748566ce0b6a446"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/builtin-iterator-zip.h",
+      "sha256": "8d30bc2ebbc77f18754059444ee1e2686a6b2229cedfadcc0c593baa656acec2"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/ctest.c",
+      "sha256": "d5c9bc896fad1808a211bc0e1a6e28d452f6a16dc87e0693f78bd99df4c8b71c"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/cutils.h",
+      "sha256": "dffec8bea17f08108da5a91c1178804754698bbbb6202dc100268e78e8c5b770"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/dtoa.c",
+      "sha256": "a8d2cf2d04db406e0c16acdd95ab0e709d309902865722f41dac07a1ba5676af"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/dtoa.h",
+      "sha256": "1c4a4540c0038632c8a4c225472fbc21bd476fb35c4da4a857a11965b58231b9"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/fuzz.c",
+      "sha256": "174e1955bbcaea432e72407cd6864181994fa09ef3a146167669cd5dddac5d29"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/libregexp-opcode.h",
+      "sha256": "2a98d646089f3a72f25480116297c5fdb5b28fd9f815447273951f4ade4a115e"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/libregexp.c",
+      "sha256": "af13e996abb1767fe0cdfda123c45b811d53688d403a2ac47142e97bf79f1fae"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/libregexp.h",
+      "sha256": "53ff95a038f7001b752c455d195d998e2955f0ae4ed62a002c13eca798db3ceb"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/libunicode-table.h",
+      "sha256": "5840a921ac11664b505ee37b1219f518fff2a04972fe848b4bdf1e85c5a0bd83"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/libunicode.c",
+      "sha256": "d755606498ff707dc3a93826713c749f77b9222d8a6b066621d72a308460bf2d"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/libunicode.h",
+      "sha256": "ad13f66aaea3fab1616e84b9c048f2a315e1bdbab628b966617a7a3e55bcba2b"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/LICENSE",
+      "sha256": "96f73f9d2a16c21a36b418f06073be26e7d6d5e7c1bc99756b21a4f2c74ef171"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/list.h",
+      "sha256": "cb6e24e8ee54bccdd66234fe54cd702d1160b9841db2b9b9adeb5003afe301d5"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/lre-test.c",
+      "sha256": "e12030c11deadd710a453593da69fbfc303bab6181214570d952ba03d648ab1a"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/qjs-wasi-reactor.c",
+      "sha256": "6b29c4e4b2b5fa7bd49f68c0b72c0c590a847079ac1cef44cdb7a52fa2667ed8"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/qjs.c",
+      "sha256": "86e68b2868bedbca894155b2ca8ac27359e4f545f14c6bed3d0f2cb7908f93df"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/qjsc.c",
+      "sha256": "0d8ce14fce606a87bbdf9521badd2147c12a1ad5961510fec9e69a3292e59a47"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/quickjs-atom.h",
+      "sha256": "66654ae6533d15073ea527979c453709d7ed83162142c656095a10dcef737a60"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/quickjs-c-atomics.h",
+      "sha256": "29883c742a5c512278fce54d19b1b9af949006e1d7dfc9ffa2e0946b184d8c5c"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/quickjs-libc.c",
+      "sha256": "e583dd364c15618b7c296d50e6d003b336dfc66289dbae01c7658611b121e2f7"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/quickjs-libc.h",
+      "sha256": "55c6b4504124941903fc09c35aecedddb88fa45c27d5e62c65962bb670ae17d1"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/quickjs-opcode.h",
+      "sha256": "0054b0c45fd091afa308c3fb93b5862e0b071235918d3d73e413d23fce388bbc"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/quickjs.c",
+      "sha256": "adaa0943f10a8a315217a9f8394c77815cea931b5d3133fca1e5a61d9bfb048b"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/quickjs.h",
+      "sha256": "01a2e5c22ea0e815d033d16f17f0efc480ecf9a8378c2e7856dfe340003839f8"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/run-test262.c",
+      "sha256": "1549e8815d310c03cb6f331c2816028c075ce8f792c50d0d40d6bef28a471d78"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/unicode_gen_def.h",
+      "sha256": "02449c8cf482b2811a32f528d72a0ff4602dc8ffc4135e330eb05bae05d359d8"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs/unicode_gen.c",
+      "sha256": "de081ba592861c1ee55556b341c3f2f7c1b195bac3561ac9293d92a8408ee47c"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/quickjs.bind.h",
+      "sha256": "7e59effd2289bb44d82d8a03bbb5861df8e073c099096abdee7c65f60f0531b6"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/README.md",
+      "sha256": "334d0314cfb1e0a743f75bae566ee67c2defc8c498bf8a367e592cdff0c10cf7"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/aarch64-apple-darwin.rs",
+      "sha256": "d117928c085b9f341176d79e0b831b9fadf6a824c8d10fbbfa3155c93b6b823b"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/aarch64-linux-android.rs",
+      "sha256": "70ec9d6d52881dd8bd4eb16e4ed06266dfb5bc189d67f310bef477f52989d1c3"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/aarch64-pc-windows-msvc.rs",
+      "sha256": "0c77b47f08c7ea686f5f4eba53c4d5e1f19c20c53f2d085ee2453969f5da801f"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/aarch64-unknown-linux-gnu.rs",
+      "sha256": "70ec9d6d52881dd8bd4eb16e4ed06266dfb5bc189d67f310bef477f52989d1c3"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/aarch64-unknown-linux-musl.rs",
+      "sha256": "70ec9d6d52881dd8bd4eb16e4ed06266dfb5bc189d67f310bef477f52989d1c3"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/armv7-linux-androideabi.rs",
+      "sha256": "f93ae5cb56f570205f753ae0e6ee2a73b64568237a9e8fae93efb3f7c8d970f8"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/armv7-unknown-linux-gnueabi.rs",
+      "sha256": "e90ea64f49f87b6cc7a27b80edab2d85ab1270c6042d542bf03e728ee694e4ec"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/armv7-unknown-linux-gnueabihf.rs",
+      "sha256": "f09e517bd2f5aa57ab6cb5efea59c1d7e4089517b40c9f1491f841de945fa66a"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/i686-unknown-linux-gnu.rs",
+      "sha256": "d628eabe648d7a50a585336d98ae88b4cecbf4f0d23e75695a073acabb4e9fe4"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/loongarch64-unknown-linux-gnu.rs",
+      "sha256": "70ec9d6d52881dd8bd4eb16e4ed06266dfb5bc189d67f310bef477f52989d1c3"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/loongarch64-unknown-linux-musl.rs",
+      "sha256": "70ec9d6d52881dd8bd4eb16e4ed06266dfb5bc189d67f310bef477f52989d1c3"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/powerpc64-unknown-linux-gnu.rs",
+      "sha256": "70ec9d6d52881dd8bd4eb16e4ed06266dfb5bc189d67f310bef477f52989d1c3"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/riscv64a23-unknown-linux-gnu.rs",
+      "sha256": "fd947ac8acebc9fe3eb269871a9fa511ad968fa10faabd41cc7b99a644796bdd"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/riscv64gc-unknown-linux-gnu.rs",
+      "sha256": "70ec9d6d52881dd8bd4eb16e4ed06266dfb5bc189d67f310bef477f52989d1c3"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/wasm32-unknown-unknown.rs",
+      "sha256": "c3e5e1b99f3dccb78702bc82b2316896fc47b9973f23c4810d6949dafe42a0f5"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/wasm32-wasip1.rs",
+      "sha256": "c3e5e1b99f3dccb78702bc82b2316896fc47b9973f23c4810d6949dafe42a0f5"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/wasm32-wasip2.rs",
+      "sha256": "c3e5e1b99f3dccb78702bc82b2316896fc47b9973f23c4810d6949dafe42a0f5"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/x86_64-apple-darwin.rs",
+      "sha256": "d117928c085b9f341176d79e0b831b9fadf6a824c8d10fbbfa3155c93b6b823b"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/x86_64-linux-android.rs",
+      "sha256": "70ec9d6d52881dd8bd4eb16e4ed06266dfb5bc189d67f310bef477f52989d1c3"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/x86_64-pc-windows-gnu.rs",
+      "sha256": "fe1faf654dade0b6f7d145a91e0b890915de16d220dd633212e8bdf04749530b"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/x86_64-pc-windows-msvc.rs",
+      "sha256": "0c77b47f08c7ea686f5f4eba53c4d5e1f19c20c53f2d085ee2453969f5da801f"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/x86_64-unknown-linux-gnu.rs",
+      "sha256": "70ec9d6d52881dd8bd4eb16e4ed06266dfb5bc189d67f310bef477f52989d1c3"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/bindings/x86_64-unknown-linux-musl.rs",
+      "sha256": "70ec9d6d52881dd8bd4eb16e4ed06266dfb5bc189d67f310bef477f52989d1c3"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/inlines/common.rs",
+      "sha256": "3c1eb2042cc621a4ff5415907a25af090b2ef2fd1c52370d3d9143280c06a081"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/inlines/ptr_32_nan_boxing.rs",
+      "sha256": "f8d6fb9dd38b1c1ffd4d320e7ed8182faf2d7aa1ffa39fe078203057038ef0e5"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/inlines/ptr_64.rs",
+      "sha256": "7f969908bbbf1631d877afb2999b8c954f73d4c7d12f5fc57d6c4962748a347e"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/src/lib.rs",
+      "sha256": "42f61e2b92547d519616085523e6f4ecb9ea31c741c2846c481754b532c426ef"
+    },
+    {
+      "path": "rust/vendor/rquickjs-sys/wasm-shim/shim.c",
+      "sha256": "2230370e7bde19e441a2addfefda894083d9c96a301830275ae16fa47c26286e"
+    },
+    {
+      "path": "docs/design/plugin-v2/authoring/contract-vectors.json",
+      "sha256": "e887f53059c14654cac7582f6ef5cd8f98336c3ef4f1ccc92f4cf9be13fdb7e5"
+    },
+    {
+      "path": "test/fixtures/track_duration.json",
+      "sha256": "b7ac6c4308a0bce94809fce14360d77861eebe22772124d5fe4c7a44760c577e"
+    }
+  ],
+  "adaptedFiles": [
+    {
+      "path": "src/lx_v2_migration.rs",
+      "sourcePath": "rust/crates/baka-ffi/src/lx_v2_migration.rs",
+      "commit": "a705a471a863697c14115a3868961df524a7f2c2",
+      "sourceSha256": "8b78f821cb0e7665d2964ac9a0f1396815ba377236b87b5e21ca838c024dfa23",
+      "adaptation": "Desktop request-owned import observation and RAII shutdown replace Flutter workspace leases; integration tests exercise the stdio service."
+    },
+    {
+      "path": "src/lx_v2_adapter.js",
+      "sourcePath": "rust/crates/baka-ffi/src/lx_v2_adapter.js",
+      "commit": "a705a471a863697c14115a3868961df524a7f2c2",
+      "sourceSha256": "ab5cc0bd7f2b4aa705b5e45010337b6b8b42c9df46376e9026ca9e386c2080dc",
+      "adaptation": "Generated V2 source embeds the exact original LX string. The evaluator binds env to immutable SDK settings. Converted packages alone publish LX, global aliases, immutable env and timer/buffer wrappers on their isolated actual QuickJS global for indirect eval/Function/constructor lookups; native timers are captured before wrapping. Ordinary V2 contexts stay lean."
+    }
+  ]
+}

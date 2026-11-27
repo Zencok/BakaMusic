@@ -11,7 +11,7 @@ declare namespace IMedia {
 
   interface IUnique {
     /** 唯一id */
-    id: string;
+    id: string | number;
     $?: any;
     [k: string | number | symbol]: any;
   }
@@ -91,7 +91,7 @@ declare namespace IMusic {
 
   interface ISheetTrackOwnership {
     platform: string;
-    id: string;
+    id: string | number;
     manual: boolean;
     sourceKeys: string[];
   }
@@ -164,7 +164,7 @@ declare namespace IAlbum {
 declare namespace IArtist {
   interface IArtistItem {
     name: string;
-    id: string;
+    id: string | number;
     fans?: number;
     description?: string;
     platform: string;
@@ -236,7 +236,7 @@ declare namespace ILyric {
 
 declare namespace IComment {
   interface ICommentItem {
-    id?: string;
+    id?: string | number;
     // 用户名
     nickName: string;
     // 头像

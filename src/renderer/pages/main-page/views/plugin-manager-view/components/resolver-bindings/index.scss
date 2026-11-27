@@ -1,0 +1,4 @@
+.resolver-binding-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px 20px; }
+.resolver-binding-row select { max-width: 60%; padding: 8px 12px; border-radius: 8px; color: inherit; background: var(--background-color); }
+.stopped-plugin-list { list-style: none; margin: 0; padding: 8px 20px; }
+.stopped-plugin-list li { display: flex; justify-content: space-between; gap: 20px; padding: 12px 0; }

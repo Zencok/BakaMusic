@@ -1,3 +1,4 @@
+import getSourceName from "@renderer/utils/get-source-name";
 import SvgAsset from "@/renderer/components/SvgAsset";
 import "./index.scss";
 
@@ -146,7 +147,7 @@ export default function MusicInfo() {
                     <MusicVideoBadge musicItem={musicItem} compact></MusicVideoBadge>
                     {musicItem.platform ? (
                         <Tag fill style={{ fontSize: "0.76rem" }}>
-                            {musicItem.platform}
+                            {getSourceName(musicItem.platform)}
                         </Tag>
                     ) : null}
                 </div>

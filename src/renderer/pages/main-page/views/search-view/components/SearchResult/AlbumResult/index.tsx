@@ -22,7 +22,7 @@ function AlbumResult(props: IMediaResultProps) {
             data={data}
             state={state}
             onLoadMore={() => {
-                search(undefined, undefined, "album", pluginHash);
+                search(undefined, "album", pluginHash);
             }}
             onClick={(albumItem) => {
                 navigate(`/main/album/${encodeURIComponent(albumItem.platform)}/${encodeURIComponent(albumItem.id)}`, {

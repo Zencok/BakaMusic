@@ -1,11 +1,13 @@
+import { isV2Media } from "@/common/media-util";
 export interface IPluginDelegateReference {
     platform: string;
+    id?: string;
     hash?: string;
 }
 
 export interface IPluginMediaReference {
     platform: string;
-    id: string;
+    id: string | number;
     [key: string]: unknown;
 }
 
@@ -35,24 +37,22 @@ type PrefetchedQualityKey =
     | "atmos_plus"
     | "master";
 
-const pluginDelegateHashKey = "$pluginDelegateHash";
+const pluginDelegateIdKey = "$pluginDelegateId";
 
 const PREFETCH_TTL_MS = 3 * 60 * 1000;
 const PREFETCH_MAX_ENTRIES = 64;
+let prefetchRevision = 0;
+export function getPrefetchedMediaSourceRevision() {
+    return prefetchRevision;
+}
+export function invalidatePrefetchedMediaSources() {
+    prefetchRevision += 1;
+    prefetchedMediaSources.clear();
+}
 const prefetchedMediaSources = new Map<string, {
     value: IPrefetchedMediaSource;
     expiresAt: number;
 }>();
-
-const IDENTIFIER_ALIAS_KEYS = [
-    "songid",
-    "songmid",
-    "mid",
-    "hash",
-    "copyrightId",
-] as const;
-
-type IdentifierAliasKey = (typeof IDENTIFIER_ALIAS_KEYS)[number];
 
 function nonEmptyString(value: unknown): string | null {
     if (value == null) {
@@ -62,27 +62,12 @@ function nonEmptyString(value: unknown): string | null {
     return text.length ? text : null;
 }
 
-function getMediaIdentity(mediaItem: IPluginMediaReference) {
-    const aliases = [
-        mediaItem.hash,
-        mediaItem.id,
-        mediaItem.songmid,
-        mediaItem.songid,
-        mediaItem.mid,
-        mediaItem.copyrightId,
-    ];
-    return aliases
-        .map(nonEmptyString)
-        .find((value): value is string => !!value)
-        ?? "unknown";
-}
-
 function getPrefetchedMediaSourceKey(
     mediaItem: IPluginMediaReference,
     quality: PrefetchedQualityKey,
 ) {
     const delegate = getMediaPluginDelegate(mediaItem);
-    return `${delegate.hash ?? delegate.platform}\u0000${mediaItem.platform}\u0000${getMediaIdentity(mediaItem)}\u0000${quality}`;
+    return JSON.stringify([delegate.id ?? delegate.platform, mediaItem.platform, mediaItem.id, quality]);
 }
 
 function trimPrefetchedMediaSources(now = Date.now()) {
@@ -105,8 +90,9 @@ export function cachePrefetchedMediaSource(
     mediaItem: IPluginMediaReference,
     quality: PrefetchedQualityKey,
     mediaSource: IPrefetchedMediaSource["mediaSource"],
+    expectedRevision = prefetchRevision,
 ) {
-    if (!mediaSource?.url) {
+    if (!mediaSource?.url || expectedRevision !== prefetchRevision) {
         return;
     }
     const now = Date.now();
@@ -141,43 +127,22 @@ export function getPrefetchedMediaSource(
 export function createMusicIdentifierBase(platform: string, input: string): IPluginMediaReference {
     const identifier = String(input).trim();
 
-    return {
-        platform,
-        id: identifier,
-        songid: identifier,
-        songmid: identifier,
-        mid: identifier,
-        hash: identifier,
-        copyrightId: identifier,
-    };
+    return { platform, id: identifier };
 }
 
 /** Prefer the plugin's canonical id when present; otherwise keep the user input. */
 export function resolveMusicItemId(
     input: string,
     musicInfo?: { id?: unknown } | null,
-): string {
-    return nonEmptyString(musicInfo?.id) ?? String(input).trim();
+): string | number {
+    const id = musicInfo?.id;
+    return typeof id === "number" && Number.isFinite(id) ? id : nonEmptyString(id) ?? String(input).trim();
 }
 
 /**
  * Keep mid/hash/etc. aliases available for getMediaSource even after the
  * canonical id is replaced by the plugin response.
  */
-function pickMusicIdentifierAliases(
-    input: string,
-    musicInfo?: Record<string, unknown> | null,
-): Record<IdentifierAliasKey, string> {
-    const identifier = String(input).trim();
-    const aliases = {} as Record<IdentifierAliasKey, string>;
-
-    for (const key of IDENTIFIER_ALIAS_KEYS) {
-        aliases[key] = nonEmptyString(musicInfo?.[key]) ?? identifier;
-    }
-
-    return aliases;
-}
-
 export interface IPlayByIdMusicItem extends IPluginMediaReference {
     title: string;
     artist: string;
@@ -202,15 +167,13 @@ export function buildPlayByIdMusicItem(
         musicInfo && typeof musicInfo === "object"
             ? musicInfo
             : null;
-    const aliases = pickMusicIdentifierAliases(input, info);
     const resolvedId = resolveMusicItemId(input, info);
-    const title = nonEmptyString(info?.title) ?? identifierBase.id;
+    const title = nonEmptyString(info?.title) ?? String(identifierBase.id);
     const artist = nonEmptyString(info?.artist) ?? "";
 
     return {
         ...identifierBase,
         ...(info ?? {}),
-        ...aliases,
         id: resolvedId,
         platform,
         title,
@@ -241,6 +204,8 @@ export function matchesMusicIdentifier(
         return false;
     }
 
+    if (isV2Media(item)) return item.id === input;
+
     const candidates = [
         item.id,
         item.songid,
@@ -258,25 +223,25 @@ export function bindMediaToPlugin<T extends IPluginMediaReference>(
     mediaItem: T,
     pluginDelegate: IPluginDelegateReference,
 ): T {
-    if (!pluginDelegate.hash) {
+    if (!pluginDelegate.id && !pluginDelegate.hash) {
         return mediaItem;
     }
 
     return {
         ...mediaItem,
-        [pluginDelegateHashKey]: pluginDelegate.hash,
+        [pluginDelegateIdKey]: pluginDelegate.id ?? pluginDelegate.hash,
     };
 }
 
 export function getMediaPluginDelegate(
     mediaItem: IPluginMediaReference,
 ): IPluginDelegateReference {
-    const pluginHash = mediaItem?.[pluginDelegateHashKey];
+    const pluginHash = mediaItem?.[pluginDelegateIdKey] ?? mediaItem?.["$pluginDelegateHash"];
 
     return {
         platform: mediaItem.platform,
         ...(typeof pluginHash === "string" && pluginHash
-            ? { hash: pluginHash }
+            ? { id: pluginHash, hash: pluginHash }
             : {}),
     };
 }

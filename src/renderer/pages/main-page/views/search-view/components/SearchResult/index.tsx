@@ -48,7 +48,7 @@ function SearchResultBodyComponent(props: ISearchResultBodyProps) {
 
     useEffect(() => {
         if (pluginHash && type && query) {
-            search(query, 1, type, pluginHash);
+            search(query, type, pluginHash);
         }
     }, [pluginHash, query, search, type]);
 
@@ -101,5 +101,6 @@ const SearchResultBody = memo(
     (prev, curr) =>
         prev.pluginHash === curr.pluginHash &&
         prev.type === curr.type &&
-        prev.query === curr.query,
+        prev.query === curr.query &&
+        prev.search === curr.search,
 );

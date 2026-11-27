@@ -22,7 +22,7 @@ function SheetResult(props: IMediaResultProps) {
             data={data}
             state={state}
             onLoadMore={() => {
-                search(undefined, undefined, "sheet", pluginHash);
+                search(undefined, "sheet", pluginHash);
             }}
             onClick={(sheetItem) => {
                 navigate(`/main/musicsheet/${encodeURIComponent(sheetItem.platform)}/${encodeURIComponent(sheetItem.id)}`, {

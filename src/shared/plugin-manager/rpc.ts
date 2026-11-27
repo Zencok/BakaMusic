@@ -1,80 +1,53 @@
-export const pluginMethodNames = [
-    "search",
-    "getMediaSource",
-    "getMvSource",
-    "getMusicInfo",
-    "getLyric",
-    "getAlbumInfo",
-    "getMusicSheetInfo",
-    "getArtistWorks",
-    "getArtistInfo",
-    "importMusicSheet",
-    "importMusicItem",
-    "getTopLists",
-    "getTopListDetail",
-    "getRecommendSheetTags",
-    "getRecommendSheetsByTag",
-    "getMusicComments",
-    "getMusicDetailPageUrl",
-    "recognize",
-] as const;
+/** Exact public V2 capability names. No legacy dispatch aliases. */
+export const pluginCapabilities = [
+    "search", "entities.get", "collections.get", "collections.members",
+    "discovery.charts", "discovery.chartTags", "discovery.playlistTags",
+    "discovery.playlists", "discovery.hotSearch", "discovery.recommendations",
+    "discovery.daily", "discovery.similar", "discovery.searchSuggestions",
+    "media.prepare", "media.resolve", "media.video", "media.license", "lyrics.get",
+    "comments.list", "links.resolve", "links.share", "recognition.identify",
+    "auth.login", "auth.callback", "auth.logout", "auth.status",
+] as const satisfies readonly IPlugin.Capability[];
 
-export type PluginMethodName = (typeof pluginMethodNames)[number];
-
-/**
- * platform 和用户变量 key 会被用作普通对象的属性名；
- * 原型链保留键会污染 Object.prototype 或命中继承访问器，必须拒绝。
- */
+export type PluginCapability = typeof pluginCapabilities[number];
+const capabilitySet = new Set<string>(pluginCapabilities);
+export function isPluginCapability(value: unknown): value is PluginCapability {
+    return typeof value === "string" && capabilitySet.has(value);
+}
 const reservedObjectKeys = new Set(["__proto__", "constructor", "prototype"]);
-
 export function isReservedObjectKey(key: string) {
     return reservedObjectKeys.has(key);
 }
-
 export interface PluginExecutionEnvironment {
     os: NodeJS.Platform;
     appVersion: string;
-    lang: string | null | undefined;
+    lang?: string | null;
     userVariables: Record<string, string>;
     proxyUrl?: string;
 }
-
 export interface PluginHostDescriptor {
-    hash: string;
-    metadata: Record<string, unknown>;
-    supportedMethods: PluginMethodName[];
+    id: string;
+    manifest: IPlugin.Manifest;
+    protocolVersion?: number;
+    runtime?: "rust-quickjs-v2";
 }
-
-export type PluginHostOperation = "load" | "invoke" | "unload" | "clear";
-
-export interface PluginHostRequest {
-    type: "request";
-    requestId: string;
-    operation: PluginHostOperation;
-    payload: unknown;
+export interface PluginInvocation<T extends PluginCapability = PluginCapability> {
+    providerId: string;
+    capability: T;
+    request: IPlugin.Requests[T];
 }
-
-export interface PluginHostResponse {
-    type: "response";
-    requestId: string;
+/** Plain data across both IPC and contextBridge; renderer reconstructs errors. */
+export type PluginInvocationResult<T> = { ok: true; value: T }
+    | { ok: false; error: { message: string; code?: string } };
+export interface NativeRequest {
+    jsonrpc: "2.0";
+    id: string;
+    method: "health" | "inspect" | "prepareImport" | "load" | "invoke" | "unload" | "clear" | "cancel";
+    params: Record<string, unknown>;
+}
+export interface NativeResponse {
+    jsonrpc: "2.0";
+    id: string;
     result?: unknown;
-    error?: {
-        name: string;
-        message: string;
-        stack?: string;
-    };
-}
-
-export interface PluginHostCallbackRequest {
-    type: "host-request";
-    requestId: string;
-    operation: "cookies.get" | "cookies.set" | "cookies.flush";
-    payload: unknown;
-}
-
-export interface PluginHostCallbackResponse {
-    type: "host-response";
-    requestId: string;
-    result?: unknown;
-    error?: string;
+    error?: { code: number; message: string; data?: { code?: string; failureCode?: string } };
 }

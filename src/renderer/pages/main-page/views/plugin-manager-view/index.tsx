@@ -12,25 +12,26 @@ import { toast } from "react-toastify";
 import { Trans, useTranslation } from "react-i18next";
 import { dialogUtil } from "@shared/utils/renderer";
 import PluginManager, {
-    useLxPlugins,
+    usePluginRegistryState,
     useSortedPlugins,
 } from "@shared/plugin-manager/renderer";
 import { useState, type MouseEvent } from "react";
-import LxPluginSection from "./components/lx-plugin-section";
+import ResolverBindings from "./components/resolver-bindings";
 import useAppConfig from "@/hooks/useAppConfig";
 import PluginLogConsole from "./components/plugin-log-console";
+import { getSubscriptionUpdateOptions, pluginImportKinds } from "./import-format";
 
 export default function PluginManagerView() {
     const { t } = useTranslation();
     const plugins = useSortedPlugins();
-    const lxPlugins = useLxPlugins();
+    const { resolverBindings } = usePluginRegistryState();
     const pluginMeta = useAppConfig("private.pluginMeta") ?? {};
     const [subscriptionList] = useUserPreference("subscription");
     const [logConsoleOpen, setLogConsoleOpen] = useState(false);
+    const [importKind, setImportKind] = useState<IPlugin.ImportKind>("auto");
     const enabledPluginCount = plugins.filter(
         (plugin) => !(pluginMeta[plugin.platform]?.disabled ?? false),
     ).length;
-    const activeLxPlugin = lxPlugins.find((plugin) => plugin.active);
 
     async function onInstallFromLocal() {
         try {
@@ -40,14 +41,14 @@ export default function PluginManagerView() {
                 filters: [
                     {
                         extensions: ["js", "json"],
-                        name: t("plugin_management_page.bakamusic_plugin"),
+                        name: t("plugin_management_page.plugin_files"),
                     },
                 ],
             });
             if (result.canceled) {
                 return;
             }
-            await PluginManager.installPluginFromLocal(result.filePaths[0]);
+            await PluginManager.installPluginFromLocal(result.filePaths[0], { kind: importKind });
             toast.success(t("plugin_management_page.install_successfully"));
         } catch (error) {
             toast.warn(
@@ -61,75 +62,24 @@ export default function PluginManagerView() {
 
     function onInstallFromNetwork() {
         showModal("SimpleInputWithState", {
-            title: t("plugin_management_page.install_plugin_from_network"),
+            title: t("plugin_management_page.install_plugin_from_network") +
+                ` · ${t(`plugin_management_page.import_format_${importKind}`)}`,
             placeholder: t(
                 "plugin_management_page.plugin_url_hint",
             ),
             okText: t("plugin_management_page.install"),
             loadingText: t("plugin_management_page.installing"),
             withLoading: true,
+            hints: [t(`plugin_management_page.import_${importKind}_hint`)],
             async onOk(text) {
                 const url = new URL(text.trim());
                 if (url.protocol !== "https:") {
                     throw new Error(t("plugin_management_page.plugin_url_hint"));
                 }
-                return PluginManager.installPluginFromRemote(text.trim());
+                return PluginManager.installPluginFromRemote(text.trim(), { kind: importKind });
             },
             onPromiseResolved() {
                 toast.success(t("plugin_management_page.install_successfully"));
-                hideModal();
-            },
-            onPromiseRejected(error) {
-                toast.warn(
-                    `${t("plugin_management_page.install_failed")}: ${
-                        error?.message ?? t("plugin_management_page.invalid_plugin")
-                    }`,
-                );
-            },
-        });
-    }
-
-    async function onInstallLxFromLocal() {
-        try {
-            const result = await dialogUtil.showOpenDialog({
-                title: t("plugin_management_page.choose_lx_plugin"),
-                buttonLabel: t("plugin_management_page.install"),
-                filters: [{
-                    extensions: ["js"],
-                    name: t("plugin_management_page.lx_plugin"),
-                }],
-            });
-            if (result.canceled) {
-                return;
-            }
-            await PluginManager.installLxPluginFromLocal(result.filePaths[0]);
-            toast.success(t("plugin_management_page.lx_install_successfully"));
-        } catch (error) {
-            toast.warn(
-                `${t("plugin_management_page.install_failed")}: ${
-                    (error as Error)?.message ??
-                    t("plugin_management_page.invalid_plugin")
-                }`,
-            );
-        }
-    }
-
-    function onInstallLxFromNetwork() {
-        showModal("SimpleInputWithState", {
-            title: t("plugin_management_page.install_lx_plugin_from_network"),
-            placeholder: t("plugin_management_page.lx_url_hint"),
-            okText: t("plugin_management_page.install"),
-            loadingText: t("plugin_management_page.installing"),
-            withLoading: true,
-            async onOk(text) {
-                const url = new URL(text.trim());
-                if (url.protocol !== "https:") {
-                    throw new Error(t("plugin_management_page.lx_url_hint"));
-                }
-                return PluginManager.installLxPluginFromRemote(text.trim());
-            },
-            onPromiseResolved() {
-                toast.success(t("plugin_management_page.lx_install_successfully"));
                 hideModal();
             },
             onPromiseRejected(error) {
@@ -185,7 +135,10 @@ export default function PluginManagerView() {
         const failedErrors: Error[] = [];
         for (const subscription of currentSubscriptions) {
             try {
-                await PluginManager.installPluginFromRemote(subscription.srcUrl);
+                await PluginManager.installPluginFromRemote(
+                    subscription.srcUrl,
+                    getSubscriptionUpdateOptions(plugins, subscription.srcUrl),
+                );
             } catch (error) {
                 failedErrors.push(error as Error);
             }
@@ -224,17 +177,6 @@ export default function PluginManagerView() {
                     icon: "code-bracket-square",
                     title: t("plugin_management_page.install_plugin_from_network"),
                     onClick: onInstallFromNetwork,
-                },
-                { divider: true },
-                {
-                    icon: "folder-open",
-                    title: t("plugin_management_page.install_lx_from_local"),
-                    onClick: () => void onInstallLxFromLocal(),
-                },
-                {
-                    icon: "code-bracket-square",
-                    title: t("plugin_management_page.install_lx_from_network"),
-                    onClick: onInstallLxFromNetwork,
                 },
             ],
         });
@@ -291,35 +233,51 @@ export default function PluginManagerView() {
                             ></Trans>
                         </p>
                     </div>
-                    <div className="plugin-manager-header-actions">
-                        <button
-                            type="button"
-                            className="plugin-manager-log-button"
-                            onClick={() => setLogConsoleOpen(true)}
-                        >
-                            <SvgAsset iconName="code-bracket-square" size={17}></SvgAsset>
-                            <span>{t("plugin_management_page.plugin_logs")}</span>
-                        </button>
-                        <button
-                            type="button"
-                            className="plugin-manager-install-button"
-                            aria-haspopup="menu"
-                            onClick={openInstallMenu}
-                        >
-                            <SvgAsset iconName="plus" size={17}></SvgAsset>
-                            <span>{t("plugin_management_page.install_plugin")}</span>
-                            <SvgAsset iconName="chevron-down" size={14}></SvgAsset>
-                        </button>
-                        <button
-                            type="button"
-                            className="plugin-manager-more-button"
-                            aria-label={t("plugin_management_page.more_actions")}
-                            title={t("plugin_management_page.more_actions")}
-                            aria-haspopup="menu"
-                            onClick={openManageMenu}
-                        >
-                            <SvgAsset iconName="ellipsis-horizontal" size={19}></SvgAsset>
-                        </button>
+                    <div className="plugin-manager-install-controls">
+                        <label className="plugin-manager-import-format">
+                            <span>{t("plugin_management_page.import_format")}</span>
+                            <select
+                                value={importKind}
+                                onChange={(event) => setImportKind(event.currentTarget.value as IPlugin.ImportKind)}
+                            >
+                                {pluginImportKinds.map((kind) => <option key={kind} value={kind}>
+                                    {t(`plugin_management_page.import_format_${kind}`)}
+                                </option>)}
+                            </select>
+                        </label>
+                        <p className="plugin-manager-import-hint">
+                            {t(`plugin_management_page.import_${importKind}_hint`)}
+                        </p>
+                        <div className="plugin-manager-header-actions">
+                            <button
+                                type="button"
+                                className="plugin-manager-log-button"
+                                onClick={() => setLogConsoleOpen(true)}
+                            >
+                                <SvgAsset iconName="code-bracket-square" size={17}></SvgAsset>
+                                <span>{t("plugin_management_page.plugin_logs")}</span>
+                            </button>
+                            <button
+                                type="button"
+                                className="plugin-manager-install-button"
+                                aria-haspopup="menu"
+                                onClick={openInstallMenu}
+                            >
+                                <SvgAsset iconName="plus" size={17}></SvgAsset>
+                                <span>{t("plugin_management_page.install_plugin")}</span>
+                                <SvgAsset iconName="chevron-down" size={14}></SvgAsset>
+                            </button>
+                            <button
+                                type="button"
+                                className="plugin-manager-more-button"
+                                aria-label={t("plugin_management_page.more_actions")}
+                                title={t("plugin_management_page.more_actions")}
+                                aria-haspopup="menu"
+                                onClick={openManageMenu}
+                            >
+                                <SvgAsset iconName="ellipsis-horizontal" size={19}></SvgAsset>
+                            </button>
+                        </div>
                     </div>
                 </header>
 
@@ -340,15 +298,14 @@ export default function PluginManagerView() {
                         <dd>{subscriptionList?.length ?? 0}</dd>
                     </div>
                     <div className="plugin-manager-metric plugin-manager-metric-source">
-                        <dt>{t("plugin_management_page.active_playback_source")}</dt>
-                        <dd title={activeLxPlugin?.name}>
-                            {activeLxPlugin?.name ??
-                                t("plugin_management_page.plugin_native_source")}
+                        <dt>{t("plugin_management_page.playback_bindings")}</dt>
+                        <dd>
+                            {resolverBindings.length}
                         </dd>
                     </div>
                 </dl>
 
-                <LxPluginSection basePlugins={plugins}></LxPluginSection>
+                <ResolverBindings plugins={plugins}></ResolverBindings>
 
                 <PluginTable plugins={plugins}></PluginTable>
             </div>

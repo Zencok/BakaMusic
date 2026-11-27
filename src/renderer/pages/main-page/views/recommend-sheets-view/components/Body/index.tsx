@@ -1,7 +1,8 @@
+import getSourceName from "@renderer/utils/get-source-name";
 import { useEffect, useId, useRef, useState } from "react";
 import "./index.scss";
 import classNames from "@/renderer/utils/classnames";
-import useRecommendListTags from "../../hooks/useRecommendListTags";
+import useRecommendListTags, { type RecommendTags } from "../../hooks/useRecommendListTags";
 import TagPanel from "./tag-panel";
 import useRecommendSheets from "../../hooks/useRecommendSheets";
 import Condition from "@/renderer/components/Condition";
@@ -27,7 +28,7 @@ export function getDefaultTag(): IMedia.IUnique {
     };
 }
 
-const lastRandomTagByPlugin = new Map<string, string>();
+const lastRandomTagByPlugin = new Map<string, string | number>();
 
 interface IRecommendTagSession {
     firstTag: IMedia.IUnique;
@@ -36,16 +37,16 @@ interface IRecommendTagSession {
 
 const tagSessionByPlugin = new Map<string, IRecommendTagSession>();
 
-function getCandidateTags(tags: IPlugin.IGetRecommendSheetTagsResult) {
+function getCandidateTags(tags: RecommendTags) {
     return [
         ...(tags.pinned ?? []),
         ...(tags.data ?? []).flatMap((group) => group.data),
     ].filter((tag, index, all) =>
-        Boolean(tag?.id) && all.findIndex((item) => item.id === tag.id) === index,
+        tag?.id !== undefined && tag.id !== null && tag.id !== "" && all.findIndex((item) => item.id === tag.id) === index,
     );
 }
 
-function hasTag(tags: IPlugin.IGetRecommendSheetTagsResult, tag: IMedia.IUnique) {
+function hasTag(tags: RecommendTags, tag: IMedia.IUnique) {
     return tag.id === "" || getCandidateTags(tags).some((item) => item.id === tag.id);
 }
 
@@ -55,7 +56,7 @@ function normalizeRestoredTag(tag: IMedia.IUnique) {
 
 function getCachedTags(
     pluginHash: string,
-    tags: IPlugin.IGetRecommendSheetTagsResult,
+    tags: RecommendTags,
 ) {
     const cachedTags = tagSessionByPlugin.get(pluginHash);
 
@@ -75,7 +76,7 @@ function getCachedTags(
 
 function pickRandomTag(
     pluginHash: string,
-    tags: IPlugin.IGetRecommendSheetTagsResult,
+    tags: RecommendTags,
 ): IMedia.IUnique {
     const candidates = getCandidateTags(tags);
 
@@ -310,7 +311,7 @@ function RecommendSheetCard(props: IRecommendSheetCardProps) {
             <span className="recommend-card-copy">
                 <span className="recommend-card-title">{sheet.title}</span>
                 <span className="recommend-card-meta">
-                    <span>{metaText ?? sheet.platform}</span>
+                    <span>{metaText || getSourceName(sheet.platform)}</span>
                     {count ? (
                         <span className="recommend-card-count">
                             <SvgAsset

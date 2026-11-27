@@ -11,7 +11,7 @@ import usePageScrollPosition from "../../hooks/usePageScrollPosition";
 import "./index.scss";
 
 export default function RecommendSheetsView() {
-    const availablePlugins = PluginManager.getSortedSupportedPlugin("getRecommendSheetsByTag");
+    const availablePlugins = PluginManager.getSortedSupportedPlugin("discovery.playlists");
     const navigate = useNavigate();
     const { t } = useTranslation();
     const pageScrollRef = usePageScrollPosition<HTMLDivElement>();

@@ -94,24 +94,15 @@ assert.match(ipcSecuritySource, /function webContentsIdOf/);
 assert.match(ipcSecuritySource, /browserWindow\.isDestroyed\(\)/);
 assert.doesNotMatch(ipcSecuritySource, /windowManager\.mainWindow\?\.webContents\.id/);
 
-// 插件 host 由所有插件共用：单个插件的不可克隆返回值或未处理 rejection
-// 不得终结进程，恢复注册时也不能因为一个插件失败就中断。
-const pluginHostSource = fs.readFileSync(path.join(
-    __dirname,
-    "../src/shared/plugin-manager/utility/plugin-host.ts",
-), "utf8");
-assert.match(pluginHostSource, /function respond\(requestId: string, result: unknown\)/);
-assert.match(pluginHostSource, /Plugin result is not transferable/);
-assert.match(pluginHostSource, /process\.on\("unhandledRejection"/);
-assert.match(pluginHostSource, /process\.on\("uncaughtException"/);
-
+// V2 plugin transport has a terminal shutdown and restores only registered snapshots.
 const pluginHostClientSource = fs.readFileSync(path.join(
-    __dirname,
-    "../src/shared/plugin-manager/main/plugin-host-client.ts",
+    __dirname, "../src/shared/plugin-manager/main/plugin-host-client.ts",
 ), "utf8");
-assert.match(
-    pluginHostClientSource,
-    /Plugin host failed to restore a plugin/,
-);
-
+assert.match(pluginHostClientSource, /this\.rejectAll\(new Error\(`Plugin runtime exited/);
+assert.match(pluginHostClientSource, /for \(const registration of this\.registrations\.values\(\)\)/);
+assert.match(pluginHostClientSource, /this\.registrations\.delete\(pluginId\)/);
+assert.match(pluginHostClientSource, /this\.shuttingDown = true/);
+assert.match(pluginHostClientSource, /this\.registrations\.clear\(\)/);
+assert.match(pluginHostClientSource, /this\.failChild\(this\.child/);
+assert.equal(fs.existsSync(path.join(__dirname, "../src/shared/plugin-manager/utility/plugin-host.ts")), false);
 console.log("service-manager: all assertions passed");

@@ -12,7 +12,8 @@ export default function RemoteSheet() {
     } | null;
 
     const starredSheets = MusicSheet.frontend.useAllStarredSheets();
-    const savedSheet = starredSheets.find((item) => item.platform === platform && String(item.id) === id) as IMusic.IMusicSheetItem | undefined;
+    const targetId = routeState?.sheetItem?.id ?? id;
+    const savedSheet = starredSheets.find((item) => item.platform === platform && item.id === targetId) as IMusic.IMusicSheetItem | undefined;
     const importedSheet = savedSheet?.isImported ? savedSheet : routeState?.sheetItem;
 
     const [state, sheetItem, musicList, getSheetDetail] = usePluginSheetMusicList(

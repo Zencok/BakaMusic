@@ -158,9 +158,9 @@ export default function PluginInputPanel(props: IPluginInputPanelProps) {
                                             >
                                                 <span
                                                     className="plugin-input-plugin-name"
-                                                    data-text={plugin.platform}
+                                                    data-text={plugin.name}
                                                 >
-                                                    {plugin.platform}
+                                                    {plugin.name}
                                                 </span>
                                             </button>
                                         );

@@ -1,167 +1,46 @@
-import { produce } from "immer";
-import { useCallback, useRef } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { searchResultsStore } from "../store/search-result";
-import { RequestStateCode } from "@/common/constant";
-import PluginManager from "@shared/plugin-manager/renderer";
+import PluginManager, { useSortedPlugins } from "@shared/plugin-manager/renderer";
+import { CursorSession } from "@renderer/utils/cursor-session";
 
-interface ISearchOptions {
-    force?: boolean;
-}
+type SearchSession = { query: string; loader: CursorSession<IMedia.IMediaBase> };
+const sessions = new Map<string, SearchSession>();
+PluginManager.onPluginsChanged(() => {
+    sessions.forEach(({ loader }) => loader.invalidate());
+    sessions.clear();
+});
 
 export default function useSearch() {
-    const setSearchResults = searchResultsStore.setValue;
-
-    // 当前正在搜索
-    const currentQueryRef = useRef<string>("");
-
-    /**
-   * query: 搜索词
-   * queryPage: 搜索页码
-   * type: 搜索类型
-   * pluginHash: 搜索条件
-   */
-    const search = useCallback(
-        async function (
-            query?: string,
-            queryPage?: number,
-            type?: IMedia.SupportMediaType,
-            pluginHash?: string,
-            options: ISearchOptions = {},
-        ) {
-            /** 如果没有指定插件，就用所有插件搜索 */
-
-            let pluginDelegates: IPlugin.IPluginDelegate[] = [];
-
-            if (pluginHash) {
-                const tgtPlugin = PluginManager.getPluginByHash(pluginHash);
-                if (tgtPlugin) {
-                    pluginDelegates = [tgtPlugin];
+    const registry = useSortedPlugins();
+    const revision = useSyncExternalStore(PluginManager.onPluginsChanged, PluginManager.getRegistryRevision);
+    return useCallback(async (query?: string, type: IMedia.SupportMediaType = "music", pluginId?: string, options: { force?: boolean } = {}) => {
+        const selected = registry.find((plugin) => plugin.id === pluginId);
+        const plugins = PluginManager.getSortedSearchablePlugins(type).filter((plugin) => !pluginId || plugin.id === selected?.id);
+        await Promise.all(plugins.map(async (plugin) => {
+            const key = JSON.stringify([revision, plugin.id, type]);
+            let session = sessions.get(key);
+            const text = query ?? session?.query ?? "";
+            if (!text) return;
+            if (!session || session.query !== text || options.force) {
+                session?.loader.invalidate();
+                session = { query: text, loader: new CursorSession<IMedia.IMediaBase>() };
+                sessions.set(key, session);
+                const active = session;
+                active.loader.subscribe(() => {
+                    if (sessions.get(key) !== active) return;
+                    const snapshot = active.loader.getSnapshot();
+                    searchResultsStore.setValue((previous) => ({ ...previous, [type]: { ...previous[type], [plugin.id]: { query: text, state: snapshot.status, data: snapshot.items, nextCursor: snapshot.nextCursor } } }));
+                });
+                while (sessions.size > 100) {
+                    const oldest = sessions.keys().next().value;
+                    if (oldest === undefined) break;
+                    sessions.get(oldest)?.loader.invalidate();
+                    sessions.delete(oldest);
                 }
-            } else {
-                pluginDelegates = PluginManager.getSortedSupportedPlugin("search");
+            } else if (query !== undefined && session.loader.getSnapshot().loaded) {
+                return;
             }
-
-            // 使用选中插件搜素
-            pluginDelegates.forEach(async (pluginDelegate) => {
-                const _platform = pluginDelegate.platform;
-                const _hash = pluginDelegate.hash;
-
-                if (!_platform || !_hash) {
-                    // 插件无效
-                    return;
-                }
-
-                const searchType = type ?? pluginDelegate.defaultSearchType ?? "music";
-                const searchResults = searchResultsStore.getValue();
-
-                // 上一份搜索结果
-                const prevPluginResult = searchResults[searchType][pluginDelegate.hash];
-                /** 上一份搜索还没返回/已经结束 */
-                if (
-                    (prevPluginResult?.state === RequestStateCode.PENDING_REST_PAGE ||
-                        prevPluginResult?.state === RequestStateCode.FINISHED) &&
-                    undefined === query
-                ) {
-                    return;
-                }
-
-                // 是否是一次新的搜索
-                const forceSearch = options.force === true;
-                const newSearch =
-                    forceSearch ||
-                    (query !== undefined && query !== prevPluginResult?.query) ||
-                    prevPluginResult?.page === undefined;
-
-                // 本次搜索关键词
-                currentQueryRef.current = query =
-                    query ?? prevPluginResult?.query ?? "";
-
-                /** 搜索的页码 */
-                const page =
-                    queryPage ?? (newSearch ? 1 : (prevPluginResult?.page ?? 0) + 1);
-
-                if (
-                    !forceSearch &&
-                    query === prevPluginResult?.query &&
-                    page <= (prevPluginResult?.page ?? 0)
-                ) {
-                    // 重复请求
-                    return;
-                }
-
-                try {
-                    setSearchResults(
-                        produce((draft) => {
-                            const prevMediaResult: any = draft[searchType];
-                            prevMediaResult[_hash] = {
-                                state: newSearch
-                                    ? RequestStateCode.PENDING_FIRST_PAGE
-                                    : RequestStateCode.PENDING_REST_PAGE,
-                                // @ts-ignore
-                                data: newSearch ? [] : prevMediaResult[_hash]?.data ?? [],
-                                query: query,
-                                page,
-                            };
-                        }),
-                    );
-                    const result = await PluginManager.callPluginDelegateMethod(
-                        pluginDelegate,
-                        "search",
-                        query,
-                        page,
-                        searchType,
-                    );
-                    /** 如果搜索结果不是本次结果 */
-                    if (currentQueryRef.current !== query) {
-                        return;
-                    }
-                    if (!result) {
-                        throw new Error("搜索结果为空");
-                    }
-                    setSearchResults(
-                        produce((draft) => {
-                            const prevMediaResult = draft[searchType];
-                            const prevPluginResult: any = prevMediaResult[_hash] ?? {
-                                data: [],
-                            };
-                            const currResult = result.data ?? [];
-
-                            prevMediaResult[_hash] = {
-                                state:
-                                    result?.isEnd === false && result?.data?.length
-                                        ? RequestStateCode.PARTLY_DONE
-                                        : RequestStateCode.FINISHED,
-                                query,
-                                page,
-                                data: newSearch
-                                    ? currResult
-                                    : (prevPluginResult.data ?? []).concat(currResult),
-                            };
-                            return draft;
-                        }),
-                    );
-                } catch {
-                    setSearchResults(
-                        produce((draft) => {
-                            const prevMediaResult = draft[searchType];
-                            const prevPluginResult =
-                                prevMediaResult[_hash] ??
-                                ({
-                                    data: [] as any[],
-                                } as any);
-
-                            prevPluginResult.state =
-                                page === 1
-                                    ? RequestStateCode.FINISHED
-                                    : RequestStateCode.PARTLY_DONE;
-                            return draft;
-                        }),
-                    );
-                }
-            });
-        },
-        [setSearchResults],
-    );
-
-    return search;
+            await session.loader.load((cursor) => PluginManager.invoke(plugin, "search", { query: text, kind: type, cursor, limit: 50 }));
+        }));
+    }, [registry, revision]);
 }

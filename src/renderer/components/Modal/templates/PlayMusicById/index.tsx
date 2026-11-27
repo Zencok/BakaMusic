@@ -16,7 +16,7 @@ function rememberPlayByIdPlugin(plugin: IPlugin.IPluginDelegate) {
     if (!plugin?.hash) {
         return;
     }
-    setUserPreference("playByIdPluginHash", plugin.hash);
+    setUserPreference("playByIdPluginHash", plugin.id);
 }
 
 export default function PlayMusicById(props: IProps) {
@@ -29,14 +29,9 @@ export default function PlayMusicById(props: IProps) {
             cancelText={t("common.cancel")}
             emptySupportMethod={t("plugin.method_play_by_id")}
             errorText={t("plugin.play_by_id_failed")}
-            hintMethod="getMusicInfo"
+            hintMethod="entities.get"
             hintTitle={t("plugin.input_panel_hints")}
-            hints={(plugin) => [
-                t("plugin.play_by_id_hint"),
-                ...(plugin.platform.toLocaleLowerCase().startsWith("qq")
-                    ? [t("plugin.play_by_id_qq_hint")]
-                    : []),
-            ]}
+            hints={[t("plugin.play_by_id_hint")]}
             iconName="identification"
             initialPluginHash={rememberedPluginHash}
             inputLabel={t("plugin.play_by_id_input_label")}

@@ -1,77 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import PluginManager from "@shared/plugin-manager/renderer";
+import useCursorPage from "@renderer/utils/use-cursor-page";
+import { useEffect, useMemo } from "react";
+import { RequestStateCode } from "@/common/constant";
 
-const tagsCache = new Map<string, IPlugin.IGetRecommendSheetTagsResult>();
-const pendingRequests = new Map<
-    string,
-    Promise<IPlugin.IGetRecommendSheetTagsResult>
->();
-
-export default function (plugin: IPlugin.IPluginDelegate) {
-    const mountedRef = useRef(true);
-    const pluginHashRef = useRef(plugin.hash);
-    pluginHashRef.current = plugin.hash;
-    const [tags, setTags] = useState<IPlugin.IGetRecommendSheetTagsResult | null>(
-        () => tagsCache.get(plugin.hash) ?? null,
+export interface RecommendTags {
+    pinned?: IMusic.IMusicSheetItem[];
+    data?: IMusic.IMusicSheetGroupItem[];
+}
+export default function useRecommendListTags(plugin: IPlugin.IPluginDelegate): RecommendTags | null {
+    const supported = plugin.capabilities.includes("discovery.playlistTags");
+    const [snapshot, load] = useCursorPage<IMusic.IMusicSheetGroupItem | IMusic.IMusicSheetItem>(
+        JSON.stringify([plugin.id, plugin.version]),
+        (cursor) => PluginManager.invoke(plugin, "discovery.playlistTags", { cursor, limit: 100 }),
+        undefined, [], supported,
     );
-
-    const query = useCallback(async () => {
-        const cachedTags = tagsCache.get(plugin.hash);
-        if (cachedTags) {
-            if (mountedRef.current && pluginHashRef.current === plugin.hash) {
-                setTags(cachedTags);
-            }
-            return;
-        }
-
-        const pendingRequest = pendingRequests.get(plugin.hash);
-        if (pendingRequest) {
-            const result = await pendingRequest;
-            if (mountedRef.current && pluginHashRef.current === plugin.hash) {
-                setTags(result);
-            }
-            return;
-        }
-
-        const request = (async () => {
-            try {
-                const result = await PluginManager.callPluginDelegateMethod(
-                    plugin,
-                    "getRecommendSheetTags",
-                );
-                if (!result) {
-                    throw new Error();
-                }
-                return result;
-            } catch {
-                return {
-                    pinned: [],
-                    data: [],
-                };
-            }
-        })();
-        pendingRequests.set(plugin.hash, request);
-
-        try {
-            const result = await request;
-            tagsCache.set(plugin.hash, result);
-            if (mountedRef.current && pluginHashRef.current === plugin.hash) {
-                setTags(result);
-            }
-        } finally {
-            if (pendingRequests.get(plugin.hash) === request) {
-                pendingRequests.delete(plugin.hash);
-            }
-        }
-    }, [plugin]);
-
     useEffect(() => {
-        mountedRef.current = true;
-        void query();
-        return () => {
-            mountedRef.current = false;
-        };
-    }, [query]);
-
-    return tags;
+        if (snapshot.status === RequestStateCode.PARTLY_DONE) void load();
+    }, [load, snapshot.status]);
+    return useMemo(() => {
+        if (!supported) return { data: [] };
+        if (!snapshot.loaded) return null;
+        const groups = snapshot.items.filter((item): item is IMusic.IMusicSheetGroupItem => Array.isArray((item as IMusic.IMusicSheetGroupItem).data));
+        const singles = snapshot.items.filter((item): item is IMusic.IMusicSheetItem => !Array.isArray((item as IMusic.IMusicSheetGroupItem).data));
+        return { data: groups, pinned: singles };
+    }, [supported, snapshot.items, snapshot.loaded]);
 }

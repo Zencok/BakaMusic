@@ -171,13 +171,13 @@ function DiscoverySourceRail(props: IDiscoverySourceRailProps) {
                 <Tab
                     key={plugin.hash}
                     className="discovery-source-tab"
-                    title={plugin.platform}
+                    title={plugin.name}
                 >
                     <span
                         className="discovery-source-tab-name"
-                        data-text={plugin.platform}
+                        data-text={plugin.name}
                     >
-                        {plugin.platform}
+                        {plugin.name}
                     </span>
                 </Tab>
             ))}

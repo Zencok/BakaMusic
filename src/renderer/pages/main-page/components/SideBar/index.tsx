@@ -97,8 +97,8 @@ export default function SideBar() {
         () =>
             sortedPlugins.filter(
                 (plugin) =>
-                    plugin.supportedMethod.includes("getMusicInfo")
-                    || plugin.supportedMethod.includes("getMediaSource"),
+                    plugin.capabilities.includes("entities.get")
+                    || plugin.capabilities.includes("media.resolve"),
             ),
         [sortedPlugins],
     );

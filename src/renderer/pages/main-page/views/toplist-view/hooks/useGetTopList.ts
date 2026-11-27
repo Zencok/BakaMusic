@@ -1,55 +1,30 @@
-import { produce } from "immer";
-import { useCallback } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { pluginsTopListStore } from "../store";
-import { RequestStateCode } from "@/common/constant";
-import { useStore } from "@/common/store";
 import PluginManager from "@shared/plugin-manager/renderer";
+import { CursorSession } from "@renderer/utils/cursor-session";
+import { RequestStateCode } from "@/common/constant";
 
+const sessions = new Map<string, CursorSession<IMusic.IMusicSheetItem>>();
+PluginManager.onPluginsChanged(() => {
+    sessions.forEach((session) => session.invalidate()); sessions.clear(); pluginsTopListStore.setValue({});
+});
 export default function useGetTopList() {
-    const [pluginsTopList, setPluginsTopList] = useStore(pluginsTopListStore);
-
-    const getTopList = useCallback(
-        async (pluginHash: string) => {
-            try {
-                // 有数据/加载中直接返回
-                if (
-                    pluginsTopList[pluginHash]?.data?.length ||
-          pluginsTopList[pluginHash]?.state &
-            RequestStateCode.PENDING_FIRST_PAGE
-                ) {
-                    return;
-                }
-
-                setPluginsTopList(
-                    produce((draft) => {
-                        draft[pluginHash] = {
-                            state: RequestStateCode.PENDING_FIRST_PAGE,
-                            data: [],
-                        };
-                    }),
-                );
-                const result = await PluginManager.callPluginDelegateMethod(
-                    { hash: pluginHash },
-                    "getTopLists",
-                );
-                setPluginsTopList(
-                    produce((draft) => {
-                        draft[pluginHash] = {
-                            data: result,
-                            state: RequestStateCode.FINISHED,
-                        };
-                    }),
-                );
-            } catch {
-                setPluginsTopList(
-                    produce((draft) => {
-                        draft[pluginHash].state = RequestStateCode.FINISHED;
-                    }),
-                );
-            }
-        },
-        [pluginsTopList, setPluginsTopList],
-    );
-
-    return getTopList;
+    const revision = useSyncExternalStore(PluginManager.onPluginsChanged, PluginManager.getRegistryRevision);
+    return useCallback(async (pluginId: string) => {
+        const key = JSON.stringify([revision, pluginId]);
+        let session = sessions.get(key);
+        if (!session) {
+            session = new CursorSession<IMusic.IMusicSheetItem>();
+            const active = session;
+            sessions.set(key, active);
+            active.subscribe(() => {
+                if (sessions.get(key) !== active) return;
+                const snapshot = active.getSnapshot();
+                pluginsTopListStore.setValue((previous) => ({ ...previous, [pluginId]: { state: snapshot.status, data: [{ data: snapshot.items }] } }));
+            });
+        }
+        do {
+            await session.load((cursor) => PluginManager.invoke({ id: pluginId }, "discovery.charts", { cursor, limit: 100 }));
+        } while (sessions.get(key) === session && session.getSnapshot().status === RequestStateCode.PARTLY_DONE && session.getSnapshot().items.length < 10000);
+    }, [revision]);
 }

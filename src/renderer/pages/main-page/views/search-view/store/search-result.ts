@@ -5,7 +5,7 @@ import Store from "@/common/store";
 
 interface ISearchResult<T extends IMedia.SupportMediaType> {
     /** 当前页码 */
-    page?: number;
+    nextCursor?: string | null;
     /** 搜索词 */
     query?: string;
     /** 搜索状态 */

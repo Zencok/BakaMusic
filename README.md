@@ -22,7 +22,7 @@ BakaMusic is a cross-platform desktop music player built with Electron, React an
 - **Native playback engine**: Audio and music videos use `libmpv + LibreMPEG`, supporting a wide range of local audio and video formats, remote HTTP streams, HLS, custom request headers and multiple quality levels.
 - **Dolby and HDR support**: Recognizes spatial audio quality levels such as Dolby Atmos, surround media including AC-4/AC-3, and Dolby Vision/HDR10 music videos with native rendering.
 - **Music videos on every platform**: Playback, audio/video switching, speed controls, fullscreen mode and downloads on Windows, macOS and Linux. Media state integrates with Windows SMTC, macOS MediaPlayer and Linux MPRIS2.
-- **Two plugin ecosystems**: Supports community BakaMusic plugins and LX source scripts imported as playback interfaces. Plugins can provide search, playlists, charts, lyrics, translations, music videos, downloads and song recognition.
+- **V2 plugins**: Providers supply search, playlists, charts, lyrics, music videos, downloads and recognition through declared capabilities. Compatible resolvers can be explicitly bound to providers for playback. Existing LX scripts, including obfuscated scripts, remain importable without rewriting; select LX explicitly when automatic detection cannot identify the format. Legacy Baka/MusicFree plugins are retired.
 - **Rich lyrics**: Supports TTML, LRC, YRC, QRC and ESLRC, with word timing, translations, romanization, Ruby annotations and backing vocals, plus desktop lyrics and mini mode.
 - **Local library and downloads**: Scan local media; browse by album, artist or folder; manage playlists and download tasks; write tags and artwork; schedule playback to stop; optionally transcode after downloading.
 - **Personalization and data**: Glass and flat interfaces, automatic system light/dark themes, V2 theme packs, playlists, listening statistics, WebDAV backups, and English, Simplified Chinese and Traditional Chinese interfaces.
@@ -41,9 +41,9 @@ The screenshots below show the Chinese interface. English and Traditional Chines
 |---|---|
 | ![Classic player](./.imgs/player.png) | ![AMLL player](./.imgs/amll-player.png) |
 
-| Plugins and LX playback interfaces | Song recognition |
+| V2 plugin management | Song recognition |
 |---|---|
-| ![Plugins and LX playback interfaces](./.imgs/plugins.png) | ![Song recognition](./.imgs/song-recognition.png) |
+| ![V2 plugin management](./.imgs/plugins.png) | ![Song recognition](./.imgs/song-recognition.png) |
 
 | Local music | Downloads |
 |---|---|
@@ -80,7 +80,7 @@ When native manifest contents are unchanged, the updater leaves `updatedAt` inta
 
 ## Plugins and themes
 
-BakaMusic does not bundle online music sources. Plugins run in a separate, managed process, with network, storage and media requests handled through application boundaries.
+BakaMusic does not bundle online music sources. Plugins run in a separate, managed process. Existing LX scripts remain directly importable without rewriting, including obfuscated scripts through explicit LX format selection. Existing LX installations retain their original source and settings during migration; their previous selection is applied to compatible installed public providers.
 
 - Plugin development: [baka-plugin-dev](https://github.com/Zencok/baka-plugin-dev) — separate V2 tutorials, reference and skill repository.
 - Theme repository: [BakaThemePacks](https://github.com/Toskysun/BakaThemePacks)
@@ -92,7 +92,7 @@ Without a custom theme, the built-in light and dark themes follow your system ap
 
 ## Development
 
-Requires Node.js `24.19.0` (see `.node-version`) and npm.
+Requires Node.js `24.19.0` (see `.node-version`), npm, Rust `1.100.0`, and a native C/C++ toolchain. On Windows, install the MSVC C++ build tools. Start and package commands build the native V2 runtime automatically; release packages include the runtime for their target platform.
 
 ```bash
 npm install
@@ -125,12 +125,13 @@ src/renderer/           Main-window React application
 src/renderer-lrc/       Desktop lyrics window
 src/renderer-minimode/  Mini-mode window
 src/shared/             Cross-process contracts and shared modules
-src/webworkers/         utilityProcess background tasks
+plugin-runtime/         Standalone Rust QuickJS V2 plugin service
+src/webworkers/         utilityProcess download and file tasks
 src/amll-core/          Complete AMLL upstream synchronization area
 res/                    Languages, services and runtime resources
 ```
 
-Renderers have Node integration disabled and access the main process through minimal preload interfaces. Plugins, downloads, file watching and media services run in isolated processes. Production packages use ASAR and Electron fuses.
+Renderers have Node integration disabled and access the main process through minimal preload interfaces. Plugins, downloads, file watching and media services run in isolated processes. Plugins execute in the Rust QuickJS service using V2 capabilities and the native SDK; they cannot use Node/npm globals. The registry loads validated V2 artifacts, including unchanged-source LX compatibility wrappers, from `bakamusic-plugins-v2`. Old Baka/MusicFree scripts are retired; their directories and saved music references remain recoverable in plugin management. Install V2 packages explicitly; source names and URLs do not migrate ownership. Production packages use ASAR and Electron fuses.
 
 ## Credits and license
 
@@ -146,7 +147,7 @@ Please read this notice before downloading, installing, using or distributing Ba
 
 1. BakaMusic is an open-source desktop music player. **It provides a player, a plugin framework and general local-media management features. It does not bundle online music sources or provide or operate third-party content services.** Playback, downloads and lyric display process content obtained by users through plugins or other means.
 2. **Online search results, playlists, lyrics, playback/download URLs and other remote content come from plugins selected and installed by users or third-party services they connect to.** Users import their own local media. Processing playback, caching or downloads at a user's request does not make the project the content provider or grant the user copyright authorization for that content.
-3. Third-party extensions include BakaMusic plugins, LX source scripts and other compatible components. Third-party content includes music, music videos, lyrics, covers, images and other potentially protected material. Rights remain with their respective owners.
+3. Third-party extensions include V2 BakaMusic providers, resolvers, LX source scripts and other compatible components. Third-party content includes music, music videos, lyrics, covers, images and other potentially protected material. Rights remain with their respective owners.
 
 ### 2. Copyright and lawful use
 

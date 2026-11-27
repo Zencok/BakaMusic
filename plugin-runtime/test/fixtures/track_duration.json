@@ -1,0 +1,168 @@
+[
+  {
+    "name": "QQ interval seconds",
+    "metadata": {
+      "duration": 269,
+      "interval": 269
+    },
+    "expectedMs": 269000
+  },
+  {
+    "name": "numeric string",
+    "metadata": {
+      "duration": " 269 "
+    },
+    "expectedMs": 269000
+  },
+  {
+    "name": "clock string",
+    "metadata": {
+      "duration": "04:29"
+    },
+    "expectedMs": 269000
+  },
+  {
+    "name": "fractional seconds",
+    "metadata": {
+      "duration": 269.125
+    },
+    "expectedMs": 269125
+  },
+  {
+    "name": "fractional string",
+    "metadata": {
+      "duration": "269.125"
+    },
+    "expectedMs": 269125
+  },
+  {
+    "name": "long duration remains seconds",
+    "metadata": {
+      "duration": 10800
+    },
+    "expectedMs": 10800000
+  },
+  {
+    "name": "hour clock",
+    "metadata": {
+      "duration": "1:04:29"
+    },
+    "expectedMs": 3869000
+  },
+  {
+    "name": "interval fallback",
+    "metadata": {
+      "duration": "invalid",
+      "interval": "04:29"
+    },
+    "expectedMs": 269000
+  },
+  {
+    "name": "uppercase fallback",
+    "metadata": {
+      "duration": -1,
+      "interval": null,
+      "DURATION": "269"
+    },
+    "expectedMs": 269000
+  },
+  {
+    "name": "gitcode fallback",
+    "metadata": {
+      "_gitcodeData": {
+        "duration": "04:29"
+      }
+    },
+    "expectedMs": 269000
+  },
+  {
+    "name": "dt milliseconds",
+    "metadata": {
+      "dt": 269125
+    },
+    "expectedMs": 269125
+  },
+  {
+    "name": "camel milliseconds",
+    "metadata": {
+      "durationMs": "269125"
+    },
+    "expectedMs": 269125
+  },
+  {
+    "name": "snake milliseconds",
+    "metadata": {
+      "duration_ms": 269125
+    },
+    "expectedMs": 269125
+  },
+  {
+    "name": "invalid milliseconds fallback",
+    "metadata": {
+      "dt": -1,
+      "durationMs": "bad",
+      "duration_ms": 269125
+    },
+    "expectedMs": 269125
+  },
+  {
+    "name": "seconds take precedence",
+    "metadata": {
+      "duration": 269,
+      "durationMs": 123
+    },
+    "expectedMs": 269000
+  },
+  {
+    "name": "zero is valid",
+    "metadata": {
+      "duration": 0,
+      "interval": 269
+    },
+    "expectedMs": 0
+  },
+  {
+    "name": "missing",
+    "metadata": {},
+    "expectedMs": null
+  },
+  {
+    "name": "invalid formats",
+    "metadata": {
+      "duration": "4:29.5",
+      "interval": "-269",
+      "DURATION": "1e3",
+      "dt": true
+    },
+    "expectedMs": null
+  },
+  {
+    "name": "too many clock parts",
+    "metadata": {
+      "duration": "0:1:04:29"
+    },
+    "expectedMs": null
+  },
+  {
+    "name": "negative",
+    "metadata": {
+      "duration": -269
+    },
+    "expectedMs": null
+  },
+  {
+    "name": "out of range",
+    "metadata": {
+      "duration": 1e+30
+    },
+    "expectedMs": null
+  },
+  {
+    "name": "out of range falls back",
+    "metadata": {
+      "duration": 1e+30,
+      "interval": 269
+    },
+    "expectedMs": 269000
+  }
+]

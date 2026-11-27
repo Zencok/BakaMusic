@@ -1,3 +1,4 @@
+import BottomLoadingState from "@renderer/components/BottomLoadingState";
 import { memo } from "react";
 import { ISearchLyricResult } from "./hooks/searchResultStore";
 import { If } from "@/renderer/components/Condition";
@@ -18,10 +19,11 @@ import { toError } from "@/common/error-util";
 interface ISearchResultProps {
     data: ISearchLyricResult;
     musicItem?: IMusic.IMusicItem;
+    onLoadMore?: () => void;
 }
 
 function SearchResult(props: ISearchResultProps) {
-    const { data, musicItem } = props;
+    const { data, musicItem, onLoadMore } = props;
     const defaultAlbumCover = useDefaultAlbumCover();
 
     const { t } = useTranslation();
@@ -78,6 +80,7 @@ function SearchResult(props: ISearchResultProps) {
                                 </If.Falsy>
                             </If>
                         }
+                        <BottomLoadingState state={data?.state ?? RequestStateCode.IDLE} onLoadMore={onLoadMore} />
                     </div>
                 </If.Falsy>
             </If>
@@ -85,4 +88,4 @@ function SearchResult(props: ISearchResultProps) {
     );
 }
 
-export default memo(SearchResult, (prev, curr) => prev.data === curr.data);
+export default memo(SearchResult, (prev, curr) => prev.data === curr.data && prev.musicItem === curr.musicItem && prev.onLoadMore === curr.onLoadMore);

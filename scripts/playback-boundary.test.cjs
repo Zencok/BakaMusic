@@ -11,9 +11,7 @@ const { supportLocalMediaType } = require("../src/common/constant.ts");
 const { autoDecryptLyric } = require(
     "../src/shared/plugin-manager/main/lyric-decrypt.ts",
 );
-const pakoForPlugins = require(
-    "../src/shared/plugin-manager/utility/pako-compat.ts",
-).default;
+const pako = require("pako");
 const {
     getManagedMediaProxyServiceName,
     resolveManagedMediaProxyUrl,
@@ -119,13 +117,9 @@ function testLyricDecryptionCompatibility() {
         "[0,1000]测(0,500)试(500,500)",
     );
 
-    const compressed = pakoForPlugins.deflate("KRC 文本");
-    assert.equal(
-        pakoForPlugins.inflate(compressed, { to: "string" }),
-        "KRC 文本",
-    );
-    assert.ok(pakoForPlugins.inflate(compressed) instanceof Uint8Array);
-    assert.equal(pakoForPlugins.default, pakoForPlugins);
+    const compressed = pako.deflate("KRC 文本");
+    assert.equal(new TextDecoder().decode(pako.inflate(compressed)), "KRC 文本");
+    assert.ok(pako.inflate(compressed) instanceof Uint8Array);
 }
 
 function testManagedMediaProxyRouting() {
@@ -306,8 +300,8 @@ function testPlaybackBoundaryIntegration() {
 
     const pluginHost = read("src/shared/plugin-manager/main/plugin-host-client.ts");
     const environmentSource = pluginHost.slice(
-        pluginHost.indexOf("function createPluginHostEnvironment"),
-        pluginHost.indexOf("function assertRpcRequestId"),
+        pluginHost.indexOf("function nativeEnvironment"),
+        pluginHost.indexOf("/** Transport only"),
     );
     assert.match(environmentSource, /"SystemRoot"/);
     assert.match(environmentSource, /"WINDIR"/);
@@ -315,7 +309,11 @@ function testPlaybackBoundaryIntegration() {
     const localPlugin = read(
         "src/shared/plugin-manager/main/internal-plugins/local-plugin.ts",
     );
-    assert.match(localPlugin, /grantPathAccess\(localFilePath\)/);
+    assert.match(localPlugin, /assertLocalSourceAccess\(localFilePath\)/);
+    assert.doesNotMatch(localPlugin, /grantPathAccess\(localFilePath\)/);
+    const sourceAccess = read("src/shared/plugin-manager/main/internal-plugins/local-file-access.ts");
+    assert.match(sourceAccess, /const approvedPath = assertPathAccess\(sourcePath/);
+    assert.match(sourceAccess, /identity\(currentRoot\) !== identity\(record.realPath\)/);
 
     const securitySource = read("src/main/electron-security.ts");
     assert.doesNotMatch(securitySource, /bakamusic-media:/);
@@ -361,11 +359,15 @@ function testPlaybackRecoveryContract() {
     assert.match(nativePlayback, /webContents\.on\("render-process-gone"/);
     assert.match(nativePlayback, /operation: "stop", sourceId/);
 
-    // 媒体身份统一按字符串归一（插件常返回 number id）。
-    const indexMap = read("src/common/index-map.ts");
-    assert.match(indexMap, /idMap\.set\(`\$\{id\}`, index\)/);
-    assert.match(indexMap, /indexMap\.get\(`\$\{mediaItem\.platform\}`\)/);
-    assert.doesNotMatch(indexMap, /\.get\(mediaItem\?\.id\)/);
+    // Canonical V2 identities retain JSON ID types; legacy/local queues remain compatible.
+    const { createIndexMap } = require("../src/common/index-map.ts");
+    const numeric = { platform: "org.example.music", id: 42 };
+    const textual = { platform: "org.example.music", id: "42" };
+    const typedIndex = createIndexMap([numeric, textual]);
+    assert.equal(typedIndex.indexOf(numeric), 0);
+    assert.equal(typedIndex.indexOf(textual), 1);
+    const oldIndex = createIndexMap([{ platform: "Old platform", id: 42 }]);
+    assert.equal(oldIndex.indexOf({ platform: "Old platform", id: "42" }), 0);
 
     // 歌单关系行的 position 只保序、不再密集重排。
     const repository = read("src/renderer/core/music-sheet/repository.ts");

@@ -6,6 +6,7 @@ import {
     bindMediaToPlugin,
     cachePrefetchedMediaSource,
     getMediaPluginDelegate,
+    getPrefetchedMediaSourceRevision,
 } from "@renderer/core/track-player/plugin-media";
 
 export const RECOGNIZE_MAX_SECONDS = 10;
@@ -25,6 +26,7 @@ interface CaptureResult {
     channels: number;
 }
 
+let recognitionGeneration = 0;
 let activeCapture: {
     stop: () => void;
 } | null = null;
@@ -142,18 +144,8 @@ function normalizeMatch(
     const raw = item && typeof item === "object" ? item as Record<string, unknown> : {};
     const title = String(raw.title ?? raw.name ?? raw.songname ?? "").trim();
     const artist = String(raw.artist ?? raw.singer ?? raw.singername ?? raw.author_name ?? "").trim();
-    const isKugou = /酷狗|kugou/i.test(plugin.platform);
-    // KuGou's getMediaSource uses the file hash as its primary identifier;
-    // album_audio_id is retained as an alias for getMusicInfo and lyrics.
-    const id = String(
-        (isKugou ? raw.hash : undefined)
-        ?? raw.id
-        ?? raw.songmid
-        ?? raw.songid
-        ?? raw.hash
-        ?? `${title}-${artist}`,
-    ).trim();
-    if (!title || !id) return null;
+    const id = raw.id;
+    if (!title || !((typeof id === "string" && id.length > 0) || (typeof id === "number" && Number.isFinite(id)))) return null;
     const platform = plugin.platform;
     const duration = Number(raw.duration ?? 0);
     const musicItem = bindMediaToPlugin({
@@ -182,33 +174,23 @@ function pickString(...values: unknown[]) {
     return "";
 }
 
-function isKugouPlatform(platform: string) {
-    return /酷狗|kugou/i.test(platform) || platform.trim().toLocaleLowerCase() === "kg";
-}
-
 async function hydrateRecognizeMatch(
     match: RecognizeMatch,
     plugin: IPlugin.IPluginDelegate,
 ): Promise<RecognizeMatch> {
+    const revision = getPrefetchedMediaSourceRevision();
     let musicItem = match.musicItem;
     try {
-        const musicInfo = await PluginManager.callPluginDelegateMethod(
-            plugin,
-            "getMusicInfo",
-            musicItem,
-        );
+        const musicInfo = await PluginManager.invoke(plugin, "entities.get", { entity: musicItem });
         if (musicInfo && typeof musicInfo === "object") {
             const info = musicInfo as Record<string, unknown>;
-            const isKugou = /酷狗|kugou/i.test(plugin.platform);
             musicItem = bindMediaToPlugin({
                 ...musicItem,
                 ...info,
                 ...(pickString(info.hash, musicItem.hash)
                     ? { hash: pickString(info.hash, musicItem.hash) }
                     : {}),
-                id: isKugou
-                    ? pickString(musicItem.hash, info.id, musicItem.id)
-                    : pickString(info.id, musicItem.hash, musicItem.id),
+                id: musicItem.id,
                 platform: plugin.platform,
                 title: pickString(info.title, musicItem.title),
                 artist: pickString(info.artist, musicItem.artist),
@@ -233,15 +215,11 @@ async function hydrateRecognizeMatch(
         getQualityOrder(defaultQuality, fallbackMode),
     );
     for (const quality of qualityOrder.length ? qualityOrder : [defaultQuality]) {
+        if (revision !== getPrefetchedMediaSourceRevision()) return { ...match, hydrated: false };
         try {
-            const mediaSource = await PluginManager.callPluginDelegateMethod(
-                plugin,
-                "getMediaSource",
-                musicItem,
-                quality,
-            );
+            const mediaSource = await PluginManager.invoke(plugin, "media.resolve", { entity: musicItem, quality: quality });
             if (mediaSource?.url) {
-                cachePrefetchedMediaSource(musicItem, quality, mediaSource);
+                cachePrefetchedMediaSource(musicItem, quality, mediaSource, revision);
                 break;
             }
         } catch (error) {
@@ -256,7 +234,7 @@ async function hydrateRecognizeMatch(
         ...match,
         musicItem,
         platform: plugin.platform,
-        hydrated: true,
+        hydrated: revision === getPrefetchedMediaSourceRevision(),
     };
 }
 
@@ -268,34 +246,29 @@ export async function prepareRecognizeMatchForPlayback(
         return match;
     }
     const delegate = getMediaPluginDelegate(match.musicItem);
-    const plugin = isKugouPlatform(match.platform)
-        ? PluginManager.getKugouPlugin()
-        : undefined;
-    const resolvedPlugin = plugin
-        ?? (delegate.hash ? PluginManager.getPluginByHash(delegate.hash) : undefined)
-        ?? PluginManager.getPluginByPlatform(match.platform);
+    const resolvedPlugin = PluginManager.getPluginByHash(delegate.id ?? delegate.hash ?? match.platform);
     return resolvedPlugin
         ? hydrateRecognizeMatch(match, resolvedPlugin)
         : match;
 }
 
 export async function recognizeSystemAudio(): Promise<RecognizeMatch[]> {
+    const generation = ++recognitionGeneration;
+    const assertCurrent = () => {
+        if (generation !== recognitionGeneration) throw new Error(RECOGNIZE_CANCELLED);
+    };
     const capture = await captureSystemAudio();
-    const plugins = PluginManager.getSortedSupportedPlugin("recognize");
+    assertCurrent();
+    const plugins = PluginManager.getSortedSupportedPlugin("recognition.identify");
     if (!plugins.length) {
         throw new Error("没有可用的听歌识曲平台插件");
     }
     const matches: RecognizeMatch[] = [];
     for (const plugin of plugins) {
         try {
-            const result = await PluginManager.callPluginDelegateMethod(
-                plugin,
-                "recognize",
-                capture.base64,
-                capture.sampleRate,
-                capture.channels,
-            );
-            const rows = Array.isArray(result) ? result : result?.data;
+            const result = await PluginManager.invoke(plugin, "recognition.identify", { payload: { audioBase64: capture.base64, format: "s16le", sampleRate: capture.sampleRate, channels: capture.channels } });
+            assertCurrent();
+            const rows = result?.candidates;
             if (!Array.isArray(rows)) continue;
             for (const item of rows) {
                 const match = normalizeMatch(item, plugin);
@@ -307,7 +280,7 @@ export async function recognizeSystemAudio(): Promise<RecognizeMatch[]> {
     }
     const deduped = new Map<string, RecognizeMatch>();
     for (const match of matches) {
-        const key = `${match.platform}:${match.musicItem.id}`;
+        const key = JSON.stringify([match.platform, match.musicItem.id]);
         const previous = deduped.get(key);
         if (!previous || match.confidence > previous.confidence) deduped.set(key, match);
     }
@@ -320,12 +293,15 @@ export async function recognizeSystemAudio(): Promise<RecognizeMatch[]> {
     // match.  Recognition can return many near-duplicates; resolving every
     // row at once causes a burst of short-lived URL requests and noisy plugin
     // errors.  Remaining rows are hydrated lazily when the user selects one.
+    assertCurrent();
     const bestMatch = orderedMatches[0];
     const hydratedBest = await prepareRecognizeMatchForPlayback(bestMatch);
+    assertCurrent();
     return [hydratedBest, ...orderedMatches.slice(1)];
 }
 
 export function cancelRecognizeSystemAudio() {
+    recognitionGeneration += 1;
     activeCapture?.stop();
     activeCapture = null;
 }

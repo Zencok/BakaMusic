@@ -2,7 +2,7 @@ import PluginManager from "@shared/plugin-manager/renderer";
 
 /** Keep MV actions opt-in for plugins and items that actually identify video. */
 export function canPlayMusicVideo(musicItem?: IMusic.IMusicItem | null) {
-    if (!musicItem || !PluginManager.isSupportFeatureMethod(musicItem.platform, "getMvSource")) {
+    if (!musicItem || !PluginManager.isSupportFeatureMethod(musicItem.platform, "media.video")) {
         return false;
     }
 

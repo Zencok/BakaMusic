@@ -37,7 +37,7 @@ export default function ArtistView() {
         return {
             ...artistInState,
             platform: params?.platform ?? (artistInState as IArtist.IArtistItem).platform ?? "",
-            id: params?.id ?? (artistInState as IArtist.IArtistItem).id ?? "",
+            id: (artistInState as IArtist.IArtistItem).id ?? params?.id ?? "",
         } as IArtist.IArtistItem;
     }, [params?.platform, params?.id, location.state]);
 
@@ -68,11 +68,7 @@ export default function ArtistView() {
         let cancelled = false;
         void (async () => {
             try {
-                const info = await PluginManager.callPluginDelegateMethod(
-                    routeArtistItem,
-                    "getArtistInfo",
-                    routeArtistItem,
-                );
+                const info = await PluginManager.invoke(routeArtistItem, "entities.get", { entity: routeArtistItem });
                 if (cancelled || !info || typeof info !== "object") {
                     return;
                 }

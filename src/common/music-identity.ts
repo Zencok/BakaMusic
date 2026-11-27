@@ -1,7 +1,14 @@
+import { isV2Media } from "./media-util";
+
 /**
  * Helpers for music identity display / copy / share in context menus.
  * Field names vary by platform plugin (QQ / Netease / Kugou / Kuwo / Migu…).
  */
+
+function entityId(value: unknown): string | number | null {
+    return typeof value === "number" && Number.isFinite(value) ? value
+        : typeof value === "string" && value.length ? value : null;
+}
 
 function nonEmpty(value: unknown): string | null {
     if (value == null) {
@@ -21,15 +28,15 @@ function pickFirst(...candidates: unknown[]): string | null {
     return null;
 }
 
-function formatIdPairs(parts: Array<[string, string | null]>): string {
+function formatIdPairs(parts: Array<[string, string | number | null]>): string {
     return parts
-        .filter((entry): entry is [string, string] => !!entry[1])
+        .filter((entry): entry is [string, string | number] => entry[1] !== null)
         .map(([label, value]) => `${label}: ${value}`)
         .join(", ");
 }
 
 export interface IMusicSongIds {
-    id: string | null;
+    id: string | number | null;
     songmid: string | null;
     mid: string | null;
     hash: string | null;
@@ -38,6 +45,7 @@ export interface IMusicSongIds {
 
 export function getMusicSongIds(musicItem: IMusic.IMusicItemPartial): IMusicSongIds {
     const item = musicItem as Record<string, unknown>;
+    if (isV2Media(musicItem)) return { id: entityId(item.id), songmid: null, mid: null, hash: null, copyrightId: null };
     return {
         id: pickFirst(item.id, item.songid, item.songId),
         songmid: pickFirst(item.songmid, item.songMid),
@@ -70,14 +78,14 @@ export function formatMusicSongIdTitle(musicItem: IMusic.IMusicItemPartial): str
 
 export function buildMusicSongCopyPayload(musicItem: IMusic.IMusicItemPartial): string {
     const ids = getMusicSongIds(musicItem);
-    const payload: Record<string, string> = {
+    const payload: Record<string, string | number> = {
         platform: String(musicItem.platform ?? ""),
     };
     const name = nonEmpty(musicItem.title);
     if (name) {
         payload.name = name;
     }
-    if (ids.id) {
+    if (ids.id !== null) {
         payload.id = ids.id;
     }
     const mid = ids.songmid || ids.mid;
@@ -95,19 +103,19 @@ export function buildMusicSongCopyPayload(musicItem: IMusic.IMusicItemPartial): 
 
 export interface IMusicArtistEntry {
     name: string | null;
-    artistId: string | null;
+    artistId: string | number | null;
     artistMid: string | null;
     avatar: string | null;
 }
 
 export interface IMusicArtistIds {
-    artistId: string | null;
+    artistId: string | number | null;
     artistMid: string | null;
     artistName: string | null;
 }
 
 /** QQ singer mid looks like "000jNiaT2aHJb9" (has letters); pure digits are singer id, not mid. */
-function isQqSingerMid(value: string | null | undefined): boolean {
+function isQqSingerMid(value: string | number | null | undefined): boolean {
     if (!value) {
         return false;
     }
@@ -130,7 +138,7 @@ function resolveArtistAvatar(
         }
     }
     const p = (platform ?? "").toLowerCase();
-    const mid = entry.artistMid || (isQqSingerMid(entry.artistId) ? entry.artistId : null);
+    const mid = entry.artistMid || (isQqSingerMid(entry.artistId) ? String(entry.artistId) : null);
     // QQ singer cover needs mid (not numeric singer id)
     if ((p.includes("qq") || (platform ?? "").includes("QQ")) && mid && isQqSingerMid(mid)) {
         return `https://y.gtimg.cn/music/photo_new/T001R500x500M000${mid}.jpg`;
@@ -230,18 +238,18 @@ function collectSingerList(item: Record<string, unknown>): unknown[] {
  */
 const MULTI_ARTIST_SPLIT = /\s*[&＆+,，、/／]\s*|\s+[·•]\s+|\s+(?:feat|ft)(?:\.\s*|\s+)/i;
 
-function looksLikeMultiArtistJoined(text: string | null | undefined): boolean {
+function looksLikeMultiArtistJoined(text: string | number | null | undefined): boolean {
     if (!text) {
         return false;
     }
-    return MULTI_ARTIST_SPLIT.test(text);
+    return typeof text === "string" && MULTI_ARTIST_SPLIT.test(text);
 }
 
-function splitMultiArtistField(text: string | null): string[] {
+function splitMultiArtistField(text: string | number | null): string[] {
     if (!text) {
         return [];
     }
-    return text
+    return String(text)
         .split(MULTI_ARTIST_SPLIT)
         .map((part) => part.trim())
         .filter(Boolean);
@@ -278,6 +286,12 @@ function expandJoinedArtistEntries(entries: IMusicArtistEntry[]): IMusicArtistEn
 /** All artists on a track (singerList / ar / top-level fields). */
 export function getMusicArtists(musicItem: IMusic.IMusicItemPartial): IMusicArtistEntry[] {
     const item = musicItem as Record<string, unknown>;
+    if (isV2Media(musicItem)) {
+        const artists = Array.isArray(item.artists) ? item.artists : [{ id: item.artistId, name: item.artist, avatar: item.artistAvatar }];
+        return artists.filter((artist): artist is Record<string, unknown> => Boolean(artist && typeof artist === "object")).map((artist) => ({
+            name: nonEmpty(artist.name ?? artist.title), artistId: entityId(artist.id), artistMid: null, avatar: nonEmpty(artist.avatar ?? artist.artwork),
+        })).filter((artist) => artist.name !== null || artist.artistId !== null);
+    }
     const fromList = collectSingerList(item)
         .map(normalizeSingerEntry)
         .filter((entry): entry is IMusicArtistEntry => entry != null);
@@ -285,7 +299,7 @@ export function getMusicArtists(musicItem: IMusic.IMusicItemPartial): IMusicArti
     if (fromList.length > 0) {
         // When plugins only fill id/mid on the first singer, still keep every name.
         // If top-level has a single id and list entries lack ids entirely, attach to first.
-        const anyListId = fromList.some((entry) => entry.artistId || entry.artistMid);
+        const anyListId = fromList.some((entry) => entry.artistId ?? entry.artistMid);
         if (!anyListId) {
             const topId = pickFirst(
                 item.artistId,
@@ -390,12 +404,12 @@ export function formatMusicArtistTitle(
     return `${names} (${pairText})`;
 }
 
-function artistEntryToCopyRow(entry: IMusicArtistEntry): Record<string, string> {
-    const row: Record<string, string> = {};
+function artistEntryToCopyRow(entry: IMusicArtistEntry): Record<string, string | number> {
+    const row: Record<string, string | number> = {};
     if (entry.name) {
         row.name = entry.name;
     }
-    if (entry.artistId) {
+    if (entry.artistId !== null) {
         row.artistId = entry.artistId;
     }
     if (entry.artistMid && entry.artistMid !== entry.artistId) {
@@ -415,7 +429,7 @@ export function buildMusicArtistCopyPayload(musicItem: IMusic.IMusicItemPartial)
         .filter((name): name is string => !!name)
         .join(", ");
     const joinedName = pickFirst(musicItem.artist, joinedFromList) ?? "";
-    const hasAnyId = artists.some((entry) => entry.artistId || entry.artistMid);
+    const hasAnyId = artists.some((entry) => entry.artistId ?? entry.artistMid);
 
     // No ids → plain name string.
     if (!hasAnyId) {
@@ -435,11 +449,12 @@ export function buildArtistItemFromEntry(
     entry: IMusicArtistEntry,
 ): IArtist.IArtistItem | null {
     const platform = nonEmpty(musicItem.platform);
-    const id = entry.artistId || entry.artistMid;
-    if (!platform || !id) {
+    const id = entry.artistId ?? entry.artistMid;
+    if (!platform || id === null || id === "") {
         return null;
     }
-    const mid = entry.artistMid || (isQqSingerMid(entry.artistId) ? entry.artistId : null);
+    if (isV2Media(musicItem)) return { id, name: entry.name ?? "", platform, avatar: entry.avatar ?? "" };
+    const mid = entry.artistMid || (isQqSingerMid(entry.artistId) ? String(entry.artistId) : null);
     const artistItem: IArtist.IArtistItem = {
         id: String(id),
         name: entry.name || "",
@@ -474,8 +489,13 @@ export function buildAlbumItemFromMusic(
 ): IAlbum.IAlbumItem | null {
     const platform = nonEmpty(musicItem.platform);
     const { albumId, albumMid, albumName } = getMusicAlbumIds(musicItem);
-    const id = albumId || albumMid;
-    if (!platform || !id) {
+    const id = albumId ?? albumMid;
+    if (isV2Media(musicItem)) {
+        if (!platform || id === null || id === "") return null;
+        const nested = musicItem.album && typeof musicItem.album === "object" ? musicItem.album as Record<string, unknown> : {};
+        return { ...nested, id, platform, title: albumName ?? "", description: nonEmpty(nested.description) ?? "", artwork: nonEmpty(nested.artwork) ?? musicItem.artwork };
+    }
+    if (!platform || id === null || id === "") {
         return null;
     }
     const albumItem: IAlbum.IAlbumItem = {
@@ -490,14 +510,14 @@ export function buildAlbumItemFromMusic(
         (albumItem as IAlbum.IAlbumItem & { albumMID?: string }).albumMID = albumMid;
         (albumItem as IAlbum.IAlbumItem & { albummid?: string }).albummid = albumMid;
     }
-    if (albumId) {
-        (albumItem as IAlbum.IAlbumItem & { albumId?: string }).albumId = albumId;
+    if (albumId !== null) {
+        (albumItem as IAlbum.IAlbumItem & { albumId?: string | number }).albumId = albumId;
     }
     return albumItem;
 }
 
 export interface IMusicAlbumIds {
-    albumId: string | null;
+    albumId: string | number | null;
     albumMid: string | null;
     albumName: string | null;
 }
@@ -508,6 +528,10 @@ export function getMusicAlbumIds(musicItem: IMusic.IMusicItemPartial): IMusicAlb
         ? item.album as Record<string, unknown>
         : null;
 
+    if (isV2Media(musicItem)) return {
+        albumId: entityId(albumObj?.id ?? item.albumId), albumMid: null,
+        albumName: pickFirst(typeof item.album === "string" ? item.album : null, albumObj?.title, albumObj?.name),
+    };
     return {
         albumId: pickFirst(
             item.albumid,
@@ -545,16 +569,16 @@ export function formatMusicAlbumTitle(
 
 export function buildMusicAlbumCopyPayload(musicItem: IMusic.IMusicItemPartial): string {
     const { albumId, albumMid, albumName } = getMusicAlbumIds(musicItem);
-    if (!albumId && !albumMid) {
+    if (albumId === null && !albumMid) {
         return albumName || "";
     }
-    const payload: Record<string, string> = {
+    const payload: Record<string, string | number> = {
         platform: String(musicItem.platform ?? ""),
     };
     if (albumName) {
         payload.album = albumName;
     }
-    if (albumId) {
+    if (albumId !== null) {
         payload.albumId = albumId;
     }
     if (albumMid) {
@@ -565,6 +589,7 @@ export function buildMusicAlbumCopyPayload(musicItem: IMusic.IMusicItemPartial):
 
 /** Host-side fallback when plugin has no getMusicDetailPageUrl. */
 export function buildFallbackMusicDetailUrl(musicItem: IMusic.IMusicItemPartial): string {
+    if (isV2Media(musicItem)) return "";
     const platform = String(musicItem.platform ?? "");
     const p = platform.toLowerCase();
     const item = musicItem as Record<string, unknown>;

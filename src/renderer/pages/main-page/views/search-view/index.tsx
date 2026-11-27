@@ -159,7 +159,7 @@ export default function SearchView() {
                                     className="search-platform-tab"
                                     data-selected={activePlugin?.hash === plugin.hash}
                                     aria-pressed={activePlugin?.hash === plugin.hash}
-                                    title={plugin.platform}
+                                    title={plugin.name}
                                     key={plugin.hash}
                                     onClick={() => {
                                         setSelectedPlugin(plugin);
@@ -174,8 +174,8 @@ export default function SearchView() {
                                         });
                                     }}
                                 >
-                                    <span data-text={plugin.platform}>
-                                        {plugin.platform}
+                                    <span data-text={plugin.name}>
+                                        {plugin.name}
                                     </span>
                                 </button>
                             ))}
@@ -192,7 +192,7 @@ export default function SearchView() {
                                     return;
                                 }
 
-                                search(query, 1, currentMediaType, activePlugin.hash, {
+                                search(query, currentMediaType, activePlugin.id, {
                                     force: true,
                                 });
                             }}

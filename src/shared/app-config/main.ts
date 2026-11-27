@@ -96,6 +96,7 @@ const rendererWritableConfigKeys = new Set<keyof IAppConfig>([
     "private.lyricWindowSize",
     "private.minimodeWindowPosition",
     "private.pluginMeta",
+    "private.pluginResolverBindings",
     "private.minimode",
 ]);
 
@@ -337,6 +338,18 @@ function validateRendererConfigValue(key: keyof IAppConfig, value: unknown) {
         || key === "shortCut.shortcuts"
     ) {
         assertPlainObject(value, key);
+        return;
+    }
+    if (key === "private.pluginResolverBindings") {
+        assertPlainObject(value, key);
+        const entries = Object.entries(value);
+        const packageId = /^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+$/;
+        if (entries.length > 256 || entries.some(([provider, resolver]) =>
+            provider.length > 128 || !packageId.test(provider)
+            || typeof resolver !== "string" || resolver.length > 128 || !packageId.test(resolver),
+        )) {
+            throw new Error(`${key} contains an invalid resolver binding`);
+        }
         return;
     }
     if (key === "private.pluginMeta") {

@@ -39,6 +39,44 @@
     flex-shrink: 0;
   }
 
+  & .plugin-manager-install-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.6rem;
+    max-width: 25rem;
+  }
+
+  & .plugin-manager-import-format {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--appTextSecondary);
+    font-size: 0.78rem;
+
+    & select {
+      min-height: 2rem;
+      padding: 0.25rem 0.5rem;
+      border: 1px solid var(--discovery-line);
+      border-radius: var(--controlRadius, 5px);
+      color: var(--appTextPrimary);
+      background: var(--backgroundColor);
+      font: inherit;
+
+      &:focus-visible {
+        outline: 2px solid var(--primaryColor);
+        outline-offset: 2px;
+      }
+    }
+  }
+
+  & .plugin-manager-import-hint {
+    margin: 0;
+    color: var(--appTextTertiary);
+    font-size: 0.74rem;
+    line-height: 1.45;
+  }
+
   & .plugin-manager-install-button,
   & .plugin-manager-log-button,
   & .plugin-manager-more-button,
@@ -243,6 +281,11 @@
     & .plugin-manager-header-actions,
     & .plugin-manager-install-button {
       flex: 1;
+    }
+
+    & .plugin-manager-install-controls {
+      align-items: stretch;
+      max-width: none;
     }
 
     & .plugin-manager-header-actions {

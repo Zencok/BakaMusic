@@ -103,7 +103,7 @@ async function withAbort<T>(promise: PromiseLike<T>, signal?: AbortSignal): Prom
 }
 
 function delegateFor(plugin: IPlugin.IPluginDelegate): IPluginDelegateReference {
-    return { platform: plugin.platform, hash: plugin.hash };
+    return { id: plugin.id, platform: plugin.platform, hash: plugin.id };
 }
 
 async function resolveItemForPlugin(
@@ -123,61 +123,33 @@ async function resolveItemForPlugin(
         if (isCurrent) {
             return target;
         }
-        try {
-            const info = await withAbort(
-                PluginManager.callPluginDelegateMethod(
-                    delegateFor(plugin),
-                    "getMusicInfo",
-                    target,
-                ),
-                options.signal,
-            );
-            if (info && typeof info === "object") {
-                return {
-                    ...target,
-                    ...(info as Partial<IMusic.IMusicItem>),
-                    platform: plugin.platform,
-                };
-            }
-        } catch {
-            // Some plugins do not implement getMusicInfo; source resolution
-            // below may still accept the original metadata.
+        if (plugin.capabilities.includes("entities.get")) {
+            const info = await withAbort(PluginManager.invoke(delegateFor(plugin), "entities.get", { entity: target }), options.signal);
+            if (info && typeof info === "object") return { ...target, ...info, platform: plugin.platform } as IMusic.IMusicItem;
         }
         return { ...target, platform: plugin.platform };
     }
 
-    if (!plugin.supportedMethod.includes("search")) {
+    if (!plugin.capabilities.includes("search")) {
         return null;
     }
 
     const query = [target.title, target.artist].filter(Boolean).join(" ").trim();
     if (!query) return null;
-    try {
-        const result = await withAbort(
-            PluginManager.callPluginDelegateMethod(
-                delegateFor(plugin),
-                "search",
-                query,
-                1,
-                "music",
-            ),
-            options.signal,
-        );
-        const rows = Array.isArray((result as IPlugin.ISearchResult<"music"> | null)?.data)
-            ? (result as IPlugin.ISearchResult<"music">).data
-            : [];
-        const best = rows
-            .filter((item): item is IMusic.IMusicItem => !!item && typeof item === "object")
-            .map((item) => ({ item, score: scoreMatch(item, target) }))
-            .sort((a, b) => b.score - a.score)[0];
-        // A title-only match is still preferable to giving up, but avoid
-        // switching to an unrelated search result.
-        return best && best.score >= 50
-            ? { ...best.item, platform: plugin.platform }
-            : null;
-    } catch {
-        return null;
-    }
+    const result = await withAbort(
+        PluginManager.invoke(delegateFor(plugin), "search", { query: query, cursor: null, limit: 50, kind: "music" }),
+        options.signal,
+    );
+    const rows = (result?.items ?? []) as IMusic.IMusicItem[];
+    const best = rows
+        .filter((item): item is IMusic.IMusicItem => !!item && typeof item === "object")
+        .map((item) => ({ item, score: scoreMatch(item, target) }))
+        .sort((a, b) => b.score - a.score)[0];
+    // A title-only match is still preferable to giving up, but avoid
+    // switching to an unrelated search result.
+    return best && best.score >= 50
+        ? { ...best.item, platform: plugin.platform }
+        : null;
 }
 
 async function resolveForPlugin(
@@ -197,14 +169,10 @@ async function resolveForPlugin(
         }
         try {
             const mediaSource = await withAbort(
-                PluginManager.callPluginDelegateMethod(
-                    delegateFor(plugin),
-                    "getMediaSource",
-                    sourceItem,
-                    quality,
-                ),
+                PluginManager.invoke(delegateFor(plugin), "media.resolve", { entity: sourceItem, quality: quality }),
                 options.signal,
             );
+            if (isAborted(options)) return null;
             if (mediaSource?.url) {
                 const realQuality = typeof mediaSource.quality === "string" && mediaSource.quality.trim()
                     ? mediaSource.quality as QualityKey
@@ -216,8 +184,9 @@ async function resolveForPlugin(
                     plugin,
                 };
             }
-        } catch {
-            // Try the next quality and then the next plugin.
+            return null;
+        } catch (error) {
+            if (!error || typeof error !== "object" || (error as { code?: unknown }).code !== "quality_unavailable") throw error;
         }
     }
     return null;
@@ -227,6 +196,9 @@ async function resolveForPlugin(
 export async function resolveMediaSourceWithFallback(
     options: ISourceResolutionOptions,
 ): Promise<IResolvedMediaSource | null> {
+    const generation = PluginManager.getRegistryRevision();
+    const originalOptions = options;
+    options = { ...originalOptions, isCancelled: () => originalOptions.isCancelled?.() === true || generation !== PluginManager.getRegistryRevision() };
     const candidates = PluginManager.getSourcePluginCandidates(options.mode);
     const currentHash = getMediaPluginDelegate(options.musicItem).hash;
     const current = candidates.find((plugin) =>
@@ -234,7 +206,8 @@ export async function resolveMediaSourceWithFallback(
         && (!currentHash || plugin.hash === currentHash),
     ) ?? candidates.find((plugin) => plugin.platform === options.musicItem.platform);
     const fallbackEnabled = AppConfig.getConfig("plugin.enableSourceFallback") !== false;
-    const ordered = fallbackEnabled
+    const boundResolver = PluginManager.getResolverBinding(options.musicItem.platform);
+    const ordered = boundResolver ? (current ? [current] : []) : fallbackEnabled
         ? current
             ? [current, ...candidates.filter((plugin) => plugin.hash !== current.hash)]
             : candidates

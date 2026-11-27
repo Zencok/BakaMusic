@@ -1,0 +1,4 @@
+# Preserve the exact upstream bytes recorded in UPSTREAM.json on every OS.
+# Whitespace in unmodified upstream sources is retained for provenance.
+rust/** -text -whitespace
+licenses/** -text -whitespace

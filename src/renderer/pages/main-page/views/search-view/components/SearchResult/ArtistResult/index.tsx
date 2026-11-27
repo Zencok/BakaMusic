@@ -37,7 +37,7 @@ export default function ArtistResult(props: IMediaResultProps) {
             <BottomLoadingState
                 state={state}
                 onLoadMore={() => {
-                    search(undefined, undefined, "artist", pluginHash);
+                    search(undefined, "artist", pluginHash);
                 }}
             ></BottomLoadingState>
         </div>

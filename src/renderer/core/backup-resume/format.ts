@@ -1,3 +1,4 @@
+import { isV2Media } from "@/common/media-util";
 import { validateImportSources, validateImportOwnership, importTrackKey } from "../music-sheet/import-sync";
 
 export const BACKUP_SCHEMA = "bakamusic.music-sheet-backup";
@@ -121,10 +122,11 @@ function validateMusicSheetList(value: unknown) {
         if (!isRecord(sheet)) {
             throw new Error(`Invalid music sheet at index ${sheetIndex}`);
         }
-        const id = requireIdentityString(
+        const id = isV2Media(sheet) ? normalizeMusicItemId(sheet.id) : requireIdentityString(
             sheet.id,
             `musicSheets[${sheetIndex}].id`,
         );
+        if (id === null) throw new Error("Invalid collection identity");
         const platform = requireIdentityString(
             sheet.platform,
             `musicSheets[${sheetIndex}].platform`,

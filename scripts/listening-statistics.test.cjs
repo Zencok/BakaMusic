@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+require("./register-test-aliases.cjs");
 
 const {
     addListeningDuration,

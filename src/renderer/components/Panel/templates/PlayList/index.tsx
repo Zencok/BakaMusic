@@ -1,3 +1,4 @@
+import getSourceName from "@renderer/utils/get-source-name";
 import "./index.scss";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import albumImg from "@/renderer/utils/default-album-cover";
@@ -124,7 +125,7 @@ function NowPlayingStage(props: {
                     {currentMusic.platform ? (
                         <>
                             <i aria-hidden="true"></i>
-                            <span>{currentMusic.platform}</span>
+                            <span>{getSourceName(currentMusic.platform)}</span>
                         </>
                     ) : null}
                 </div>
@@ -430,7 +431,7 @@ function PlayListMusicItemView(props: IPlayListMusicItemProps) {
                     {musicItem.platform ? (
                         <>
                             <i aria-hidden="true"></i>
-                            <span className="playlist--platform">{musicItem.platform}</span>
+                            <span className="playlist--platform">{getSourceName(musicItem.platform)}</span>
                         </>
                     ) : null}
                     {musicItem.duration ? (

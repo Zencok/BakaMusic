@@ -22,7 +22,7 @@ BakaMusic 是基于 Electron、React 和 TypeScript 的跨平台桌面音乐播�
 - **统一原生播放核心**：音频与 MV 均由 `libmpv + LibreMPEG` 播放，广泛兼容本地音乐与视频格式，并支持远程 HTTP、HLS、自定义请求头和多档画质。
 - **杜比与高动态范围**：支持 Dolby Atmos 等空间音频档位、AC-4/AC-3 等环绕声媒体，以及 Dolby Vision、HDR10 MV 的识别与原生渲染链路。
 - **全平台 MV**：Windows、macOS 和 Linux 均支持 MV 播放、清晰度切换、倍速、全屏及下载；音频与视频状态可同步到 Windows SMTC、macOS MediaPlayer 和 Linux MPRIS2。
-- **双插件生态**：支持功能完整的 BakaMusic 插件，并可导入 LX 音源脚本作为播放接口；插件可扩展搜索、歌单、榜单、歌词、音质、MV、分享和听歌识曲。
+- **V2 插件体系**：内容插件按声明的能力提供搜索、歌单、榜单、歌词、MV、下载与识曲；播放解析插件可与兼容的内容插件显式绑定。现有 LX 脚本（含混淆脚本）仍可原样导入；自动识别失败时可显式选择 LX。停用的是旧版 Baka/MusicFree 插件。
 - **完整歌词体验**：支持 TTML、LRC、YRC、QRC、ESLRC 等格式，以及逐字、翻译、罗马音、Ruby 注音、背景人声、对唱、桌面歌词和迷你模式。
 - **本地库与下载**：提供本地媒体扫描、专辑/艺术家/文件夹浏览、断点续传、批量任务、标签与封面写入、歌词保存和可选下载后转码。
 - **个性化与数据管理**：提供玻璃/扁平界面、自动跟随系统的浅色/深色默认主题、V2 主题包、歌单与听歌统计、WebDAV 备份，以及简体中文、繁体中文和 English。
@@ -39,9 +39,9 @@ BakaMusic 是基于 Electron、React 和 TypeScript 的跨平台桌面音乐播�
 |---|---|
 | ![经典播放详情](./.imgs/player.png) | ![AMLL 播放详情](./.imgs/amll-player.png) |
 
-| 插件管理与 LX 播放接口 | 听歌识曲 |
+| V2 插件管理 | 听歌识曲 |
 |---|---|
-| ![插件管理与 LX 播放接口](./.imgs/plugins.png) | ![听歌识曲](./.imgs/song-recognition.png) |
+| ![V2 插件管理](./.imgs/plugins.png) | ![听歌识曲](./.imgs/song-recognition.png) |
 
 | 本地音乐 | 下载管理 |
 |---|---|
@@ -80,6 +80,8 @@ BakaMusic 是基于 Electron、React 和 TypeScript 的跨平台桌面音乐播�
 
 BakaMusic 不附带在线音源。插件在独立受控进程中运行，网络、存储和媒体能力由应用边界统一管理。
 
+Rust QuickJS 服务执行 `bakamusic-plugins-v2` 中经校验的 V2 包及 LX 兼容包装。现有 LX 脚本仍可原样导入，文件和 URL 均可选择“自动识别 / V2 / LX”；旧 LX 安装迁移时保留原文与设置，并将原选择应用到兼容且已安装的公共内容插件。旧版 Baka/MusicFree 插件停用，原目录与已保存曲库引用仍可恢复。请显式安装 V2 替代包并选择解析器绑定；插件名称、URL 不会触发 provider 归属迁移。
+
 - 插件开发：[baka-plugin-dev](https://github.com/Zencok/baka-plugin-dev)，独立维护 V2 教程、接口参考与开发 skill。
 - 主题包仓库：[BakaThemePacks](https://github.com/Toskysun/BakaThemePacks)
 - V2 主题契约：[`src/shared/themepack/contract.ts`](src/shared/themepack/contract.ts)
@@ -91,6 +93,8 @@ V2 主题包使用 `bakamusic-theme@2` 规范，由 `config.json`、`index.css` 
 ## 本地开发
 
 要求 Node.js `24.19.0`（见 `.node-version`）及 npm。
+
+V2 运行时构建还需要 Rust `1.100.0` 和原生 C/C++ 工具链；Windows 使用 MSVC C++ Build Tools。启动与打包命令会自动构建，发行包自带对应平台的运行时。
 
 ```bash
 npm install
@@ -144,7 +148,7 @@ Renderer 默认关闭 Node integration，并通过最小化 preload 接口调用
 
 1. BakaMusic 是开源桌面音乐播放器，**仅提供播放器、插件运行框架及本地媒体管理等通用功能，不内置在线音源，不自行提供或运营在线音乐内容服务**。播放、下载和歌词展示等功能用于处理用户通过插件接入或自行导入的内容。
 2. **在线音乐的搜索结果、歌单、播放与下载地址、歌词及封面等数据，均由用户自行选择和安装的插件及其连接的第三方服务提供**；本地媒体由用户自行导入。播放器按用户操作执行播放、缓存或下载，不代表本项目是相关内容的提供方，也不代表项目或用户已取得相关内容的版权授权。
-3. 本文所称第三方扩展包括 BakaMusic 插件、LX 音源脚本和主题包；第三方内容包括音乐、MV、歌词、封面、图片及其他受保护的资料。相关权利归各自权利人所有。
+3. 第三方扩展包括 V2 BakaMusic 内容插件、播放解析插件、LX 音源脚本及其他兼容组件。第三方内容包括音乐、MV、歌词、封面、图片及其他受保护材料，权利归相应权利人所有。
 
 ### 二、版权与合法使用
 

@@ -1,464 +1,268 @@
-import {
-    app,
-    session,
-    utilityProcess,
-    UtilityProcess,
-} from "electron";
-import fs from "fs";
+import { spawn, type ChildProcessWithoutNullStreams } from "child_process";
 import path from "path";
+import { randomUUID } from "crypto";
+import getResourcePath from "@/common/get-resource-path";
 import logger from "@shared/logger/main";
 import { toError } from "@/common/error-util";
-import {
-    PluginExecutionEnvironment,
-    PluginHostCallbackRequest,
-    PluginHostCallbackResponse,
-    PluginHostDescriptor,
-    PluginHostRequest,
-    PluginHostResponse,
-    PluginMethodName,
+import type {
+    NativeRequest, NativeResponse, PluginCapability, PluginExecutionEnvironment, PluginHostDescriptor,
 } from "../rpc";
-import {
-    isPluginPlaybackLogEvent,
-    type PluginPlaybackLogEvent,
-} from "../playback-log";
+import type { PluginPlaybackLogEvent } from "../playback-log";
 
 const LOAD_TIMEOUT_MS = 10_000;
+const IMPORT_TIMEOUT_MS = 20_000;
 const INVOKE_TIMEOUT_MS = 30_000;
+const CANCEL_GRACE_MS = 250;
 const MAX_PENDING_REQUESTS = 128;
 const MAX_RPC_BYTES = 16 * 1024 * 1024;
-const MAX_WORKING_SET_KB = 384 * 1024;
-const MAX_HOST_CALLBACK_BYTES = 1024 * 1024;
-const hostCallbackOperations = new Set([
-    "cookies.get",
-    "cookies.set",
-    "cookies.flush",
-]);
+const RUNTIME_NAME = "rust-quickjs-v2";
 
 interface PendingRequest {
     resolve: (value: unknown) => void;
     reject: (error: Error) => void;
     timer: NodeJS.Timeout;
+    killTimer?: NodeJS.Timeout;
 }
-
 interface PluginRegistration {
+    pluginId: string;
     code: string;
-    environment: PluginExecutionEnvironment;
+    settings: Record<string, string>;
+    storageRoot: string;
+    proxyUrl?: string;
 }
-
-function estimateRpcBytes(value: unknown) {
-    try {
-        return Buffer.byteLength(JSON.stringify(value), "utf8");
-    } catch {
-        throw new Error("Plugin RPC payload is not serializable");
+export interface PluginImportRequest {
+    source: string;
+    kind?: "auto" | "v2" | "lx";
+    id?: string;
+    name?: string;
+    locator?: string;
+    variables?: Record<string, string>;
+    enabled?: boolean;
+    proxyUrl?: string;
+}
+export interface PreparedPluginImport {
+    source: string;
+    id?: string;
+    originalId?: string;
+    manifest?: IPlugin.Manifest;
+}
+export class PluginRuntimeError extends Error {
+    constructor(message: string, public readonly code?: string, public readonly rpcCode?: number) {
+        super(message);
+        this.name = "PluginRuntimeError";
     }
 }
-
-function resolveStoragePath() {
-    const nextPath = path.resolve(
-        app.getPath("appData"),
-        "bakamusic-plugin-storage/chunk.json",
-    );
-    const legacyPath = path.resolve(
-        app.getPath("appData"),
-        "musicfree-plugin-storage/chunk.json",
-    );
-    return fs.existsSync(nextPath) || !fs.existsSync(legacyPath) ? nextPath : legacyPath;
+export function assertV2Descriptor(value: unknown): asserts value is PluginHostDescriptor {
+    const descriptor = value as Partial<PluginHostDescriptor> | null;
+    const manifest = descriptor?.manifest;
+    if (!descriptor || descriptor.protocolVersion !== 2 || descriptor.runtime !== RUNTIME_NAME
+        || !manifest || manifest.apiVersion !== 2 || descriptor.id !== manifest.id
+        || typeof manifest.id !== "string" || !/^[a-z0-9][a-z0-9._-]{0,127}$/.test(manifest.id)
+        || !["provider", "resolver"].includes(manifest.kind)
+        || typeof manifest.name !== "string" || !manifest.name.trim()
+        || !Array.isArray(manifest.capabilities)) {
+        throw new PluginRuntimeError("The package is not a valid V2 plugin", "invalid_v2");
+    }
 }
-
-function createPluginHostEnvironment(storagePath: string) {
-    const environment: NodeJS.ProcessEnv = {
-        BAKAMUSIC_PLUGIN_STORAGE_PATH: storagePath,
-    };
-    for (const key of [
-        "HTTP_PROXY",
-        "HTTPS_PROXY",
-        "NO_PROXY",
-        "http_proxy",
-        "https_proxy",
-        "no_proxy",
-        "LANG",
-        "LC_ALL",
-        "LC_MESSAGES",
-        "NODE_EXTRA_CA_CERTS",
-        "SSL_CERT_DIR",
-        "SSL_CERT_FILE",
-        "TEMP",
-        "TMP",
-        "TMPDIR",
-        "TZ",
-        // utilityProcess on Windows needs these locations to initialize
-        // Winsock, including connections made through a local proxy.
-        "SystemRoot",
-        "WINDIR",
-    ]) {
+function nativeEnvironment() {
+    const environment: NodeJS.ProcessEnv = {};
+    for (const key of ["SystemRoot", "WINDIR", "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "TZ",
+        "NODE_EXTRA_CA_CERTS", "SSL_CERT_DIR", "SSL_CERT_FILE"]) {
         const value = process.env[key];
-        if (value !== undefined && value.length <= 32_768) {
-            environment[key] = value;
-        }
+        if (value !== undefined && value.length <= 32_768) environment[key] = value;
     }
     return environment;
 }
 
-function assertRpcRequestId(value: unknown) {
-    if (
-        typeof value !== "string"
-        || value.length > 128
-        || !/^[A-Za-z0-9_-]+$/.test(value)
-    ) {
-        throw new Error("Plugin host request ID is invalid");
-    }
-}
-
+/** Transport only: JS execution, storage and network permissions belong to Rust. */
 export default class PluginHostClient {
-    private child: UtilityProcess | null = null;
+    private child: ChildProcessWithoutNullStreams | null = null;
     private spawnPromise: Promise<void> | null = null;
     private pending = new Map<string, PendingRequest>();
     private registrations = new Map<string, PluginRegistration>();
-    private requestCounter = 0;
-    private resourceTimer: NodeJS.Timeout | null = null;
     private shuttingDown = false;
+    private sequence = 0;
 
-    constructor(
-        private readonly onPlaybackLog?: (event: PluginPlaybackLogEvent) => void,
-    ) {}
+    constructor(private readonly onPlaybackLog?: (event: PluginPlaybackLogEvent) => void) {}
 
     private get hostPath() {
-        return path.resolve(__dirname, "plugin_host.js");
+        return getResourcePath(path.join(".service", "plugin-v2", `${process.platform}-${process.arch}`,
+            process.platform === "win32" ? "baka-plugin-runtime.exe" : "baka-plugin-runtime"));
     }
-
-    private async ensureStarted() {
-        if (this.child?.pid) {
-            return;
-        }
-        if (this.spawnPromise) {
-            return this.spawnPromise;
-        }
-        this.spawnPromise = this.spawnAndRestore();
-        try {
-            await this.spawnPromise;
-        } finally {
+    private getChild() {
+        if (!this.child || this.child.killed || this.shuttingDown) throw new Error("Plugin runtime is unavailable");
+        return this.child;
+    }
+    private ensureStarted() {
+        if (this.shuttingDown) return Promise.reject(new Error("Plugin runtime is shutting down"));
+        if (this.spawnPromise) return this.spawnPromise;
+        if (this.child && this.child.exitCode === null && !this.child.killed) return Promise.resolve();
+        this.spawnPromise = this.spawnAndRestore().finally(() => {
             this.spawnPromise = null;
-        }
+        });
+        return this.spawnPromise;
     }
-
     private async spawnAndRestore() {
-        if (this.shuttingDown) {
-            throw new Error("Plugin host is shutting down");
-        }
-        const storagePath = resolveStoragePath();
-        fs.mkdirSync(path.dirname(storagePath), { recursive: true });
-        const child = utilityProcess.fork(this.hostPath, [], {
-            serviceName: "BakaMusic Plugin Host",
-            execArgv: ["--max-old-space-size=256"],
-            cwd: path.dirname(storagePath),
-            env: createPluginHostEnvironment(storagePath),
-            session: session.defaultSession,
-            stdio: "pipe",
-            allowLoadingUnsignedLibraries: false,
-            disclaim: process.platform === "darwin",
+        const child = spawn(this.hostPath, [], {
+            shell: false, windowsHide: true, env: nativeEnvironment(), stdio: ["pipe", "pipe", "pipe"],
         });
         this.child = child;
-        child.on("message", (message) => {
-            void this.handleMessage(
-                child,
-                message as PluginHostResponse | PluginHostCallbackRequest | PluginPlaybackLogEvent,
-            ).catch((error) => {
-                logger.logError("Plugin host sent an invalid RPC message", toError(error));
-                if (this.child === child) {
-                    child.kill();
+        child.stdin.on("error", (error) => this.failChild(child, error));
+        let buffered = Buffer.alloc(0);
+        child.stdout.on("data", (chunk: Buffer) => {
+            if (this.child !== child) return;
+            buffered = Buffer.concat([buffered, chunk]);
+            let lineEnd: number;
+            while ((lineEnd = buffered.indexOf(10)) >= 0) {
+                const line = buffered.subarray(0, lineEnd);
+                buffered = buffered.subarray(lineEnd + 1);
+                if (line.length > MAX_RPC_BYTES) {
+                    this.failChild(child, new Error("Plugin RPC frame exceeds the limit"));
+                    return;
                 }
-            });
-        });
-        child.on("exit", (code) => {
-            if (this.child !== child) {
-                return;
-            }
-            this.child = null;
-            this.stopResourceMonitor();
-            this.rejectAll(new Error(`Plugin host exited with code ${code}`));
-        });
-        child.on("error", (_type, location) => {
-            logger.logError("Plugin host fatal error", new Error(location));
-        });
-        child.stdout?.on("data", (chunk: Buffer) => {
-            logger.logInfo(`[plugin-host] ${chunk.toString("utf8").trim()}`);
-        });
-        child.stderr?.on("data", (chunk: Buffer) => {
-            logger.logError("Plugin host stderr", new Error(chunk.toString("utf8").trim()));
-        });
-        await new Promise<void>((resolve, reject) => {
-            const timer = setTimeout(() => reject(new Error("Plugin host spawn timed out")), LOAD_TIMEOUT_MS);
-            child.once("spawn", () => {
-                clearTimeout(timer);
-                resolve();
-            });
-            child.once("exit", (code) => {
-                clearTimeout(timer);
-                reject(new Error(`Plugin host exited during startup (${code})`));
-            });
-        });
-        this.startResourceMonitor(child);
-
-        // 逐个插件容错：一个插件在重新执行时抛错不能中断整个恢复流程，
-        // 否则 ensureStarted 之后会因为 child.pid 已存在而短路，排在它后面的
-        // 插件永远不会被载入（调用一律返回 "Plugin is not loaded"）。
-        for (const [hash, registration] of this.registrations) {
-            try {
-                await this.requestRaw<PluginHostDescriptor>(child, "load", {
-                    hash,
-                    code: registration.code,
-                    environment: registration.environment,
-                }, LOAD_TIMEOUT_MS);
-            } catch (error) {
-                logger.logError("Plugin host failed to restore a plugin", toError(error), {
-                    hash,
-                });
-                if (this.child !== child || !child.pid) {
-                    // host 本身已经死了（例如 load 超时导致被 kill），继续恢复没有意义。
-                    throw error;
+                if (!line.length) continue;
+                try {
+                    this.handleResponse(child, JSON.parse(line.toString("utf8")) as NativeResponse);
+                } catch (error) {
+                    this.failChild(child, toError(error)); return;
                 }
             }
+            if (buffered.length > MAX_RPC_BYTES) this.failChild(child, new Error("Plugin RPC frame exceeds the limit"));
+        });
+        child.stderr.on("data", (chunk: Buffer) => {
+            logger.logInfo(`[plugin-v2] ${chunk.toString("utf8").slice(0, 8192).trim()}`);
+        });
+        child.on("error", (error) => this.failChild(child, error));
+        child.on("exit", (code, signal) => {
+            if (this.child === child) {
+                this.child = null;
+                this.rejectAll(new Error(`Plugin runtime exited (${code ?? signal})`));
+            }
+        });
+        try {
+            const health = await this.requestRaw<{ protocolVersion: number; runtime: string }>(child, "health", {}, LOAD_TIMEOUT_MS);
+            if (health?.protocolVersion !== 2 || health.runtime !== RUNTIME_NAME) throw new Error("Plugin runtime protocol is not V2");
+            for (const registration of this.registrations.values()) {
+                const descriptor = await this.requestRaw(child, "load", registration, LOAD_TIMEOUT_MS);
+                assertV2Descriptor(descriptor);
+                if (descriptor.id !== registration.pluginId) throw new Error("Restored plugin identity changed");
+            }
+        } catch (error) {
+            this.failChild(child, toError(error)); throw error;
         }
     }
-
-    private startResourceMonitor(child: UtilityProcess) {
-        this.stopResourceMonitor();
-        this.resourceTimer = setInterval(() => {
-            if (!child.pid || this.child !== child) {
-                return;
-            }
-            const metric = app.getAppMetrics().find((item) => item.pid === child.pid);
-            if (metric && metric.memory.workingSetSize > MAX_WORKING_SET_KB) {
-                logger.logError(
-                    "Plugin host memory limit exceeded",
-                    new Error(`${metric.memory.workingSetSize} KiB`),
-                );
-                child.kill();
-            }
-        }, 5000);
-        this.resourceTimer.unref();
+    private failChild(child: ChildProcessWithoutNullStreams, error: Error) {
+        if (this.child !== child) return;
+        this.child = null;
+        this.rejectAll(error);
+        child.kill();
     }
-
-    private stopResourceMonitor() {
-        if (this.resourceTimer) {
-            clearInterval(this.resourceTimer);
-            this.resourceTimer = null;
-        }
-    }
-
     private rejectAll(error: Error) {
         for (const pending of this.pending.values()) {
             clearTimeout(pending.timer);
+            if (pending.killTimer) clearTimeout(pending.killTimer);
             pending.reject(error);
         }
         this.pending.clear();
     }
-
-    private async handleMessage(
-        child: UtilityProcess,
-        message: PluginHostResponse | PluginHostCallbackRequest | PluginPlaybackLogEvent,
-    ) {
-        if (this.child !== child || !message || typeof message !== "object") {
-            return;
+    private handleResponse(child: ChildProcessWithoutNullStreams, message: NativeResponse) {
+        if (this.child !== child) return;
+        if (!message || message.jsonrpc !== "2.0" || typeof message.id !== "string" || message.id.length > 128) {
+            throw new Error("Plugin runtime sent an invalid response");
         }
-        if (message.type === "playback-log") {
-            if (!isPluginPlaybackLogEvent(message) || estimateRpcBytes(message) > 16 * 1024) {
-                throw new Error("Plugin host playback log is invalid");
-            }
-            this.onPlaybackLog?.(message);
-            return;
-        }
-        if (message.type === "host-request") {
-            assertRpcRequestId(message.requestId);
-            if (
-                !hostCallbackOperations.has(message.operation)
-                || estimateRpcBytes(message) > MAX_HOST_CALLBACK_BYTES
-            ) {
-                throw new Error("Plugin host callback is invalid");
-            }
-            const response: PluginHostCallbackResponse = {
-                type: "host-response",
-                requestId: message.requestId,
-            };
-            try {
-                response.result = await this.handleHostCallback(message);
-            } catch (error) {
-                response.error = toError(error).message;
-            }
-            child.postMessage(response);
-            return;
-        }
-        if (message.type !== "response" || typeof message.requestId !== "string") {
-            return;
-        }
-        assertRpcRequestId(message.requestId);
-        const pending = this.pending.get(message.requestId);
-        if (!pending) {
-            return;
-        }
-        this.pending.delete(message.requestId);
+        const pending = this.pending.get(message.id);
+        if (!pending) return;
+        this.pending.delete(message.id);
         clearTimeout(pending.timer);
-        if (estimateRpcBytes(message) > MAX_RPC_BYTES) {
-            pending.reject(new Error("Plugin RPC response exceeds the limit"));
-        } else if (message.error) {
-            const error = new Error(String(message.error.message).slice(0, 4096));
-            error.name = String(message.error.name).slice(0, 128);
-            error.stack = typeof message.error.stack === "string"
-                ? message.error.stack.slice(0, 65_536)
-                : undefined;
-            pending.reject(error);
-        } else {
-            pending.resolve(message.result);
-        }
+        if (pending.killTimer) clearTimeout(pending.killTimer);
+        if (message.error) {
+            pending.reject(new PluginRuntimeError(String(message.error.message).slice(0, 4096),
+                message.error.data?.failureCode ?? message.error.data?.code, message.error.code));
+        } else pending.resolve(message.result);
     }
-
-    private async handleHostCallback(request: PluginHostCallbackRequest) {
-        const payload = request.payload as {
-            url?: unknown;
-            cookie?: Record<string, unknown>;
-        } | null;
-        if (request.operation === "cookies.flush") {
-            await session.defaultSession.cookies.flushStore();
-            return null;
-        }
-        if (typeof payload?.url !== "string" || payload.url.length > 8192) {
-            throw new Error("Plugin cookie URL is invalid");
-        }
-        const parsedUrl = new URL(payload.url);
-        if (!["https:", "http:"].includes(parsedUrl.protocol) || !parsedUrl.hostname) {
-            throw new Error("Plugin cookie URL protocol is invalid");
-        }
-        if (request.operation === "cookies.get") {
-            const cookies = await session.defaultSession.cookies.get({ url: parsedUrl.toString() });
-            return Object.fromEntries(cookies.map((cookie) => [cookie.name, cookie]));
-        }
-        const cookie = payload.cookie;
-        if (
-            !cookie
-            || typeof cookie.name !== "string"
-            || !cookie.name
-            || cookie.name.length > 256
-            || typeof cookie.value !== "string"
-            || cookie.value.length > 8192
-        ) {
-            throw new Error("Plugin cookie is invalid");
-        }
-        const expirationDate = typeof cookie.expires === "string"
-            ? Date.parse(cookie.expires) / 1000
-            : typeof cookie.expirationDate === "number"
-                ? cookie.expirationDate
-                : undefined;
-        await session.defaultSession.cookies.set({
-            url: parsedUrl.toString(),
-            name: cookie.name,
-            value: cookie.value,
-            path: typeof cookie.path === "string" ? cookie.path.slice(0, 2048) : undefined,
-            domain: typeof cookie.domain === "string" ? cookie.domain.slice(0, 512) : undefined,
-            secure: cookie.secure === true,
-            httpOnly: cookie.httpOnly === true,
-            expirationDate: Number.isFinite(expirationDate) ? expirationDate : undefined,
-            sameSite: ["unspecified", "no_restriction", "lax", "strict"].includes(String(cookie.sameSite))
-                ? cookie.sameSite as Electron.CookiesSetDetails["sameSite"]
-                : undefined,
-        });
-        return true;
-    }
-
-    private requestRaw<T>(
-        child: UtilityProcess,
-        operation: PluginHostRequest["operation"],
-        payload: unknown,
-        timeoutMs: number,
-    ) {
-        if (this.pending.size >= MAX_PENDING_REQUESTS) {
-            throw new Error("Plugin RPC concurrency limit reached");
-        }
-        const requestId = `plugin-${++this.requestCounter}`;
-        const message: PluginHostRequest = {
-            type: "request",
-            requestId,
-            operation,
-            payload,
-        };
-        if (estimateRpcBytes(message) > MAX_RPC_BYTES) {
-            throw new Error("Plugin RPC request exceeds the limit");
-        }
+    private requestRaw<T>(child: ChildProcessWithoutNullStreams, method: NativeRequest["method"],
+        params: object, timeoutMs: number): Promise<T> {
+        if (this.pending.size >= MAX_PENDING_REQUESTS) return Promise.reject(new Error("Plugin RPC concurrency limit reached"));
+        const id = `plugin-${++this.sequence}`;
+        const message: NativeRequest = { jsonrpc: "2.0", id, method, params: params as Record<string, unknown> };
+        const frame = `${JSON.stringify(message)}\n`;
+        if (Buffer.byteLength(frame) > MAX_RPC_BYTES) return Promise.reject(new Error("Plugin RPC request exceeds the limit"));
         return new Promise<T>((resolve, reject) => {
             const timer = setTimeout(() => {
-                this.pending.delete(requestId);
-                reject(new Error(`Plugin RPC timed out: ${operation}`));
-                if (this.child === child) {
-                    child.kill();
-                }
+                const pending = this.pending.get(id);
+                if (!pending) return;
+                pending.reject(new PluginRuntimeError(`Plugin RPC timed out: ${method}`, "temporary_unavailable"));
+                // Cooperative cancellation first; a tight JS loop still has a terminal process boundary.
+                child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: `cancel-${++this.sequence}`, method: "cancel", params: { requestId: id } })}\n`);
+                pending.killTimer = setTimeout(() => {
+                    if (this.pending.has(id)) this.failChild(child, new Error("Plugin runtime did not cancel the timed-out call"));
+                }, CANCEL_GRACE_MS);
             }, timeoutMs);
-            this.pending.set(requestId, {
-                resolve: resolve as (value: unknown) => void,
-                reject,
-                timer,
+            this.pending.set(id, { resolve: resolve as (value: unknown) => void, reject, timer });
+            child.stdin.write(frame, (error) => {
+                if (error) this.failChild(child, error);
             });
-            child.postMessage(message);
         });
     }
-
-    async loadPlugin(
-        hash: string,
-        code: string,
-        environment: PluginExecutionEnvironment,
-    ) {
+    async inspectPlugin(code: string, settings: Record<string, string> = {}) {
         await this.ensureStarted();
-        const child = this.child;
-        if (!child) {
-            throw new Error("Plugin host did not start");
-        }
-        const descriptor = await this.requestRaw<PluginHostDescriptor>(child, "load", {
-            hash,
-            code,
-            environment,
-        }, LOAD_TIMEOUT_MS);
-        this.registrations.set(hash, { code, environment });
+        const descriptor = await this.requestRaw(this.getChild(), "inspect", { code, settings }, LOAD_TIMEOUT_MS);
+        assertV2Descriptor(descriptor);
         return descriptor;
     }
-
-    async invokePlugin(
-        hash: string,
-        method: PluginMethodName,
-        args: unknown[],
-        environment: PluginExecutionEnvironment,
-    ) {
+    async prepareImport(request: PluginImportRequest) {
         await this.ensureStarted();
-        const child = this.child;
-        if (!child) {
-            throw new Error("Plugin host did not start");
+        const prepared = await this.requestRaw<PreparedPluginImport>(this.getChild(), "prepareImport", request, IMPORT_TIMEOUT_MS);
+        if (!prepared || typeof prepared.source !== "string" || Buffer.byteLength(prepared.source) > 5 * 1024 * 1024
+            || prepared.originalId !== undefined && (typeof prepared.originalId !== "string" || prepared.originalId.length > 16_384)) {
+            throw new PluginRuntimeError("Plugin import returned invalid source metadata", "invalid_v2");
         }
-        return this.requestRaw<unknown>(child, "invoke", {
-            hash,
-            method,
-            args,
-            environment,
-        }, INVOKE_TIMEOUT_MS);
+        return prepared;
     }
-
-    async unloadPlugin(hash: string) {
-        this.registrations.delete(hash);
-        if (!this.child?.pid) {
-            return;
+    async loadPlugin(pluginId: string, code: string, environment: PluginExecutionEnvironment, storageRoot: string) {
+        await this.ensureStarted();
+        const registration: PluginRegistration = {
+            pluginId, code, settings: { ...environment.userVariables }, storageRoot, proxyUrl: environment.proxyUrl,
+        };
+        const descriptor = await this.requestRaw(this.getChild(), "load", registration, LOAD_TIMEOUT_MS);
+        assertV2Descriptor(descriptor);
+        if (descriptor.id !== pluginId) throw new Error("Plugin package identity changed during loading");
+        this.registrations.set(pluginId, registration);
+        return descriptor;
+    }
+    async invokePlugin(pluginId: string, capability: PluginCapability, request: unknown, pluginName = pluginId) {
+        await this.ensureStarted();
+        if (!this.registrations.has(pluginId)) throw new PluginRuntimeError("Plugin is not enabled", "permission_denied");
+        const callId = randomUUID();
+        const quality = request && typeof request === "object" ? (request as { quality?: unknown }).quality : undefined;
+        const context = { callId, kind: "plugin" as const, pluginHash: pluginId, pluginName, platform: pluginId,
+            quality: typeof quality === "string" ? quality : undefined };
+        const started = performance.now();
+        this.onPlaybackLog?.({ type: "playback-log", ...context, timestamp: Date.now(), level: "info", phase: "request" });
+        try {
+            const result = await this.requestRaw(this.getChild(), "invoke", { pluginId, capability, request }, INVOKE_TIMEOUT_MS);
+            this.onPlaybackLog?.({ type: "playback-log", ...context, timestamp: Date.now(), level: "info", phase: "success", durationMs: performance.now() - started });
+            return result;
+        } catch (error) {
+            this.onPlaybackLog?.({ type: "playback-log", ...context, timestamp: Date.now(), level: "error", phase: "error",
+                durationMs: performance.now() - started, message: toError(error).message.slice(0, 8192) });
+            throw error;
         }
-        await this.requestRaw(this.child, "unload", { hash }, LOAD_TIMEOUT_MS);
     }
-
+    async unloadPlugin(pluginId: string) {
+        this.registrations.delete(pluginId);
+        if (this.spawnPromise) await this.spawnPromise.catch(() => undefined);
+        if (this.child) await this.requestRaw(this.child, "unload", { pluginId }, LOAD_TIMEOUT_MS);
+    }
     async clearPlugins() {
         this.registrations.clear();
-        if (!this.child?.pid) {
-            return;
-        }
-        await this.requestRaw(this.child, "clear", null, LOAD_TIMEOUT_MS);
+        if (this.spawnPromise) await this.spawnPromise.catch(() => undefined);
+        if (this.child) await this.requestRaw(this.child, "clear", {}, LOAD_TIMEOUT_MS);
     }
-
     dispose() {
         this.shuttingDown = true;
-        this.stopResourceMonitor();
-        this.rejectAll(new Error("Plugin host disposed"));
-        this.child?.kill();
-        this.child = null;
+        this.registrations.clear();
+        if (this.child) this.failChild(this.child, new Error("Plugin runtime disposed"));
+        else this.rejectAll(new Error("Plugin runtime disposed"));
     }
 }

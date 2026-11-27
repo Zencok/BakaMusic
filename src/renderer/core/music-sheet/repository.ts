@@ -10,7 +10,7 @@ import {
     sortIndexSymbol,
     timeStampSymbol,
 } from "@/common/constant";
-import { getMediaPrimaryKey, isSameMedia } from "@/common/media-util";
+import { getMediaPrimaryKey, isV2Media, isSameMedia } from "@/common/media-util";
 import {
     getUserPreferenceIDB,
     setUserPreferenceIDB,
@@ -47,14 +47,14 @@ function stripEmbeddedMusicList(
 
 function getRelationKey(relation: ISheetMusicRelation) {
     return [relation.sheetId, relation.platform, relation.musicId] as [
+        string | number,
         string,
-        string,
-        string,
+        string | number,
     ];
 }
 
 function getMusicKey(media: IMedia.IMediaBase) {
-    return [media.platform, media.id] as [string, string];
+    return [media.platform, media.id] as [string, string | number];
 }
 
 function relationToMediaBase(relation: ISheetMusicRelation): IMedia.IMediaBase {
@@ -73,7 +73,7 @@ function relationOwnership(relations: ISheetMusicRelation[]): IMusic.ISheetTrack
         const existing = ownership.get(key);
         ownership.set(key, {
             platform: relation.platform,
-            id: String(relation.musicId),
+            id: isV2Media(relation) ? relation.musicId : String(relation.musicId),
             manual: (existing?.manual ?? false) || (relation.manual ?? true),
             sourceKeys: [...new Set([...(existing?.sourceKeys ?? []), ...(relation.sourceKeys ?? [])])],
         });
@@ -96,7 +96,7 @@ function uniqueMusicItems(musicItems: IMusic.IMusicItem[]) {
     });
 }
 
-async function getSheetRelations(sheetId: string) {
+async function getSheetRelations(sheetId: string | number) {
     const relations = await musicSheetDB.sheetMusic
         .where("sheetId")
         .equals(sheetId)
@@ -110,7 +110,7 @@ async function getSheetRelations(sheetId: string) {
  * 复合键里 [sheetId] 比任何 [sheetId, x] 都小，配合 Dexie.maxKey 即可框住
  * 该歌单的全部行；缺少 position 的老数据不进索引，此时回退到全量读。
  */
-async function getSheetBoundaryRelation(sheetId: string, edge: "first" | "last") {
+async function getSheetBoundaryRelation(sheetId: string | number, edge: "first" | "last") {
     const collection = musicSheetDB.sheetMusic
         .where("[sheetId+position]")
         .between([sheetId], [sheetId, Dexie.maxKey]);
@@ -159,7 +159,7 @@ async function decrementMusicReferences(relations: ISheetMusicRelation[]) {
     const storedItems = await musicSheetDB.musicStore.bulkGet(
         relations.map((relation) => [relation.platform, relation.musicId]),
     );
-    const needDelete: Array<[string, string]> = [];
+    const needDelete: Array<[string, string | number]> = [];
     const needUpdate: IStoredMusicItem[] = [];
 
     storedItems.forEach((musicItem) => {
@@ -244,7 +244,7 @@ function attachSheetMusicMeta<T extends IMusic.IMusicItem>(
 }
 
 function updateCachedSheet(
-    sheetId: string,
+    sheetId: string | number,
     updates: Partial<IMusic.IDBMusicSheetItem>,
 ) {
     const index = musicSheets.findIndex((sheet) => sheet.id === sheetId);
@@ -351,7 +351,7 @@ export async function addSheet(
 }
 
 export async function updateSheet(
-    sheetId: string,
+    sheetId: string | number,
     newData: Partial<IMusic.IMusicSheetItem>,
 ) {
     if (!newData) {
@@ -368,7 +368,7 @@ export async function updateSheet(
 }
 
 export async function updateSheetMusicOrder(
-    sheetId: string,
+    sheetId: string | number,
     musicList: IMusic.IMusicItem[],
 ) {
     await musicSheetDB.transaction(
@@ -406,7 +406,7 @@ export async function updateSheetMusicOrder(
     updateCachedSheet(sheetId, { sortType: MusicSheetSortType.None });
 }
 
-export async function removeSheet(sheetId: string) {
+export async function removeSheet(sheetId: string | number) {
     if (sheetId === defaultSheet.id) {
         return;
     }
@@ -431,7 +431,7 @@ export async function removeSheet(sheetId: string) {
     return musicSheets;
 }
 
-export async function clearSheet(sheetId: string) {
+export async function clearSheet(sheetId: string | number) {
     const targetSheet = musicSheets.find((item) => item.id === sheetId);
     if (!targetSheet) {
         return;
@@ -520,7 +520,7 @@ export async function replaceStarredImportedSheet(
 
 export async function addMusicToSheet(
     musicItems: IMusic.IMusicItem | IMusic.IMusicItem[],
-    sheetId: string,
+    sheetId: string | number,
     importSources?: IMusic.IImportedSheetSource[],
     importOwnership?: IMusic.ISheetTrackOwnership[],
 ) {
@@ -566,12 +566,12 @@ export async function addMusicToSheet(
             }
             // Probe both scalar ID representations without scanning a large playlist.
             const relationKeys = candidates.flatMap((musicItem) => {
-                const ids = new Set<string | number>([musicItem.id, String(musicItem.id)]);
+                const ids = new Set<string | number>(isV2Media(musicItem) ? [musicItem.id] : [musicItem.id, String(musicItem.id)]);
                 const numericId = Number(musicItem.id);
-                if (Number.isFinite(numericId) && String(numericId) === String(musicItem.id)) {
+                if (!isV2Media(musicItem) && Number.isFinite(numericId) && String(numericId) === String(musicItem.id)) {
                     ids.add(numericId);
                 }
-                return [...ids].map((id) => [sheetId, musicItem.platform, id] as [string, string, string]);
+                return [...ids].map((id) => [sheetId, musicItem.platform, id] as [string | number, string, string | number]);
             });
             const existingRelations = await musicSheetDB.sheetMusic.bulkGet(relationKeys);
             const relevantRelations = existingRelations.filter((relation): relation is ISheetMusicRelation => Boolean(relation));
@@ -649,7 +649,7 @@ export async function addMusicToSheet(
 
 /** Compare identities/ownership only; commit just the changed rows and entity references. */
 export async function replaceImportedSheetMusic(
-    sheetId: string,
+    sheetId: string | number,
     sources: IMusic.IImportedSheetSource[],
     snapshots: IImportSourceSnapshot[],
 ) {
@@ -710,7 +710,7 @@ export async function replaceImportedSheetMusic(
 
 export async function removeMusicFromSheet(
     musicItems: IMusic.IMusicItem | IMusic.IMusicItem[],
-    sheetId: string,
+    sheetId: string | number,
 ) {
     const targetSheet = musicSheets.find((item) => item.id === sheetId);
     if (!targetSheet) {
@@ -772,7 +772,7 @@ export async function removeMusicFromSheet(
 }
 
 export async function getSheetItemDetail(
-    sheetId: string,
+    sheetId: string | number,
 ): Promise<IMusic.IMusicSheetItem | null> {
     const targetSheet = musicSheets.find((item) => item.id === sheetId);
     if (!targetSheet) {
@@ -851,7 +851,7 @@ export async function exportAllSheetDetails() {
 
 async function writeImportedSheet(
     sourceSheet: IMusic.IMusicSheetItem,
-    sheetId: string,
+    sheetId: string | number,
     sortIndex: number,
 ) {
     const musicItems = uniqueMusicItems(sourceSheet.musicList ?? []);

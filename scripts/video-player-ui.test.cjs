@@ -32,7 +32,7 @@ assert.match(overlayRenderer, /suspendForVideo: mvOverlay\.suspendAudio/);
 assert.match(overlayRenderer, /restoreAfterVideo: mvOverlay\.restoreAudio/);
 
 const player = read("src/renderer/components/Modal/templates/MvPlayer/index.tsx");
-assert.match(player, /"getMvSource"/);
+assert.match(player, /PluginManager\.invoke\([\s\S]{0,180}"media\.video",\s*\{\s*entity:/);
 assert.match(player, /nativePlayback\.openVideo/);
 assert.match(player, /nativePlayback\.prepareVideoOverlay\(sessionId\)/);
 assert.match(player, /normalizeVideoUpstreamUrl\(source\.url\)/);

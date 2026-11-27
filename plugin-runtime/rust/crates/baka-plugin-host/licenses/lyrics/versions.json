@@ -1,0 +1,7 @@
+{
+  "@applemusic-like-lyrics/lyric": "1.0.2",
+  "@applemusic-like-lyrics/ttml": "1.0.1",
+  "@xmldom/xmldom": "0.9.10",
+  "webpack": "5.108.4",
+  "typescript": "6.0.3"
+}

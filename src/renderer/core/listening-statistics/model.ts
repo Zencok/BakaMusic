@@ -1,3 +1,4 @@
+import { getMediaPrimaryKey } from "@/common/media-util";
 const RECENT_TRACK_LIMIT = 500;
 const STATISTICS_ENTRY_LIMIT = 2000;
 
@@ -43,7 +44,7 @@ export interface IListeningStatisticsState {
 }
 
 export function getListeningStatisticsKey(musicItem: IMusic.IMusicItem) {
-    return `${musicItem.platform}@${musicItem.id}`;
+    return getMediaPrimaryKey(musicItem);
 }
 
 export function createEmptyListeningStatistics(): IListeningStatisticsState {

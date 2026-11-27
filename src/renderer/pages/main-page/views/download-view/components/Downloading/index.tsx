@@ -1,3 +1,4 @@
+import getSourceName from "@renderer/utils/get-source-name";
 import { useDefaultAlbumCover } from "@/renderer/utils/default-album-cover";
 import { DownloadState } from "@/common/constant";
 import { normalizeFileSize } from "@/common/normalize-util";
@@ -307,7 +308,7 @@ export default function Downloading() {
                             const task = virtualItem.dataItem;
                             const { musicItem } = task;
                             return (
-                                <div className="downloading-item-wrapper" key={`${musicItem.platform}-${musicItem.id}`}>
+                                <div className="downloading-item-wrapper" key={JSON.stringify([musicItem.platform, musicItem.id])}>
                                     <article className="downloading-item-card">
                                         <div className="downloading-item-cover">
                                             <img
@@ -326,7 +327,7 @@ export default function Downloading() {
                                                 {musicItem.album ? ` · ${musicItem.album}` : ""}
                                             </div>
                                             <div className="downloading-item-meta">
-                                                <Tag fill style={compactTagStyle}>{musicItem.platform}</Tag>
+                                                <Tag fill style={compactTagStyle}>{getSourceName(musicItem.platform)}</Tag>
                                                 <Tag style={compactTagStyle}>
                                                     {musicItem.duration
                                                         ? secondsToDuration(musicItem.duration)

@@ -21,7 +21,7 @@ function MusicResult(props: IMediaResultProps) {
             musicList={data}
             state={state}
             onPageChange={() => {
-                search(undefined, undefined, "music", pluginHash);
+                search(undefined, "music", pluginHash);
             }}
             virtualProps={{
                 getScrollElement() {

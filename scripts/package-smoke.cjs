@@ -395,7 +395,7 @@ async function run() {
             return;
         }
         if (
-            request.url === "http://plugin-smoke.invalid/health"
+            request.url === "/health"
             || (
                 request.headers.host === "plugin-smoke.invalid"
                 && request.url === "/health"
@@ -490,116 +490,53 @@ async function run() {
         JSON.stringify({ "$schema-version": 1, "normal.checkUpdate": false }),
         "utf8",
     );
-    const pluginPath = path.join(userDataPath, "bakamusic-plugins");
+    const pluginPath = path.join(userDataPath, "bakamusic-plugins-v2");
     await fs.promises.mkdir(pluginPath, { recursive: true });
-    await fs.promises.writeFile(
-        path.join(pluginPath, "phase5-smoke.js"),
-        `const axios = require("axios");
-        const storage = require("musicfree/storage");
-        module.exports = {
-            platform: "Phase5Smoke",
-            version: "1.0.0",
-            supportedVideoQualities: ["720p"],
-            async search() {
-                const response = await axios.get("http://plugin-smoke.invalid/health");
-                if (response.data?.ok !== true) {
-                    throw new Error("plugin network roundtrip failed");
-                }
-                await storage.setItem("phase5-smoke", "ok");
-                if (await storage.getItem("phase5-smoke") !== "ok") {
-                    throw new Error("plugin storage roundtrip failed");
-                }
-                return { isEnd: true, data: [] };
-            },
-            async getMvSource() {
-                return {
-                    url: ${JSON.stringify(`${resourceOrigin}/native-video.wav`)},
-                    videoQuality: "720p",
-                    width: 1280,
-                    height: 720
-                };
-            }
-        };`,
-        "utf8",
-    );
-    await fs.promises.writeFile(
-        path.join(pluginPath, "lx-base-smoke.js"),
-        `module.exports = {
-            platform: "网易云音乐",
-            version: "1.0.0",
-            supportedQualities: ["128k", "320k", "flac"],
-            async search() {
-                return {
-                    isEnd: true,
-                    data: [{
-                        id: "lx-smoke-song",
-                        title: "LX Smoke Song",
-                        artist: "LX Smoke Artist",
-                        qualities: {
-                            "128k": { size: 1000 },
-                            "320k": { size: 2000 },
-                            flac: { size: 3000 }
-                        }
-                    }]
-                };
-            },
-            async getMediaSource(_musicItem, quality) {
-                return { url: "https://base-smoke.invalid/" + quality };
-            }
-        };`,
-        "utf8",
-    );
-    const lxPluginCode = `/*
-     * @name Package Smoke LX
-     * @version v1
-     */
-    let flacRequestCount = 0;
-    lx.on(lx.EVENT_NAMES.request, ({ source, action, info }) => {
-        if (source !== "wy" || action !== "musicUrl") return null;
-        if (info.type === "320k") {
-            return ${JSON.stringify(`${resourceOrigin}/lx-missing/`)}
-                + info.type + "/" + info.musicInfo.songmid;
-        }
-        flacRequestCount += 1;
-        if (flacRequestCount === 1) {
-            return ${JSON.stringify(`${resourceOrigin}/lx-missing/`)}
-                + info.type + "/" + info.musicInfo.songmid;
-        }
-        return ${JSON.stringify(`${resourceOrigin}/lx-audio/`)}
-            + info.type + "/" + info.musicInfo.songmid;
-    });
-    lx.send(lx.EVENT_NAMES.inited, {
-        sources: {
-            wy: {
-                type: "music",
-                actions: ["musicUrl"],
-                qualitys: ["320k", "flac", "master"]
-            }
-        }
-    });`;
-    const lxPluginHash = createHash("sha256").update(lxPluginCode, "utf8").digest("hex");
-    const lxPluginPath = path.join(userDataPath, "bakamusic-lx-plugins");
-    await fs.promises.mkdir(lxPluginPath, { recursive: true });
-    await Promise.all([
-        fs.promises.writeFile(
-            path.join(lxPluginPath, `${lxPluginHash}.js`),
-            lxPluginCode,
-            "utf8",
-        ),
-        fs.promises.writeFile(
-            path.join(lxPluginPath, `${lxPluginHash}.js.integrity.json`),
-            JSON.stringify({
-                sha256: lxPluginHash,
-                installedAt: new Date().toISOString(),
-            }),
-            "utf8",
-        ),
-        fs.promises.writeFile(
-            path.join(lxPluginPath, "state.json"),
-            JSON.stringify({ activeHash: lxPluginHash }),
-            "utf8",
-        ),
-    ]);
+    const providerId = "cc.baka.qq";
+    const resolverId = "test.package.resolver";
+    const writePlugin = async (id, code) => {
+        const filename = path.join(pluginPath, `${id}.js`);
+        await fs.promises.writeFile(filename, code, "utf8");
+        await fs.promises.writeFile(`${filename}.integrity.json`, JSON.stringify({
+            packageId: id, sha256: createHash("sha256").update(code, "utf8").digest("hex"),
+            installedAt: new Date().toISOString(),
+        }), "utf8");
+    };
+    await writePlugin(providerId, `// @baka-provider 2
+module.exports={manifest:{apiVersion:2,id:"${providerId}",kind:"provider",name:"Package provider",author:"BakaMusic",version:"1.0.0",sourceId:"qq.v1",capabilities:["search","entities.get","media.prepare","media.resolve","media.video"],supportedVideoQualities:["720p"]},handlers:{
+search:async(r,sdk)=>{
+    const response=await sdk.http.request({url:${JSON.stringify(`${resourceOrigin}/health`)},method:"GET",responseType:"json"});
+    if(response.body.ok!==true)throw new Error("network roundtrip failed");
+    await sdk.storage.set("package-smoke","ok");
+    if(await sdk.storage.get("package-smoke")!=="ok")throw new Error("storage roundtrip failed");
+    if([typeof require,typeof process,typeof Buffer].some(v=>v!=="undefined"))throw new Error("ambient Node global");
+    return {items:[],nextCursor:null};
+},entities:{get:r=>r.entity},media:{prepare:r=>({entity:r.entity,context:{prepared:true,protocol:"lx",source:"tx",musicInfo:{songmid:r.entity.id}}}),resolve:r=>({url:${JSON.stringify(`${resourceOrigin}/native-audio.wav`)},quality:r.quality}),video:r=>({url:${JSON.stringify(`${resourceOrigin}/native-video.wav`)},videoQuality:r.quality||"720p",width:1280,height:720})}}};`);
+    await writePlugin(resolverId, `// @baka-provider 2
+module.exports={manifest:{apiVersion:2,id:"${resolverId}",kind:"resolver",name:"Package resolver",author:"BakaMusic",version:"1.0.0",sources:["qq.v1"],capabilities:["media.resolve"]},handlers:{media:{resolve:r=>{
+if(!r.context.prepared||r.providerId!=="${providerId}")throw new Error("missing prepare context");
+if(r.quality==="320k"){const e=new Error("quality missing");e.code="quality_unavailable";throw e;}
+return {url:${JSON.stringify(`${resourceOrigin}/native-audio.wav`)},quality:r.quality};
+}}}};`);
+    // Retired scripts remain on disk and must never be evaluated by the V2 registry.
+    for (const directory of ["bakamusic-plugins"]) {
+        const retiredPath = path.join(userDataPath, directory);
+        await fs.promises.mkdir(retiredPath, { recursive: true });
+        await fs.promises.writeFile(path.join(retiredPath, "retired.js"), 'throw new Error("legacy code executed")', "utf8");
+    }
+    const legacyLxSource = `/** @name Package original LX\n * @version 1.0.0\n */
+lx.on(lx.EVENT_NAMES.request,({source,info})=>{if(source!=="tx"||info.musicInfo.songmid!==7)throw Error("LX context changed");return ${JSON.stringify(`${resourceOrigin}/native-audio.wav`)};});
+lx.send(lx.EVENT_NAMES.inited,{sources:{tx:{actions:["musicUrl"],qualitys:["flac","128k"]}}});`;
+    const legacyLxHash = createHash("sha256").update(legacyLxSource).digest("hex");
+    const legacyLxPath = path.join(userDataPath, "bakamusic-lx-plugins", `${legacyLxHash}.js`);
+    await fs.promises.mkdir(path.dirname(legacyLxPath), {recursive:true});
+    await fs.promises.writeFile(legacyLxPath, legacyLxSource);
+    await fs.promises.writeFile(`${legacyLxPath}.integrity.json`, JSON.stringify({sha256:legacyLxHash}));
+    await fs.promises.writeFile(path.join(path.dirname(legacyLxPath), "state.json"), JSON.stringify({activeHash:legacyLxHash}));
+    const importedLxPath = path.join(userDataPath, "packed-lx.js");
+    const packedBody = `const api=Function('return lx')();api.on('request',()=>${JSON.stringify(`${resourceOrigin}/native-audio.wav`)});api.send('inited',{sources:{tx:{actions:['musicUrl'],qualitys:['flac']}}});`;
+    const importedLxSource = `eval(String.fromCharCode(${[...packedBody].map(value => value.charCodeAt(0)).join(",")}));`;
+    await fs.promises.writeFile(importedLxPath, importedLxSource);
     const localMediaPath = path.join(userDataPath, "local-media-smoke.wav");
     await fs.promises.writeFile(localMediaPath, createSilentWav());
     const alacMediaPath = path.join(userDataPath, "local-media-alac-smoke.m4a");
@@ -699,7 +636,7 @@ async function run() {
                 backupWriteBridge: typeof backupBridge.backupToWebdav,
                 backupReadBridge: typeof backupBridge.restoreFromWebdav,
                 trashFileBridge: typeof fsBridge.trashFile,
-                pluginBridge: typeof pluginBridge.callPluginMethod,
+                pluginBridge: typeof pluginBridge.invoke,
             };
         })()`, "renderer boundary");
         const dlnaState = await mainSession.evaluate(
@@ -799,10 +736,10 @@ async function run() {
                 [],
             );
             const item = result.musicItems[0];
-            const freshLyric = await window["@shared/plugin-manager"].callPluginMethod(
+            const freshLyricResponse = await window["@shared/plugin-manager"].invoke(
                 { platform: "本地" },
-                "getLyric",
-                { ...item, rawLrc: "stale lyric without timestamps" },
+                "lyrics.get",
+                { entity: { ...item, rawLrc: "stale lyric without timestamps" } },
             );
             return {
                 count: result.musicItems.length,
@@ -811,81 +748,54 @@ async function run() {
                 artworkType: item?.artwork?.slice(0, 23),
                 artworkBounded: (item?.artwork?.length ?? Infinity) < 96 * 1024,
                 scannedLyric: item?.rawLrc,
-                refreshedLyric: freshLyric?.rawLrc,
+                refreshedLyric: freshLyricResponse.value?.rawLrc,
             };
         })()`, "local music metadata scan");
         const pluginResult = await mainSession.evaluate(`(async () => {
             const pluginBridge = window["@shared/plugin-manager"];
             await pluginBridge.reloadPlugins();
-            return pluginBridge.callPluginMethod(
-                { platform: "Phase5Smoke" },
-                "search",
-                "smoke",
-                1,
-                "music",
-            );
-        })()`, "plugin utility roundtrip");
-        const lxPluginState = await mainSession.evaluate(`(async () => {
-            const pluginBridge = window["@shared/plugin-manager"];
-            await Promise.all([
-                pluginBridge.reloadPlugins(),
-                pluginBridge.reloadLxPlugins(),
-            ]);
-            const searchResult = await pluginBridge.callPluginMethod(
-                { platform: "网易云音乐" },
-                "search",
-                "smoke",
-                1,
-                "music",
-            );
-            const musicItem = searchResult.data[0];
-            const lxState = {
-                qualities: Object.keys(musicItem.qualities),
-                flacSource: await pluginBridge.callPluginMethod(
-                    { platform: "网易云音乐" },
-                    "getMediaSource",
-                    musicItem,
-                    "flac",
-                ),
-                fallbackSource: await pluginBridge.callPluginMethod(
-                    { platform: "网易云音乐" },
-                    "getMediaSource",
-                    musicItem,
-                    "320k",
-                ),
-                unsupportedSource: await pluginBridge.callPluginMethod(
-                    { platform: "网易云音乐" },
-                    "getMediaSource",
-                    musicItem,
-                    "128k",
-                ),
-                missingTrackQualitySource: await pluginBridge.callPluginMethod(
-                    { platform: "网易云音乐" },
-                    "getMediaSource",
-                    musicItem,
-                    "master",
-                ),
+            return (await pluginBridge.invoke(
+                { platform: "cc.baka.qq" }, "search",
+                { query: "smoke", cursor: null, limit: 20, kind: "music" },
+            )).value;
+        })()`, "native V2 network/storage roundtrip");
+        const v2PluginState = await mainSession.evaluate(`(async () => {
+            const bridge = window["@shared/plugin-manager"];
+            let registry;
+            bridge.onRegistryUpdated(state => { registry = state; });
+            await bridge.reloadPlugins();
+            const retiredCount = registry.retiredPlugins.length;
+            const entity = {id: 7, platform: "cc.baka.qq", title: "V2 smoke", qualities: {flac: {}, "320k": {}}};
+            const invoke = async (delegate, capability, request) => {
+                const response = await bridge.invoke(delegate, capability, request);
+                if (!response.ok) { const error = new Error(response.error.message); error.code = response.error.code; throw error; }
+                return response.value;
             };
-            await pluginBridge.setActiveLxPlugin(null);
-            const disabledSearchResult = await pluginBridge.callPluginMethod(
-                { platform: "网易云音乐" },
-                "search",
-                "smoke",
-                1,
-                "music",
-            );
-            const disabledMusicItem = disabledSearchResult.data[0];
-            return {
-                ...lxState,
-                disabledQualities: Object.keys(disabledMusicItem.qualities),
-                disabledSource: await pluginBridge.callPluginMethod(
-                    { platform: "网易云音乐" },
-                    "getMediaSource",
-                    disabledMusicItem,
-                    "flac",
-                ),
-            };
-        })()`, "LX plugin playback override");
+            const resolve = quality => invoke({platform: entity.platform}, "media.resolve", {entity, quality});
+            const migratedResolverId = registry.resolverBindings.find(binding => binding.providerId === entity.platform)?.resolverId;
+            if (!migratedResolverId) throw Error("Original active LX selection was lost");
+            const originalLxSource = await resolve("flac");
+            await bridge.setResolverBinding(entity.platform, "test.package.resolver");
+            const source = await resolve("flac");
+            let failureCode;
+            try { await resolve("320k"); } catch(error) { failureCode = error.code; }
+            await bridge.setResolverBinding(entity.platform, null);
+            const providerSource = await resolve("flac");
+            let rejectedLegacy = false;
+            try { await invoke({platform: "retired"}, "search", {query:"a",kind:"music",cursor:null,limit:1}); } catch { rejectedLegacy = true; }
+            await bridge.installPluginFromLocal(${JSON.stringify(importedLxPath)}, {kind:"lx"});
+            let installed;
+            bridge.onPluginUpdated(plugins => {installed = plugins;});
+            await bridge.reloadPlugins();
+            const imported = installed.find(plugin => plugin.kind === "resolver" && plugin.id !== migratedResolverId && plugin.id !== "test.package.resolver");
+            if (!imported) throw Error("Explicit LX import was not installed");
+            await bridge.setResolverBinding(entity.platform, imported.id);
+            const packedLxSource = await resolve("flac");
+            await bridge.setResolverBinding(entity.platform, null);
+            return {retiredCount, source, failureCode, providerSource, rejectedLegacy, originalLxSource, packedLxSource};
+        })()`, "V2 explicit resolver and coded failure boundary");
+        assert.equal(await fs.promises.readFile(legacyLxPath,"utf8"), legacyLxSource);
+        assert.equal(await fs.promises.readFile(importedLxPath,"utf8"), importedLxSource);
         const webdavState = await mainSession.evaluate(`(async () => {
             const backupBridge = window["@shared/backup"];
             const connection = {
@@ -1057,7 +967,7 @@ async function run() {
             ...rendererState,
             nativePlaybackState,
             pluginResult,
-            lxPluginState,
+            v2PluginState,
             localScanState,
             pitchShiftState,
             remoteArtworkCors,
@@ -1091,23 +1001,15 @@ async function run() {
                     remote: true,
                 },
             },
-            pluginResult: { isEnd: true, data: [] },
-            lxPluginState: {
-                qualities: ["320k", "flac"],
-                flacSource: {
-                    url: `${resourceOrigin}/lx-audio/flac/lx-smoke-song`,
-                    quality: "flac",
-                },
-                fallbackSource: null,
-                unsupportedSource: null,
-                missingTrackQualitySource: {
-                    url: `${resourceOrigin}/lx-audio/master/lx-smoke-song`,
-                    quality: "master",
-                },
-                disabledQualities: ["128k", "320k", "flac"],
-                disabledSource: {
-                    url: "https://base-smoke.invalid/flac",
-                },
+            pluginResult: { items: [], nextCursor: null },
+            v2PluginState: {
+                retiredCount: 1,
+                source: { url: `${resourceOrigin}/native-audio.wav`, quality: "flac" },
+                failureCode: "quality_unavailable",
+                providerSource: { url: `${resourceOrigin}/native-audio.wav`, quality: "flac" },
+                rejectedLegacy: true,
+                originalLxSource: {url: `${resourceOrigin}/native-audio.wav`},
+                packedLxSource: {url: `${resourceOrigin}/native-audio.wav`},
             },
             localScanState: {
                 count: 1,
@@ -1140,7 +1042,7 @@ async function run() {
         const mvOpened = await mainSession.evaluate(`window["@shared/mv-overlay"].open({
             musicItem: {
                 id: 4242,
-                platform: "Phase5Smoke",
+                platform: "cc.baka.qq",
                 title: "BakaMusic MV Package Smoke",
                 artist: "BakaMusic",
                 album: "Package Verification",
@@ -1171,7 +1073,7 @@ async function run() {
                     videoFrameAckBridge: typeof nativePlayback?.acknowledgeVideoFrame,
                     audioCommandBridge: typeof nativePlayback?.command,
                     capabilitiesBridge: typeof nativePlayback?.getCapabilities,
-                    pluginCallBridge: typeof pluginManager?.callPluginMethod,
+                    pluginCallBridge: typeof pluginManager?.invoke,
                     pluginInstallBridge: typeof pluginManager?.installPluginFromLocal,
                 };
             })()`);

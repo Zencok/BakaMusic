@@ -1,3 +1,4 @@
+import { isV2Media } from "@/common/media-util";
 /** Pure validation/identity helpers shared by persistence, sync and backups. */
 export function validateImportSources(value: unknown): IMusic.IImportedSheetSource[] {
     if (value === undefined) {
@@ -40,7 +41,7 @@ export function mergeImportedTracks<T extends IMedia.IMediaBase>(
             || (typeof track.id === "number" && !Number.isFinite(track.id))) {
             throw new Error("Invalid imported track");
         }
-        const key = JSON.stringify([track.platform, String(track.id)]);
+        const key = importTrackKey(track);
         if (seen.has(key)) {
             return false;
         }
@@ -70,7 +71,7 @@ export function importSourceKey(source: IMusic.IImportedSheetSource) {
 }
 
 export function importTrackKey(track: Pick<IMedia.IMediaBase, "platform" | "id">) {
-    return JSON.stringify([track.platform, String(track.id)]);
+    return JSON.stringify([track.platform, isV2Media(track) ? track.id : String(track.id)]);
 }
 
 export function validateImportOwnership(
@@ -88,7 +89,7 @@ export function validateImportOwnership(
     return value.map((entry) => {
         if (!entry || typeof entry !== "object"
             || typeof entry.platform !== "string" || !entry.platform || entry.platform.length > 1000
-            || typeof entry.id !== "string" || !entry.id || entry.id.length > 1000
+            || !((typeof entry.id === "string" && entry.id.length > 0 && entry.id.length <= 1000) || (isV2Media(entry) && typeof entry.id === "number" && Number.isFinite(entry.id)))
             || typeof entry.manual !== "boolean"
             || !Array.isArray(entry.sourceKeys) || entry.sourceKeys.length > 100
             || !entry.sourceKeys.every((key: unknown) => typeof key === "string" && sourceKeys.has(key))
@@ -158,7 +159,7 @@ export function planImportedSheetSync<T extends IMedia.IMediaBase>(
         musicList.push(entry.track);
         importOwnership.push({
             platform: entry.track.platform,
-            id: String(entry.track.id),
+            id: isV2Media(entry.track) ? entry.track.id : String(entry.track.id),
             manual: existed && (previousOwnership.get(key)?.manual ?? true),
             sourceKeys: entry.sourceKeys,
         });

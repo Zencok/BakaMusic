@@ -184,6 +184,11 @@
       border-color: color-mix(in srgb, var(--discovery-cool, var(--primaryColor)) 32%, transparent);
       color: var(--discovery-cool, var(--primaryColor));
     }
+
+    &[data-source="lx"] {
+      border-color: color-mix(in srgb, var(--primaryColor) 40%, transparent);
+      color: var(--primaryColor);
+    }
   }
 
   & .plugin-card-capabilities {

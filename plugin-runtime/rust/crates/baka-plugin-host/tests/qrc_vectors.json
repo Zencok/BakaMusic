@@ -1,0 +1,18 @@
+[
+  {
+    "text": "[00:01.00]hello",
+    "encrypted": "32dabb4c5e9846fa7a4eb4ea8db4d7fea1168a842853cee0"
+  },
+  {
+    "text": "[1000,3000]晴(1000,1000)天(2000,2000)",
+    "encrypted": "d6a2be95d6447372409ae5478cc60f86cba5a94e6d8e12072a5d55efe3346873e4340dba79c19e1e"
+  },
+  {
+    "text": "<?xml version=\"1.0\"?><QrcInfos><Lyric_1 LyricContent=\"[1000,1000]A&amp;B(1000,1000)tail&#10;[2000,1000]next\"/></QrcInfos>",
+    "encrypted": "0c8d67dd3e549974b64ed2680459f138553fe2b7cdeb268e33263ce3ef746059a2b99f78e6c007503dc411c4bbec69642eb306920cd228b354a731f6322e5e84d34fbfafe1245864895a560aabdf7c6d52ee022e76b1747a99010c6a5ff8e2afc7ef1bd1ddb72dbd"
+  },
+  {
+    "text": "[00:01.00] 1BSdu,=N_p'8IZk\"3DUfw.?Par):K\\m$5FWhy0ARct+<M^o&7HYj!2CTev->O`q(9J[l#4EVgx/@Qbs*;L]n%6GXi 1BSdu,=N_p'8IZk\"3DUfw.?Par):K\\m$5FWhy0ARct+<M^o&7HYj!2CTev->O`q(9J[l#4EVgx/@Qbs*;L]n%6GXi 1BSdu,=N_p'8IZk\"3DU",
+    "encrypted": "32dabb4c5e9846fa8cd560ae355fab192d4e6029218920c793a2f516cc2df63e1b2a4bbb2ed3bfda9d4b90721c70f5059779725d54b5bb4a65c9625fa03e5138b88598937d3ce773f3c55e0ab7bf838c168cc3832eb6727b697c733ed3e9fe74a1b9ba5b4d92868b67b02c89c690a631"
+  }
+]

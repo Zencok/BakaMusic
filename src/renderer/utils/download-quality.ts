@@ -31,15 +31,8 @@ export async function promptDownloadWithQuality(
     const t = i18n.t.bind(i18n);
     const defaultValue = AppConfig.getConfig("download.defaultQuality");
 
-    const lxQualityOverrides = validItems.flatMap((item) => {
-        const qualities = PluginManager.getLxQualityOverride(item.platform);
-        return qualities ? [PluginManager.getMediaQualityKeys(item)] : [];
-    });
-    const allowedQualities = lxQualityOverrides.length
-        ? lxQualityOverrides.reduce((commonQualities, qualities) =>
-            commonQualities.filter((quality) => qualities.includes(quality)),
-        )
-        : undefined;
+    const declared = validItems.map((item) => PluginManager.getMediaQualityKeys(item)).filter((qualities) => qualities.length);
+    const allowedQualities = declared.length ? declared.reduce((common, qualities) => common.filter((quality) => qualities.includes(quality))) : undefined;
     let choices = getPreferredQualityChoices(t, undefined, allowedQualities);
     if (validItems.length === 1) {
         const validItem = validItems[0];

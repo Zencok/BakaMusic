@@ -1,3 +1,5 @@
+import { isV2Media } from "./media-util";
+
 export interface IUniqueMap {
     getMap: () => Record<string, Set<string>>;
     has: (mediaItem?: IMedia.IMediaBase | null) => boolean;
@@ -5,8 +7,12 @@ export interface IUniqueMap {
     remove: (mediaItem?: IMedia.IMediaBase | IMedia.IMediaBase[] | null) => void;
 }
 
+function identityKey(item: IMedia.IMediaBase) {
+    return isV2Media(item) ? JSON.stringify(item.id) : String(item.id);
+}
+
 export function createUniqueMap(mediaItems?: IMedia.IMediaBase[]): IUniqueMap {
-    const uniqueMap: Record<string, Set<string>> = {};
+    const uniqueMap: Record<string, Set<string>> = Object.create(null);
 
     mediaItems?.forEach((item) => {
         add(item);
@@ -21,7 +27,7 @@ export function createUniqueMap(mediaItems?: IMedia.IMediaBase[]): IUniqueMap {
             return false;
         }
 
-        return uniqueMap[`${mediaItem.platform}`]?.has(`${mediaItem.id}`) || false;
+        return uniqueMap[`${mediaItem.platform}`]?.has(identityKey(mediaItem)) || false;
     }
 
     function add(mediaItem?: IMedia.IMediaBase | IMedia.IMediaBase[] | null) {
@@ -31,9 +37,9 @@ export function createUniqueMap(mediaItems?: IMedia.IMediaBase[]): IUniqueMap {
         const _mediaItem = Array.isArray(mediaItem) ? mediaItem : [mediaItem];
         _mediaItem.forEach((item) => {
             if (!uniqueMap[`${item.platform}`]) {
-                uniqueMap[`${item.platform}`] = new Set([`${item.id}`]);
+                uniqueMap[`${item.platform}`] = new Set([identityKey(item)]);
             } else {
-                uniqueMap[`${item.platform}`].add(`${item.id}`);
+                uniqueMap[`${item.platform}`].add(identityKey(item));
             }
         });
     }
@@ -46,7 +52,7 @@ export function createUniqueMap(mediaItems?: IMedia.IMediaBase[]): IUniqueMap {
 
         _mediaItem.forEach((item) => {
             if (uniqueMap[`${item.platform}`]) {
-                uniqueMap[`${item.platform}`].delete(`${item.id}`);
+                uniqueMap[`${item.platform}`].delete(identityKey(item));
             }
         });
     }

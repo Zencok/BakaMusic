@@ -1,6 +1,4 @@
-import { useEffect } from "react";
 import useQueryArtist from "../../../../hooks/useQueryArtist";
-import { queryResultStore } from "../../../../store";
 import Condition from "@/renderer/components/Condition";
 import { RequestStateCode } from "@/common/constant";
 import Loading from "@/renderer/components/Loading";
@@ -14,14 +12,11 @@ interface IBodyProps {
 
 export default function AlbumResult(props: IBodyProps) {
     const { artistItem } = props;
-    const queryArtist = useQueryArtist();
-    const queryResult = queryResultStore.useValue().album;
+    const queryResult = useQueryArtist(artistItem, "album");
 
     const navigate = useNavigate();
 
-    useEffect(() => {
-        queryArtist(artistItem, 1, "album");
-    }, [artistItem, queryArtist]);
+
 
     return (
         <div className="artist-view--album-result-container">
@@ -33,7 +28,7 @@ export default function AlbumResult(props: IBodyProps) {
                 falsy={<Loading></Loading>}
             >
                 <MusicSheetlikeList
-                    data={queryResult.data ?? []}
+                    data={(queryResult.data ?? []) as IAlbum.IAlbumItem[]}
                     state={queryResult.state ?? RequestStateCode.IDLE}
                     onClick={(mediaItem) => {
                         navigate(`/main/album/${encodeURIComponent(mediaItem.platform)}/${encodeURIComponent(mediaItem.id)}`, {
@@ -43,7 +38,7 @@ export default function AlbumResult(props: IBodyProps) {
                         });
                     }}
                     onLoadMore={() => {
-                        queryArtist(artistItem, undefined, "album");
+                        queryResult.load();
                     }}
                 ></MusicSheetlikeList>
             </Condition>

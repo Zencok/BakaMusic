@@ -1,3 +1,4 @@
+import getSourceName from "@renderer/utils/get-source-name";
 import { setFallbackAlbum } from "@/renderer/utils/img-on-error";
 import { useDefaultAlbumCover } from "@/renderer/utils/default-album-cover";
 import "./index.scss";
@@ -29,7 +30,7 @@ export default function Header(props: IProps) {
             <div className="sheet-info-container">
                 <div className="title-container">
                     {(musicSheet?.platform && !hidePlatform) ? (
-                        <Tag>{musicSheet?.platform}</Tag>
+                        <Tag>{getSourceName(musicSheet?.platform)}</Tag>
                     ) : null}
 
                     <div className="title">

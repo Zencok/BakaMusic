@@ -1,3 +1,5 @@
+import { getMediaPrimaryKey, getInternalData, isSameMedia  } from "@/common/media-util";
+import getSourceName from "@renderer/utils/get-source-name";
 import {
     ColumnDef,
     createColumnHelper,
@@ -9,7 +11,7 @@ import "./index.scss";
 import albumImg from "@/renderer/utils/default-album-cover";
 import { localPluginName, qualityKeys, RequestStateCode, sortIndexSymbol, timeStampSymbol } from "@/common/constant";
 import { toError } from "@/common/error-util";
-import { getInternalData, isSameMedia } from "@/common/media-util";
+
 import {
     buildAlbumItemFromMusic,
     buildMusicAlbumCopyPayload,
@@ -33,7 +35,7 @@ import useVirtualList from "@/hooks/useVirtualList";
 import AppConfig from "@shared/app-config/renderer";
 import { i18n } from "@/shared/i18n/renderer";
 import { shellUtil } from "@shared/utils/renderer";
-import PluginManager, { useLxPlugins } from "@shared/plugin-manager/renderer";
+import PluginManager, { usePluginRegistryState } from "@shared/plugin-manager/renderer";
 import BottomLoadingState from "../BottomLoadingState";
 import Condition, { IfTruthy } from "../Condition";
 import { IContextMenuItem, showContextMenu } from "../ContextMenu";
@@ -214,7 +216,7 @@ const columnDef: ColumnDef<IMusic.IMusicItem, any>[] = [
         size: 100,
         minSize: 80,
         maxSize: 300,
-        cell: (info) => <Tag fill>{info.getValue()}</Tag>,
+        cell: (info) => <Tag fill>{getSourceName(info.getValue())}</Tag>,
         // @ts-ignore
         fr: 1,
     }),
@@ -366,7 +368,7 @@ export function showMusicContextMenu(
     musicItems: IMusic.IMusicItem | IMusic.IMusicItem[],
     x: number,
     y: number,
-    sheetType?: string,
+    sheetType?: string | number,
 ) {
     const menuItems: IContextMenuItem[] = [];
     const isArray = Array.isArray(musicItems);
@@ -395,11 +397,7 @@ export function showMusicContextMenu(
                             const { message, url } = await formatMusicSharePayload(
                                 musicItem,
                                 async (item) => {
-                                    const result = await PluginManager.callPluginDelegateMethod(
-                                        getMediaPluginDelegate(item as IMusic.IMusicItem),
-                                        "getMusicDetailPageUrl",
-                                        item,
-                                    );
+                                    const result = await PluginManager.invoke(getMediaPluginDelegate(item as IMusic.IMusicItem), "links.share", { entity: item });
                                     return typeof result === "string" ? result : null;
                                 },
                             );
@@ -665,17 +663,15 @@ function getSortValue(musicItem: IMusic.IMusicItem, field: SortField): string | 
             const source = musicItem?.source && typeof musicItem.source === "object"
                 ? musicItem.source as Partial<Record<IMusic.IQualityKey, { size?: string | number }>>
                 : undefined;
-            const lxQualities = PluginManager.getLxQualityOverride(musicItem.platform)
-                ? PluginManager.getMediaQualityKeys(musicItem)
-                : null;
-            const lxQualitySet = lxQualities ? new Set(lxQualities) : null;
+            const availableQualities = PluginManager.getMediaQualityKeys(musicItem);
+            const availableQualitySet = availableQualities ? new Set(availableQualities) : null;
             const downloadedData = getInternalData<IMusic.IMusicItemInternalData>(
                 musicItem,
                 "downloadData",
             );
             const quality = [...qualityKeys].reverse().find(q =>
-                lxQualitySet
-                    ? lxQualitySet.has(q)
+                availableQualitySet
+                    ? availableQualitySet.has(q)
                     : qualities?.[q] !== undefined
                         || source?.[q]?.size !== undefined
                         || downloadedData?.quality === q,
@@ -729,7 +725,7 @@ function playMusicFromList(
 
 
 function MusicListComponent(props: IMusicListProps) {
-    useLxPlugins();
+    usePluginRegistryState();
     const {
         musicList,
         state = RequestStateCode.FINISHED,
@@ -1202,9 +1198,7 @@ function MusicListComponent(props: IMusicListProps) {
 
                             const qualityInfo = getBestMusicQualityInfo(
                                 musicItem,
-                                PluginManager.getLxQualityOverride(musicItem.platform)
-                                    ? PluginManager.getMediaQualityKeys(musicItem)
-                                    : null,
+                                PluginManager.getMediaQualityKeys(musicItem),
                             );
                             const isActive = activeItems.has(virtualItem.rowIndex);
                             const isPlaying = !!currentMusic && isSameMedia(currentMusic, musicItem);
@@ -1214,7 +1208,7 @@ function MusicListComponent(props: IMusicListProps) {
                             return (
                                 <div
                                     className="music-list-row-wrapper"
-                                    key={`${musicItem.platform}-${musicItem.id}-${virtualItem.rowIndex}`}
+                                    key={`${getMediaPrimaryKey(musicItem)}-${virtualItem.rowIndex}`}
                                     style={{
                                         top: virtualItem.top,
                                     }}
@@ -1347,9 +1341,9 @@ function MusicListComponent(props: IMusicListProps) {
                                             </div>
                                             <div
                                                 className="music-list-subtitle"
-                                                title={subtitleParts.join(" · ") || musicItem.platform}
+                                                title={subtitleParts.join(" · ") || getSourceName(musicItem.platform)}
                                             >
-                                                {subtitleParts.join(" · ") || musicItem.platform}
+                                                {subtitleParts.join(" · ") || getSourceName(musicItem.platform)}
                                             </div>
                                             <div className="music-list-meta-row">
                                                 <IfTruthy condition={!hiddenRows.has("duration")}>
@@ -1369,7 +1363,7 @@ function MusicListComponent(props: IMusicListProps) {
                                                 </IfTruthy>
                                                 <IfTruthy condition={!hiddenRows.has("platform") && !!musicItem.platform}>
                                                     <Tag fill style={compactTagStyle}>
-                                                        {musicItem.platform}
+                                                        {getSourceName(musicItem.platform)}
                                                     </Tag>
                                                 </IfTruthy>
                                             </div>

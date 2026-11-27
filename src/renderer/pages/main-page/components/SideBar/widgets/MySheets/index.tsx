@@ -23,7 +23,7 @@ export default function MySheets() {
     const { t } = useTranslation();
 
     // Follow plugin-manager order (private.pluginMeta.order)
-    const importablePlugins = useSortedSupportedPlugin("importMusicSheet");
+    const importablePlugins = useSortedSupportedPlugin("links.resolve");
 
     return (
         <div className="side-bar-container--my-sheets">

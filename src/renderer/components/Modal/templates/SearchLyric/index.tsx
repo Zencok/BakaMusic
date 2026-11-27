@@ -95,8 +95,8 @@ export default function SearchLyric(props: IProps) {
                                     key={plugin.hash}
                                     className="search-lyric-platform-tab"
                                 >
-                                    <span data-text={plugin.platform}>
-                                        {plugin.platform}
+                                    <span data-text={plugin.name}>
+                                        {plugin.name}
                                     </span>
                                 </Tab>
                             ))}
@@ -115,8 +115,8 @@ export default function SearchLyric(props: IProps) {
 
                                 searchLyric(
                                     searchResults.query,
-                                    1,
-                                    activePlugin.hash,
+                                    activePlugin.id,
+                                    true,
                                 );
                             }}
                         >
@@ -129,6 +129,9 @@ export default function SearchLyric(props: IProps) {
                                 <SearchResult
                                     data={searchResults.data[plugin.hash]}
                                     musicItem={musicItem}
+                                    onLoadMore={() => {
+                                        void searchLyric(undefined, plugin.id);
+                                    }}
                                 ></SearchResult>
                             </Tab.Panel>
                         ))}

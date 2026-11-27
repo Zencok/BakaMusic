@@ -1,70 +1,43 @@
 const assert = require("node:assert/strict");
-
-const {
-    createPlaybackConsole,
-    emitPlaybackLifecycle,
-    runWithPlaybackLog,
-} = require("../src/shared/plugin-manager/utility/playback-console.ts");
-const {
-    isPluginPlaybackLogEvent,
-    PLUGIN_PLAYBACK_LOG_LIMIT,
-} = require("../src/shared/plugin-manager/playback-log.ts");
-
-const baseContext = {
-    callId: "plugin-test-call",
-    kind: "plugin",
-    pluginHash: "a".repeat(64),
-    pluginName: "Fixture Music",
-    platform: "Fixture Music",
-    quality: "320k",
-};
+const fs = require("node:fs");
+const path = require("node:path");
+const { once } = require("node:events");
+const { Host, LogStore, logTypes, taskRoot, provider, providerId } = require("./v2-registry.test.cjs");
 
 async function main() {
     const events = [];
-    const pluginConsole = createPlaybackConsole((event) => events.push(event));
-    const originalMethods = Object.fromEntries(
-        ["debug", "log", "info", "warn", "error", "group", "groupEnd"]
-            .map((level) => [level, console[level]]),
-    );
-    for (const level of Object.keys(originalMethods)) {
-        console[level] = () => undefined;
-    }
-
+    const host = new Host((event) => events.push(event));
+    const store = new LogStore(() => {});
     try {
-        pluginConsole.log("outside playback");
-        assert.equal(events.length, 0);
-
-        await runWithPlaybackLog(baseContext, async () => {
-            pluginConsole.group("resolve");
-            pluginConsole.info("quality", { value: "320k" });
-            await Promise.resolve();
-            pluginConsole.warn("fallback");
-            pluginConsole.groupEnd();
-        });
+        await host.loadPlugin(providerId, provider(), { os: process.platform, appVersion: "1.0.0", userVariables: {} }, path.join(taskRoot, "storage"));
+        await host.invokePlugin(providerId, "media.resolve", { entity: { id: 42 }, quality: "320k" }, "Fixture music");
+        await assert.rejects(host.invokePlugin(providerId, "media.resolve", { entity: { id: 42, coded: true }, quality: "flac" }, "Fixture music"));
+        assert.deepEqual(events.map((event) => event.phase), ["request", "success", "request", "error"]);
+        assert.ok(events.every(logTypes.isPluginPlaybackLogEvent));
+        assert.equal(events[0].callId, events[1].callId);
+        assert.equal(events[2].callId, events[3].callId);
+        assert.notEqual(events[0].callId, events[2].callId);
+        assert.equal(events[0].quality, "320k");
+        assert.ok(events[1].durationMs >= 0);
+        assert.doesNotMatch(events[3].message, /do-not-leak/);
+        assert.equal(logTypes.PLUGIN_PLAYBACK_LOG_LIMIT, 500);
+        const longId = "test." + "a".repeat(123);
+        assert.ok(logTypes.isPluginPlaybackLogEvent({ ...events[0], pluginHash: longId }));
+        assert.ok(!logTypes.isPluginPlaybackLogEvent({ ...events[0], pluginHash: longId + "a" }));
+        assert.ok(!logTypes.isPluginPlaybackLogEvent({ ...events[0], message: "x".repeat(8193) }));
+        for (let i = 0; i < 505; i++) store.append({ ...events[0], timestamp: i });
+        await store.persist();
+        assert.equal(store.getEntries().length, 500);
+        const restored = new LogStore(() => {}); await restored.setup();
+        assert.equal(restored.getEntries().length, 500);
+        await restored.clear();
+        assert.deepEqual(restored.getEntries(), []);
+        console.log("Plugin playback logs passed: real native lifecycle, correlation, coded-failure redaction, bounds, persistence and clear.");
     } finally {
-        Object.assign(console, originalMethods);
+        const child = host.child;
+        const stopped = child && child.exitCode === null ? once(child, "exit") : Promise.resolve();
+        host.dispose(); await stopped;
+        fs.rmSync(taskRoot, { recursive: true, force: true });
     }
-
-    assert.deepEqual(
-        events.map((event) => event.level),
-        ["group", "info", "warn", "groupEnd"],
-    );
-    assert.ok(events.every((event) => event.phase === "console"));
-    assert.ok(events.every(isPluginPlaybackLogEvent));
-    assert.match(events[1].message, /quality.*320k/);
-
-    emitPlaybackLifecycle((event) => events.push(event), baseContext, "request");
-    emitPlaybackLifecycle((event) => events.push(event), baseContext, "success", {
-        durationMs: 12.5,
-    });
-    assert.equal(events.at(-2).phase, "request");
-    assert.equal(events.at(-1).durationMs, 12.5);
-    assert.equal(PLUGIN_PLAYBACK_LOG_LIMIT, 500);
-
-    console.log("Plugin playback log tests passed.");
 }
-
-main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+main().catch((error) => { console.error(error); process.exitCode = 1; });

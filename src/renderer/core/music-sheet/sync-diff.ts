@@ -58,7 +58,7 @@ export function equalSourceKeys(left: string[] = [], right: string[] = []) {
 }
 
 export function diffSyncRelations(
-    sheetId: string,
+    sheetId: string | number,
     previous: ISheetMusicRelation[],
     tracks: IMedia.IMediaBase[],
     ownership: IMusic.ISheetTrackOwnership[],

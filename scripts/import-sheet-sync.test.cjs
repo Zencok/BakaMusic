@@ -11,7 +11,9 @@ function load(relative, mocks = {}) {
     const module = { exports: {} };
     new Function("require", "module", "exports", output)((name) => {
         if (name in mocks) return mocks[name];
-        throw new Error(`Unexpected dependency: ${name}`);
+        const local = name.startsWith("@/") ? path.resolve(__dirname, "../src", name.slice(2))
+            : name.startsWith(".") ? path.resolve(path.dirname(filename), name) : null;
+        return local ? load(path.relative(path.join(__dirname, ".."), local.endsWith(".ts") ? local : local + ".ts")) : require(name);
     }, module, module.exports);
     return module.exports;
 }
@@ -114,7 +116,7 @@ const db = {
     },
 };
 const constants = { localPluginName: "local", musicRefSymbol: "refs", MusicSheetSortType: { None: "None" } };
-const media = { getMediaPrimaryKey: (item) => `${item.platform}@${item.id}`, isSameMedia: (a, b) => a.id === b.id && a.platform === b.platform };
+const media = load("src/common/media-util.ts");
 let restoredId = 0;
 const repository = load("src/renderer/core/music-sheet/repository.ts", {
     "@/common/constant": constants,
@@ -136,28 +138,44 @@ class Store {
     useValue = () => this.value;
 }
 async function pluginVersionTests() {
-    const PluginMethods = load("src/shared/plugin-manager/main/plugin-methods.ts", {
-        "@/common/media-util": { resetMediaItem: (item, platform) => { item.platform = platform; } },
-        "fs/promises": {}, "@/common/time-util": {}, axios: {}, crypto: require("node:crypto"),
-        "@/common/file-util": {}, path: require("node:path"), "./lyric-decrypt": {},
-        "@shared/service-manager/main": {}, "../lx-adapter": {},
-    }).default;
-    let args;
-    let response = [track("old")];
-    const methods = new PluginMethods({ name: "fixture", instance: {
-        importMusicSheet: async (...input) => { args = input; return response; },
-    }, applyMediaQualityOverride: () => {} });
-    await methods.importMusicSheet("123");
-    assert.equal(args.length, 1, "legacy call receives no new argument");
-    await methods.importMusicSheet("123", { knownVersion: "v1" });
-    assert.deepEqual(args[1], { knownVersion: "v1" });
-    response = { notModified: true, syncVersion: "v1" };
-    assert.deepEqual(await methods.importMusicSheet("123", { knownVersion: "v1" }), response);
-    assert.equal(await methods.importMusicSheet("123"), null);
-    assert.equal(await methods.importMusicSheet("123", { knownVersion: "wrong" }), null);
-    assert.equal(await methods.importMusicSheet("123", { knownVersion: "x".repeat(1001) }), null);
-    response = { id: "sheet", title: "Sheet", musicList: [track("full")], syncVersion: "v2" };
-    assert.equal((await methods.importMusicSheet("123", { knownVersion: "v1" })).syncVersion, "v2");
+    const platform = "org.fixture.provider";
+    const collection = { id: 7, platform, title: "Collection" };
+    const first = { items: [track(42, platform)], nextCursor: "opaque-next", total: 2, revision: "v2" };
+    const last = { items: [track("42", platform)], nextCursor: null, total: 2, revision: "v2" };
+    let pages = [first, last];
+    const requests = [];
+    const previousWindow = global.window;
+    global.window = { "@shared/plugin-manager": {
+        onPluginUpdated() {}, onRegistryUpdated() {}, onPlaybackLogAppended() {},
+        invoke: async (delegate, capability, request) => {
+            assert.deepEqual(delegate, { id: platform }); requests.push({ capability, request });
+            return { ok: true, value: capability === "links.resolve" ? collection : pages.shift() };
+        },
+    } };
+    try {
+        const manager = load("src/shared/plugin-manager/renderer.ts", {
+            "@/common/store": Store,
+            "@shared/app-config/renderer": { onConfigUpdate() {}, getConfig: () => ({}) },
+            "@/hooks/useAppConfig": () => ({}), react: {},
+            "@shared/logger/renderer": { logInfo() {} },
+        }).default;
+        const result = await manager.importCollection({ id: platform }, "https://fixture/collection", { knownVersion: "v1" });
+        assert.equal(result.syncVersion, "v2");
+        assert.deepEqual(result.musicList.map((item) => item.id), [42, "42"]);
+        assert.deepEqual(requests, [
+            { capability: "links.resolve", request: { url: "https://fixture/collection", kind: "sheet" } },
+            { capability: "collections.members", request: { entity: collection, kind: "music", cursor: null, limit: 100 } },
+            { capability: "collections.members", request: { entity: collection, kind: "music", cursor: "opaque-next", limit: 100 } },
+        ], "complete import uses opaque cursors and one canonical request object without positional/version aliases");
+        pages = [first, { ...last, revision: "changed" }];
+        await assert.rejects(manager.importCollection({ id: platform }, "https://fixture/collection"), /changed/);
+        pages = [first, { ...last, nextCursor: "opaque-next" }];
+        await assert.rejects(manager.importCollection({ id: platform }, "https://fixture/collection"), /cursor/);
+        pages = [{ ...last, total: 2 }];
+        await assert.rejects(manager.importCollection({ id: platform }, "https://fixture/collection"), /incomplete/);
+        pages = [{ ...last, total: 1, items: [track(42, "org.other.provider")] }];
+        await assert.rejects(manager.importCollection({ id: platform }, "https://fixture/collection"), /ownership/);
+    } finally { global.window = previousWindow; }
 }
 
 async function performanceTests() {
@@ -347,7 +365,7 @@ async function main() {
     let commits = 0;
     let detailReads = 0;
     let reply = [track("new"), track("new")];
-    let plugins = [{ hash: "updated-hash", platform: "fixture" }];
+    let plugins = [{ id: "old-hash", hash: "updated-hash", platform: "fixture" }];
     let block;
     const service = load("src/renderer/core/music-sheet/service.ts", {
         "@/common/store": Store,
@@ -370,8 +388,8 @@ async function main() {
         "@shared/plugin-manager/renderer": {
             onPluginsChanged: () => () => {},
             getSortedSupportedPlugin: () => plugins,
-            callPluginDelegateMethod: async (_plugin, method, input) => {
-                assert.equal(method, "importMusicSheet"); assert.equal(input, "123");
+            importCollection: async (_plugin, input) => {
+                assert.equal(input, "123");
                 calls++; if (block) await block; return reply;
             },
         },
@@ -380,7 +398,7 @@ async function main() {
         "@shared/app-config/renderer": { onConfigUpdate: () => {} },
     });
     await service.setupMusicSheets();
-    assert.equal((await service.syncImportedSheet(sheets[0])).total, 1, "updated plugin resolves by unique platform");
+    assert.equal((await service.syncImportedSheet(sheets[0])).total, 1, "stored import resolves the exact stable provider ID");
     assert.equal(commits, 1);
     assert.equal(detailReads, 0, "closed playlist does not reload full entities");
     reply = null;
@@ -388,7 +406,7 @@ async function main() {
     assert.equal(commits, 1, "failed fetch must not commit");
     plugins = [];
     await assert.rejects(service.syncImportedSheet(sheets[0]), /sync_sheet_missing_plugin/);
-    plugins = [{ hash: "updated-hash", platform: "fixture" }];
+    plugins = [{ id: "old-hash", hash: "updated-hash", platform: "fixture" }];
     reply = [];
     let release;
     block = new Promise((resolve) => { release = resolve; });

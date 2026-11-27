@@ -4,7 +4,7 @@ import Store from "@/common/store";
 export interface ISearchLyricResult {
     data: ILyric.ILyricItem[];
     state: RequestStateCode;
-    page: number;
+    nextCursor: string | null;
 }
 
 interface ISearchLyricStoreData {

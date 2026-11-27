@@ -29,24 +29,49 @@ for (const duration of [undefined, NaN, Infinity, -1, 0]) {
     assert.equal(lyricSearchContext({ ...item, duration }, "KG").durationMs, undefined);
 }
 
-const PluginMethods = load("src/shared/plugin-manager/main/plugin-methods.ts", {
-    "@/common/media-util": { resetMediaItem: (row, platform) => { row.platform = platform; } },
-    "fs/promises": {}, "@/common/time-util": {}, axios: {}, crypto: require("node:crypto"),
-    "@/common/file-util": {}, path: require("node:path"), "./lyric-decrypt": {},
-    "@shared/service-manager/main": {}, "../lx-adapter": {},
-}).default;
-
 (async () => {
-    let received;
-    const methods = new PluginMethods({ name: "KG", instance: {
-        search: async (...args) => { received = args; return { data: [{ id: "lyric" }] }; },
-    } });
-    const result = await methods.search(lyricSearchKeyword(item), 1, "lyric", context);
-    assert.deepEqual(received, ["Celine Dion - My Heart Will Go On", 1, "lyric", context]);
-    assert.equal(result.data[0].platform, "KG");
-    const legacy = new PluginMethods({ name: "Legacy", instance: {
-        search: async (query, page, type) => ({ data: [{ id: `${query}:${page}:${type}` }] }),
-    } });
-    assert.equal((await legacy.search("song", 1, "lyric", context)).data[0].id, "song:1:lyric");
+    const providerId = "org.fixture.lyrics";
+    const current = { ...item, platform: providerId, id: 123 };
+    const states = { IDLE: 0, PENDING_FIRST_PAGE: 1, PENDING_REST_PAGE: 2, PARTLY_DONE: 4, FINISHED: 8, ERROR: 16 };
+    const { CursorSession } = load("src/renderer/utils/cursor-session.ts", { "@/common/constant": { RequestStateCode: states } });
+    let snapshot = { data: {} };
+    let invalidate;
+    const calls = [];
+    const plugin = { id: providerId, platform: providerId, capabilities: ["search"] };
+    const useSearchLyric = load("src/renderer/components/Modal/templates/SearchLyric/hooks/useSearchLyric.ts", {
+        react: {
+            useRef: (value) => ({ current: value }), useCallback: (callback) => callback,
+            useEffect: (effect) => effect(), useSyncExternalStore: (_subscribe, getSnapshot) => getSnapshot(),
+        },
+        "./searchResultStore": { default: {
+            setValue: (value) => { snapshot = typeof value === "function" ? value(snapshot) : value; },
+        }, __esModule: true },
+        "@shared/plugin-manager/renderer": {
+            onPluginsChanged: (callback) => { invalidate = callback; return () => undefined; }, getRegistryRevision: () => 0,
+            getSortedSearchablePlugins: (kind) => { assert.equal(kind, "lyric"); return [plugin]; },
+            invoke: async (delegate, capability, request) => {
+                calls.push({ delegate, capability, request });
+                return { items: [{ id: request.cursor ? "123" : 123, platform: providerId }], nextCursor: request.cursor ? null : "lyric-next" };
+            },
+        },
+        "@shared/plugin-manager/lyric-search": { lyricSearchContext },
+        "@renderer/utils/cursor-session": { CursorSession },
+    }).default;
+    const search = useSearchLyric(current);
+    await search(lyricSearchKeyword(current));
+    await search(undefined, providerId);
+    assert.deepEqual(calls.map((call) => call.request.cursor), [null, "lyric-next"]);
+    assert.ok(calls.every((call) => call.delegate === plugin && call.capability === "search" && call.request.kind === "lyric" && call.request.limit === 50));
+    assert.deepEqual(calls[0].request.context, lyricSearchContext(current, providerId));
+    assert.equal(calls[0].request.context.musicItem.id, 123);
+    assert.equal(calls[0].request.context.privateToken, undefined);
+    assert.deepEqual(snapshot.data[providerId].data.map((entry) => entry.id), [123, "123"]);
+    assert.equal(snapshot.data[providerId].state, states.FINISHED);
+    await search(undefined, providerId);
+    assert.equal(calls.length, 2, "completed search must not restart page one");
+    await search(lyricSearchKeyword(current), providerId, true);
+    assert.equal(calls[2].request.cursor, null, "explicit refresh creates a new continuation generation");
+    invalidate();
+    assert.deepEqual(snapshot, { data: {} }, "plugin/settings changes clear obsolete lyric search results");
     console.log("Lyric search context tests passed.");
 })().catch(error => { console.error(error); process.exitCode = 1; });
