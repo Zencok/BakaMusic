@@ -1,6 +1,0 @@
-{
-    "plugins": [
-        { "url": "https://plugins.example.invalid/minimal-plugin.js" },
-        { "url": "https://plugins.example.invalid/full-plugin.js" }
-    ]
-}
