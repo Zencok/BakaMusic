@@ -82,7 +82,7 @@ When native manifest contents are unchanged, the updater leaves `updatedAt` inta
 
 BakaMusic does not bundle online music sources. Plugins run in a separate, managed process, with network, storage and media requests handled through application boundaries.
 
-- Plugin development: [baka-plugin-dev](../baka-plugin-dev/README.md) — separate V2 tutorials, reference and skill repository.
+- Plugin development: [baka-plugin-dev](https://github.com/Zencok/baka-plugin-dev) — separate V2 tutorials, reference and skill repository.
 - Theme repository: [BakaThemePacks](https://github.com/Toskysun/BakaThemePacks)
 - V2 theme contract: [`src/shared/themepack/contract.ts`](src/shared/themepack/contract.ts)
 

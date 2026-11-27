@@ -80,7 +80,7 @@ BakaMusic 是基于 Electron、React 和 TypeScript 的跨平台桌面音乐播�
 
 BakaMusic 不附带在线音源。插件在独立受控进程中运行，网络、存储和媒体能力由应用边界统一管理。
 
-- 插件开发：[baka-plugin-dev](../baka-plugin-dev/README.md)，独立维护 V2 教程、接口参考与开发 skill。
+- 插件开发：[baka-plugin-dev](https://github.com/Zencok/baka-plugin-dev)，独立维护 V2 教程、接口参考与开发 skill。
 - 主题包仓库：[BakaThemePacks](https://github.com/Toskysun/BakaThemePacks)
 - V2 主题契约：[`src/shared/themepack/contract.ts`](src/shared/themepack/contract.ts)
 
